@@ -1,0 +1,73 @@
+@import "tailwindcss";
+body {
+  margin: 0;
+  display: flex;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #1a1a1a;
+  color: #f1f1f1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Custom React Contexify Dark Theme (Windows 11 inspired) */
+:root {
+  --contexify-menu-bgColor: rgba(17, 24, 39, 0.85);
+  /* Tailwind gray-900 with opacity */
+  --contexify-menu-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --contexify-menu-radius: 8px;
+  --contexify-menu-padding: 4px;
+  --contexify-menu-border: 1px solid rgba(75, 85, 99, 0.3);
+  --contexify-item-color: #d1d5db;
+  /* Tailwind gray-300 */
+  --contexify-item-padding: 6px 10px;
+  --contexify-item-radius: 4px;
+  --contexify-activeItem-bgColor: rgba(99, 102, 241, 0.15);
+  /* Tailwind indigo-500 tint */
+  --contexify-activeItem-color: #fff;
+  --contexify-separator-color: rgba(75, 85, 99, 0.3);
+}
+
+/* --- Dragging Global Fix --- */
+body.dragging-global .ui-layer {
+  pointer-events: none !important;
+}
+body.dragging-global .ui-layer * {
+  pointer-events: none !important;
+}
+
+.contexify {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 9999 !important;
+}
+
+.contexify_itemContent {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+/* Custom Webkit Scrollbars for .custom-scrollbar and globally matching theme */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(75, 85, 99, 0.4);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.8);
+}

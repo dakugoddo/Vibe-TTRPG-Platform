@@ -1,0 +1,26 @@
+{
+    "login": {
+        "title": "VIBE OS / CONNECT",
+        "directoryPlaceholder": "ROOM DIRECTORY",
+        "connectBtn": "INITIALIZE CONNECTION"
+    },
+    "hud": {
+        "activeElements": "Active Elements",
+        "pinnedWindows": "Pinned Windows",
+        "portalsHere": "Portals Here",
+        "none": "None",
+        "unknown": "Unknown",
+        "room": "Room:",
+        "connected": "CONNECTED",
+        "leave": "Leave",
+        "canvases": "Canvases",
+        "createPortal": "+ Create Portal",
+        "rootCanvas": "Root Canvas",
+        "noSubtables": "No subtables yet",
+        "database": "DATABASE",
+        "globalDatabase": "GLOBAL DATABASE",
+        "allEntities": "All entities in the server",
+        "newEntity": "+ NEW ENTITY",
+        "emptyDirectory": "Empty Directory"
+    }
+}

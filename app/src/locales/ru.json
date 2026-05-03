@@ -1,0 +1,26 @@
+{
+  "login": {
+    "title": "VIBE OS / ПОДКЛЮЧЕНИЕ",
+    "directoryPlaceholder": "ИДЕНТИФИКАТОР КОМНАТЫ",
+    "connectBtn": "ИНИЦИАЛИЗИРОВАТЬ ПОДКЛЮЧЕНИЕ"
+  },
+  "hud": {
+    "activeElements": "Объекты на канвасе",
+    "pinnedWindows": "Закрепленные окна",
+    "portalsHere": "Порталы на холсте",
+    "none": "Нет",
+    "unknown": "Неизвестно",
+    "room": "Комната:",
+    "connected": "ПОДКЛЮЧЕНО",
+    "leave": "Выйти",
+    "canvases": "Пространства",
+    "createPortal": "+ Создать Портал",
+    "rootCanvas": "Корневое пространство",
+    "noSubtables": "Нет вложенных пространств",
+    "database": "БАЗА ДАННЫХ",
+    "globalDatabase": "ГЛОБАЛЬНАЯ БАЗА",
+    "allEntities": "Все сущности на сервере",
+    "newEntity": "+ НОВАЯ СУЩНОСТЬ",
+    "emptyDirectory": "Пустая база"
+  }
+}
