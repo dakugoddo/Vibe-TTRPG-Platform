@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, useMemo, memo } from 'react';
+import { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo, memo } from 'react';
 import { Stage, Layer, Text, Group, Circle, Line, Rect, Ellipse, RegularPolygon, Image as KonvaImage, Shape } from 'react-konva';
 import { ExternalLink } from 'lucide-react';
 import Konva from 'konva';
@@ -1021,10 +1021,12 @@ function FogOfWarLayer({
   const texW = Math.min(Math.round(stageWidth * FOG_PAD_FACTOR * 0.8), FOG_MAX_TEX);
   const texH = Math.min(Math.round(stageHeight * FOG_PAD_FACTOR * 0.8), FOG_MAX_TEX);
 
-  // ── Draw fog onto offscreen canvas ──
+  // ── Draw fog onto offscreen canvas (useLayoutEffect for synchronous update before paint) ──
   const [fogVersion, setFogVersion] = useState(0);
-  useMemo(() => {
+  useLayoutEffect(() => {
     if (!shouldShow) return;
+    // Guard against zero dimensions (stage not yet initialized)
+    if (texW <= 0 || texH <= 0) return;
     const canvas = fogCanvasRef.current!;
     if (canvas.width !== texW || canvas.height !== texH) {
       canvas.width = texW;
@@ -1032,11 +1034,10 @@ function FogOfWarLayer({
     }
     const ctx = canvas.getContext('2d')!;
 
-    // Fill with fog
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = FOG_COLOR;
-    ctx.fillRect(0, 0, texW, texH);
+    // Clear canvas to transparent (PATCH-BASED MODEL: we paint fog on top)
+    ctx.clearRect(0, 0, texW, texH);
 
+    // If no fog patches, canvas stays transparent (no fog at all)
     if (!fogReveals || fogReveals.length === 0) {
       setFogVersion(v => v + 1);
       return;
@@ -1047,8 +1048,9 @@ function FogOfWarLayer({
     const worldToTexY = (wy: number) => ((wy - worldTop) / worldH) * texH;
     const worldSizeToTex = (ws: number) => (ws / worldW) * texW;
 
-    // Punch reveal holes
-    ctx.globalCompositeOperation = 'destination-out';
+    // Draw fog patches as dark areas
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = FOG_COLOR;
     for (const r of fogReveals) {
       const tx = worldToTexX(r.x);
       const ty = worldToTexY(r.y);
@@ -1065,7 +1067,6 @@ function FogOfWarLayer({
         ctx.fill();
       }
     }
-    ctx.globalCompositeOperation = 'source-over'; // reset for next draw
     setFogVersion(v => v + 1);
   }, [shouldShow, fogReveals, worldLeft, worldTop, worldW, worldH, texW, texH]);
 
@@ -1905,7 +1906,8 @@ export function InfiniteCanvas() {
           fogBrushTipRef.current = { x: pt.x, y: pt.y };
           const id = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
           const reveal: FogReveal = { id, type: 'circle', x: pt.x, y: pt.y, width: 80, height: 80 };
-          if (currentFogTool === 'revealBrush') useCanvasSyncStore.getState().addFogReveal(reveal);
+          // Cover tools ADD fog patches, Reveal tools REMOVE fog patches
+          if (currentFogTool === 'coverBrush') useCanvasSyncStore.getState().addFogReveal(reveal);
           else useCanvasSyncStore.getState().removeIntersectingReveals(reveal);
           return;
         }
@@ -2135,6 +2137,12 @@ export function InfiniteCanvas() {
         if (pt) setLocalCursor(pt.x, pt.y);
       }
 
+      // ─── Middle-click pan works in ALL modes, including fog edit ───
+      if (isMiddlePanRef.current) {
+        handleMiddlePanMove(e);
+        return;
+      }
+
       // ─── Fog edit mode: block all other handlers, only process fog ───
       if (isGM && useCanvasDrawStore.getState().fogEditMode) {
         if (fogDrawingRef.current) {
@@ -2149,7 +2157,7 @@ export function InfiniteCanvas() {
                 fogBrushTipRef.current = { x: fogPt.x, y: fogPt.y };
                 const id = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
                 const reveal: FogReveal = { id, type: 'circle', x: fogPt.x, y: fogPt.y, width: 80, height: 80 };
-                if (currentFogTool === 'revealBrush') useCanvasSyncStore.getState().addFogReveal(reveal);
+                if (currentFogTool === 'coverBrush') useCanvasSyncStore.getState().addFogReveal(reveal);
                 else useCanvasSyncStore.getState().removeIntersectingReveals(reveal);
               }
             }
@@ -2171,19 +2179,13 @@ export function InfiniteCanvas() {
               fogBrushTipRef.current = { x: pt.x, y: pt.y };
               const id = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
               const reveal: FogReveal = { id, type: 'circle', x: pt.x, y: pt.y, width: 80, height: 80 };
-              if (currentFogTool === 'revealBrush') useCanvasSyncStore.getState().addFogReveal(reveal);
+              if (currentFogTool === 'coverBrush') useCanvasSyncStore.getState().addFogReveal(reveal);
               else useCanvasSyncStore.getState().removeIntersectingReveals(reveal);
             }
           }
           return;
         }
         // Not a brush tool dragging — continue to other handlers
-      }
-
-      // Middle-click pan
-      if (isMiddlePanRef.current) {
-        handleMiddlePanMove(e);
-        return;
       }
 
       // Select mode drag
@@ -2278,7 +2280,7 @@ export function InfiniteCanvas() {
             if (sw > 10 && sh > 10) {
               const id = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
               const reveal: FogReveal = { id, type: 'rect', x: sx, y: sy, width: sw, height: sh };
-              if (currentFogTool === 'revealRect') useCanvasSyncStore.getState().addFogReveal(reveal);
+              if (currentFogTool === 'coverRect') useCanvasSyncStore.getState().addFogReveal(reveal);
               else useCanvasSyncStore.getState().removeIntersectingReveals(reveal);
             }
           }

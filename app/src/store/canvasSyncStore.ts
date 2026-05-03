@@ -326,14 +326,18 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
         }
     },
 
-    // ─── Fog of War ───
+    // ─── Fog of War (PATCH-BASED MODEL: fog = dark patches drawn on canvas) ───
+    // Empty fogMap = no fog at all (clear canvas).
+    // Cover tools ADD fog patches. Reveal tools REMOVE fog patches.
 
-    addFogReveal: (reveal: FogReveal) => {
+    /** Add a fog patch (dark area) — used by Cover tools */
+    addFogReveal: (patch: FogReveal) => {
         const { fogMap } = get();
         if (!fogMap) return;
-        fogMap.set(reveal.id, { ...reveal });
+        fogMap.set(patch.id, { ...patch });
     },
 
+    /** Remove fog patches that overlap the given shape — used by Reveal tools */
     removeIntersectingReveals: (shape: FogReveal) => {
         const { fogMap, fogReveals } = get();
         if (!fogMap) return;
@@ -350,29 +354,29 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
         }
     },
 
+    /** Cover entire canvas with fog (add one massive fog patch) */
     clearAllFog: () => {
         const { fogMap, doc } = get();
         if (!fogMap || !doc) return;
         doc.transact(() => {
-            // Clear all reveals — empty = full fog (default)
             fogMap.clear();
+            fogMap.set('fog_all', {
+                id: 'fog_all',
+                type: 'rect',
+                x: -50000,
+                y: -50000,
+                width: 100000,
+                height: 100000,
+            });
         });
     },
 
+    /** Remove all fog patches — canvas is fully visible */
     revealAll: () => {
         const { fogMap, doc } = get();
         if (!fogMap || !doc) return;
         doc.transact(() => {
-            // Single massive reveal covering the entire plausible play area
             fogMap.clear();
-            fogMap.set('reveal_all', {
-                id: 'reveal_all',
-                type: 'rect',
-                x: -10000,
-                y: -10000,
-                width: 20000,
-                height: 20000,
-            });
         });
     },
 }));

@@ -13,6 +13,7 @@ import { useCanvasDrawStore, type DrawStyleState } from '../../store/canvasDrawS
 import { useCanvasSyncStore } from '../../store/canvasSyncStore';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useWindowStore } from '../../store/windowStore';
+import { useUIStore } from '../../store/uiStore';
 import { useEntitiesByParent, getEntitiesSnapshot } from '../../hooks/useEntities';
 import type { CanvasTool, StrokeStyle, LineCap, TextFontFamily, TextAlign, DrawElement } from '../../types/canvasTypes';
 import { getElementBounds, reorderElements } from '../../types/canvasTypes';
@@ -265,6 +266,7 @@ export function CanvasToolbar() {
   const clearAllFog = useCanvasSyncStore((s) => s.clearAllFog);
   const revealAll = useCanvasSyncStore((s) => s.revealAll);
   const isGM = yjsStore.localRole === 'gm';
+  const { openConfirm } = useUIStore();
 
   // Active elements data
   const canvasEntities = useEntitiesByParent(activeCanvasId);
@@ -402,134 +404,7 @@ export function CanvasToolbar() {
     [selectedElementIds]
   );
 
-  // ─── Fog Edit Mode Toolbar ───
-  if (fogEditMode && isGM) {
-    return (
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex flex-col items-center gap-2">
-        {/* Fog editing toolbar */}
-        <div className="flex items-center gap-1.5 bg-black/30 backdrop-blur-2xl border border-purple-500/30 rounded-xl shadow-[0_10px_30px_rgba(139,92,246,0.15)] p-1">
-          {/* Close fog mode */}
-          <button
-            onClick={() => setFogEditMode(false)}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer text-red-400 hover:bg-red-500/20 hover:text-red-300"
-            title="Закрыть режим тумана"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
 
-          <div className="w-px h-6 bg-white/10" />
-
-          {/* Reveal Brush */}
-          <button
-            onClick={() => setFogTool('revealBrush')}
-            className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer
-              ${fogTool === 'revealBrush'
-                ? 'bg-emerald-500/30 text-emerald-300 shadow-md'
-                : 'text-white/50 hover:text-white hover:bg-white/10'
-              }`}
-            title="Просвет: Кисть"
-          >
-            <span className="text-base">🖌️</span>
-          </button>
-
-          {/* Reveal Rect */}
-          <button
-            onClick={() => setFogTool('revealRect')}
-            className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer
-              ${fogTool === 'revealRect'
-                ? 'bg-emerald-500/30 text-emerald-300 shadow-md'
-                : 'text-white/50 hover:text-white hover:bg-white/10'
-              }`}
-            title="Просвет: Область"
-          >
-            <span className="text-base">◻️</span>
-          </button>
-
-          <div className="w-px h-4 bg-white/10" />
-
-          {/* Cover Brush */}
-          <button
-            onClick={() => setFogTool('coverBrush')}
-            className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer
-              ${fogTool === 'coverBrush'
-                ? 'bg-purple-500/30 text-purple-300 shadow-md'
-                : 'text-white/50 hover:text-white hover:bg-white/10'
-              }`}
-            title="Скрыть: Кисть"
-          >
-            <span className="text-base">🖌️</span>
-          </button>
-
-          {/* Cover Rect */}
-          <button
-            onClick={() => setFogTool('coverRect')}
-            className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer
-              ${fogTool === 'coverRect'
-                ? 'bg-purple-500/30 text-purple-300 shadow-md'
-                : 'text-white/50 hover:text-white hover:bg-white/10'
-              }`}
-            title="Скрыть: Область"
-          >
-            <span className="text-base">◻️</span>
-          </button>
-
-          <div className="w-px h-6 bg-white/10" />
-
-          {/* Cover All */}
-          <button
-            onClick={() => clearAllFog()}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer text-white/50 hover:text-white hover:bg-white/10"
-            title="Покрыть всё туманом"
-          >
-            <span className="text-sm">⬛</span>
-          </button>
-
-          {/* Reset All */}
-          <button
-            onClick={() => revealAll()}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
-            title="Сбросить весь туман"
-          >
-            <span className="text-sm">🔓</span>
-          </button>
-
-          <div className="w-px h-6 bg-white/10" />
-
-          {/* GM visibility toggle */}
-          <button
-            onClick={toggleGmFog}
-            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer
-              ${gmFogVisible ? 'text-purple-300 bg-purple-500/20' : 'text-white/30 hover:text-white/60 hover:bg-white/10'}`}
-            title={gmFogVisible ? 'Скрыть туман ГМа' : 'Показать туман ГМа'}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 3c-7 0-10 9-10 9s3 9 10 9 10-9 10-9-3-9-10-9Z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Current tool label */}
-        <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest bg-black/20 backdrop-blur-md rounded-lg px-3 py-1 border border-white/5 select-none">
-          {fogTool === 'revealBrush' ? '🟢 Просвет: Кисть' :
-           fogTool === 'revealRect' ? '🟢 Просвет: Область' :
-           fogTool === 'coverBrush' ? '🟣 Скрыть: Кисть' :
-           fogTool === 'coverRect' ? '🟣 Скрыть: Область' :
-           'Выберите инструмент'}
-        </div>
-
-        {/* Style panel (if applicable) */}
-        {showStylePanel && (
-          <div className="bg-black/20 backdrop-blur-2xl border border-white/10 rounded-xl shadow-xl p-1.5 flex items-center gap-1">
-            {/* Keep the existing style panel rendering */}
-          </div>
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex flex-col items-center gap-2">
@@ -683,22 +558,36 @@ export function CanvasToolbar() {
           )}
         </div>
 
-        {/* Fog of War Button (GM only) — enters fog edit mode */}
+        {/* Fog of War Button (GM only) — toggles fog edit mode */}
         {isGM && (
           <button
-            onClick={() => setFogEditMode(true)}
+            onClick={() => {
+              const nextFog = !fogEditMode;
+              setFogEditMode(nextFog);
+              // Auto-enable GM fog visibility when entering edit mode
+              if (nextFog && !gmFogVisible) toggleGmFog();
+            }}
             className={`bg-black/20 backdrop-blur-2xl border w-10 h-10 rounded-xl flex justify-center items-center shadow-xl transition-all cursor-pointer
-              ${gmFogVisible
-                ? 'border-purple-500/40 text-purple-300 bg-purple-500/10'
-                : 'border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+              ${fogEditMode
+                ? 'border-purple-400/60 text-purple-300 bg-purple-500/20 shadow-[0_0_15px_rgba(139,92,246,0.3)]'
+                : gmFogVisible
+                  ? 'border-purple-500/40 text-purple-300 bg-purple-500/10'
+                  : 'border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
               }`}
-            title="Туман Войны"
+            title={fogEditMode ? 'Закрыть режим тумана' : 'Туман Войны'}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 3c-7 0-10 9-10 9s3 9 10 9 10-9 10-9-3-9-10-9Z" />
-              <circle cx="12" cy="12" r="3" />
-              <line x1="2" y1="2" x2="22" y2="22" />
-            </svg>
+            {fogEditMode ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3c-7 0-10 9-10 9s3 9 10 9 10-9 10-9-3-9-10-9Z" />
+                <circle cx="12" cy="12" r="3" />
+                <line x1="2" y1="2" x2="22" y2="22" />
+              </svg>
+            )}
           </button>
         )}
 
@@ -817,9 +706,14 @@ export function CanvasToolbar() {
         {/* Recenter Button */}
         <button
           onClick={() => {
+            const scale = 1;
             const w = window.innerWidth;
             const h = window.innerHeight;
-            setTransform(1, w / 2, h / 2);
+            const offsetX = w / 2;
+            const offsetY = h / 2;
+            setTransform(scale, offsetX, offsetY);
+            // Also update Konva Stage directly
+            (window as any).__vibeSetStageCamera?.(scale, offsetX, offsetY);
           }}
           className="bg-black/20 backdrop-blur-2xl border border-white/10 w-10 h-10 rounded-xl flex justify-center items-center text-white/70 hover:text-white shadow-xl hover:border-white/30 hover:bg-white/10 transition-all cursor-pointer"
           title="Рецентр"
@@ -830,6 +724,119 @@ export function CanvasToolbar() {
           </svg>
         </button>
       </div>
+
+      {/* ─── Fog Tools Panel (GM only, shown when fog edit mode is active) ─── */}
+      {fogEditMode && isGM && (
+        <div className="flex items-center gap-1.5 bg-black/30 backdrop-blur-2xl border border-purple-500/30 rounded-xl shadow-[0_10px_30px_rgba(139,92,246,0.15)] p-1">
+          {/* Reveal Brush */}
+          <button
+            onClick={() => setFogTool('revealBrush')}
+            className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer
+              ${fogTool === 'revealBrush'
+                ? 'bg-emerald-500/30 text-emerald-300 shadow-md'
+                : 'text-white/50 hover:text-white hover:bg-white/10'
+              }`}
+            title="Просвет: Кисть"
+          >
+            <span className="text-base">🖌️</span>
+          </button>
+
+          {/* Reveal Rect */}
+          <button
+            onClick={() => setFogTool('revealRect')}
+            className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer
+              ${fogTool === 'revealRect'
+                ? 'bg-emerald-500/30 text-emerald-300 shadow-md'
+                : 'text-white/50 hover:text-white hover:bg-white/10'
+              }`}
+            title="Просвет: Область"
+          >
+            <span className="text-base">◻️</span>
+          </button>
+
+          <div className="w-px h-4 bg-white/10" />
+
+          {/* Cover Brush */}
+          <button
+            onClick={() => setFogTool('coverBrush')}
+            className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer
+              ${fogTool === 'coverBrush'
+                ? 'bg-purple-500/30 text-purple-300 shadow-md'
+                : 'text-white/50 hover:text-white hover:bg-white/10'
+              }`}
+            title="Скрыть: Кисть"
+          >
+            <span className="text-base">🖌️</span>
+          </button>
+
+          {/* Cover Rect */}
+          <button
+            onClick={() => setFogTool('coverRect')}
+            className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer
+              ${fogTool === 'coverRect'
+                ? 'bg-purple-500/30 text-purple-300 shadow-md'
+                : 'text-white/50 hover:text-white hover:bg-white/10'
+              }`}
+            title="Скрыть: Область"
+          >
+            <span className="text-base">◻️</span>
+          </button>
+
+          <div className="w-px h-6 bg-white/10" />
+
+          {/* Cover All */}
+          <button
+            onClick={() => clearAllFog()}
+            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer text-white/50 hover:text-white hover:bg-white/10"
+            title="Покрыть всё туманом"
+          >
+            <span className="text-sm">⬛</span>
+          </button>
+
+          {/* Reveal All (Clear All Fog) */}
+          <button
+            onClick={() => {
+              openConfirm({
+                title: 'Очистить туман с канваса',
+                description: 'Это полностью уберёт туман войны с текущего канваса. Все игроки увидят карту целиком. Продолжить?',
+                confirmText: 'Очистить',
+                isDestructive: true,
+                onConfirm: () => revealAll(),
+              });
+            }}
+            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
+            title="Очистить туман с канваса"
+          >
+            <span className="text-sm">🔓</span>
+          </button>
+
+          <div className="w-px h-6 bg-white/10" />
+
+          {/* GM visibility toggle */}
+          <button
+            onClick={toggleGmFog}
+            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer
+              ${gmFogVisible ? 'text-purple-300 bg-purple-500/20' : 'text-white/30 hover:text-white/60 hover:bg-white/10'}`}
+            title={gmFogVisible ? 'Скрыть туман ГМа' : 'Показать туман ГМа'}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3c-7 0-10 9-10 9s3 9 10 9 10-9 10-9-3-9-10-9Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Current fog tool label */}
+      {fogEditMode && isGM && (
+        <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest bg-black/20 backdrop-blur-md rounded-lg px-3 py-1 border border-white/5 select-none">
+          {fogTool === 'revealBrush' ? '🟢 Просвет: Кисть' :
+           fogTool === 'revealRect' ? '🟢 Просвет: Область' :
+           fogTool === 'coverBrush' ? '🟣 Скрыть: Кисть' :
+           fogTool === 'coverRect' ? '🟣 Скрыть: Область' :
+           'Выберите инструмент'}
+        </div>
+      )}
 
       {/* ─── Style Panel ─── */}
       {showStylePanel && (
