@@ -15,6 +15,41 @@
       "source": ".pi/skills/vibe-ui-architecture",
       "sourceType": "local",
       "computedHash": ""
+    },
+    "vertical-slice-planner": {
+      "source": ".pi/skills/vertical-slice-planner",
+      "sourceType": "local",
+      "computedHash": ""
+    },
+    "self-critique": {
+      "source": ".pi/skills/self-critique",
+      "sourceType": "local",
+      "computedHash": ""
+    },
+    "canvas-engine": {
+      "source": ".pi/skills/canvas-engine",
+      "sourceType": "local",
+      "computedHash": ""
+    },
+    "mechanics-engine": {
+      "source": ".pi/skills/mechanics-engine",
+      "sourceType": "local",
+      "computedHash": ""
+    },
+    "knowledge-graph": {
+      "source": ".pi/skills/knowledge-graph",
+      "sourceType": "local",
+      "computedHash": ""
+    },
+    "dynamic-forms": {
+      "source": ".pi/skills/dynamic-forms",
+      "sourceType": "local",
+      "computedHash": ""
+    },
+    "test-generator": {
+      "source": ".pi/skills/test-generator",
+      "sourceType": "local",
+      "computedHash": ""
     }
   }
 }
