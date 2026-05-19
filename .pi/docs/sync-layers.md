@@ -1,6 +1,6 @@
 # Sync Layers Contract
 
-> Дата: 2026-05-18
+> Дата: 2026-05-19
 > Статус: рабочий контракт после первого прохода по canvas sync.
 
 ## Цель
@@ -35,6 +35,7 @@ canvas entity properties -> canvas Y.Doc -> debounced canvas entity snapshot -> 
 Временное состояние, которое нужно только во время действия и не должно писаться в `.md`:
 
 - preview рисования до commit;
+- live preview перемещения выбранных draw-elements до mouseup/drop;
 - marquee/lasso selection;
 - selected ids;
 - drag snapshots;
@@ -42,7 +43,7 @@ canvas entity properties -> canvas Y.Doc -> debounced canvas entity snapshot -> 
 - inline edit overlays;
 - локальные настройки видимости вроде player fog preview toggle.
 
-Сейчас большая часть этого уже находится в `canvasDrawStore` или локальных refs `InfiniteCanvas`. Следующий оптимизационный проход: вынести live drag preview из persistent Y.Map там, где это начнет давить на производительность.
+Сейчас большая часть этого уже находится в `canvasDrawStore`, локальных refs `InfiniteCanvas` или локальном React-state. Перемещение выбранных draw-elements использует локальный preview и пишет в persistent Y.Map только финальную позицию на drag end.
 
 ## Awareness State
 
@@ -68,3 +69,4 @@ canvas entity properties -> canvas Y.Doc -> debounced canvas entity snapshot -> 
 - `root` canvas теперь создается как системная canvas entity с id/name `root`, но UI по-прежнему показывает его локализованным fake root-элементом и скрывает из обычного списка.
 - External edit `.md` -> Entity -> уже открытый canvas Y.Doc поддержан для `drawElements` и `fogReveals`; этот путь нужно отдельно прогнать в ручном QA с Obsidian/VS Code.
 - `fogReveals` сохраняет старое имя поля, но текущая модель хранит dark patches. Переименование лучше делать отдельной миграцией.
+- Point edit, resize, rotate и fog brush пока продолжают писать live-изменения через Yjs. Их нужно оптимизировать отдельными проходами, чтобы не смешать разные UX-риски в одном изменении.

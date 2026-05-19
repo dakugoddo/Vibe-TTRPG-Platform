@@ -1185,6 +1185,8 @@ export function InfiniteCanvas() {
   }, []);
 
   const drawElements = getDrawElements(activeCanvasId);
+  const [dragPreview, setDragPreview] = useState<{ canvasId: string; elements: DrawElement[] } | null>(null);
+  const renderedDrawElements = dragPreview?.canvasId === activeCanvasId ? dragPreview.elements : drawElements;
 
   // Track drawing and middle-click pan state
   const isDrawingRef = useRef(false);
@@ -1560,6 +1562,7 @@ export function InfiniteCanvas() {
       
       // Reset drag delta so stale values from previous drag don't apply
       lastDragDeltaRef.current = { dx: 0, dy: 0 };
+      setDragPreview(null);
       
       // Record undo history before drag-move
       const elements = getDrawElements(activeCanvasId);
@@ -1607,7 +1610,6 @@ export function InfiniteCanvas() {
 
       let dx = point.x - dragStartPoint.x;
       let dy = point.y - dragStartPoint.y;
-      lastDragDeltaRef.current = { dx, dy };
 
       if (shiftKey) {
         if (Math.abs(dx) > Math.abs(dy)) dy = 0;
@@ -1705,13 +1707,14 @@ export function InfiniteCanvas() {
         updateSnapLines();
       }
 
-      // Update element positions via throttled Yjs save
+      // Update element positions locally while dragging. Persistent Yjs write happens on drag end.
+      lastDragDeltaRef.current = { dx, dy };
       const updated = elements.map((el) => {
         const snapshot = dragElementSnapshotRef.current!.find((s) => s.id === el.id);
         if (!snapshot) return el;
         return translateElement(snapshot, dx, dy);
       });
-      throttledSaveDrawElements(activeCanvasId, updated, dragGenerationRef.current);
+      setDragPreview({ canvasId: activeCanvasId, elements: updated });
       
       if (dragWindowSnapshotRef.current) {
          Object.entries(dragWindowSnapshotRef.current).forEach(([wId, snapXy]) => {
@@ -1744,6 +1747,7 @@ export function InfiniteCanvas() {
     
     dragElementSnapshotRef.current = null;
     dragWindowSnapshotRef.current = null;
+    setDragPreview(null);
     stopDragging();
     setDraggingGlobal(false);
     snapLinesRef.current = [];
@@ -2854,7 +2858,7 @@ export function InfiniteCanvas() {
 
   const singleSelectedElement =
     selectedElementIds.length === 1
-      ? drawElements.find((el) => el.id === selectedElementIds[0]) || null
+      ? renderedDrawElements.find((el) => el.id === selectedElementIds[0]) || null
       : null;
 
   // ─── Drag-and-drop images onto canvas ───
@@ -3037,7 +3041,7 @@ export function InfiniteCanvas() {
 
         {/* Layer 1: Draw elements (sorted by zIndex) */}
         <Layer>
-          {[...drawElements].sort((a, b) => a.zIndex - b.zIndex).map((element) => (
+          {[...renderedDrawElements].sort((a, b) => a.zIndex - b.zIndex).map((element) => (
             <Group
               key={element.id}
               onMouseDown={(e) => handleElementMouseDown(element.id, e)}
@@ -3118,7 +3122,7 @@ export function InfiniteCanvas() {
 
           {/* Group bounding box for multi-selection */}
           {selectedElementIds.length > 1 && activeTool === 'select' && (() => {
-            const selectedEls = drawElements.filter(el => selectedElementIds.includes(el.id));
+            const selectedEls = renderedDrawElements.filter(el => selectedElementIds.includes(el.id));
             if (selectedEls.length < 2) return null;
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
             for (const el of selectedEls) {
