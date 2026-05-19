@@ -10,7 +10,7 @@ import { importMarkdown, getIsHost, listPlayers } from '../../services/fileApi';
 import { useUIStore } from '../../store/uiStore';
 import { canViewEntity } from '../../utils/permissions';
 import type { DatabaseType, Entity, EntityType } from '../../types';
-import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map, FileText, Bookmark, Lightbulb, Star, Gift, Copy } from 'lucide-react';
+import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map, FileText, Bookmark, Lightbulb, Star, Gift, Copy, Link2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const TYPE_ICONS: Partial<Record<EntityType | 'spell', LucideIcon>> = {
@@ -34,12 +34,13 @@ interface ContextMenuState {
     entityId: string;
 }
 
-function EntityContextMenu({ state, canEdit, onRename, onDuplicate, onOpenWindow, onExport, onDelete, onGiveToPlayer, onClose }: {
+function EntityContextMenu({ state, canEdit, onRename, onDuplicate, onOpenWindow, onCopyWikiLink, onExport, onDelete, onGiveToPlayer, onClose }: {
     state: ContextMenuState | null;
     canEdit: boolean;
     onRename: (id: string) => void;
     onDuplicate: (id: string) => void;
     onOpenWindow: (id: string) => void;
+    onCopyWikiLink: (id: string) => void;
     onExport: (id: string) => void;
     onDelete: (id: string) => void;
     onGiveToPlayer?: (id: string) => void;
@@ -118,6 +119,12 @@ function EntityContextMenu({ state, canEdit, onRename, onDuplicate, onOpenWindow
                 <ExternalLink size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Открыть окно
             </button>
             <button
+                onClick={() => { onCopyWikiLink(state.entityId); onClose(); }}
+                className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+            >
+                <Link2 size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Копировать [[ссылку]]
+            </button>
+            <button
                 onClick={() => { onExport(state.entityId); onClose(); }}
                 className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
             >
@@ -167,6 +174,23 @@ type EntityGroup = typeof EntityGroups[number];
 function getEntityOwnerId(entity: Entity): string | undefined {
     const owner = entity.properties?._playerOwner;
     return typeof owner === 'string' ? owner : undefined;
+}
+
+async function writeClipboardText(text: string): Promise<void> {
+    if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
 }
 
 interface RecursiveEntityItemProps {
@@ -562,6 +586,15 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         }
     }, [canModifyEntityInUi, entities, openWindow, targetDb]);
 
+    const handleCopyWikiLink = useCallback((id: string) => {
+        const entity = entities.find(e => e.id === id);
+        if (!entity) return;
+
+        void writeClipboardText(`[[${entity.name}]]`).catch((error) => {
+            console.warn(`Failed to copy wiki link for "${entity.name}"`, error);
+        });
+    }, [entities]);
+
     const handleCloseContextMenu = useCallback(() => {
         setContextMenuState(null);
     }, []);
@@ -863,6 +896,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                 onRename={handleRenameStart}
                 onDuplicate={handleDuplicateEntity}
                 onOpenWindow={(id) => openWindow(id, Math.random() * 200 + 50, Math.random() * 200 + 50)}
+                onCopyWikiLink={handleCopyWikiLink}
                 onExport={handleExportEntity}
                 onGiveToPlayer={getIsHost() && contextMenuCanEdit ? handleGiveToPlayer : undefined}
                 onDelete={(id) => {
