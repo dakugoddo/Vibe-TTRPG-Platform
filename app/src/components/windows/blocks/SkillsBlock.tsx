@@ -26,6 +26,11 @@ export const SKILLS = [
 const RANK_MIN = -2;
 const RANK_MAX = 3;
 
+function getEntityOwnerId(entity: Entity): string | undefined {
+    const owner = entity.properties?._playerOwner;
+    return typeof owner === 'string' ? owner : undefined;
+}
+
 /**
  * Formats a dice roll result and sends it to chat.
  */
@@ -52,6 +57,7 @@ export function SkillsBlock({ entity }: SkillsBlockProps) {
     const properties = useMemo(() => entity.properties ?? {}, [entity.properties]);
     const skills = properties.skills || {};
     const competencies = useEntitiesByParent(entity.id).filter(e => e.type === 'competency');
+    const canEditSkills = yjsStore.canModify(entity.database, getEntityOwnerId(entity));
 
     const [rollPopup, setRollPopup] = useState<{
         skillKey: string;
@@ -60,11 +66,12 @@ export function SkillsBlock({ entity }: SkillsBlockProps) {
     } | null>(null);
 
     const handleUpdateSkillRank = useCallback((skillKey: string, newRank: number) => {
+        if (!canEditSkills) return;
         const clamped = Math.max(RANK_MIN, Math.min(RANK_MAX, newRank));
         const newSkills = { ...(properties.skills || {}) };
         newSkills[skillKey] = { ...(newSkills[skillKey] || {}), rank: clamped };
         yjsStore.updateEntity(entity.id, { properties: { ...properties, skills: newSkills } });
-    }, [entity.id, properties]);
+    }, [canEditSkills, entity.id, properties]);
 
     const handleRollClick = useCallback((skillKey: string, skillName: string, skillRank: number) => {
         if (skillRank <= 0) return; // Can't roll with 0 or negative rank
@@ -122,16 +129,18 @@ export function SkillsBlock({ entity }: SkillsBlockProps) {
 
                                 {/* Rank controls */}
                                 <div className="flex items-center gap-1.5">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleUpdateSkillRank(key, rank - 1);
-                                        }}
-                                        disabled={rank <= RANK_MIN}
-                                        className="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
-                                    >
-                                        <Minus size={12} />
-                                    </button>
+                                    {canEditSkills && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleUpdateSkillRank(key, rank - 1);
+                                            }}
+                                            disabled={rank <= RANK_MIN}
+                                            className="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                        >
+                                            <Minus size={12} />
+                                        </button>
+                                    )}
 
                                     <span className={clsx(
                                         "w-7 text-center text-sm font-bold font-mono tabular-nums",
@@ -142,16 +151,18 @@ export function SkillsBlock({ entity }: SkillsBlockProps) {
                                         {rank >= 0 ? `+${rank}` : rank}
                                     </span>
 
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleUpdateSkillRank(key, rank + 1);
-                                        }}
-                                        disabled={rank >= RANK_MAX}
-                                        className="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
-                                    >
-                                        <Plus size={12} />
-                                    </button>
+                                    {canEditSkills && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleUpdateSkillRank(key, rank + 1);
+                                            }}
+                                            disabled={rank >= RANK_MAX}
+                                            className="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                        >
+                                            <Plus size={12} />
+                                        </button>
+                                    )}
                                 </div>
 
                                 {/* Roll button */}

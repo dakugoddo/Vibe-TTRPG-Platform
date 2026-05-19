@@ -54,6 +54,7 @@ UI action gating:
 - `CompetenciesBlock` скрывает `Добавить`, кнопки изменения ранга и удаление для read-only сущностей; бросок кубов и открытие окна остаются доступными как безопасные действия;
 - `ObjectSheet` и `AttackSheet` проверяют `yjsStore.canModify(...)` перед записью и переводят edit-controls в read-only: свойства не меняются, tag edit скрыт, а создание/перетаскивание/удаление атак доступно только при праве редактирования;
 - `EntityWindow`, `CharacterSheet` notes и `EntityImageBlock` скрывают rename/delete, description/notes edit, hidden tag edit и image edit для read-only сущностей.
+- `SkillsBlock` скрывает изменение ранга навыков для read-only персонажа, но не блокирует броски навыков.
 
 Focused test: `app/src/utils/permissions.test.ts` проверяет write и view boundaries.
 
