@@ -160,4 +160,4 @@
 
 - Навести git-гигиену после длинной агентной сессии: разделить изменения на осмысленные commits и убрать временные артефакты из рабочего дерева.
 - Расширять focused tests под будущие mechanics blocks и новые версии Entity schema. Базовые focused tests уже есть для `diceParser`, `rollEngine`, `entitySerializer`, `fileManager`, permission helper.
-- Документировать multiplayer manual QA.
+- Поддерживать multiplayer manual QA в актуальном состоянии при изменении вертикального сценария.
