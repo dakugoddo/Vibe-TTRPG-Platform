@@ -34,11 +34,13 @@ interface ContextMenuState {
     entityId: string;
 }
 
-function EntityContextMenu({ state, canEdit, onRename, onDuplicate, onOpenWindow, onCopyWikiLink, onExport, onDelete, onGiveToPlayer, onClose }: {
+function EntityContextMenu({ state, canEdit, quickCreateActions, onRename, onDuplicate, onCreateChild, onOpenWindow, onCopyWikiLink, onExport, onDelete, onGiveToPlayer, onClose }: {
     state: ContextMenuState | null;
     canEdit: boolean;
+    quickCreateActions: QuickCreateAction[];
     onRename: (id: string) => void;
     onDuplicate: (id: string) => void;
+    onCreateChild: (id: string, type: EntityType) => void;
     onOpenWindow: (id: string) => void;
     onCopyWikiLink: (id: string) => void;
     onExport: (id: string) => void;
@@ -72,7 +74,7 @@ function EntityContextMenu({ state, canEdit, onRename, onDuplicate, onOpenWindow
     if (!state) return null;
 
     const menuWidth = 200;
-    const menuHeight = canEdit ? (onGiveToPlayer ? 270 : 230) : 150;
+    const menuHeight = canEdit ? 280 + quickCreateActions.length * 36 + (onGiveToPlayer ? 44 : 0) : 150;
     const x = state.x + menuWidth > window.innerWidth ? state.x - menuWidth : state.x;
     const y = state.y + menuHeight > window.innerHeight ? state.y - menuHeight : state.y;
 
@@ -111,6 +113,23 @@ function EntityContextMenu({ state, canEdit, onRename, onDuplicate, onOpenWindow
                 >
                     <Copy size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Дублировать
                 </button>
+            )}
+            {canEdit && quickCreateActions.length > 0 && (
+                <>
+                    <div className="border-t border-white/5 my-1 mx-2" />
+                    {quickCreateActions.map(action => {
+                        const ActionIcon = action.icon;
+                        return (
+                            <button
+                                key={action.type}
+                                onClick={() => { onCreateChild(state.entityId, action.type); onClose(); }}
+                                className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+                            >
+                                <ActionIcon size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {action.label}
+                            </button>
+                        );
+                    })}
+                </>
             )}
             <button
                 onClick={() => { onOpenWindow(state.entityId); onClose(); }}
@@ -170,6 +189,29 @@ export const EntityGroups = [
 ] as const;
 
 type EntityGroup = typeof EntityGroups[number];
+
+interface QuickCreateAction {
+    type: EntityType;
+    label: string;
+    icon: LucideIcon;
+}
+
+function getQuickCreateActions(entity?: Entity): QuickCreateAction[] {
+    if (!entity) return [];
+
+    if (entity.type === 'character') {
+        return [
+            { type: 'object', label: 'Создать предмет', icon: Box },
+            { type: 'competency', label: 'Создать компетенцию', icon: Lightbulb },
+        ];
+    }
+
+    if (entity.type === 'object') {
+        return [{ type: 'attack', label: 'Создать атаку', icon: Sword }];
+    }
+
+    return [];
+}
 
 function getEntityOwnerId(entity: Entity): string | undefined {
     const owner = entity.properties?._playerOwner;
@@ -748,10 +790,19 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         }
     };
 
-    const addTestEntity = useCallback((type: string, folderType?: string) => {
-        if (!canModifyTargetDb) return;
+    const createEntity = useCallback((
+        type: EntityType,
+        parentId: string | null = baseParentId,
+        folderType?: string,
+        entityDb: DatabaseType = targetDb,
+        owner: string | undefined = targetPlayerOwner,
+        openAfterCreate: boolean = false
+    ) => {
+        const ownerMarker = entityDb === 'user' ? owner : undefined;
+        if (!yjsStore.canModify(entityDb, ownerMarker)) return null;
+
         const id = uuidv4();
-        const base = { id, parentId: baseParentId, type, database: targetDb, name: type, description: '', tags: [], properties: {} };
+        const base = { id, parentId, type, database: entityDb, name: type, description: '', tags: [], properties: {} };
 
         if (type === 'character') {
             Object.assign(base, { name: 'character', description: 'Новый персонаж.', properties: { strength: { base: 14 }, dexterity: { base: 12 } }, tags: [] });
@@ -773,16 +824,39 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
             Object.assign(base, { name: 'folder', description: 'Папка.', properties: { folderType: folderType || 'tag' } });
         }
 
-        if (targetDb === 'user' && targetPlayerOwner) {
-            base.properties = { ...base.properties, _playerOwner: targetPlayerOwner };
+        if (entityDb === 'user' && ownerMarker) {
+            base.properties = { ...base.properties, _playerOwner: ownerMarker };
         }
 
-        yjsStore.addEntity(base as Entity);
-    }, [baseParentId, canModifyTargetDb, targetDb, targetPlayerOwner]);
+        if (!yjsStore.addEntity(base as Entity)) return null;
+        if (openAfterCreate) {
+            openWindow(id, Math.random() * 200 + 70, Math.random() * 200 + 70);
+        }
+        return id;
+    }, [baseParentId, openWindow, targetDb, targetPlayerOwner]);
+
+    const addTestEntity = useCallback((type: EntityType, folderType?: string) => {
+        createEntity(type, baseParentId, folderType);
+    }, [baseParentId, createEntity]);
+
+    const handleCreateChildEntity = useCallback((parentId: string, type: EntityType) => {
+        const parent = entities.find(e => e.id === parentId);
+        if (!parent || parent.id === 'root' || !canModifyEntityInUi(parent)) return;
+
+        createEntity(
+            type,
+            parent.id,
+            undefined,
+            parent.database || targetDb,
+            getEntityOwnerId(parent) || targetPlayerOwner,
+            true
+        );
+    }, [canModifyEntityInUi, createEntity, entities, targetDb, targetPlayerOwner]);
 
     const tabsToShow = EntityGroups.filter(g => !allowedTabs || allowedTabs.includes(g.type));
     const contextMenuEntity = contextMenuState ? entities.find(e => e.id === contextMenuState.entityId) : undefined;
     const contextMenuCanEdit = Boolean(contextMenuEntity && contextMenuEntity.id !== 'root' && canModifyEntityInUi(contextMenuEntity));
+    const contextMenuQuickCreateActions = contextMenuCanEdit ? getQuickCreateActions(contextMenuEntity) : [];
     const hasVisibleSearchResults = visibleEntities.some(entity => entity.id !== 'root');
 
     return (
@@ -984,8 +1058,10 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
             <EntityContextMenu
                 state={contextMenuState}
                 canEdit={contextMenuCanEdit}
+                quickCreateActions={contextMenuQuickCreateActions}
                 onRename={handleRenameStart}
                 onDuplicate={handleDuplicateEntity}
+                onCreateChild={handleCreateChildEntity}
                 onOpenWindow={(id) => openWindow(id, Math.random() * 200 + 50, Math.random() * 200 + 50)}
                 onCopyWikiLink={handleCopyWikiLink}
                 onExport={handleExportEntity}
