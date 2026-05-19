@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { yjsStore } from '../../store/yjsStore';
 import { useEntities } from '../../hooks/useEntities';
@@ -10,7 +10,7 @@ import { importMarkdown, getIsHost, listPlayers } from '../../services/fileApi';
 import { useUIStore } from '../../store/uiStore';
 import { canViewEntity } from '../../utils/permissions';
 import type { DatabaseType, Entity, EntityType } from '../../types';
-import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map, FileText, Bookmark, Lightbulb, Star, Gift, Copy, Link2 } from 'lucide-react';
+import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map as MapIcon, FileText, Bookmark, Lightbulb, Star, Gift, Copy, Link2, Search, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const TYPE_ICONS: Partial<Record<EntityType | 'spell', LucideIcon>> = {
@@ -20,7 +20,7 @@ const TYPE_ICONS: Partial<Record<EntityType | 'spell', LucideIcon>> = {
     ability: Star,
     competency: Lightbulb,
     spell: Wand2,
-    canvas: Map,
+    canvas: MapIcon,
     note: FileText,
     tag: Bookmark,
     folder: Bookmark,
@@ -197,6 +197,7 @@ interface RecursiveEntityItemProps {
     entity: Entity;
     entities: Entity[];
     level?: number;
+    searchActive?: boolean;
     defaultGroupContext?: EntityGroup;
     baseParentId: string | null;
     targetDb?: DatabaseType;
@@ -234,7 +235,7 @@ function assignUserOwnerToSubtree(rootId: string, owner: string) {
     }
 }
 
-function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext, baseParentId, targetDb, targetPlayerOwner, onPromptDrop, renamingId, onRenameStart, onRenameSubmit, onRenameCancel, onShowContextMenu, canModifyEntityInUi, canModifyTargetDb }: RecursiveEntityItemProps) {
+function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false, defaultGroupContext, baseParentId, targetDb, targetPlayerOwner, onPromptDrop, renamingId, onRenameStart, onRenameSubmit, onRenameCancel, onShowContextMenu, canModifyEntityInUi, canModifyTargetDb }: RecursiveEntityItemProps) {
     const [expanded, setExpanded] = useState(false);
     const [renameValue, setRenameValue] = useState(entity.name);
     const renameInputRef = useRef<HTMLInputElement>(null);
@@ -277,6 +278,9 @@ function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext,
     const children = entities.filter(e => e.parentId === entity.id && e.id !== 'root');
     const group = EntityGroups.find(g => g.type === entity.type) || defaultGroupContext || EntityGroups[3];
     const canEditEntity = entity.id !== 'root' && canModifyEntityInUi(entity);
+    const expandsOnRowClick = entity.type === 'character' || entity.type === 'folder' || entity.type === 'competency';
+    const canExpandEntity = expandsOnRowClick || entity.type === 'canvas' || children.length > 0;
+    const isExpanded = expanded || searchActive;
 
     let fullUrl = entity.icon_url;
     if (fullUrl && !fullUrl.startsWith('http') && !fullUrl.startsWith('data:')) {
@@ -289,7 +293,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext,
         <div className="flex flex-col gap-1 w-full relative">
             <div
                 onClick={() => {
-                    if (entity.type === 'character' || entity.type === 'folder' || entity.type === 'competency') setExpanded(!expanded);
+                    if (expandsOnRowClick) setExpanded(!expanded);
                     else {
                         if (entity.type === 'canvas') navigate(entity.id);
                         else openWindow(entity.id, Math.random() * 200 + 50, Math.random() * 200 + 50);
@@ -411,7 +415,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext,
                         </button>
                     )}
 
-                    {(entity.type === 'character' || entity.type === 'folder' || entity.type === 'canvas' || entity.type === 'competency') && (
+                    {canExpandEntity && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -419,14 +423,14 @@ function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext,
                             }}
                             className="p-1 text-white/40 hover:text-white"
                         >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${expanded ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
                     )}
                 </div>
             </div>
 
             {
-                expanded && (entity.type === 'character' || entity.type === 'folder' || entity.type === 'canvas' || entity.type === 'competency') && (
+                isExpanded && canExpandEntity && (
                     <div className="flex flex-col gap-1 w-full pl-2 mt-1 relative before:empty before:w-px before:bg-white/10 before:absolute before:left-3 before:top-0 before:bottom-0">
                         {children.length === 0 ? (
                             <div className="text-[10px] text-white/30 italic py-1 pl-4">Пусто</div>
@@ -437,6 +441,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext,
                                     entity={child}
                                     entities={entities}
                                     level={level + 1}
+                                    searchActive={searchActive}
                                     defaultGroupContext={entity.type === 'folder' ? group : undefined}
                                     baseParentId={baseParentId}
                                     targetDb={targetDb}
@@ -492,12 +497,69 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
     const [contextMenuState, setContextMenuState] = useState<ContextMenuState | null>(null);
     const [giveToPlayerEntityId, setGiveToPlayerEntityId] = useState<string | null>(null);
     const [giveToPlayerList, setGiveToPlayerList] = useState<string[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const importInputRef = useRef<HTMLInputElement>(null);
     const canModifyTargetDb = yjsStore.canModify(targetDb, targetPlayerOwner);
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const searchActive = normalizedSearch.length > 0;
 
     const canModifyEntityInUi = useCallback((entity: Entity) => {
         return yjsStore.canModify(entity.database || targetDb, getEntityOwnerId(entity));
     }, [targetDb]);
+
+    const visibleEntities = useMemo(() => {
+        if (!normalizedSearch) return entities;
+
+        const byId = new Map(entities.map(entity => [entity.id, entity]));
+        const childrenByParent = new Map<string, Entity[]>();
+
+        entities.forEach((entity) => {
+            if (!entity.parentId) return;
+            const siblings = childrenByParent.get(entity.parentId) || [];
+            siblings.push(entity);
+            childrenByParent.set(entity.parentId, siblings);
+        });
+
+        const entityMatches = (entity: Entity) => {
+            const tagText = (entity.tags || [])
+                .map(tagId => byId.get(tagId)?.name || tagId)
+                .join(' ');
+            const propertyText = entity.properties ? JSON.stringify(entity.properties) : '';
+            return [
+                entity.name,
+                entity.type,
+                entity.description,
+                tagText,
+                propertyText,
+            ].some(value => String(value || '').toLowerCase().includes(normalizedSearch));
+        };
+
+        const visibleIds = new Set<string>();
+        const includeDescendants = (entityId: string) => {
+            const children = childrenByParent.get(entityId) || [];
+            children.forEach((child) => {
+                if (visibleIds.has(child.id)) return;
+                visibleIds.add(child.id);
+                includeDescendants(child.id);
+            });
+        };
+
+        const includeAncestors = (entity: Entity) => {
+            let current: Entity | undefined = entity;
+            while (current) {
+                visibleIds.add(current.id);
+                current = current.parentId ? byId.get(current.parentId) : undefined;
+            }
+        };
+
+        entities.forEach((entity) => {
+            if (!entityMatches(entity)) return;
+            includeAncestors(entity);
+            includeDescendants(entity.id);
+        });
+
+        return entities.filter(entity => visibleIds.has(entity.id));
+    }, [entities, normalizedSearch]);
 
     // ─── Import .md files ───
     const handleImportFiles = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -721,6 +783,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
     const tabsToShow = EntityGroups.filter(g => !allowedTabs || allowedTabs.includes(g.type));
     const contextMenuEntity = contextMenuState ? entities.find(e => e.id === contextMenuState.entityId) : undefined;
     const contextMenuCanEdit = Boolean(contextMenuEntity && contextMenuEntity.id !== 'root' && canModifyEntityInUi(contextMenuEntity));
+    const hasVisibleSearchResults = visibleEntities.some(entity => entity.id !== 'root');
 
     return (
         <div className="flex flex-col h-full bg-transparent relative" onDragOver={(e) => { if (canModifyTargetDb) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }} onDrop={handleRootDrop}>
@@ -747,6 +810,26 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                     )}
                 </div>
 
+                <div className="relative mb-3">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none" />
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Поиск сущностей..."
+                        className="w-full h-9 rounded-lg bg-black/25 border border-white/10 pl-9 pr-9 text-xs text-white/80 placeholder:text-white/30 outline-none focus:border-white/25 focus:bg-black/35 transition-colors"
+                    />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-white/35 hover:text-white/80 hover:bg-white/10 transition-colors"
+                            title="Очистить поиск"
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
+                </div>
+
                 {/* Tabs */}
                 <div className="flex flex-wrap gap-1 pb-1">
                     <button
@@ -769,7 +852,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
 
             <div className="flex-1 overflow-y-auto p-4 pb-32 custom-scrollbar">
                 <div className="flex flex-col gap-2">
-                    {showRootCanvas && activeTab === 'all' && (() => {
+                    {showRootCanvas && activeTab === 'all' && (!searchActive || visibleEntities.some(e => e.parentId === 'root')) && (() => {
                         // Create a fake entity object for the root canvas 
                         const rootEntity: import('../../types').Entity = {
                             id: 'root',
@@ -784,7 +867,8 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                             <RecursiveEntityItem
                                 key="root"
                                 entity={rootEntity}
-                                entities={entities}
+                                entities={visibleEntities}
+                                searchActive={searchActive}
                                 defaultGroupContext={EntityGroups.find(g => g.type === 'canvas')!}
                                 baseParentId={baseParentId}
                                 targetDb={targetDb}
@@ -801,10 +885,16 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                         );
                     })()}
 
+                    {searchActive && activeTab === 'all' && !hasVisibleSearchResults && (
+                        <div className="text-[10px] text-white/40 italic px-3 py-5 bg-black/20 rounded-lg border border-white/10 border-dashed text-center">
+                            Ничего не найдено
+                        </div>
+                    )}
+
                     {tabsToShow.map(group => {
                         if (activeTab !== 'all' && activeTab !== group.type) return null;
 
-                        const groupEntities = entities.filter(e =>
+                        const groupEntities = visibleEntities.filter(e =>
                             e.parentId === baseParentId &&
                             e.id !== 'root' &&
                             (e.type === group.type || (e.type === 'folder' && e.properties?.folderType === group.type))
@@ -812,7 +902,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
 
                         if (groupEntities.length === 0 && activeTab === 'all') return null;
 
-                        const isCollapsed = collapsedCategories[group.type] || false;
+                        const isCollapsed = searchActive ? false : collapsedCategories[group.type] || false;
 
                         return (
                             <div key={group.type} className="mb-4 bg-black/20 rounded-xl border border-white/5 p-2 shadow-inner">
@@ -863,7 +953,8 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                                 <RecursiveEntityItem
                                                     key={entity.id}
                                                     entity={entity}
-                                                    entities={entities}
+                                                    entities={visibleEntities}
+                                                    searchActive={searchActive}
                                                     defaultGroupContext={group}
                                                     baseParentId={baseParentId}
                                                     targetDb={targetDb}
