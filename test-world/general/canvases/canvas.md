@@ -1,5 +1,6 @@
 ---
 type: canvas
+schemaVersion: 1
 ---
 
 # canvas

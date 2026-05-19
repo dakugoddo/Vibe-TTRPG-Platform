@@ -1,5 +1,6 @@
 ---
 type: portal
+schemaVersion: 1
 ---
 
 # canvas 3

@@ -1,5 +1,6 @@
 ---
 type: object
+schemaVersion: 1
 properties:
   фигура: 1
   прочность: 1

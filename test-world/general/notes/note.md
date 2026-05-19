@@ -1,5 +1,6 @@
 ---
 type: note
+schemaVersion: 1
 ---
 
 # note
