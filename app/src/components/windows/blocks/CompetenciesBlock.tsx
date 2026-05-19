@@ -17,6 +17,15 @@ interface CompetenciesBlockProps {
     entity: Entity;
 }
 
+function getEntityOwnerId(entity: Entity): string | undefined {
+    const owner = entity.properties?._playerOwner;
+    return typeof owner === 'string' ? owner : undefined;
+}
+
+function canEditEntity(entity: Entity): boolean {
+    return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
+}
+
 function sendRollToChat(compName: string, rank: number, diceCount: number) {
     const expression = `${compName}(${rank})`;
     const result = rollEngine.rollD6Pool(diceCount, expression);
@@ -33,25 +42,28 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
     const competencies = useEntitiesByParent(entity.id).filter(e => e.type === 'competency');
     const { openWindow } = useWindowStore();
     const { openConfirm } = useUIStore();
+    const canEditParent = canEditEntity(entity);
 
     const handleAddCompetency = useCallback(() => {
+        if (!canEditParent) return;
         const id = uuidv4();
+        const ownerId = getEntityOwnerId(entity);
         const newComp: Entity = {
             id,
             parentId: entity.id,
             type: 'competency',
             name: 'Новая компетенция',
             description: '',
-            properties: { rank: 0 },
+            properties: ownerId ? { rank: 0, _playerOwner: ownerId } : { rank: 0 },
             tags: [],
             database: entity.database,
         };
         yjsStore.addEntity(newComp);
-    }, [entity.id, entity.database]);
+    }, [canEditParent, entity]);
 
     const handleUpdateRank = useCallback((compId: string, newRank: number) => {
         const comp = getEntitiesSnapshot()[compId];
-        if (!comp) return;
+        if (!comp || !canEditEntity(comp)) return;
         const clamped = Math.max(RANK_MIN, Math.min(RANK_MAX, newRank));
         yjsStore.updateEntity(compId, {
             properties: { ...comp.properties, rank: clamped }
@@ -59,6 +71,9 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
     }, []);
 
     const handleDelete = useCallback((compId: string, compName: string) => {
+        const comp = getEntitiesSnapshot()[compId];
+        if (!comp || !canEditEntity(comp)) return;
+
         openConfirm({
             title: 'Удаление компетенции',
             description: `Вы уверены, что хотите удалить компетенцию «${compName}»?`,
@@ -83,23 +98,26 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                     <h4 className={glass.blockHeader + " mb-0"}>
                         Компетенции ({competencies.length})
                     </h4>
-                    <button
-                        onClick={handleAddCompetency}
-                        className="flex items-center gap-1 px-2 py-1 bg-violet-500/15 border border-violet-500/30 rounded-lg text-violet-300 hover:text-violet-100 hover:bg-violet-500/30 hover:border-violet-400/50 transition-all text-[10px] font-bold uppercase tracking-wider"
-                    >
-                        <Plus size={12} /> Добавить
-                    </button>
+                    {canEditParent && (
+                        <button
+                            onClick={handleAddCompetency}
+                            className="flex items-center gap-1 px-2 py-1 bg-violet-500/15 border border-violet-500/30 rounded-lg text-violet-300 hover:text-violet-100 hover:bg-violet-500/30 hover:border-violet-400/50 transition-all text-[10px] font-bold uppercase tracking-wider"
+                        >
+                            <Plus size={12} /> Добавить
+                        </button>
+                    )}
                 </div>
 
                 {competencies.length === 0 ? (
                     <div className="text-center text-white/30 text-xs py-8 italic border border-dashed border-white/10 rounded-xl">
-                        Нет компетенций. Нажмите «Добавить» чтобы создать первую.
+                        {canEditParent ? 'Нет компетенций. Нажмите «Добавить» чтобы создать первую.' : 'Компетенции пока не добавлены.'}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-2">
                         {competencies.map(comp => {
                             const rank: number = comp.properties?.rank || 0;
                             const canRoll = rank > 0;
+                            const canEditComp = canEditEntity(comp);
 
                             return (
                                 <div
@@ -131,28 +149,30 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                                     </div>
 
                                     {/* Rank controls */}
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleUpdateRank(comp.id, rank - 1);
-                                            }}
-                                            disabled={rank <= RANK_MIN}
-                                            className="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
-                                        >
-                                            <Minus size={12} />
-                                        </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleUpdateRank(comp.id, rank + 1);
-                                            }}
-                                            disabled={rank >= RANK_MAX}
-                                            className="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
-                                        >
-                                            <Plus size={12} />
-                                        </button>
-                                    </div>
+                                    {canEditComp && (
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleUpdateRank(comp.id, rank - 1);
+                                                }}
+                                                disabled={rank <= RANK_MIN}
+                                                className="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                            >
+                                                <Minus size={12} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleUpdateRank(comp.id, rank + 1);
+                                                }}
+                                                disabled={rank >= RANK_MAX}
+                                                className="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                            >
+                                                <Plus size={12} />
+                                            </button>
+                                        </div>
+                                    )}
 
                                     {/* Roll button */}
                                     <button
@@ -185,16 +205,18 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                                     </button>
 
                                     {/* Delete */}
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDelete(comp.id, comp.name);
-                                        }}
-                                        className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/20 transition-all flex-shrink-0"
-                                        title="Удалить"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                    {canEditComp && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDelete(comp.id, comp.name);
+                                            }}
+                                            className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/20 transition-all flex-shrink-0"
+                                            title="Удалить"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    )}
                                 </div>
                             );
                         })}
