@@ -25,7 +25,7 @@
 
 ## Сейчас в работе
 
-- Детализация Entity `properties` по типам.
+- GM Workbench: быстрые действия вокруг сущностей после закрытия базовых прав и sync-контрактов.
 
 ## Только что добавлено
 
@@ -38,6 +38,7 @@
 - Vite build chunking оптимизирован: canvas и markdown зависимости вынесены в отдельные chunks, основной JS chunk уменьшен примерно с 1.23 MB до 306 KB.
 - Store-level permission guard добавлен в `yjsStore` для add/update/delete/clone.
 - View-level permission helper `canViewEntity` добавлен и подключен к `EntityDatabase`, чтобы игроки не видели GM-базу и чужие user-сущности в UI.
+- `EntityDatabase` скрывает или блокирует UI-действия записи без прав: создание, импорт, переименование, удаление, выдачу игроку и drag/drop перемещения.
 - Принята доверенная privacy модель: UI должен скрывать GM-only и чужие user-данные, но отдельные sync boundaries пока не внедряются.
 - Текущие `Entity.properties` по типам описаны в `.pi/docs/entity-properties.md`.
 - Canvas sync layers описаны в `.pi/docs/sync-layers.md`.

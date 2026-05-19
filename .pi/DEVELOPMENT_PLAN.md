@@ -78,7 +78,7 @@
 
 ## Этап 4. Права доступа и GM-only
 
-Статус: базовый store-level guard выполнен; принята доверенная privacy модель с UI-скрытием.
+Статус: базовый store-level guard и UI action gating выполнены; принята доверенная privacy модель с UI-скрытием.
 
 Задачи:
 
@@ -88,7 +88,7 @@
 - проверить Markdown `gm-only` на player/GM ролях;
 - описать правила в `.pi/docs/permissions.md`.
 
-Готовность: `addEntity`, `updateEntity`, `deleteEntity` и `cloneEntity` проходят через permission guard в `yjsStore`. `EntityDatabase` фильтрует видимость через `canViewEntity`, user inventory фильтруется по `_playerOwner`, а file sync пишет user-сущности в папку владельца. Документ: `.pi/docs/permissions.md`. Ограничение осознанно принято: один общий Y.Doc не дает настоящей приватности, но для текущей настольной доверенной модели достаточно корректного UI-скрытия.
+Готовность: `addEntity`, `updateEntity`, `deleteEntity` и `cloneEntity` проходят через permission guard в `yjsStore`. `EntityDatabase` фильтрует видимость через `canViewEntity`, user inventory фильтруется по `_playerOwner`, а file sync пишет user-сущности в папку владельца. UI-кнопки создания/импорта/переименования/удаления/выдачи и drag/drop проверяют `yjsStore.canModify(...)` до попытки записи. Документ: `.pi/docs/permissions.md`. Ограничение осознанно принято: один общий Y.Doc не дает настоящей приватности, но для текущей настольной доверенной модели достаточно корректного UI-скрытия.
 
 ## Этап 5. GM Workbench
 
