@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Entity } from '../../../types';
 import { yjsStore } from '../../../store/yjsStore';
-import { useEntities } from '../../../hooks/useEntities';
+import { getEntitiesSnapshot, useEntities } from '../../../hooks/useEntities';
 import { DragDropPopover, type DragDropPromptData } from '../../ui/DragDropPopover';
 import { useUIStore } from '../../../store/uiStore';
 import { Trash2, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
@@ -20,10 +20,40 @@ type SortConfig = {
     direction: 'asc' | 'desc';
 } | null;
 
+function getEntityOwnerId(entity: Entity): string | undefined {
+    const owner = entity.properties?._playerOwner;
+    return typeof owner === 'string' ? owner : undefined;
+}
+
+function canEditEntity(entity: Entity): boolean {
+    return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
+}
+
+function applyOwnerToEntityTree(rootId: string, ownerId: string | undefined) {
+    if (!ownerId) return;
+
+    const snapshot = getEntitiesSnapshot();
+    const visit = (id: string) => {
+        const current = yjsStore.entitiesMap.get(id) ?? snapshot[id];
+        if (!current) return;
+
+        yjsStore.updateEntity(id, {
+            properties: { ...current.properties, _playerOwner: ownerId },
+        });
+
+        Object.values(snapshot)
+            .filter(candidate => candidate.parentId === id)
+            .forEach(child => visit(child.id));
+    };
+
+    visit(rootId);
+}
+
 export function InventoryBlock({ entity }: InventoryBlockProps) {
     const allEntities = useEntities();
     const children = allEntities.filter(e => e.parentId === entity.id);
     const inventory = children.filter(e => e.type === 'object');
+    const canEditInventory = canEditEntity(entity);
 
     // Find attacks of equipped weapons
     const equippedWeapons = inventory.filter(e => e.properties.category === 'оружие' && e.properties.equipped);
@@ -42,12 +72,16 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
     const { openConfirm } = useUIStore();
 
     const handleDeleteItem = (itemId: string, itemName: string) => {
+        const item = inventory.find(i => i.id === itemId);
+        if (!item || !canEditInventory || !canEditEntity(item)) return;
+
         openConfirm({
             title: "Удаление предмета",
             description: `Вы уверены, что хотите удалить предмет "${itemName}"?`,
             confirmText: "Удалить",
             isDestructive: true,
             onConfirm: () => {
+                if (!canEditInventory || !canEditEntity(item)) return;
                 yjsStore.deleteEntity(itemId);
             }
         });
@@ -55,7 +89,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
 
     const updateItemProperty = (itemId: string, key: string, value: unknown) => {
         const item = inventory.find(i => i.id === itemId);
-        if (item) {
+        if (item && canEditInventory && canEditEntity(item)) {
             yjsStore.updateEntity(itemId, {
                 properties: { ...item.properties, [key]: value }
             });
@@ -63,6 +97,8 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
     };
 
     const handleDrop = (e: React.DragEvent, targetCategory: Category) => {
+        if (!canEditInventory) return;
+
         e.preventDefault();
         e.stopPropagation();
 
@@ -75,27 +111,39 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                     // Already inside this character -> just change category
                     updateItemProperty(droppedEntity.id, 'category', targetCategory);
                 } else {
+                    const canMoveDropped = canEditEntity(droppedEntity);
+                    const ownerId = getEntityOwnerId(entity);
                     // Coming from outside
                     setDragDropPrompt({
                         x: e.clientX,
                         y: e.clientY,
                         entityName: droppedEntity.name,
                         onMove: () => {
+                            if (!canEditInventory || !canMoveDropped) {
+                                setDragDropPrompt(null);
+                                return;
+                            }
                             yjsStore.updateEntity(droppedEntity.id, {
                                 parentId: entity.id,
                                 database: entity.database,
-                                properties: { ...droppedEntity.properties, category: targetCategory }
+                                properties: { ...droppedEntity.properties, category: targetCategory, ...(ownerId ? { _playerOwner: ownerId } : {}) }
                             });
+                            applyOwnerToEntityTree(droppedEntity.id, ownerId);
                             setDragDropPrompt(null);
                         },
                         onCopy: () => {
+                            if (!canEditInventory) {
+                                setDragDropPrompt(null);
+                                return;
+                            }
                             const newId = yjsStore.cloneEntity(droppedEntity.id, entity.id, entity.database);
                             if (newId) {
                                 const newEnt = getEntitySnapshot(newId);
                                 if (newEnt) {
                                     yjsStore.updateEntity(newId, {
-                                        properties: { ...newEnt.properties, category: targetCategory }
+                                        properties: { ...newEnt.properties, category: targetCategory, ...(ownerId ? { _playerOwner: ownerId } : {}) }
                                     });
+                                    applyOwnerToEntityTree(newId, ownerId);
                                 }
                             }
                             setDragDropPrompt(null);
@@ -208,8 +256,8 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                             <div
                                 key={category}
                                 className="border border-white/5 rounded-lg overflow-hidden bg-[#2a2d3d]/40 pb-2 shadow-sm"
-                                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                                onDragEnter={(e) => { e.preventDefault(); }}
+                                onDragOver={(e) => { if (canEditInventory) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
+                                onDragEnter={(e) => { if (canEditInventory) e.preventDefault(); }}
                                 onDrop={(e) => handleDrop(e, category)}
                             >
                                 <div className="bg-[#1a1c29] px-3 py-1.5 text-[10px] font-bold text-white/50 uppercase tracking-widest flex justify-between items-center mb-1 border-b border-white/5 shadow-inner">
@@ -218,7 +266,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
 
                                 {itemsInCategory.length === 0 ? (
                                     <div className="text-[10px] text-white/30 italic py-3 px-3">
-                                        Перетащите сюда предметы...
+                                        {canEditInventory ? 'Перетащите сюда предметы...' : 'Нет предметов в категории.'}
                                     </div>
                                 ) : (
                                     <div className="overflow-x-auto w-full custom-scrollbar">
@@ -259,19 +307,24 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                 {itemsInCategory.map(item => {
                                                     const qty = item.properties.количество ?? 1;
                                                     const weight = item.properties.нагрузка ?? 1.0;
+                                                    const canEditItem = canEditInventory && canEditEntity(item);
 
                                                     return (
                                                         <tr
                                                             key={item.id}
                                                             className="border-b border-white/5 hover:bg-white/5 group transition-colors"
-                                                            draggable={true}
+                                                            draggable={canEditItem}
                                                             onDragStart={(e) => {
+                                                                if (!canEditItem) {
+                                                                    e.preventDefault();
+                                                                    return;
+                                                                }
                                                                 e.dataTransfer.setData("application/entity-id", item.id);
                                                                 e.dataTransfer.effectAllowed = "move";
                                                             }}
                                                         >
                                                             <td className="px-2 py-1.5 text-white/20 cursor-grab active:cursor-grabbing opacity-30 group-hover:opacity-100 transition-opacity" onDragStart={(e) => e.preventDefault()} draggable={false}>
-                                                                <GripVertical size={12} />
+                                                                {canEditItem && <GripVertical size={12} />}
                                                             </td>
                                                             <td className="px-2 py-1.5">
                                                                 <div draggable={false} onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}>
@@ -283,6 +336,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                                     <div className="flex justify-center items-center w-full h-full">
                                                                         <button
                                                                             onClick={(e) => { e.stopPropagation(); updateItemProperty(item.id, 'equipped', !item.properties.equipped); }}
+                                                                            disabled={!canEditItem}
                                                                             className={`w-8 h-4.5 rounded-full p-0.5 transition-colors duration-300 flex items-center shadow-inner ${item.properties.equipped ? 'bg-green-500 border border-green-400' : 'bg-black/40 border border-white/10 hover:bg-black/60 backdrop-blur-sm'}`}
                                                                             title="Экипировать"
                                                                         >
@@ -296,6 +350,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                                     type="number"
                                                                     min="1"
                                                                     value={qty || ''}
+                                                                    readOnly={!canEditItem}
                                                                     onChange={(e) => updateItemProperty(item.id, 'количество', Math.max(1, parseInt(e.target.value) || 1))}
                                                                     className="w-10 text-[11px] font-bold text-center bg-[#1a1c29] text-white rounded-md border border-[#1a1c29] hover:border-white/30 focus:border-white/50 focus:bg-[#2e3145] outline-none transition-colors py-1 cursor-text custom-scrollbar ml-auto mr-auto block shadow-inner"
                                                                 />
@@ -316,13 +371,15 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                                 {item.properties.цена ?? 0}
                                                             </td>
                                                             <td className="px-2 py-1.5 text-center w-6">
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id, item.name); }}
-                                                                    className="text-white/20 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all p-1"
-                                                                    title="Удалить предмет"
-                                                                >
-                                                                    <Trash2 size={12} />
-                                                                </button>
+                                                                {canEditItem && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id, item.name); }}
+                                                                        className="text-white/20 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all p-1"
+                                                                        title="Удалить предмет"
+                                                                    >
+                                                                        <Trash2 size={12} />
+                                                                    </button>
+                                                                )}
                                                             </td>
                                                         </tr>
                                                     );
