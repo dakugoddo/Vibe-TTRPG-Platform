@@ -74,7 +74,7 @@
 - документировать, какие события не пишутся в файлы;
 - проверить multiplayer поведение на двух клиентах.
 
-Готовность: контракт описан в `.pi/docs/sync-layers.md`; canvas `drawElements` и `fogReveals` зеркалятся в canvas entity с debounce; cursor/ping остаются awareness state. Перемещение выбранных draw-elements использует локальный preview и пишет финальную позицию в persistent Y.Map только на drag end. Следующий проход - ручная multiplayer проверка и оптимизация point edit/resize/rotate/fog brush.
+Готовность: контракт описан в `.pi/docs/sync-layers.md`; canvas `drawElements` и `fogReveals` зеркалятся в canvas entity с debounce; cursor/ping остаются awareness state. Select-drag, point edit, resize и rotate выбранных draw-elements используют локальный preview и пишут финальную позицию в persistent Y.Map только на drag end. Следующий проход - ручная multiplayer проверка и отдельная оптимизация fog brush.
 
 ## Этап 4. Права доступа и GM-only
 

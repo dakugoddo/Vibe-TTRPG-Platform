@@ -121,14 +121,6 @@ function saveDrawElements(_activeCanvasId: string, elements: DrawElement[]): voi
   useCanvasSyncStore.getState().syncElementsArray(elements);
 }
 
-// Throttled version for drag operations — can be invalidated by drag end
-let _throttleGeneration = 0;
-const throttledSaveDrawElements = throttle((activeCanvasId: string, elements: DrawElement[], gen?: number) => {
-  // Only skip if gen is provided AND doesn't match current generation
-  if (gen !== undefined && gen !== _throttleGeneration) return;
-  saveDrawElements(activeCanvasId, elements);
-}, 16);
-
 // ─── Sub-component: Render a line cap (arrowhead / circle / diamond / square) ───
 
 function LineCapDecoration({
@@ -1187,6 +1179,25 @@ export function InfiniteCanvas() {
   const drawElements = getDrawElements(activeCanvasId);
   const [dragPreview, setDragPreview] = useState<{ canvasId: string; elements: DrawElement[] } | null>(null);
   const renderedDrawElements = dragPreview?.canvasId === activeCanvasId ? dragPreview.elements : drawElements;
+  const dragPreviewRef = useRef<{ canvasId: string; elements: DrawElement[] } | null>(null);
+
+  const setCanvasDragPreview = useCallback((preview: { canvasId: string; elements: DrawElement[] }) => {
+    dragPreviewRef.current = preview;
+    setDragPreview(preview);
+  }, []);
+
+  const clearCanvasDragPreview = useCallback(() => {
+    dragPreviewRef.current = null;
+    setDragPreview(null);
+  }, []);
+
+  const commitCanvasDragPreview = useCallback(() => {
+    const preview = dragPreviewRef.current;
+    if (!preview || preview.canvasId !== activeCanvasId) return false;
+    saveDrawElements(activeCanvasId, preview.elements);
+    clearCanvasDragPreview();
+    return true;
+  }, [activeCanvasId, clearCanvasDragPreview]);
 
   // Track drawing and middle-click pan state
   const isDrawingRef = useRef(false);
@@ -1194,7 +1205,6 @@ export function InfiniteCanvas() {
   const middlePanStartRef = useRef({ x: 0, y: 0, stageX: 0, stageY: 0 });
   const dragElementSnapshotRef = useRef<DrawElement[] | null>(null);
   const lastDragDeltaRef = useRef({ dx: 0, dy: 0 });
-  const dragGenerationRef = useRef(0); // Increments on drag end to invalidate stale throttled saves
 
   // Lasso selection state
   const lassoPointsRef = useRef<number[]>([]);
@@ -1562,7 +1572,7 @@ export function InfiniteCanvas() {
       
       // Reset drag delta so stale values from previous drag don't apply
       lastDragDeltaRef.current = { dx: 0, dy: 0 };
-      setDragPreview(null);
+      clearCanvasDragPreview();
       
       // Record undo history before drag-move
       const elements = getDrawElements(activeCanvasId);
@@ -1601,7 +1611,7 @@ export function InfiniteCanvas() {
       startDragging(point);
       setDraggingGlobal(true);
     },
-    [startDragging, activeCanvasId, pushHistory, setDraggingGlobal]
+    [startDragging, activeCanvasId, pushHistory, setDraggingGlobal, clearCanvasDragPreview]
   );
 
   const handleSelectDragMove = useCallback(
@@ -1714,7 +1724,7 @@ export function InfiniteCanvas() {
         if (!snapshot) return el;
         return translateElement(snapshot, dx, dy);
       });
-      setDragPreview({ canvasId: activeCanvasId, elements: updated });
+      setCanvasDragPreview({ canvasId: activeCanvasId, elements: updated });
       
       if (dragWindowSnapshotRef.current) {
          Object.entries(dragWindowSnapshotRef.current).forEach(([wId, snapXy]) => {
@@ -1725,14 +1735,10 @@ export function InfiniteCanvas() {
          });
       }
     },
-    [isDraggingElement, dragStartPoint, activeCanvasId, selectedElementIds, updateSnapLines, gridEnabled, gridType, gridSpacing]
+    [isDraggingElement, dragStartPoint, activeCanvasId, selectedElementIds, updateSnapLines, gridEnabled, gridType, gridSpacing, setCanvasDragPreview]
   );
 
   const handleSelectDragEnd = useCallback(() => {
-    // Invalidate any pending throttled saves from this drag
-    dragGenerationRef.current++;
-    _throttleGeneration = dragGenerationRef.current;
-    
     // Save FINAL position using last known delta (avoids race with throttled saves)
     if (dragElementSnapshotRef.current) {
       const { dx, dy } = lastDragDeltaRef.current;
@@ -1747,13 +1753,13 @@ export function InfiniteCanvas() {
     
     dragElementSnapshotRef.current = null;
     dragWindowSnapshotRef.current = null;
-    setDragPreview(null);
+    clearCanvasDragPreview();
     stopDragging();
     setDraggingGlobal(false);
     snapLinesRef.current = [];
     lastSnapKeyRef.current = '';
     updateSnapLines();
-  }, [stopDragging, setDraggingGlobal, activeCanvasId, updateSnapLines]);
+  }, [stopDragging, setDraggingGlobal, activeCanvasId, updateSnapLines, clearCanvasDragPreview]);
 
   // ─── Point editing handlers ───
 
@@ -1762,9 +1768,10 @@ export function InfiniteCanvas() {
       // Record undo history before point editing
       const elements = getDrawElements(activeCanvasId);
       pushHistory(elements);
+      clearCanvasDragPreview();
       setEditingPointIndex(idx);
     },
-    [setEditingPointIndex, activeCanvasId, pushHistory]
+    [setEditingPointIndex, activeCanvasId, pushHistory, clearCanvasDragPreview]
   );
 
   const handlePointDragMove = useCallback(
@@ -1779,19 +1786,15 @@ export function InfiniteCanvas() {
         pts[idx * 2 + 1] = y;
         return { ...el, points: pts };
       });
-      throttledSaveDrawElements(activeCanvasId, updated);
+      setCanvasDragPreview({ canvasId: activeCanvasId, elements: updated });
     },
-    [selectedElementIds, activeCanvasId]
+    [selectedElementIds, activeCanvasId, setCanvasDragPreview]
   );
 
   const handlePointDragEnd = useCallback(() => {
-    // Flush final state
-    if (selectedElementIds.length === 1) {
-      const elements = getDrawElements(activeCanvasId);
-      saveDrawElements(activeCanvasId, elements);
-    }
+    commitCanvasDragPreview();
     setEditingPointIndex(null);
-  }, [setEditingPointIndex, selectedElementIds, activeCanvasId]);
+  }, [setEditingPointIndex, commitCanvasDragPreview]);
 
   // ─── Resize handles for shapes ───
 
@@ -1839,21 +1842,20 @@ export function InfiniteCanvas() {
       const updated = elements.map((e) =>
         e.id === id ? { ...e, x: newX, y: newY, width: newW, height: newH } : e
       );
-      throttledSaveDrawElements(activeCanvasId, updated);
+      setCanvasDragPreview({ canvasId: activeCanvasId, elements: updated });
     },
-    [selectedElementIds, activeCanvasId, pushHistory]
+    [selectedElementIds, activeCanvasId, pushHistory, setCanvasDragPreview]
   );
 
   const handleResizeDragEnd = useCallback(() => {
-    // Flush final state
-    if (selectedElementIds.length === 1) {
-      const elements = getDrawElements(activeCanvasId);
-      saveDrawElements(activeCanvasId, elements);
-    }
     resizeSnapshotRef.current = null;
-    if (selectedElementIds.length !== 1) return;
+    if (selectedElementIds.length !== 1) {
+      clearCanvasDragPreview();
+      return;
+    }
     const id = selectedElementIds[0];
-    const elements = getDrawElements(activeCanvasId);
+    const preview = dragPreviewRef.current;
+    const elements = preview?.canvasId === activeCanvasId ? preview.elements : getDrawElements(activeCanvasId);
     const updated = elements.map((el) => {
       if (el.id !== id) return el;
       let { x, y, width, height } = el;
@@ -1863,7 +1865,8 @@ export function InfiniteCanvas() {
       return { ...el, x, y, width, height };
     });
     saveDrawElements(activeCanvasId, updated);
-  }, [selectedElementIds, activeCanvasId]);
+    clearCanvasDragPreview();
+  }, [selectedElementIds, activeCanvasId, clearCanvasDragPreview]);
 
   // ─── Rotation handle ───
 
@@ -1882,19 +1885,15 @@ export function InfiniteCanvas() {
       const updated = elements.map(el =>
         el.id === id ? { ...el, rotation: angle } : el
       );
-      throttledSaveDrawElements(activeCanvasId, updated);
+      setCanvasDragPreview({ canvasId: activeCanvasId, elements: updated });
     },
-    [selectedElementIds, activeCanvasId, pushHistory]
+    [selectedElementIds, activeCanvasId, pushHistory, setCanvasDragPreview]
   );
 
   const handleRotateDragEnd = useCallback(() => {
-    // Flush final state
-    if (selectedElementIds.length === 1) {
-      const elements = getDrawElements(activeCanvasId);
-      saveDrawElements(activeCanvasId, elements);
-    }
+    commitCanvasDragPreview();
     rotateHistoryPushedRef.current = false;
-  }, [selectedElementIds, activeCanvasId]);
+  }, [commitCanvasDragPreview]);
 
   // ─── Drawing handlers (LEFT CLICK ONLY) ───
 
