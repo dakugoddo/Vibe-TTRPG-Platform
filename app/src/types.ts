@@ -1,9 +1,11 @@
-export type EntityType = 'character' | 'object' | 'ability' | 'tag' | 'canvas' | 'note' | 'portal' | 'folder' | 'attack';
+export type EntityType = 'character' | 'object' | 'ability' | 'competency' | 'tag' | 'canvas' | 'note' | 'portal' | 'folder' | 'attack';
 export type DatabaseType = 'general' | 'user' | 'gm';
 
 export interface Entity {
     id: string;
     parentId: string | null; // Для иерархии (папки, инвентарь)
+    /** Version of the normalized Entity/frontmatter contract. Missing legacy files are treated as current. */
+    schemaVersion?: number;
     type: EntityType;
     name: string;
     description: string; // Markdown текст
@@ -12,6 +14,8 @@ export interface Entity {
 
     // Гибкая структура для характеристик. 
     // Пример: { strength: { base: 10 }, weight: { base: 5 } }
+    // Flexible game-system payload; typed per block as mechanics stabilize.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     properties: Record<string, any>;
 
     // ID прикрепленных тегов

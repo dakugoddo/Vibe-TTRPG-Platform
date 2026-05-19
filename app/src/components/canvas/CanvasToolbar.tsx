@@ -284,7 +284,7 @@ export function CanvasToolbar() {
     const offsetY = h / 2 - y * scale;
     useCanvasStore.getState().setTransform(scale, offsetX, offsetY);
     // Also update Konva Stage directly (no render delay)
-    (window as any).__vibeSetStageCamera?.(scale, offsetX, offsetY);
+    window.__vibeSetStageCamera?.(scale, offsetX, offsetY);
     setElementsOpen(false);
   };
 
@@ -713,7 +713,7 @@ export function CanvasToolbar() {
             const offsetY = h / 2;
             setTransform(scale, offsetX, offsetY);
             // Also update Konva Stage directly
-            (window as any).__vibeSetStageCamera?.(scale, offsetX, offsetY);
+            window.__vibeSetStageCamera?.(scale, offsetX, offsetY);
           }}
           className="bg-black/20 backdrop-blur-2xl border border-white/10 w-10 h-10 rounded-xl flex justify-center items-center text-white/70 hover:text-white shadow-xl hover:border-white/30 hover:bg-white/10 transition-all cursor-pointer"
           title="Рецентр"
@@ -1175,8 +1175,6 @@ export function CanvasToolbar() {
           {/* Z-order / Layer controls */}
           {activeTool === 'select' && hasSelection && (() => {
             // Get info about selected element for name display
-            const canvasEntity = yjsStore.entitiesMap.get(activeCanvasId);
-            const elements = canvasEntity?.properties?.drawElements || [];
             const firstSelected = selectedElementIds.length === 1 
               ? elements.find((el: DrawElement) => el.id === selectedElementIds[0]) 
               : null;

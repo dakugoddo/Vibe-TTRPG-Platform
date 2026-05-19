@@ -19,7 +19,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
     const { openWindow } = useWindowStore();
     const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
 
-    const updateProperty = (key: string, value: any) => {
+    const updateProperty = (key: string, value: unknown) => {
         yjsStore.updateEntity(entity.id, {
             properties: {
                 ...entity.properties,

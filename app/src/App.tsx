@@ -4,6 +4,7 @@ import { initEntityStoreObserver, getEntitiesSnapshot } from './store/entityStor
 import { useCanvasStore } from './store/canvasStore';
 import { useCanvasDrawStore } from './store/canvasDrawStore';
 import { stopSync, forceFlush, setPlayerName } from './services/fileSyncService';
+import { importMarkdown, getIsHost as checkHost } from './services/fileApi';
 import { loadWindowLayout, clearWindowLayout } from './store/windowStore';
 import { WindowManager } from './components/windows/WindowManager';
 import { InfiniteCanvas } from './components/canvas/InfiniteCanvas';
@@ -15,6 +16,7 @@ import { HudBar } from './components/ui/HudBar';
 import { LeftDrawer } from './components/ui/LeftDrawer';
 import { RightDrawer } from './components/ui/RightDrawer';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
+import { HotkeyHelp } from './components/ui/HotkeyHelp';
 import { glass } from './utils/theme';
 
 function App() {
@@ -88,7 +90,6 @@ function App() {
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
           const mdFiles = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.md'));
           if (mdFiles.length > 0) {
-            const { importMarkdown, getIsHost: checkHost } = await import('./services/fileApi');
             if (checkHost()) {
               for (const file of mdFiles) {
                 try {
@@ -218,6 +219,7 @@ function App() {
 
       <DragDropPopover data={canvasDropPrompt} />
       <ConfirmDialog />
+      <HotkeyHelp />
     </div >
   );
 }

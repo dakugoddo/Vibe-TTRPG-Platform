@@ -5,7 +5,7 @@ import { StyleDemo } from '../ui-demo/StyleDemo';
 import { glass } from '../../utils/theme';
 
 interface LoginScreenProps {
-    onJoin: (roomName: string) => void;
+    onJoin: (roomName: string, playerName?: string) => void;
 }
 
 type Step = 'main' | 'host' | 'join' | 'loading';
@@ -152,7 +152,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                 const displayName = playerName.trim() || 'Игрок';
                 localStorage.setItem('vibe_player_name', displayName);
                 onJoin(roomName, displayName);
-        } catch (err) {
+        } catch {
             setError(`Ошибка подключения к ${ip || 'Localhost'}. Сервер выключен, Хамачи не работает, или заблокирован Брандмауэром Windows.`);
             setStep('join');
         }

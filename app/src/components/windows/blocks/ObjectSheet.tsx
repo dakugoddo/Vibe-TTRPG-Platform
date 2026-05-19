@@ -26,7 +26,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
     // Find child attacks
     const attacks = allEntities.filter(e => e.parentId === entity.id && e.type === 'attack');
 
-    const updateProperty = (key: string, value: any) => {
+    const updateProperty = (key: string, value: unknown) => {
         yjsStore.updateEntity(entity.id, {
             properties: {
                 ...entity.properties,

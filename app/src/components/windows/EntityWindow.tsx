@@ -95,7 +95,8 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     const displayX = x;
     const displayY = y;
 
-    const handleDragStop = (_e: any, d: { x: number, y: number }) => {
+    const handleDragStop = (event: unknown, d: { x: number, y: number }) => {
+        void event;
         const newX = d.x;
         const newY = d.y;
         updateWindow(id, { x: newX, y: newY });
@@ -106,7 +107,16 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
         }
     };
 
-    const handleResizeStop = (_e: any, _direction: any, ref: HTMLElement, _delta: any, position: { x: number, y: number }) => {
+    const handleResizeStop = (
+        event: unknown,
+        direction: unknown,
+        ref: HTMLElement,
+        delta: unknown,
+        position: { x: number, y: number }
+    ) => {
+        void event;
+        void direction;
+        void delta;
         const newX = position.x;
         const newY = position.y;
         const newWidth = parseInt(ref.style.width, 10);
@@ -291,7 +301,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                     <div className={`${glass.content} flex-1`}>
                     <EntityImageBlock entity={entity} isWide={entity.type === 'canvas'} />
                     {entity.type === 'character' ? (
-                        <CharacterSheet entityId={id} isFullMode={isFullMode} />
+                        <CharacterSheet entityId={entityId} isFullMode={isFullMode} />
                     ) : (
                         <>
                             <div className={glass.blockBg}>
@@ -317,7 +327,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                     />
                                 ) : (
                                     <div className="text-sm leading-relaxed whitespace-pre-wrap text-white/80 flex-1 h-full min-h-[100px]" onDoubleClick={() => setIsEditingDescription(true)}>
-                                        {entity.description ? <MarkdownRenderer content={entity.description} /> : <span className="text-white/30 italic cursor-pointer">No description provided. Double click to edit.</span>}
+                                        {entity.description ? <MarkdownRenderer content={entity.description} entityId={entity.id} /> : <span className="text-white/30 italic cursor-pointer">No description provided. Double click to edit.</span>}
                                     </div>
                                 )}
                             </div>

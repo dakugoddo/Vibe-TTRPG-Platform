@@ -53,7 +53,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
         });
     };
 
-    const updateItemProperty = (itemId: string, key: string, value: any) => {
+    const updateItemProperty = (itemId: string, key: string, value: unknown) => {
         const item = inventory.find(i => i.id === itemId);
         if (item) {
             yjsStore.updateEntity(itemId, {
@@ -165,7 +165,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
 
                 <div className="space-y-4">
                     {CATEGORIES.map(category => {
-                        let itemsInCategory = inventory.filter(item => (item.properties.category || 'другое') === category);
+                        const itemsInCategory = inventory.filter(item => (item.properties.category || 'другое') === category);
 
                         itemsInCategory.forEach(item => {
                             const qty = item.properties.количество ?? 1;
@@ -177,8 +177,8 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                         const sortConfig = sortConfigs[category];
                         if (sortConfig) {
                             itemsInCategory.sort((a, b) => {
-                                let aVal: any = '';
-                                let bVal: any = '';
+                                let aVal: string | number = '';
+                                let bVal: string | number = '';
 
                                 if (sortConfig.key === 'name') {
                                     aVal = a.name.toLowerCase();
@@ -187,8 +187,8 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                     aVal = a.properties.equipped ? 1 : 0;
                                     bVal = b.properties.equipped ? 1 : 0;
                                 } else {
-                                    aVal = a.properties[sortConfig.key] ?? 0;
-                                    bVal = b.properties[sortConfig.key] ?? 0;
+                                    aVal = String(a.properties[sortConfig.key] ?? 0);
+                                    bVal = String(b.properties[sortConfig.key] ?? 0);
                                 }
 
                                 if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;

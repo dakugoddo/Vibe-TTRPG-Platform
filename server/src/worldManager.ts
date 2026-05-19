@@ -10,7 +10,7 @@ import path from 'node:path';
 import type { WorldMeta } from './shared/types.js';
 
 const WORLD_STRUCTURE = {
-    general: ['characters', 'objects', 'abilities', 'tags/hidden', 'tags/statuses', 'tags/properties', 'notes', 'canvases'],
+    general: ['characters', 'objects', 'abilities', 'competencies', 'tags/hidden', 'tags/statuses', 'tags/properties', 'notes', 'canvases'],
     users: [],
     gm: [],
     assets: [],

@@ -103,6 +103,17 @@ export async function openWorld(worldPath: string): Promise<WorldMeta> {
     });
 }
 
+// ─── Players ───
+
+export async function listPlayers(): Promise<string[]> {
+    if (!(await shouldCallFileApi())) return [];
+    try {
+        return await apiFetch('/api/players');
+    } catch {
+        return [];
+    }
+}
+
 // ─── Entity CRUD ───
 
 export async function listEntities(db: DatabaseType = 'general', player?: string): Promise<Entity[]> {

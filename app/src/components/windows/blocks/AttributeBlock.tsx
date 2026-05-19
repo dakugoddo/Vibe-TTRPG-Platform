@@ -7,7 +7,7 @@ import { useCalculatedStat, type CalculatedStat } from '../../../hooks/useCalcul
 import { StatTooltip } from '../../ui/StatTooltip';
 import { Popover } from '../../ui/Tooltip';
 import { EntityLink } from '../../ui/EntityLink';
-import { Trash2, Plus, Tag } from 'lucide-react';
+import { Trash2, Plus, Minus, Tag } from 'lucide-react';
 import clsx from 'clsx';
 import { TagPickerPopup } from './TagPickerPopup';
 import { glass } from '../../../utils/theme';
@@ -30,10 +30,10 @@ const StatRow = ({
     path: string[];
     label: string;
     icon?: React.ElementType;
-    properties: any;
+    properties: Record<string, unknown>;
     baseLabel?: string;
     adhocLabel?: string;
-    handleUpdateAttribute: (p: string[], v: any) => void;
+    handleUpdateAttribute: (p: string[], v: unknown) => void;
 }) => {
     const stat = useCalculatedStat(entityId, path);
     const allEntities = getEntitiesSnapshot();
@@ -49,13 +49,15 @@ const StatRow = ({
     };
 
     // Navigate to get the current object
-    let currentProp = properties;
+    let currentProp: unknown = properties;
     for (const p of path) {
-        if (!currentProp) break;
-        currentProp = currentProp[p];
+        if (!currentProp || typeof currentProp !== 'object') break;
+        currentProp = (currentProp as Record<string, unknown>)[p];
     }
 
-    const adhoc = currentProp?.adhoc || 0;
+    const adhoc = currentProp && typeof currentProp === 'object'
+        ? Number((currentProp as Record<string, unknown>).adhoc ?? 0)
+        : 0;
 
     return (
         <div className="flex flex-col items-center justify-between p-3 rounded-xl bg-white/5 border border-transparent hover:bg-white/10 hover:border-white/10 transition-all group relative shadow-sm">
@@ -116,6 +118,8 @@ const StatRow = ({
 export function AttributeBlock({ entity }: AttributeBlockProps) {
     const properties = entity.properties || {};
     const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
+    const [isEditingWounds, setIsEditingWounds] = useState(false);
+    const [woundsDraft, setWoundsDraft] = useState('');
     const { openWindow } = useWindowStore();
 
     // Helper to open note by name
@@ -133,6 +137,8 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
     // Calculate final stats based on tags and base values
     const limitStat = useCalculatedStat(entity.id, ['attributes', 'wounds', 'limit']);
     const woundsAdhoc = properties.attributes?.wounds?.limit?.adhoc || 0;
+    const currentWounds = Number(properties.attributes?.wounds?.current ?? 0);
+    const maxWounds = Math.max(0, limitStat.total * 2);
 
     // Specific calculation for Мощь (Power)
     const activePowers: string[] = properties.activePowers || []; // 'astral', 'ether', 'aura'
@@ -159,7 +165,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
         ]
     };
 
-    const handleUpdateAttribute = (path: string[], value: any) => {
+    const handleUpdateAttribute = (path: string[], value: unknown) => {
         const newProperties = JSON.parse(JSON.stringify(properties));
         let current = newProperties;
         for (let i = 0; i < path.length - 1; i++) {
@@ -168,6 +174,49 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
         }
         current[path[path.length - 1]] = value;
         yjsStore.updateEntity(entity.id, { properties: newProperties });
+    };
+
+    const setWoundsValue = (value: number) => {
+        const newValue = Math.max(0, Math.min(maxWounds, value));
+        if (newValue === currentWounds) return;
+
+        handleUpdateAttribute(['attributes', 'wounds', 'current'], newValue);
+
+        // Log to chat
+        const actualDelta = newValue - currentWounds;
+        const emoji = actualDelta > 0 ? '⚔️' : '💚';
+        const sign = actualDelta > 0 ? '+' : '';
+        yjsStore.sendMessage(
+            `${emoji} ${entity.name}: ${sign}${actualDelta} ран (текущие: ${newValue}/${maxWounds})`,
+            'Система',
+            true
+        );
+    };
+
+    const handleChangeWounds = (delta: number) => {
+        setWoundsValue(currentWounds + delta);
+    };
+
+    const startWoundsEdit = () => {
+        setWoundsDraft(String(currentWounds));
+        setIsEditingWounds(true);
+    };
+
+    const commitWoundsDraft = () => {
+        const trimmed = woundsDraft.trim();
+        if (trimmed === '') {
+            setWoundsDraft(String(currentWounds));
+            setIsEditingWounds(false);
+            return;
+        }
+
+        const nextValue = Number.parseInt(trimmed, 10);
+        if (Number.isFinite(nextValue)) {
+            setWoundsValue(nextValue);
+        }
+
+        setWoundsDraft(String(Math.max(0, Math.min(maxWounds, Number.isFinite(nextValue) ? nextValue : currentWounds))));
+        setIsEditingWounds(false);
     };
 
     const togglePower = (power: string) => {
@@ -183,27 +232,20 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
         <div className="space-y-4">
             {/* WOUNDS BLOCK */}
             <div className={`${glass.blockBg} overflow-hidden relative group/wounds`}>
-                {properties.attributes?.wounds?.current >= limitStat.total * 1.5 && (
+                {currentWounds >= limitStat.total * 1.5 && (
                     <div className="absolute inset-0 bg-red-900/10 pointer-events-none animate-pulse"></div>
                 )}
                 
                 <div className="relative z-10 flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                         <div className="flex flex-col">
-                            <h4
-                                className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1 cursor-pointer hover:text-white transition-colors"
-                                onClick={() => handleOpenNote('Раны')}
-                            >
-                                Состояние Здоровья
-                            </h4>
-                            <div className="text-white/90 font-bold text-sm">
-                                {properties.attributes?.wounds?.current >= limitStat.total ? 'ШОК / КРИТИЧЕСКИ РАНЕН' : 'ЗДОРОВ / ЛЕГКИЕ РАНЫ'}
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <div className="text-[10px] text-white/40">
-                                Предел:
+                            <div className="flex items-center gap-2">
+                                <h4
+                                    className="text-[10px] text-white/40 font-bold uppercase tracking-widest cursor-pointer hover:text-white transition-colors"
+                                    onClick={() => handleOpenNote('Раны')}
+                                >
+                                    Состояние Здоровья
+                                </h4>
                                 <Popover
                                     placement="bottom"
                                     content={
@@ -233,36 +275,121 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                     }
                                 >
                                     <StatTooltip stat={limitStat}>
-                                        <span className="text-white font-bold ml-1 cursor-pointer hover:text-white/70">{limitStat.total}</span>
+                                        <span className="text-[10px] text-white/30 cursor-pointer hover:text-white/60 transition-colors">
+                                            Предел: <span className="text-white font-bold">{limitStat.total}</span>
+                                        </span>
                                     </StatTooltip>
                                 </Popover>
                             </div>
-                            
-                            <div className="bg-black/30 rounded-lg px-2 py-0.5 border border-white/5 flex items-center gap-1 shadow-inner backdrop-blur-sm">
-                                <input
-                                    type="number"
-                                    value={properties.attributes?.wounds?.current ?? 0}
-                                    onChange={(e) => handleUpdateAttribute(['attributes', 'wounds', 'current'], parseInt(e.target.value) || 0)}
-                                    className={clsx("w-8 bg-transparent text-right font-bold text-lg outline-none transition-colors",
-                                        properties.attributes?.wounds?.current >= limitStat.total ? "text-red-400" : "text-green-400"
-                                    )}
-                                    title="Текущие раны"
-                                />
-                                <span className="text-white/30 text-xs">/</span>
-                                <span className="text-white/60 text-xs w-4">{limitStat.total * 2}</span>
+                            <div className="text-white/90 font-bold text-sm">
+                                {currentWounds >= limitStat.total ? 'ШОК / КРИТИЧЕСКИ РАНЕН' : 'ЗДОРОВ / ЛЕГКИЕ РАНЫ'}
                             </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            {/* Interactive wound controls */}
+                            <div className="flex items-center gap-1 bg-black/30 rounded-lg px-1.5 py-1 border border-white/5 shadow-inner backdrop-blur-sm">
+                                <button
+                                    onClick={() => handleChangeWounds(-5)}
+                                    disabled={currentWounds <= 0}
+                                    className="p-1 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                    title="−5 ран"
+                                >
+                                    <Minus size={10} />
+                                    <span className="text-[8px]">5</span>
+                                </button>
+                                <button
+                                    onClick={() => handleChangeWounds(-1)}
+                                    disabled={currentWounds <= 0}
+                                    className="p-1 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                    title="−1 рана"
+                                >
+                                    <Minus size={14} />
+                                </button>
+
+                                {isEditingWounds ? (
+                                    <input
+                                        autoFocus
+                                        type="number"
+                                        min={0}
+                                        max={maxWounds}
+                                        value={woundsDraft}
+                                        onChange={(e) => setWoundsDraft(e.target.value)}
+                                        onBlur={commitWoundsDraft}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                e.currentTarget.blur();
+                                            }
+                                            if (e.key === 'Escape') {
+                                                e.preventDefault();
+                                                setWoundsDraft(String(currentWounds));
+                                                setIsEditingWounds(false);
+                                            }
+                                        }}
+                                        className={clsx(
+                                            glass.input,
+                                            "h-8 w-12 px-1 py-0 text-center text-lg font-bold tabular-nums",
+                                            currentWounds >= limitStat.total ? "text-red-300" : "text-green-300"
+                                        )}
+                                        title="Enter — сохранить, Esc — отменить"
+                                    />
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className={clsx(
+                                            "h-8 w-12 text-center font-bold text-xl tabular-nums select-none transition-colors rounded-md hover:bg-white/10 hover:brightness-125",
+                                            currentWounds >= limitStat.total ? "text-red-400" : "text-green-400"
+                                        )}
+                                        title="Нажать — ввести вручную"
+                                        onClick={startWoundsEdit}
+                                    >
+                                        {currentWounds}
+                                    </button>
+                                )}
+
+                                <button
+                                    onClick={() => handleChangeWounds(1)}
+                                    disabled={currentWounds >= maxWounds}
+                                    className="p-1 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                    title="+1 рана"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                                <button
+                                    onClick={() => handleChangeWounds(5)}
+                                    disabled={currentWounds >= maxWounds}
+                                    className="p-1 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                    title="+5 ран"
+                                >
+                                    <Plus size={10} />
+                                    <span className="text-[8px]">5</span>
+                                </button>
+                            </div>
+
+                            <span className="text-white/30 text-xs">/</span>
+                            <span className="text-white/60 text-xs w-4">{maxWounds}</span>
                         </div>
                     </div>
 
-                    {/* Horizontal Progress Bar */}
-                    <div className="h-3 w-full bg-[#1a1c29] rounded-full overflow-hidden border border-white/5 relative p-[1px] shadow-inner">
-                        <div 
-                            className={clsx("absolute top-0 left-0 bottom-0 rounded-full transition-all duration-500", 
-                                properties.attributes?.wounds?.current >= limitStat.total ? "bg-red-500/80 shadow-[0_0_10px_rgba(239,68,68,0.5)]" : "bg-green-500/80 shadow-[0_0_10px_rgba(74,222,128,0.5)]"
-                            )}
-                            style={{ width: `${Math.min(100, Math.max(0, 100 - ((properties.attributes?.wounds?.current || 0) / (Math.max(1, limitStat.total * 2))) * 100))}%` }}
-                        />
-                    </div>
+            {/* Horizontal Progress Bar — clickable */}
+            <div
+                className="h-3 w-full bg-[#1a1c29] rounded-full overflow-hidden border border-white/5 relative p-[1px] shadow-inner cursor-pointer group/bar"
+                onClick={() => handleChangeWounds(1)}
+                onContextMenu={(e) => { e.preventDefault(); handleChangeWounds(-1); }}
+                title="ЛКМ: +1 рана | ПКМ: −1 рана"
+            >
+                <div
+                    className={clsx("absolute top-0 left-0 bottom-0 rounded-full transition-all duration-300",
+                        currentWounds >= limitStat.total ? "bg-red-500/80 shadow-[0_0_10px_rgba(239,68,68,0.5)]" : "bg-green-500/80 shadow-[0_0_10px_rgba(74,222,128,0.5)]"
+                    )}
+                    style={{ width: `${Math.min(100, Math.max(0, (currentWounds / Math.max(1, maxWounds)) * 100))}%` }}
+                />
+                {/* Hover hint */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/bar:opacity-100 transition-opacity">
+                    <span className="text-[9px] text-white/60 font-bold drop-shadow-lg">ЛКМ +1 / ПКМ −1</span>
+                </div>
+            </div>
                 </div>
             </div>
 
@@ -404,6 +531,15 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                         onSelect={(tagId) => {
                             const newTags = [...(entity.tags || []), tagId];
                             yjsStore.updateEntity(entity.id, { tags: newTags });
+                            // Log to chat
+                            const tagEntity = getEntitiesSnapshot()[tagId];
+                            if (tagEntity) {
+                                yjsStore.sendMessage(
+                                    `🏷️ ${entity.name}: +${tagEntity.name}`,
+                                    'Система',
+                                    true
+                                );
+                            }
                         }}
                         excludeTags={entity.tags || []}
                         allowedFolders={['folder_tags_statuses']}
@@ -425,6 +561,14 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                     onClick={() => {
                                         const newTags = entity.tags.filter(id => id !== tagId);
                                         yjsStore.updateEntity(entity.id, { tags: newTags });
+                                        // Log to chat
+                                        if (tagEntity) {
+                                            yjsStore.sendMessage(
+                                                `🏷️ ${entity.name}: −${tagEntity.name}`,
+                                                'Система',
+                                                true
+                                            );
+                                        }
                                     }}
                                     className="px-2 py-1 text-white/30 hover:bg-red-900/40 hover:text-red-400 transition-colors border-l border-white/10 group-hover/tag:border-white/20"
                                     title="Убрать"

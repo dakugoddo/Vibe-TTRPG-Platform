@@ -9,12 +9,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { getDbPath } from './worldManager.js';
+import { normalizeEntitySchemaVersion } from './entitySchema.js';
 import type { Entity, EntityType, DatabaseType } from './shared/types.js';
 
 // ─── Re-export parser/serializer logic inline (adapted from app/src/utils) ───
 
 const VALID_ENTITY_TYPES: EntityType[] = [
-    'character', 'object', 'ability', 'tag', 'canvas', 'note', 'portal', 'folder'
+    'character', 'object', 'ability', 'competency', 'tag', 'canvas', 'note', 'portal', 'folder', 'attack'
 ];
 
 // ─── Track our own writes to prevent sync loops (Problem #3) ───
@@ -68,6 +69,7 @@ function entityTypeToFolder(type: EntityType): string {
         case 'note': return 'notes';
         case 'canvas': return 'canvases';
         case 'portal': return 'portals';
+        case 'competency': return 'competencies';
         case 'folder': return 'folders';
         default: return 'misc';
     }
@@ -224,14 +226,53 @@ function parseSimpleYaml(yamlStr: string): Record<string, any> {
             const trimmed = line.trim();
             if (trimmed.startsWith('- ')) {
                 const val = trimmed.substring(2).trim();
-                if (val.startsWith('{')) {
+                i++;
+
+                if (val === '') {
+                    const nextIndent = findNextContentIndent(i);
+                    if (nextIndent > indent) {
+                        result.push(nextLineStartsList(i) ? parseList(nextIndent) : parseBlock(nextIndent));
+                    } else {
+                        result.push(null);
+                    }
+                } else if (val.startsWith('{')) {
                     result.push(parseInlineObject(val));
                 } else if (val.startsWith('[')) {
                     result.push(parseInlineArray(val));
+                } else if (val.includes(':') && !val.startsWith('"') && !val.startsWith("'")) {
+                    const obj: Record<string, any> = {};
+                    const colonIdx = val.indexOf(':');
+                    const firstKey = val.substring(0, colonIdx).trim();
+                    const firstRaw = val.substring(colonIdx + 1).trim();
+                    obj[firstKey] = parseInlineOrScalar(firstRaw);
+
+                    while (i < lines.length) {
+                        const nextLine = lines[i];
+                        if (!nextLine.trim()) { i++; continue; }
+                        const nextIndent = nextLine.search(/\S/);
+                        if (nextIndent <= indent) break;
+
+                        const nextTrimmed = nextLine.trim();
+                        const nextColonIdx = nextTrimmed.indexOf(':');
+                        if (nextColonIdx === -1) break;
+
+                        const key = nextTrimmed.substring(0, nextColonIdx).trim();
+                        const rawValue = nextTrimmed.substring(nextColonIdx + 1).trim();
+                        i++;
+
+                        if (rawValue === '') {
+                            const childIndent = findNextContentIndent(i);
+                            obj[key] = childIndent > nextIndent
+                                ? (nextLineStartsList(i) ? parseList(childIndent) : parseBlock(childIndent))
+                                : null;
+                        } else {
+                            obj[key] = parseInlineOrScalar(rawValue);
+                        }
+                    }
+                    result.push(obj);
                 } else {
                     result.push(parseScalar(val));
                 }
-                i++;
             } else {
                 break;
             }
@@ -239,7 +280,27 @@ function parseSimpleYaml(yamlStr: string): Record<string, any> {
         return result;
     }
 
+    function findNextContentIndent(start: number): number {
+        for (let j = start; j < lines.length; j++) {
+            if (lines[j].trim()) return lines[j].search(/\S/);
+        }
+        return -1;
+    }
+
+    function nextLineStartsList(start: number): boolean {
+        for (let j = start; j < lines.length; j++) {
+            if (lines[j].trim()) return lines[j].trim().startsWith('- ');
+        }
+        return false;
+    }
+
     return parseBlock(0);
+}
+
+function parseInlineOrScalar(raw: string): any {
+    if (raw.startsWith('{')) return parseInlineObject(raw);
+    if (raw.startsWith('[')) return parseInlineArray(raw);
+    return parseScalar(raw);
 }
 
 /**
@@ -346,6 +407,7 @@ export function parseEntityFile(content: string, fallbackId: string, dbRoot: str
     return {
         id,
         parentId,
+        schemaVersion: normalizeEntitySchemaVersion(parsed.schemaVersion),
         type,
         name,
         description,
@@ -376,7 +438,17 @@ function toYamlValue(value: any, indent = 0): string {
             const items = value.map(v => toYamlValue(v)).join(', ');
             if (items.length < 80) return `[${items}]`;
         }
-        return '\n' + value.map(v => '  '.repeat(indent) + '- ' + toYamlValue(v, indent + 1)).join('\n');
+        return '\n' + value.map(v => {
+            const serialized = toYamlValue(v, indent + 1);
+            if (v && typeof v === 'object' && !Array.isArray(v)) {
+                const lines = deindentSerializedBlock(serialized);
+                return '  '.repeat(indent) + '- ' + lines[0] +
+                    (lines.length > 1
+                        ? '\n' + lines.slice(1).map(line => '  '.repeat(indent) + '  ' + line).join('\n')
+                        : '');
+            }
+            return '  '.repeat(indent) + '- ' + serialized;
+        }).join('\n');
     }
     if (typeof value === 'object') {
         const entries = Object.entries(value);
@@ -393,9 +465,24 @@ function toYamlValue(value: any, indent = 0): string {
     return String(value);
 }
 
+function leadingSpaces(str: string): number {
+    return str.match(/^\s*/)?.[0].length ?? 0;
+}
+
+function deindentSerializedBlock(serialized: string): string[] {
+    const raw = serialized.startsWith('\n') ? serialized.slice(1) : serialized;
+    const lines = raw.split('\n');
+    const contentLines = lines.filter(line => line.trim().length > 0);
+    const baseIndent = contentLines.length > 0
+        ? Math.min(...contentLines.map(leadingSpaces))
+        : 0;
+    return lines.map(line => line.slice(Math.min(leadingSpaces(line), baseIndent)));
+}
+
 export function serializeEntity(entity: Entity, options: { includeUid?: boolean; source?: string } = {}): string {
     const fm: Record<string, any> = {};
     fm.type = entity.type;
+    fm.schemaVersion = normalizeEntitySchemaVersion(entity.schemaVersion);
 
     if (options.includeUid) fm.uid = entity.id;
     if (options.source) fm.source = options.source;

@@ -89,6 +89,29 @@ app.post('/api/world/open', (req, res) => {
     }
 });
 
+// ─── Players List ───
+
+app.get('/api/players', (_req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        const usersPath = path.join(worldPath, 'users');
+        if (!fs.existsSync(usersPath)) {
+            res.json([]);
+            return;
+        }
+        const players = fs.readdirSync(usersPath, { withFileTypes: true })
+            .filter(d => d.isDirectory())
+            .map(d => d.name);
+        res.json(players);
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
 // ─── Entity CRUD ───
 
 app.get('/api/entities', (req, res) => {

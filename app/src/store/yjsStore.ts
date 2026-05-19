@@ -3,8 +3,8 @@ import { WebsocketProvider } from 'y-websocket';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import type { Entity, ChatMessage, DatabaseType } from '../types';
 import { getIsHost } from '../services/fileApi';
-
-export type UserRole = 'gm' | 'player' | 'spectator';
+import { CURRENT_ENTITY_SCHEMA_VERSION, withCurrentEntitySchema } from '../utils/entitySchema';
+import { canModifyEntity, type UserRole } from '../utils/permissions';
 
 export class YjsStore {
     doc: Y.Doc;
@@ -54,6 +54,7 @@ export class YjsStore {
         this.provider.on('sync', (isSynced: boolean) => {
             if (isSynced) {
                 this.ensureDefaultFolders();
+                this.ensureEntitySchemaVersions();
                 this.rebuildNameCache();
                 this.announcePlayerInfo();
             }
@@ -61,6 +62,7 @@ export class YjsStore {
         if (this.persistence) {
             this.persistence.on('synced', () => {
                 this.ensureDefaultFolders();
+                this.ensureEntitySchemaVersions();
                 this.rebuildNameCache();
                 this.announcePlayerInfo();
             });
@@ -98,7 +100,16 @@ export class YjsStore {
 
     /** Check if current user can modify a given entity */
     canModify(entityDb?: DatabaseType, entityOwnerId?: string): boolean {
-        return canModifyEntity(this.localRole, entityDb, entityOwnerId, this.localPlayerId);
+        return canModifyEntity(this.localRole, entityDb, entityOwnerId, this.localPlayerId, this.localPlayerName);
+    }
+
+    private getEntityOwnerId(entity: Entity): string | undefined {
+        const owner = entity.properties?._playerOwner;
+        return typeof owner === 'string' ? owner : undefined;
+    }
+
+    private canModifyStoredEntity(entity: Entity): boolean {
+        return this.canModify(entity.database, this.getEntityOwnerId(entity));
     }
 
     /** Rebuild the entire name cache from the Yjs map */
@@ -110,6 +121,8 @@ export class YjsStore {
     }
 
     private ensureDefaultFolders() {
+        this.ensureRootCanvas();
+
         // Automatically create required tag folders if they don't exist
         const defaultFolders = [
             { id: 'folder_tags_hidden', name: 'Скрытые теги' },
@@ -122,6 +135,7 @@ export class YjsStore {
                 this.entitiesMap.set(folder.id, {
                     id: folder.id,
                     parentId: null,
+                    schemaVersion: CURRENT_ENTITY_SCHEMA_VERSION,
                     type: 'folder',
                     name: this.getUniqueName(folder.name, folder.id),
                     description: '',
@@ -133,6 +147,35 @@ export class YjsStore {
                 if (existing && existing.properties?.folderType !== 'tag') {
                     this.entitiesMap.set(folder.id, { ...existing, properties: { ...existing.properties, folderType: 'tag' } });
                 }
+            }
+        });
+    }
+
+    private ensureRootCanvas() {
+        const existing = this.entitiesMap.get('root');
+        const rootCanvas: Entity = {
+            ...(existing ?? {}),
+            id: 'root',
+            parentId: null,
+            schemaVersion: CURRENT_ENTITY_SCHEMA_VERSION,
+            type: 'canvas',
+            name: 'root',
+            description: existing?.description ?? 'System root canvas.',
+            properties: existing?.properties ?? {},
+            tags: existing?.tags ?? [],
+            database: 'general',
+        };
+
+        if (!existing || JSON.stringify(existing) !== JSON.stringify(rootCanvas)) {
+            this.entitiesMap.set('root', rootCanvas);
+        }
+    }
+
+    private ensureEntitySchemaVersions() {
+        this.entitiesMap.forEach((entity, id) => {
+            const normalizedEntity = withCurrentEntitySchema(entity);
+            if (normalizedEntity.schemaVersion !== entity.schemaVersion) {
+                this.entitiesMap.set(id, normalizedEntity);
             }
         });
     }
@@ -175,38 +218,68 @@ export class YjsStore {
         return name;
     }
 
-    addEntity(entity: Entity) {
-        entity.name = this.getUniqueName(entity.name, entity.id);
-        this.entitiesMap.set(entity.id, entity);
+    addEntity(entity: Entity): boolean {
+        const normalizedEntity = withCurrentEntitySchema({
+            ...entity,
+            name: this.getUniqueName(entity.name, entity.id),
+        });
+        if (!this.canModifyStoredEntity(normalizedEntity)) {
+            console.warn(`Blocked addEntity for "${normalizedEntity.name}": insufficient permissions`);
+            return false;
+        }
+        this.entitiesMap.set(normalizedEntity.id, normalizedEntity);
         // Update cache
-        this.nameCache.set(entity.name.toLowerCase(), entity.id);
+        this.nameCache.set(normalizedEntity.name.toLowerCase(), normalizedEntity.id);
+        return true;
     }
 
-    updateEntity(id: string, partial: Partial<Entity>) {
+    updateEntity(id: string, partial: Partial<Entity>): boolean {
         const existing = this.entitiesMap.get(id);
         if (existing) {
+            const nextEntity = withCurrentEntitySchema({ ...existing, ...partial });
+            if (!this.canModifyStoredEntity(existing) || !this.canModifyStoredEntity(nextEntity)) {
+                console.warn(`Blocked updateEntity for "${existing.name}": insufficient permissions`);
+                return false;
+            }
             // If name is changing, update the cache
             if (partial.name && partial.name !== existing.name) {
                 this.nameCache.delete(existing.name.toLowerCase());
                 partial.name = this.getUniqueName(partial.name, id);
                 this.nameCache.set(partial.name.toLowerCase(), id);
             }
-            this.entitiesMap.set(id, { ...existing, ...partial });
+            this.entitiesMap.set(id, withCurrentEntitySchema({ ...existing, ...partial }));
+            return true;
         }
+        return false;
     }
 
     /**
      * Cascading delete: removes the entity and all descendants recursively.
      * Also cleans up tag references from other entities.
      */
-    deleteEntity(id: string) {
+    deleteEntity(id: string): boolean {
+        const rootEntity = this.entitiesMap.get(id);
+        if (!rootEntity || !this.canModifyStoredEntity(rootEntity)) {
+            console.warn(`Blocked deleteEntity for "${rootEntity?.name ?? id}": insufficient permissions`);
+            return false;
+        }
+
         const idsToDelete = this.collectDescendants(id);
         idsToDelete.add(id);
+
+        for (const delId of idsToDelete) {
+            const ent = this.entitiesMap.get(delId);
+            if (ent && !this.canModifyStoredEntity(ent)) {
+                console.warn(`Blocked deleteEntity for "${rootEntity.name}": descendant "${ent.name}" is protected`);
+                return false;
+            }
+        }
 
         // Clean up tag references from any entity that references deleted IDs
         this.entitiesMap.forEach((ent) => {
             if (idsToDelete.has(ent.id)) return;
             if (ent.tags && ent.tags.some(tagId => idsToDelete.has(tagId))) {
+                if (!this.canModifyStoredEntity(ent)) return;
                 this.entitiesMap.set(ent.id, {
                     ...ent,
                     tags: ent.tags.filter(tagId => !idsToDelete.has(tagId))
@@ -222,6 +295,7 @@ export class YjsStore {
             }
             this.entitiesMap.delete(delId);
         }
+        return true;
     }
 
     /** Collect all descendant entity IDs recursively */
@@ -259,7 +333,7 @@ export class YjsStore {
             cloned.database = targetDb;
         }
 
-        this.addEntity(cloned);
+        if (!this.addEntity(cloned)) return null;
 
         // Recursively clone children
         this.entitiesMap.forEach((ent) => {

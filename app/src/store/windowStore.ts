@@ -52,7 +52,7 @@ export const useWindowStore = create<WindowStoreState>((set, get) => ({
                         vh / 2 - existing.y * scale
                     );
                     // Also update Konva Stage directly (no render delay)
-                    (window as any).__vibeSetStageCamera?.(scale, vw / 2 - existing.x * scale, vh / 2 - existing.y * scale);
+                    window.__vibeSetStageCamera?.(scale, vw / 2 - existing.x * scale, vh / 2 - existing.y * scale);
                     // Focus even if already focused (force zIndex bump for visual feedback)
                     const newZIndex = highestZIndex + 1;
                     set({

@@ -21,6 +21,7 @@ import {
     connectFileWatcher,
     disconnectFileWatcher,
     getIsHost,
+    listPlayers,
     type DatabaseType,
     type WorldMeta
 } from './fileApi';
@@ -45,6 +46,15 @@ let _isActive = false;
 
 /** Current player name (for user DB folder) */
 let _playerName: string = 'host';
+
+function getUserEntityPlayer(entity?: Entity): string | undefined {
+    const owner = entity?.properties?._playerOwner;
+    if (typeof owner === 'string' && owner.trim()) {
+        return owner.trim();
+    }
+
+    return _playerName;
+}
 
 // ─── Callbacks ───
 
@@ -101,9 +111,34 @@ export async function loadWorld(
         const generalEntities = await listEntities('general');
         console.log(`📂 Loaded ${generalEntities.length} entities from general DB`);
 
-        // Load user (personal inventory) entities
-        const userEntities = await listEntities('user', _playerName);
-        console.log(`📂 Loaded ${userEntities.length} entities from user DB (${_playerName})`);
+        // Load user (personal inventory) entities for the host
+        const hostUserEntities = await listEntities('user', _playerName);
+        console.log(`📂 Loaded ${hostUserEntities.length} entities from user DB (${_playerName})`);
+
+        // Load ALL player user entities (for GM visibility)
+        const allPlayers = await listPlayers();
+        const allUserEntities: Entity[] = [];
+        for (const playerName of allPlayers) {
+            if (playerName === _playerName) continue; // Already loaded above
+            try {
+                const playerEntities = await listEntities('user', playerName);
+                // Tag each entity with the owning player
+                const tagged = playerEntities.map(e => ({
+                    ...e,
+                    properties: { ...e.properties, _playerOwner: playerName },
+                }));
+                allUserEntities.push(...tagged);
+                console.log(`📂 Loaded ${playerEntities.length} entities from user DB (${playerName})`);
+            } catch (err) {
+                console.warn(`⚠️ Could not load user entities for ${playerName}:`, err);
+            }
+        }
+
+        // Combine all user entities (host first, then other players)
+        const userEntities = [
+            ...hostUserEntities.map(e => ({ ...e, properties: { ...e.properties, _playerOwner: _playerName } })),
+            ...allUserEntities,
+        ];
 
         // Load GM entities
         const gmEntities = await listEntities('gm');
@@ -182,7 +217,7 @@ function setupYjsObserver(): void {
                         const oldEntity = change.oldValue as Entity;
                         const oldDb = oldEntity.database || 'general';
                         if (oldDb !== db) {
-                            const player = oldDb === 'user' ? _playerName : undefined;
+                            const player = oldDb === 'user' ? getUserEntityPlayer(oldEntity) : undefined;
                             deleteEntityFile(oldDb, key, player).catch((err) => {
                                 console.warn(`⚠️ Failed to delete old file after moving DB for ${key}:`, err);
                             });
@@ -195,9 +230,10 @@ function setupYjsObserver(): void {
                 // Entity was deleted from Yjs → delete the file
                 // We need to check dirty map for the db, or default to general
                 const prevDirty = dirtyEntities.get(key);
-                const db = prevDirty?.db || 'general';
+                const oldEntity = change.oldValue as Entity | undefined;
+                const db = (oldEntity?.database || prevDirty?.db || 'general') as DatabaseType;
                 dirtyEntities.delete(key);
-                const player = db === 'user' ? _playerName : undefined;
+                const player = db === 'user' ? getUserEntityPlayer(oldEntity || prevDirty?.entity) : undefined;
                 deleteEntityFile(db, key, player).catch((err) => {
                     console.warn(`⚠️ Failed to delete file for ${key}:`, err);
                 });
@@ -239,7 +275,7 @@ async function flushDirtyEntities(): Promise<void> {
     let errors = 0;
     for (const { entity, db } of batch.values()) {
         try {
-            const player = db === 'user' ? _playerName : undefined;
+            const player = db === 'user' ? getUserEntityPlayer(entity) : undefined;
             await saveEntity(db, entity, player);
         } catch (err) {
             errors++;

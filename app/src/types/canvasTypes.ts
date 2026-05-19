@@ -75,9 +75,6 @@ export interface DrawElement {
 
   // Description / inner text for shapes (double-click to edit)
   description?: string;
-
-  // For type='frame': editing mode for label
-  _editingLabel?: boolean;
 }
 
 // ─── Tool types ───

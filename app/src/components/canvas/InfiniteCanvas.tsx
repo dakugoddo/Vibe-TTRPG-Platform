@@ -1,6 +1,6 @@
 import { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo, memo } from 'react';
 import { Stage, Layer, Text, Group, Circle, Line, Rect, Ellipse, RegularPolygon, Image as KonvaImage, Shape } from 'react-konva';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Trash2 } from 'lucide-react';
 import Konva from 'konva';
 import useImage from 'use-image';
 import { useCanvasStore } from '../../store/canvasStore';
@@ -9,10 +9,10 @@ import { yjsStore } from '../../store/yjsStore';
 import { useEntitiesByParent } from '../../hooks/useEntities';
 import { useWindowStore } from '../../store/windowStore';
 import { useCanvasSyncStore, PING_DURATION_MS } from '../../store/canvasSyncStore';
+import { useUIStore } from '../../store/uiStore';
 import type { Entity } from '../../types';
 import type { DrawElement, LineCap, StrokeStyle } from '../../types/canvasTypes';
 import { getKonvaDash, getArrowPoints, translateElement, elementsInRect, getKonvaFontFamily, getElementBounds, getChildrenOfFrame } from '../../types/canvasTypes';
-import type { RemoteCursor } from '../../store/canvasSyncStore';
 import type { FogReveal } from '../../types/canvasTypes';
 
 const SCALE_BY = 1.1;
@@ -23,11 +23,11 @@ const RDP_EPSILON = 3; // Ramer-Douglas-Peucker simplification tolerance
 
 // ─── Utility: Simple throttle for drag operations ───
 
-function throttle<T extends (...args: any[]) => any>(fn: T, limitMs: number): T {
+function throttle<Args extends unknown[]>(fn: (...args: Args) => void, limitMs: number): (...args: Args) => void {
   let lastCall = 0;
   let rafId: number | null = null;
-  let pendingArgs: any[] | null = null;
-  return ((...args: any[]) => {
+  let pendingArgs: Args | null = null;
+  return ((...args: Args) => {
     pendingArgs = args;
     if (rafId !== null) return;
     const now = Date.now();
@@ -44,7 +44,7 @@ function throttle<T extends (...args: any[]) => any>(fn: T, limitMs: number): T 
         }
       });
     }
-  }) as T;
+  });
 }
 
 // ─── Utility: Point-in-polygon test (ray casting) ───
@@ -112,10 +112,12 @@ function rdpSimplify(points: number[], epsilon: number): number[] {
 // ─── Helper: Get/save draw elements from canvas entity ───
 
 function getDrawElements(_activeCanvasId: string): DrawElement[] {
+  void _activeCanvasId;
   return useCanvasSyncStore.getState().elements;
 }
 
 function saveDrawElements(_activeCanvasId: string, elements: DrawElement[]): void {
+  void _activeCanvasId;
   useCanvasSyncStore.getState().syncElementsArray(elements);
 }
 
@@ -977,6 +979,7 @@ const FOG_GM_OPACITY = 0.35;
 const FOG_PAD_FACTOR = 2.5;
 /** Maximum texture dimension in pixels (balance quality vs memory) */
 const FOG_MAX_TEX = 4096;
+const SHARED_FOG_CANVAS = typeof document !== 'undefined' ? document.createElement('canvas') : null;
 
 function FogOfWarLayer({
   fogReveals,
@@ -998,10 +1001,10 @@ function FogOfWarLayer({
   const gmFogVisible = useCanvasDrawStore((s) => s.gmFogVisible);
   const playerFogVisible = useCanvasDrawStore((s) => s.playerFogVisible);
   const shouldShow = isGM ? gmFogVisible : playerFogVisible;
+  const fogLayerRef = useRef<Konva.Layer>(null);
 
   // Persistent offscreen canvas (reused, not recreated)
-  const fogCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  if (!fogCanvasRef.current) fogCanvasRef.current = document.createElement('canvas');
+  const fogCanvas = SHARED_FOG_CANVAS;
 
   // ── Calculate world area ──
   // Viewport in world coords
@@ -1022,12 +1025,11 @@ function FogOfWarLayer({
   const texH = Math.min(Math.round(stageHeight * FOG_PAD_FACTOR * 0.8), FOG_MAX_TEX);
 
   // ── Draw fog onto offscreen canvas (useLayoutEffect for synchronous update before paint) ──
-  const [fogVersion, setFogVersion] = useState(0);
   useLayoutEffect(() => {
-    if (!shouldShow) return;
+    if (!shouldShow || !fogCanvas) return;
     // Guard against zero dimensions (stage not yet initialized)
     if (texW <= 0 || texH <= 0) return;
-    const canvas = fogCanvasRef.current!;
+    const canvas = fogCanvas;
     if (canvas.width !== texW || canvas.height !== texH) {
       canvas.width = texW;
       canvas.height = texH;
@@ -1039,7 +1041,7 @@ function FogOfWarLayer({
 
     // If no fog patches, canvas stays transparent (no fog at all)
     if (!fogReveals || fogReveals.length === 0) {
-      setFogVersion(v => v + 1);
+      fogLayerRef.current?.batchDraw();
       return;
     }
 
@@ -1067,16 +1069,15 @@ function FogOfWarLayer({
         ctx.fill();
       }
     }
-    setFogVersion(v => v + 1);
-  }, [shouldShow, fogReveals, worldLeft, worldTop, worldW, worldH, texW, texH]);
+    fogLayerRef.current?.batchDraw();
+  }, [shouldShow, fogReveals, worldLeft, worldTop, worldW, worldH, texW, texH, fogCanvas]);
 
-  if (!shouldShow) return null;
+  if (!shouldShow || !fogCanvas) return null;
 
   return (
-    <Layer listening={false} opacity={isGM ? FOG_GM_OPACITY : 1}>
+    <Layer ref={fogLayerRef} listening={false} opacity={isGM ? FOG_GM_OPACITY : 1}>
       <KonvaImage
-        key={fogVersion}
-        image={fogCanvasRef.current}
+        image={fogCanvas}
         x={worldLeft}
         y={worldTop}
         width={worldW}
@@ -1123,6 +1124,7 @@ export function InfiniteCanvas() {
     setEditingFrameLabelId,
     setDraggingGlobal,
   } = useCanvasDrawStore();
+  const { openConfirm } = useUIStore();
   
   // ─── Grid settings ───
   const gridEnabled = useCanvasDrawStore((s) => s.gridEnabled);
@@ -1132,8 +1134,6 @@ export function InfiniteCanvas() {
   // ─── Fog of War ───
   const fogReveals = useCanvasSyncStore((s) => s.fogReveals);
   const fogTool = useCanvasDrawStore((s) => s.fogTool);
-  const fogEditMode = useCanvasDrawStore((s) => s.fogEditMode);
-  const setFogEditMode = useCanvasDrawStore((s) => s.setFogEditMode);
   const playerFogVisible = useCanvasDrawStore((s) => s.playerFogVisible);
   const togglePlayerFog = useCanvasDrawStore((s) => s.togglePlayerFog);
   const isGM = yjsStore.localRole === 'gm';
@@ -1153,6 +1153,17 @@ export function InfiniteCanvas() {
   const setLocalCursor = useCanvasSyncStore((s) => s.setLocalCursor);
   const sendPing = useCanvasSyncStore((s) => s.sendPing);
   const cursorThrottleRef = useRef(0);
+  const [cursorNow, setCursorNow] = useState(() => Date.now());
+  const hasRemotePings = useMemo(
+    () => Object.values(remoteCursors).some(cursor => Boolean(cursor.ping)),
+    [remoteCursors]
+  );
+
+  useEffect(() => {
+    if (!hasRemotePings) return;
+    const timer = window.setInterval(() => setCursorNow(Date.now()), 100);
+    return () => window.clearInterval(timer);
+  }, [hasRemotePings]);
   
   // ─── Ping: 'G' key hold state ───
   const pingKeyRef = useRef(false);
@@ -1256,8 +1267,8 @@ export function InfiniteCanvas() {
       }
     };
     // Store on window for cross-component access (avoids prop drilling)
-    (window as any).__vibeSetStageCamera = handler;
-    return () => { delete (window as any).__vibeSetStageCamera; };
+    window.__vibeSetStageCamera = handler;
+    return () => { delete window.__vibeSetStageCamera; };
   }, []);
 
   // ─── Keyboard shortcuts ───
@@ -1383,13 +1394,22 @@ export function InfiniteCanvas() {
         case 'delete':
         case 'backspace':
           if (selectedElementIds.length > 0) {
-            const elements = getDrawElements(activeCanvasId);
-            pushHistory(elements);
-            const filtered = elements.filter(
-              (el) => !selectedElementIds.includes(el.id)
-            );
-            saveDrawElements(activeCanvasId, filtered);
-            clearSelection();
+            e.preventDefault();
+            openConfirm({
+              title: 'Удаление элементов',
+              description: `Вы уверены, что хотите удалить ${selectedElementIds.length} элемент(ов) с канваса?`,
+              confirmText: 'Удалить',
+              isDestructive: true,
+              onConfirm: () => {
+                const elements = getDrawElements(activeCanvasId);
+                pushHistory(elements);
+                const filtered = elements.filter(
+                  (el) => !selectedElementIds.includes(el.id)
+                );
+                saveDrawElements(activeCanvasId, filtered);
+                clearSelection();
+              }
+            });
           }
           break;
       }
@@ -1406,7 +1426,7 @@ export function InfiniteCanvas() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [activeCanvasId, selectedElementIds, setTool, clearSelection, undo, redo, pushHistory, copyToClipboard, getClipboard, selectElements]);
+  }, [activeCanvasId, selectedElementIds, setTool, clearSelection, undo, redo, pushHistory, copyToClipboard, getClipboard, selectElements, openConfirm]);
 
   // ─── Wheel zoom ───
   // ─── Wheel zoom (throttled store sync for smooth pinned windows) ───
@@ -1443,7 +1463,7 @@ export function InfiniteCanvas() {
     throttledSetTransform(newScale, newPos.x, newPos.y);
   };
 
-  const handleDragMove = (_e: Konva.KonvaEventObject<DragEvent>) => {
+  const handleDragMove = () => {
     // Sync store during hand-tool pan so pinned windows follow camera
     const stage = stageRef.current;
     if (stage) {
@@ -1595,7 +1615,7 @@ export function InfiniteCanvas() {
       }
 
       const elements = getDrawElements(activeCanvasId);
-      let newSnapLines: { x?: number; y?: number }[] = [];
+      const newSnapLines: { x?: number; y?: number }[] = [];
       const currentScale = useCanvasStore.getState().scale;
 
       // ─── Snap-to-Grid (before element-to-element smart snap) ───
@@ -2124,7 +2144,7 @@ export function InfiniteCanvas() {
         return;
       }
     },
-    [activeTool, currentStyle, drawElements.length, getCanvasPoint, startDrawing, clearSelection, handleMiddlePanStart, activeCanvasId, pushHistory, startMarquee, setTool, selectElement, sendPing]
+    [activeTool, currentStyle, drawElements.length, getCanvasPoint, startDrawing, clearSelection, handleMiddlePanStart, activeCanvasId, pushHistory, startMarquee, setTool, selectElement, sendPing, isGM]
   );
 
   const handleMouseMove = useCallback(
@@ -2255,7 +2275,7 @@ export function InfiniteCanvas() {
         });
       }
     },
-    [activeTool, drawingElement, getCanvasPoint, updateDrawing, handleMiddlePanMove, isDraggingElement, handleSelectDragMove, updateMarquee, setLocalCursor]
+    [activeTool, drawingElement, getCanvasPoint, updateDrawing, handleMiddlePanMove, isDraggingElement, handleSelectDragMove, updateMarquee, setLocalCursor, isGM]
   );
 
   const handleMouseUp = useCallback(
@@ -2425,7 +2445,7 @@ export function InfiniteCanvas() {
         }, 100);
       }
     },
-    [activeCanvasId, activeTool, finishDrawing, handleMiddlePanEnd, isDraggingElement, handleSelectDragEnd, finishMarquee, selectElements, pushHistory, selectElement, setTool, setEditingFrameLabelId, clearSelection]
+    [activeCanvasId, activeTool, finishDrawing, handleMiddlePanEnd, isDraggingElement, handleSelectDragEnd, finishMarquee, selectElements, pushHistory, selectElement, setTool, setEditingFrameLabelId, clearSelection, getCanvasPoint]
   );
 
   // ─── Select mode: double click to edit text ───
@@ -3158,7 +3178,7 @@ export function InfiniteCanvas() {
         {/* Layer 2.5: Remote player cursors + ping pulses (Awareness) */}
         <Layer listening={false}>
           {Object.entries(remoteCursors).map(([peerId, cursor]) => {
-            const pingActive = cursor.ping && (Date.now() - cursor.ping.timestamp < PING_DURATION_MS);
+            const pingActive = cursor.ping && (cursorNow - cursor.ping.timestamp < PING_DURATION_MS);
             return (
               <Group key={peerId}>
                 {/* Ping pulse at ping location */}
@@ -3486,6 +3506,25 @@ export function InfiniteCanvas() {
             >
               <ExternalLink size={14} className="text-white/40 group-hover:text-white/80 transition-colors" />{' '}
               Открыть окно области
+            </button>
+            <div className="border-t border-white/5 my-1 mx-2" />
+            <button
+              className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center gap-2 group"
+              onClick={() => {
+                setPortalMenu(null);
+                openConfirm({
+                  title: 'Удаление портала',
+                  description: `Вы уверены, что хотите удалить портал «${portalMenu.portal.name}»?`,
+                  confirmText: 'Удалить',
+                  isDestructive: true,
+                  onConfirm: () => {
+                    yjsStore.deleteEntity(portalMenu.portal.id);
+                  }
+                });
+              }}
+            >
+              <Trash2 size={14} className="text-red-500/50 group-hover:text-red-400 transition-colors" />{' '}
+              Удалить портал
             </button>
           </div>
         </>

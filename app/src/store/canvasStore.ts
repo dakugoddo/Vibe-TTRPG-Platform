@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { useCanvasDrawStore } from './canvasDrawStore';
 import { useCanvasSyncStore } from './canvasSyncStore';
+import { useUIStore } from './uiStore';
 
 interface CanvasState {
     activeCanvasId: string;
@@ -25,9 +26,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
         const isDirty = useCanvasDrawStore.getState().isCanvasDirty;
         if (isDirty) {
-            const confirmed = window.confirm("Вы внесли изменения на этом экране. При переходе история отмен (Undo) для этого экрана будет очищена. Продолжить?");
-            if (!confirmed) return;
-            useCanvasSyncStore.getState().clearHistory();
+            useUIStore.getState().openConfirm({
+                title: 'Переход между областями',
+                description: 'История отмены для текущей области будет очищена. Продолжить?',
+                confirmText: 'Продолжить',
+                onConfirm: () => {
+                    const latest = get();
+                    if (latest.activeCanvasId === canvasId) return;
+                    useCanvasSyncStore.getState().clearHistory();
+                    set({
+                        activeCanvasId: canvasId,
+                        canvasHistory: [...latest.canvasHistory, latest.activeCanvasId],
+                        scale: 1,
+                        offset: { x: 0, y: 0 },
+                    });
+                },
+            });
+            return;
         }
 
         set({
@@ -44,9 +59,25 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
         const isDirty = useCanvasDrawStore.getState().isCanvasDirty;
         if (isDirty) {
-            const confirmed = window.confirm("Вы внесли изменения на этом экране. При возврате назад история отмен (Undo) для текущего экрана будет очищена. Продолжить?");
-            if (!confirmed) return;
-            useCanvasSyncStore.getState().clearHistory();
+            useUIStore.getState().openConfirm({
+                title: 'Возврат к прошлой области',
+                description: 'История отмены для текущей области будет очищена. Продолжить?',
+                confirmText: 'Вернуться',
+                onConfirm: () => {
+                    const latest = get();
+                    if (latest.canvasHistory.length === 0) return;
+                    useCanvasSyncStore.getState().clearHistory();
+                    const newHistory = [...latest.canvasHistory];
+                    const prevCanvas = newHistory.pop()!;
+                    set({
+                        activeCanvasId: prevCanvas,
+                        canvasHistory: newHistory,
+                        scale: 1,
+                        offset: { x: 0, y: 0 },
+                    });
+                },
+            });
+            return;
         }
 
         const newHistory = [...canvasHistory];

@@ -38,6 +38,10 @@ function assertDeepEqual(actual: unknown, expected: unknown, message: string) {
     }
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+    return value && typeof value === 'object' ? value as Record<string, unknown> : {};
+}
+
 // ─── Test Entities ───
 
 const noteEntity: Entity = {
@@ -124,6 +128,26 @@ const canvasEntity: Entity = {
     imageId: 'tavern_map.jpg',
     properties: {
         grid: { size: 40, snap: true },
+        drawElements: [
+            {
+                id: 'draw_1',
+                type: 'rectangle',
+                x: 10,
+                y: 20,
+                width: 120,
+                height: 80,
+                stroke: '#ffffff',
+                strokeWidth: 2,
+                strokeStyle: 'solid',
+                opacity: 1,
+                startCap: 'none',
+                endCap: 'none',
+                zIndex: 0,
+            },
+        ],
+        fogReveals: [
+            { id: 'fog_1', type: 'rect', x: 0, y: 0, width: 100, height: 100 },
+        ],
         tokens: [
             { entity: 'Торин Железнобокий', x: 320, y: 480 },
         ],
@@ -163,9 +187,9 @@ console.log('\n⚔️ Test 2: Character roundtrip');
     assert(entity.type === 'character', 'Parsed type is character');
     assert(entity.name === 'Торин Железнобокий', 'Parsed name matches');
     assert(entity.imageId === 'warrior.png', 'Image preserved');
-    assert((entity.properties.strength as any)?.base === 18, 'Strength stat preserved');
-    assert((entity.properties.dexterity as any)?.base === 14, 'Dexterity stat preserved');
-    assert((entity.properties.hp as any)?.current === 32, 'HP current preserved');
+    assert(asRecord(entity.properties.strength).base === 18, 'Strength stat preserved');
+    assert(asRecord(entity.properties.dexterity).base === 14, 'Dexterity stat preserved');
+    assert(asRecord(entity.properties.hp).current === 32, 'HP current preserved');
 }
 
 // Test 3: Object roundtrip
@@ -193,7 +217,8 @@ console.log('\n🏷️ Test 4: Tag roundtrip');
     assert(entity.type === 'tag', 'Parsed type is tag');
     assert(entity.properties.category === 'status', 'Category preserved');
     assert(Array.isArray(entity.properties.modifiers), 'Modifiers is array');
-    const mod = (entity.properties.modifiers as any[])[0];
+    const modifiers = Array.isArray(entity.properties.modifiers) ? entity.properties.modifiers : [];
+    const mod = asRecord(modifiers[0]);
     assert(mod?.stat === 'dexterity', 'First modifier stat preserved');
     assert(mod?.value === -4, 'First modifier value preserved');
 }
@@ -208,7 +233,7 @@ console.log('\n✨ Test 5: Ability roundtrip');
     const { entity } = parseEntityFile(md, 'Огненный Шар');
     assert(entity.type === 'ability', 'Parsed type is ability');
     assert(entity.properties.dice === '8d6', 'Dice preserved');
-    assert((entity.properties.cost as any)?.mana === 6, 'Cost mana preserved');
+    assert(asRecord(entity.properties.cost).mana === 6, 'Cost mana preserved');
 }
 
 // Test 6: Canvas roundtrip
@@ -219,8 +244,12 @@ console.log('\n🗺️ Test 6: Canvas roundtrip');
 
     const { entity } = parseEntityFile(md, 'Таверна');
     assert(entity.type === 'canvas', 'Parsed type is canvas');
-    assert((entity.properties.grid as any)?.size === 40, 'Grid size preserved');
+    assert(asRecord(entity.properties.grid).size === 40, 'Grid size preserved');
     assert(Array.isArray(entity.properties.tokens), 'Tokens is array');
+    assert(Array.isArray(entity.properties.drawElements), 'Draw elements is array');
+    const drawElements = Array.isArray(entity.properties.drawElements) ? entity.properties.drawElements : [];
+    assert(asRecord(drawElements[0]).id === 'draw_1', 'Draw element id preserved');
+    assert(Array.isArray(entity.properties.fogReveals), 'Fog patches is array');
 }
 
 // Test 7: Filename generation

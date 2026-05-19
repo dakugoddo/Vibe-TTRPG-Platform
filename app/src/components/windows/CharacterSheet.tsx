@@ -4,6 +4,8 @@ import { useEntity, useEntitiesByParent } from '../../hooks/useEntities';
 import { yjsStore } from '../../store/yjsStore';
 import { AttributeBlock } from './blocks/AttributeBlock';
 import { InventoryBlock } from './blocks/InventoryBlock';
+import { SkillsBlock } from './blocks/SkillsBlock';
+import { CompetenciesBlock } from './blocks/CompetenciesBlock';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { Edit2, Check } from 'lucide-react';
 
@@ -16,7 +18,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
 
     const entity = useEntity(entityId);
     const children = useEntitiesByParent(entityId);
-    const [activeTab, setActiveTab] = useState<'stats' | 'inventory' | 'notes'>('stats');
+    const [activeTab, setActiveTab] = useState<'stats' | 'skills' | 'competencies' | 'inventory' | 'notes'>('stats');
     const [isEditingNotes, setIsEditingNotes] = useState(false);
 
     if (!entity) return null;
@@ -26,6 +28,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
     };
 
     const inventoryCount = children.filter(e => e.type === 'object').length;
+    const competenciesCount = children.filter(e => e.type === 'competency').length;
 
     return (
         <div className="flex flex-col h-full animate-in fade-in duration-200">
@@ -36,6 +39,18 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                     className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${activeTab === 'stats' ? 'text-white border-white bg-white/10' : 'text-white/40 border-transparent hover:text-white/80 hover:bg-white/5'}`}
                 >
                     Stats
+                </button>
+                <button
+                    onClick={() => setActiveTab('skills')}
+                    className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${activeTab === 'skills' ? 'text-white border-white bg-white/10' : 'text-white/40 border-transparent hover:text-white/80 hover:bg-white/5'}`}
+                >
+                    Навыки
+                </button>
+                <button
+                    onClick={() => setActiveTab('competencies')}
+                    className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${activeTab === 'competencies' ? 'text-white border-white bg-white/10' : 'text-white/40 border-transparent hover:text-white/80 hover:bg-white/5'}`}
+                >
+                    Компетенции ({competenciesCount})
                 </button>
                 <button
                     onClick={() => setActiveTab('inventory')}
@@ -65,6 +80,14 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                     <AttributeBlock entity={entity} />
                 )}
 
+                {activeTab === 'skills' && (
+                    <SkillsBlock entity={entity} />
+                )}
+
+                {activeTab === 'competencies' && (
+                    <CompetenciesBlock entity={entity} />
+                )}
+
                 {activeTab === 'inventory' && (
                     <InventoryBlock entity={entity} />
                 )}
@@ -81,7 +104,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                             />
                         ) : (
                             <div className="flex-1 bg-black/20 rounded-lg border border-transparent p-3 backdrop-blur-md text-white/80" onDoubleClick={() => setIsEditingNotes(true)}>
-                                {entity.description ? <MarkdownRenderer content={entity.description} /> : <span className="text-white/30 italic cursor-pointer">No notes provided. Double click to text.</span>}
+                                {entity.description ? <MarkdownRenderer content={entity.description} entityId={entity.id} /> : <span className="text-white/30 italic cursor-pointer">No notes provided. Double click to text.</span>}
                             </div>
                         )}
                     </div>
@@ -89,7 +112,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
             </div>
 
             {
-                !isFullMode && activeTab !== 'notes' && (
+                !isFullMode && activeTab !== 'notes' && activeTab !== 'skills' && activeTab !== 'competencies' && (
                     <div className="mt-4 pt-3 border-t border-white/10 text-[10px] text-white/40 text-center italic">
                         Expand window to see more details.
                     </div>
@@ -98,4 +121,3 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
         </div >
     );
 }
-

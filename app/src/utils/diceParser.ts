@@ -3,24 +3,59 @@ export interface DiceRollResult {
     total: number;
     rolls: number[];
     modifier: number;
-    notation: string; // e.g., "2d6+3"
-    faces: number;    // Number of sides on the dice
+    notation: string; // e.g. "2d6+3"
+    faces: number;
     error?: string;
-    isCritMax?: boolean;  // All dice rolled max
-    isCritMin?: boolean;  // All dice rolled 1
+    isCritMax?: boolean;
+    isCritMin?: boolean;
 }
 
-export function parseAndRollDice(command: string): DiceRollResult | null {
+export type RandomInt = (minInclusive: number, maxInclusive: number) => number;
+
+function defaultRandomInt(minInclusive: number, maxInclusive: number): number {
+    return Math.floor(Math.random() * (maxInclusive - minInclusive + 1)) + minInclusive;
+}
+
+function rollDie(faces: number, randomInt: RandomInt): number {
+    const roll = randomInt(1, faces);
+    return Math.max(1, Math.min(faces, Math.trunc(roll)));
+}
+
+/**
+ * Roll N d6 dice directly (for skill/competency checks).
+ * Returns a DiceRollResult suitable for chat display.
+ */
+export function rollD6Pool(count: number, label?: string, randomInt: RandomInt = defaultRandomInt): DiceRollResult {
+    const safeCount = Math.max(0, Math.min(100, count));
+    const rolls: number[] = [];
+
+    for (let i = 0; i < safeCount; i++) {
+        rolls.push(rollDie(6, randomInt));
+    }
+
+    const total = rolls.reduce((a, b) => a + b, 0);
+    const notation = label ? `${label}: ${safeCount}d6` : `${safeCount}d6`;
+
+    return {
+        rawCommand: notation,
+        total,
+        rolls,
+        modifier: 0,
+        notation,
+        faces: 6,
+        isCritMax: safeCount > 0 && rolls.every(r => r === 6),
+        isCritMin: safeCount > 0 && rolls.every(r => r === 1),
+    };
+}
+
+export function parseAndRollDice(command: string, randomInt: RandomInt = defaultRandomInt): DiceRollResult | null {
     const trimmed = command.trim();
     if (!trimmed.startsWith('/r ') && !trimmed.startsWith('/roll ')) {
         return null;
     }
 
     const notationRaw = trimmed.replace(/^\/r\s+/, '').replace(/^\/roll\s+/, '').trim();
-    // Remove spaces from notation for easier parsing
     const notation = notationRaw.replace(/\s+/g, '').toLowerCase();
-
-    // Regex to match formats like '2d6', 'd20', '3d8+5', '1d10-2'
     const match = notation.match(/^(\d*)d(\d+)([+-]\d+)?$/);
 
     if (!match) {
@@ -31,7 +66,7 @@ export function parseAndRollDice(command: string): DiceRollResult | null {
             modifier: 0,
             notation: notationRaw,
             faces: 0,
-            error: "Неверный формат дайсов. Допустимый формат: 1d20, 2d6+3, d100."
+            error: 'Неверный формат дайсов. Допустимый формат: 1d20, 2d6+3, d100.',
         };
     }
 
@@ -51,11 +86,11 @@ export function parseAndRollDice(command: string): DiceRollResult | null {
             modifier: 0,
             notation: notationRaw,
             faces: 0,
-            error: "Количество дайсов должно быть от 1 до 100."
+            error: 'Количество дайсов должно быть от 1 до 100.',
         };
     }
 
-    if (faces <= 1 || Math.max(faces) > 1000) {
+    if (faces <= 1 || faces > 1000) {
         return {
             rawCommand: command,
             total: 0,
@@ -63,7 +98,7 @@ export function parseAndRollDice(command: string): DiceRollResult | null {
             modifier: 0,
             notation: notationRaw,
             faces: 0,
-            error: "Грани дайса должны быть от 2 до 1000."
+            error: 'Грани дайса должны быть от 2 до 1000.',
         };
     }
 
@@ -71,7 +106,7 @@ export function parseAndRollDice(command: string): DiceRollResult | null {
     let total = 0;
 
     for (let i = 0; i < count; i++) {
-        const roll = Math.floor(Math.random() * faces) + 1;
+        const roll = rollDie(faces, randomInt);
         rolls.push(roll);
         total += roll;
     }
@@ -86,6 +121,6 @@ export function parseAndRollDice(command: string): DiceRollResult | null {
         faces,
         notation: `${count}d${faces}${modStr ? (modifier > 0 ? '+' : '') + modifier : ''}`,
         isCritMax: rolls.length > 0 && rolls.every(r => r === faces),
-        isCritMin: rolls.length > 0 && rolls.every(r => r === 1)
+        isCritMin: rolls.length > 0 && rolls.every(r => r === 1),
     };
 }

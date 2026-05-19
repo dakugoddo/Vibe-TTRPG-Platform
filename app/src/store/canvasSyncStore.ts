@@ -2,8 +2,17 @@ import { create } from 'zustand';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { IndexeddbPersistence } from 'y-indexeddb';
+import type { Entity } from '../types';
 import type { DrawElement, FogReveal } from '../types/canvasTypes';
 import { fogRevealsOverlap } from '../types/canvasTypes';
+import {
+    CANVAS_DRAW_ELEMENTS_PROPERTY,
+    CANVAS_FOG_REVEALS_PROPERTY,
+    readCanvasDrawElements,
+    readCanvasFogReveals,
+    sanitizeDrawElementForPersistence,
+    sanitizeFogRevealForPersistence,
+} from '../utils/canvasPersistence';
 import { useCanvasDrawStore } from './canvasDrawStore';
 import { yjsStore } from './yjsStore';
 
@@ -26,6 +35,12 @@ const CURSOR_COLORS = [
     '#f87171', '#fb923c', '#facc15', '#4ade80', '#22d3ee',
     '#60a5fa', '#a78bfa', '#f472b6', '#94a3b8', '#e879f9',
 ];
+const awarenessHandlers = new WeakMap<WebsocketProvider, () => void>();
+const entityChangeHandlers = new WeakMap<Y.Doc, (event: Y.YMapEvent<Entity>) => void>();
+const CANVAS_ENTITY_WRITEBACK_DELAY_MS = 1000;
+const canvasEntityWriteTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const hydratingCanvasIds = new Set<string>();
+const mirroringCanvasIds = new Set<string>();
 
 /** Deterministic color from player ID */
 function getPlayerColor(playerId: string): string {
@@ -34,6 +49,137 @@ function getPlayerColor(playerId: string): string {
         hash = playerId.charCodeAt(i) + ((hash << 5) - hash);
     }
     return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length];
+}
+
+function getCanvasEntity(canvasId: string) {
+    const entity = yjsStore.entitiesMap.get(canvasId);
+    return entity?.type === 'canvas' ? entity : null;
+}
+
+function seedCanvasDocFromEntity(
+    canvasId: string,
+    doc: Y.Doc,
+    elementsMap: Y.Map<DrawElement>,
+    fogMap: Y.Map<FogReveal>
+): void {
+    const entity = getCanvasEntity(canvasId);
+    if (!entity) return;
+
+    const drawElements = readCanvasDrawElements(entity.properties);
+    const fogReveals = readCanvasFogReveals(entity.properties);
+    if (drawElements.length === 0 && fogReveals.length === 0) return;
+
+    hydratingCanvasIds.add(canvasId);
+    try {
+        doc.transact(() => {
+            if (elementsMap.size === 0) {
+                for (const element of drawElements) {
+                    elementsMap.set(element.id, sanitizeDrawElementForPersistence(element));
+                }
+            }
+            if (fogMap.size === 0) {
+                for (const reveal of fogReveals) {
+                    fogMap.set(reveal.id, sanitizeFogRevealForPersistence(reveal));
+                }
+            }
+        });
+    } finally {
+        hydratingCanvasIds.delete(canvasId);
+    }
+}
+
+function replaceCanvasDocFromEntity(
+    canvasId: string,
+    doc: Y.Doc,
+    elementsMap: Y.Map<DrawElement>,
+    fogMap: Y.Map<FogReveal>
+): void {
+    const entity = getCanvasEntity(canvasId);
+    if (!entity) return;
+
+    const drawElements = readCanvasDrawElements(entity.properties);
+    const fogReveals = readCanvasFogReveals(entity.properties);
+
+    hydratingCanvasIds.add(canvasId);
+    try {
+        doc.transact(() => {
+            syncMapWithSnapshot(elementsMap, drawElements.map(sanitizeDrawElementForPersistence));
+            syncMapWithSnapshot(fogMap, fogReveals.map(sanitizeFogRevealForPersistence));
+        });
+    } finally {
+        hydratingCanvasIds.delete(canvasId);
+    }
+}
+
+function syncMapWithSnapshot<T extends { id: string }>(map: Y.Map<T>, snapshot: T[]): void {
+    const nextKeys = new Set<string>();
+    for (const item of snapshot) {
+        nextKeys.add(item.id);
+        const existing = map.get(item.id);
+        if (JSON.stringify(existing) !== JSON.stringify(item)) {
+            map.set(item.id, item);
+        }
+    }
+    for (const key of Array.from(map.keys())) {
+        if (!nextKeys.has(key)) {
+            map.delete(key);
+        }
+    }
+}
+
+function writeCanvasEntitySnapshot(canvasId: string): void {
+    const entity = getCanvasEntity(canvasId);
+    if (!entity) return;
+
+    const { elementsMap, fogMap } = useCanvasSyncStore.getState();
+    if (!elementsMap || !fogMap) return;
+
+    const drawElements = Array.from(elementsMap.values()).map(sanitizeDrawElementForPersistence);
+    const fogReveals = Array.from(fogMap.values()).map(sanitizeFogRevealForPersistence);
+    const currentDrawElements = readCanvasDrawElements(entity.properties);
+    const currentFogReveals = readCanvasFogReveals(entity.properties);
+
+    if (
+        JSON.stringify(drawElements) === JSON.stringify(currentDrawElements) &&
+        JSON.stringify(fogReveals) === JSON.stringify(currentFogReveals)
+    ) {
+        return;
+    }
+
+    mirroringCanvasIds.add(canvasId);
+    try {
+        yjsStore.updateEntity(canvasId, {
+            properties: {
+                ...entity.properties,
+                [CANVAS_DRAW_ELEMENTS_PROPERTY]: drawElements,
+                [CANVAS_FOG_REVEALS_PROPERTY]: fogReveals,
+            },
+        });
+    } finally {
+        mirroringCanvasIds.delete(canvasId);
+    }
+}
+
+function scheduleCanvasEntityWriteback(canvasId: string): void {
+    if (hydratingCanvasIds.has(canvasId)) return;
+    const existingTimer = canvasEntityWriteTimers.get(canvasId);
+    if (existingTimer) clearTimeout(existingTimer);
+
+    const timer = setTimeout(() => {
+        canvasEntityWriteTimers.delete(canvasId);
+        writeCanvasEntitySnapshot(canvasId);
+    }, CANVAS_ENTITY_WRITEBACK_DELAY_MS);
+    canvasEntityWriteTimers.set(canvasId, timer);
+}
+
+function flushCanvasEntityWriteback(canvasId: string | null): void {
+    if (!canvasId) return;
+    const timer = canvasEntityWriteTimers.get(canvasId);
+    if (timer) {
+        clearTimeout(timer);
+        canvasEntityWriteTimers.delete(canvasId);
+    }
+    writeCanvasEntitySnapshot(canvasId);
 }
 
 export interface CanvasSyncState {
@@ -49,7 +195,7 @@ export interface CanvasSyncState {
     /** Remote cursors: Map<peerId → RemoteCursor> */
     remoteCursors: Record<string, RemoteCursor>;
 
-    /** Fog of War: revealed areas (holes in fog). Empty = full fog (default). */
+    /** Fog of War patches. Historical store name: fogReveals. Empty = no fog. */
     fogReveals: FogReveal[];
     fogMap: Y.Map<FogReveal> | null;
 
@@ -71,9 +217,9 @@ export interface CanvasSyncState {
     /** Remove local ping from awareness (auto-called after expiry) */
     clearLocalPing: () => void;
 
-    /** Fog of War: GM adds a reveal (hole in fog) */
+    /** Fog of War: GM adds a dark fog patch */
     addFogReveal: (reveal: FogReveal) => void;
-    /** Fog of War: remove all reveals that overlap the given shape (cover tools) */
+    /** Fog of War: remove dark fog patches that overlap the given shape */
     removeIntersectingReveals: (shape: FogReveal) => void;
     /** Fog of War: clear all reveals (full fog — default state) */
     clearAllFog: () => void;
@@ -103,13 +249,14 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
         const doc = new Y.Doc();
         const elementsMap = doc.getMap<DrawElement>('elements');
         const fogMap = doc.getMap<FogReveal>('fogReveals');
-        const undoManager = new Y.UndoManager(elementsMap);
 
         const savedIp = localStorage.getItem('vibe_server_ip');
         const host = savedIp && savedIp.trim() !== '' ? savedIp.trim() : window.location.hostname;
         const roomName = `canvas-${canvasId}`;
         const provider = new WebsocketProvider(`ws://${host}:3001/ws/canvas/${canvasId}`, roomName, doc, { connect: true });
         const persistence = new IndexeddbPersistence(roomName, doc);
+        seedCanvasDocFromEntity(canvasId, doc, elementsMap, fogMap);
+        const undoManager = new Y.UndoManager(elementsMap);
 
         provider.on('sync', (isSynced: boolean) => {
             set({ isSynced });
@@ -118,12 +265,21 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
         elementsMap.observe(() => {
             const arr = Array.from(elementsMap.values());
             set({ elements: arr });
+            scheduleCanvasEntityWriteback(canvasId);
         });
 
         // Observe fog reveals
         fogMap.observe(() => {
             set({ fogReveals: Array.from(fogMap.values()) });
+            scheduleCanvasEntityWriteback(canvasId);
         });
+
+        const handleEntityChange = (event: Y.YMapEvent<Entity>) => {
+            if (!event.keysChanged.has(canvasId) || mirroringCanvasIds.has(canvasId)) return;
+            replaceCanvasDocFromEntity(canvasId, doc, elementsMap, fogMap);
+        };
+        yjsStore.entitiesMap.observe(handleEntityChange);
+        entityChangeHandlers.set(doc, handleEntityChange);
 
         // Set isCanvasDirty when local actions add to undo history
         undoManager.on('stack-item-added', () => {
@@ -166,8 +322,7 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
         // Initial sync
         handleAwarenessChange();
 
-        // Store cleanup ref
-        (provider as any).__awarenessHandler = handleAwarenessChange;
+        awarenessHandlers.set(provider, handleAwarenessChange);
 
         set({
             canvasId,
@@ -184,12 +339,19 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
     },
 
     leaveCanvas: () => {
-        const { provider, persistence, doc, undoManager } = get();
+        const { canvasId, provider, persistence, doc, undoManager } = get();
+        flushCanvasEntityWriteback(canvasId);
         if (provider) {
             // Remove awareness listener
-            const handler = (provider as any).__awarenessHandler;
+            const handler = awarenessHandlers.get(provider);
             if (handler) provider.awareness.off('change', handler);
+            awarenessHandlers.delete(provider);
             provider.destroy();
+        }
+        if (doc) {
+            const handler = entityChangeHandlers.get(doc);
+            if (handler) yjsStore.entitiesMap.unobserve(handler);
+            entityChangeHandlers.delete(doc);
         }
         if (persistence) persistence.destroy();
         if (doc) doc.destroy();
@@ -212,7 +374,7 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
 
     setElement: (element: DrawElement) => {
         const { elementsMap } = get();
-        if (elementsMap) elementsMap.set(element.id, { ...element });
+        if (elementsMap) elementsMap.set(element.id, sanitizeDrawElementForPersistence(element));
     },
 
     updateElement: (id: string, partial: Partial<DrawElement>) => {
@@ -220,7 +382,7 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
         if (elementsMap) {
             const existing = elementsMap.get(id);
             if (existing) {
-                elementsMap.set(id, { ...existing, ...partial });
+                elementsMap.set(id, sanitizeDrawElementForPersistence({ ...existing, ...partial }));
             }
         }
     },
@@ -250,8 +412,9 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
             for (const el of newArray) {
                 newKeys.add(el.id);
                 const existing = elementsMap.get(el.id);
-                if (JSON.stringify(existing) !== JSON.stringify(el)) {
-                    elementsMap.set(el.id, { ...el });
+                const cleanElement = sanitizeDrawElementForPersistence(el);
+                if (JSON.stringify(existing) !== JSON.stringify(cleanElement)) {
+                    elementsMap.set(el.id, cleanElement);
                 }
             }
             
@@ -320,8 +483,9 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
     clearLocalPing: () => {
         const { provider } = get();
         if (provider?.awareness) {
-            const existing = provider.awareness.getLocalState()?.cursor || {};
-            const { ping, ...rest } = existing;
+            const existing = (provider.awareness.getLocalState()?.cursor ?? {}) as Record<string, unknown>;
+            const rest = { ...existing };
+            delete rest.ping;
             provider.awareness.setLocalStateField('cursor', rest);
         }
     },
@@ -334,7 +498,7 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
     addFogReveal: (patch: FogReveal) => {
         const { fogMap } = get();
         if (!fogMap) return;
-        fogMap.set(patch.id, { ...patch });
+        fogMap.set(patch.id, sanitizeFogRevealForPersistence(patch));
     },
 
     /** Remove fog patches that overlap the given shape — used by Reveal tools */

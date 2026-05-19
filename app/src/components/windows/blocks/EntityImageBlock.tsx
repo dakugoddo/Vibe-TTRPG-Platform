@@ -3,6 +3,7 @@ import { yjsStore } from '../../../store/yjsStore';
 import type { Entity } from '../../../types';
 import { glass } from '../../../utils/theme';
 import { Image as ImageIcon, Upload, X, AlertTriangle, User, Box, Sword, Wand2, Map, FileText, Bookmark } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { getIsHost } from '../../../services/fileApi';
 
 interface EntityImageBlockProps {
@@ -10,7 +11,7 @@ interface EntityImageBlockProps {
     isWide?: boolean;
 }
 
-const TYPE_ICONS: Record<string, React.FC<any>> = {
+const TYPE_ICONS: Partial<Record<Entity['type'] | 'spell', LucideIcon>> = {
     character: User,
     object: Box,
     attack: Sword,

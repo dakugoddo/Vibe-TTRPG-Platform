@@ -20,11 +20,12 @@
  */
 
 import type { Entity, EntityType } from '../types';
+import { normalizeEntitySchemaVersion } from './entitySchema';
 
 // ─── YAML Parser (minimal, no dependencies) ───
 
 const VALID_ENTITY_TYPES: EntityType[] = [
-    'character', 'object', 'ability', 'tag', 'canvas', 'note', 'portal', 'folder'
+    'character', 'object', 'ability', 'competency', 'tag', 'canvas', 'note', 'portal', 'folder', 'attack'
 ];
 
 /**
@@ -440,6 +441,7 @@ export function parseEntityFile(content: string, fallbackId: string): ParsedEnti
     const entity: Entity = {
         id,
         parentId: null, // Determined by folder structure, not frontmatter
+        schemaVersion: normalizeEntitySchemaVersion(parsed.schemaVersion),
         type,
         name,
         description,

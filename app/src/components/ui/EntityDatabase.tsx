@@ -6,15 +6,18 @@ import { useEntities } from '../../hooks/useEntities';
 import { useWindowStore } from '../../store/windowStore';
 import { useCanvasStore } from '../../store/canvasStore';
 import { DragDropPopover, type DragDropPromptData } from './DragDropPopover';
-import { importMarkdown, getIsHost } from '../../services/fileApi';
+import { importMarkdown, getIsHost, listPlayers } from '../../services/fileApi';
 import { useUIStore } from '../../store/uiStore';
-import type { Entity } from '../../types';
-import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map, FileText, Bookmark } from 'lucide-react';
+import type { DatabaseType, Entity, EntityType } from '../../types';
+import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map, FileText, Bookmark, Lightbulb, Star, Gift } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-const TYPE_ICONS: Record<string, React.FC<any>> = {
+const TYPE_ICONS: Partial<Record<EntityType | 'spell', LucideIcon>> = {
     character: User,
     object: Box,
     attack: Sword,
+    ability: Star,
+    competency: Lightbulb,
     spell: Wand2,
     canvas: Map,
     note: FileText,
@@ -30,12 +33,13 @@ interface ContextMenuState {
     entityId: string;
 }
 
-function EntityContextMenu({ state, onRename, onOpenWindow, onExport, onDelete, onClose }: {
+function EntityContextMenu({ state, onRename, onOpenWindow, onExport, onDelete, onGiveToPlayer, onClose }: {
     state: ContextMenuState | null;
     onRename: (id: string) => void;
     onOpenWindow: (id: string) => void;
     onExport: (id: string) => void;
     onDelete: (id: string) => void;
+    onGiveToPlayer?: (id: string) => void;
     onClose: () => void;
 }) {
     const menuRef = useRef<HTMLDivElement>(null);
@@ -106,6 +110,17 @@ function EntityContextMenu({ state, onRename, onOpenWindow, onExport, onDelete, 
             >
                 <Download size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Экспорт .md
             </button>
+            {onGiveToPlayer && (
+                <>
+                    <div className="border-t border-white/5 my-1 mx-2" />
+                    <button
+                        onClick={() => { onGiveToPlayer(state.entityId); onClose(); }}
+                        className="w-full text-left px-3 py-2 text-sm text-violet-300 hover:bg-violet-500/20 hover:text-violet-100 transition-colors flex items-center gap-2 group"
+                    >
+                        <Gift size={14} className="text-violet-400/50 group-hover:text-violet-300 transition-colors" /> Выдать игроку
+                    </button>
+                </>
+            )}
             <div className="border-t border-white/5 my-1 mx-2" />
             <button
                 onClick={() => { onDelete(state.entityId); onClose(); }}
@@ -123,19 +138,23 @@ export const EntityGroups = [
     { type: 'canvas', label: 'Пространства', dot: 'bg-orange-400', focus: 'hover:border-orange-400', text: 'text-orange-300', iconHov: 'group-hover:border-orange-400 group-hover:bg-orange-500/10', labelHov: 'group-hover:text-orange-200' },
     { type: 'character', label: 'Персонажи', dot: 'bg-indigo-400', focus: 'hover:border-indigo-400', text: 'text-indigo-300', iconHov: 'group-hover:border-indigo-400 group-hover:bg-indigo-500/10', labelHov: 'group-hover:text-indigo-200' },
     { type: 'object', label: 'Предметы', dot: 'bg-amber-400', focus: 'hover:border-amber-400', text: 'text-amber-300', iconHov: 'group-hover:border-amber-400 group-hover:bg-amber-500/10', labelHov: 'group-hover:text-amber-200' },
+    { type: 'competency', label: 'Компетенции', dot: 'bg-violet-400', focus: 'hover:border-violet-400', text: 'text-violet-300', iconHov: 'group-hover:border-violet-400 group-hover:bg-violet-500/10', labelHov: 'group-hover:text-violet-200' },
     { type: 'ability', label: 'Способности', dot: 'bg-cyan-400', focus: 'hover:border-cyan-400', text: 'text-cyan-300', iconHov: 'group-hover:border-cyan-400 group-hover:bg-cyan-500/10', labelHov: 'group-hover:text-cyan-200' },
     { type: 'note', label: 'Заметки', dot: 'bg-emerald-400', focus: 'hover:border-emerald-400', text: 'text-emerald-300', iconHov: 'group-hover:border-emerald-400 group-hover:bg-emerald-500/10', labelHov: 'group-hover:text-emerald-200' },
     { type: 'tag', label: 'Теги', dot: 'bg-blue-400', focus: 'hover:border-blue-400', text: 'text-blue-300', iconHov: 'group-hover:border-blue-400 group-hover:bg-blue-500/10', labelHov: 'group-hover:text-blue-200' },
     { type: 'attack', label: 'Атаки', dot: 'bg-rose-400', focus: 'hover:border-rose-400', text: 'text-rose-300', iconHov: 'group-hover:border-rose-400 group-hover:bg-rose-500/10', labelHov: 'group-hover:text-rose-200' }
 ] as const;
 
+type EntityGroup = typeof EntityGroups[number];
+
 interface RecursiveEntityItemProps {
     entity: Entity;
     entities: Entity[];
     level?: number;
-    defaultGroupContext?: any;
+    defaultGroupContext?: EntityGroup;
     baseParentId: string | null;
-    targetDb?: import('../../types').DatabaseType;
+    targetDb?: DatabaseType;
+    targetPlayerOwner?: string;
     onPromptDrop: (data: DragDropPromptData) => void;
     renamingId: string | null;
     onRenameStart: (id: string) => void;
@@ -144,7 +163,30 @@ interface RecursiveEntityItemProps {
     onShowContextMenu: (e: React.MouseEvent, entityId: string) => void;
 }
 
-function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext, baseParentId, targetDb, onPromptDrop, renamingId, onRenameStart, onRenameSubmit, onRenameCancel, onShowContextMenu }: RecursiveEntityItemProps) {
+function assignUserOwnerToSubtree(rootId: string, owner: string) {
+    const queue = [rootId];
+    const visited = new Set<string>();
+
+    while (queue.length > 0) {
+        const id = queue.shift();
+        if (!id || visited.has(id)) continue;
+        visited.add(id);
+
+        const entity = yjsStore.entitiesMap.get(id);
+        if (!entity) continue;
+
+        yjsStore.updateEntity(id, {
+            database: 'user',
+            properties: { ...entity.properties, _playerOwner: owner },
+        });
+
+        yjsStore.entitiesMap.forEach((candidate) => {
+            if (candidate.parentId === id) queue.push(candidate.id);
+        });
+    }
+}
+
+function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext, baseParentId, targetDb, targetPlayerOwner, onPromptDrop, renamingId, onRenameStart, onRenameSubmit, onRenameCancel, onShowContextMenu }: RecursiveEntityItemProps) {
     const [expanded, setExpanded] = useState(false);
     const [renameValue, setRenameValue] = useState(entity.name);
     const renameInputRef = useRef<HTMLInputElement>(null);
@@ -198,7 +240,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext,
         <div className="flex flex-col gap-1 w-full relative">
             <div
                 onClick={() => {
-                    if (entity.type === 'character' || entity.type === 'folder') setExpanded(!expanded);
+                    if (entity.type === 'character' || entity.type === 'folder' || entity.type === 'competency') setExpanded(!expanded);
                     else {
                         if (entity.type === 'canvas') navigate(entity.id);
                         else openWindow(entity.id, Math.random() * 200 + 50, Math.random() * 200 + 50);
@@ -213,7 +255,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext,
                 draggable={true}
                 onDragStart={(e) => {
                     e.dataTransfer.setData("application/entity-id", entity.id);
-                    e.dataTransfer.setData("application/source-database", baseParentId || 'global');
+                    e.dataTransfer.setData("application/source-database", entity.database || targetDb || 'general');
                     e.dataTransfer.setData("text/plain", `[[${entity.name}]]`);
                     e.dataTransfer.effectAllowed = "copyMove";
                 }}
@@ -229,10 +271,10 @@ function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext,
                         e.stopPropagation();
                         const draggedId = e.dataTransfer.getData("application/entity-id");
                         const sourceDb = e.dataTransfer.getData("application/source-database");
-                        const currentDb = baseParentId || 'global';
+                        const currentDb = targetDb || 'general';
 
                         if (draggedId && draggedId !== entity.id) {
-                            const draggedEnt = entities.find(e => e.id === draggedId);
+                            const draggedEnt = yjsStore.entitiesMap.get(draggedId) || entities.find(e => e.id === draggedId);
                             if (!draggedEnt || draggedEnt.type === 'canvas') return;
 
                             // Prevent dragging tags into anything other than folders
@@ -250,9 +292,15 @@ function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext,
                                     entityName: draggedEnt.name,
                                     onMove: () => {
                                         yjsStore.updateEntity(draggedId, { parentId: entity.id, database: targetDb });
+                                        if (targetDb === 'user' && targetPlayerOwner) {
+                                            assignUserOwnerToSubtree(draggedId, targetPlayerOwner);
+                                        }
                                     },
                                     onCopy: () => {
-                                        yjsStore.cloneEntity(draggedId, entity.id, baseParentId ? (baseParentId.includes('personal-inventory') ? 'user' : 'general') : undefined);
+                                        const newId = yjsStore.cloneEntity(draggedId, entity.id, targetDb);
+                                        if (newId && targetDb === 'user' && targetPlayerOwner) {
+                                            assignUserOwnerToSubtree(newId, targetPlayerOwner);
+                                        }
                                     },
                                     onCancel: () => { }
                                 });
@@ -310,7 +358,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext,
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
                     </button>
 
-                    {(entity.type === 'character' || entity.type === 'folder' || entity.type === 'canvas') && (
+                    {(entity.type === 'character' || entity.type === 'folder' || entity.type === 'canvas' || entity.type === 'competency') && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -325,7 +373,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext,
             </div>
 
             {
-                expanded && (entity.type === 'character' || entity.type === 'folder' || entity.type === 'canvas') && (
+                expanded && (entity.type === 'character' || entity.type === 'folder' || entity.type === 'canvas' || entity.type === 'competency') && (
                     <div className="flex flex-col gap-1 w-full pl-2 mt-1 relative before:empty before:w-px before:bg-white/10 before:absolute before:left-3 before:top-0 before:bottom-0">
                         {children.length === 0 ? (
                             <div className="text-[10px] text-white/30 italic py-1 pl-4">Пусто</div>
@@ -339,6 +387,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, defaultGroupContext,
                                     defaultGroupContext={entity.type === 'folder' ? group : undefined}
                                     baseParentId={baseParentId}
                                     targetDb={targetDb}
+                                    targetPlayerOwner={targetPlayerOwner}
                                     onPromptDrop={onPromptDrop}
                                     renamingId={renamingId}
                                     onRenameStart={onRenameStart}
@@ -361,10 +410,19 @@ interface EntityDatabaseProps {
     headerTitle?: string;
     allowedTabs?: readonly string[];
     targetDb?: import('../../types').DatabaseType;
+    /** If set, filters entities to those owned by this player (properties._playerOwner) */
+    playerFilter?: string;
 }
 
-export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTitle = "БАЗА СУЩНОСТЕЙ", allowedTabs, targetDb = 'general' }: EntityDatabaseProps) {
-    const entities = useEntities();
+export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTitle = "БАЗА СУЩНОСТЕЙ", allowedTabs, targetDb = 'general', playerFilter }: EntityDatabaseProps) {
+    const allEntities = useEntities();
+    const targetPlayerOwner = targetDb === 'user' ? (playerFilter || yjsStore.localPlayerName) : undefined;
+    const entities = allEntities.filter((entity) => {
+        const entityDb = entity.database || 'general';
+        if (entityDb !== targetDb) return false;
+        if (playerFilter && entity.properties?._playerOwner !== playerFilter) return false;
+        return true;
+    });
     const { openWindow } = useWindowStore();
     const { openConfirm } = useUIStore();
     const [dragDropPrompt, setDragDropPrompt] = useState<DragDropPromptData | null>(null);
@@ -372,6 +430,8 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
     const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
     const [renamingId, setRenamingId] = useState<string | null>(null);
     const [contextMenuState, setContextMenuState] = useState<ContextMenuState | null>(null);
+    const [giveToPlayerEntityId, setGiveToPlayerEntityId] = useState<string | null>(null);
+    const [giveToPlayerList, setGiveToPlayerList] = useState<string[]>([]);
     const importInputRef = useRef<HTMLInputElement>(null);
 
     // ─── Import .md files ───
@@ -452,6 +512,38 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         setContextMenuState(null);
     }, []);
 
+    const handleGiveToPlayer = useCallback(async (entityId: string) => {
+        try {
+            const players = await listPlayers();
+            setGiveToPlayerList(players);
+            setGiveToPlayerEntityId(entityId);
+        } catch {
+            setGiveToPlayerList([]);
+            setGiveToPlayerEntityId(entityId);
+        }
+    }, []);
+
+    const handleGiveToPlayerSelect = useCallback((playerName: string) => {
+        if (!giveToPlayerEntityId) return;
+        const entity = entities.find(e => e.id === giveToPlayerEntityId);
+        if (!entity) return;
+
+        const newId = yjsStore.cloneEntity(giveToPlayerEntityId, null, 'user');
+        if (!newId) return;
+
+        assignUserOwnerToSubtree(newId, playerName);
+
+        // Log to chat
+        yjsStore.sendMessage(
+            `🎁 ${entity.name} выдан игроку ${playerName}`,
+            'Система',
+            true
+        );
+
+        setGiveToPlayerEntityId(null);
+        setGiveToPlayerList([]);
+    }, [giveToPlayerEntityId, entities]);
+
     const handlePromptDrop = (data: DragDropPromptData) => {
         setDragDropPrompt({
             ...data,
@@ -466,10 +558,10 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         e.stopPropagation();
         const draggedId = e.dataTransfer.getData("application/entity-id");
         const sourceDb = e.dataTransfer.getData("application/source-database");
-        const currentDb = baseParentId || 'global';
+        const currentDb = targetDb || 'general';
 
         if (draggedId) {
-            const draggedEnt = entities.find(ent => ent.id === draggedId);
+            const draggedEnt = allEntities.find(ent => ent.id === draggedId);
             if (!draggedEnt || draggedEnt.type === 'canvas') return;
 
             // Allow dragging tags to root if we are in the main database ('global') 
@@ -487,8 +579,18 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                     x: e.clientX,
                     y: e.clientY,
                     entityName: draggedEnt.name,
-                    onMove: () => yjsStore.updateEntity(draggedId, { parentId: baseParentId, database: targetDb }),
-                    onCopy: () => yjsStore.cloneEntity(draggedId, baseParentId, targetDb),
+                    onMove: () => {
+                        yjsStore.updateEntity(draggedId, { parentId: baseParentId, database: targetDb });
+                        if (targetDb === 'user' && targetPlayerOwner) {
+                            assignUserOwnerToSubtree(draggedId, targetPlayerOwner);
+                        }
+                    },
+                    onCopy: () => {
+                        const newId = yjsStore.cloneEntity(draggedId, baseParentId, targetDb);
+                        if (newId && targetDb === 'user' && targetPlayerOwner) {
+                            assignUserOwnerToSubtree(newId, targetPlayerOwner);
+                        }
+                    },
                     onCancel: () => { }
                 });
             }
@@ -505,6 +607,8 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
             Object.assign(base, { name: 'object', description: 'Новый предмет.', properties: { фигура: 1, прочность: 1, нагрузка: 1, редкость: 0, цена: 0 } });
         } else if (type === 'attack') {
             Object.assign(base, { name: 'attack', description: 'Новая атака.', properties: { урон: 1, масштаб: 1, попадание: 1, дистанция: 'ближняя' } });
+        } else if (type === 'competency') {
+            Object.assign(base, { name: 'competency', description: 'Новая компетенция.', properties: { rank: 0 } });
         } else if (type === 'ability') {
             Object.assign(base, { name: 'ability', description: 'Новая способность.', properties: { cost: { base: 0 }, diceFormula: '' } });
         } else if (type === 'tag') {
@@ -517,8 +621,12 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
             Object.assign(base, { name: 'folder', description: 'Папка.', properties: { folderType: folderType || 'tag' } });
         }
 
+        if (targetDb === 'user' && targetPlayerOwner) {
+            base.properties = { ...base.properties, _playerOwner: targetPlayerOwner };
+        }
+
         yjsStore.addEntity(base as Entity);
-    }, [baseParentId, targetDb]);
+    }, [baseParentId, targetDb, targetPlayerOwner]);
 
     const tabsToShow = EntityGroups.filter(g => !allowedTabs || allowedTabs.includes(g.type));
 
@@ -587,6 +695,8 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                 entities={entities}
                                 defaultGroupContext={EntityGroups.find(g => g.type === 'canvas')!}
                                 baseParentId={baseParentId}
+                                targetDb={targetDb}
+                                targetPlayerOwner={targetPlayerOwner}
                                 onPromptDrop={handlePromptDrop}
                                 renamingId={renamingId}
                                 onRenameStart={handleRenameStart}
@@ -658,6 +768,8 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                                     entities={entities}
                                                     defaultGroupContext={group}
                                                     baseParentId={baseParentId}
+                                                    targetDb={targetDb}
+                                                    targetPlayerOwner={targetPlayerOwner}
                                                     onPromptDrop={handlePromptDrop}
                                                     renamingId={renamingId}
                                                     onRenameStart={handleRenameStart}
@@ -683,6 +795,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                 onRename={handleRenameStart}
                 onOpenWindow={(id) => openWindow(id, Math.random() * 200 + 50, Math.random() * 200 + 50)}
                 onExport={handleExportEntity}
+                onGiveToPlayer={getIsHost() ? handleGiveToPlayer : undefined}
                 onDelete={(id) => {
                     const ent = entities.find(e => e.id === id);
                     if (ent) {
@@ -700,6 +813,56 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                 }}
                 onClose={handleCloseContextMenu}
             />
+
+            {/* Give to Player popup */}
+            {giveToPlayerEntityId && ReactDOM.createPortal(
+                <>
+                    <div
+                        className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+                        onClick={() => { setGiveToPlayerEntityId(null); setGiveToPlayerList([]); }}
+                    />
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
+                        <div className="pointer-events-auto bg-[#151c2b]/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.7)] w-[320px] max-h-[60vh] flex flex-col animate-in zoom-in-95 fade-in duration-200">
+                            <div className="flex items-center justify-between p-4 border-b border-white/10">
+                                <div>
+                                    <h3 className="text-sm font-bold text-white">Выдать игроку</h3>
+                                    <p className="text-xs text-white/50 mt-0.5">Выберите получателя</p>
+                                </div>
+                                <button
+                                    onClick={() => { setGiveToPlayerEntityId(null); setGiveToPlayerList([]); }}
+                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-3 custom-scrollbar space-y-1.5">
+                                {giveToPlayerList.length === 0 ? (
+                                    <div className="text-center text-white/30 text-xs py-8 italic">
+                                        Нет доступных игроков
+                                    </div>
+                                ) : (
+                                    giveToPlayerList.map(playerName => (
+                                        <button
+                                            key={playerName}
+                                            onClick={() => handleGiveToPlayerSelect(playerName)}
+                                            className="w-full text-left p-3 rounded-xl border border-transparent bg-white/5 hover:bg-violet-500/15 hover:border-violet-500/30 transition-all flex items-center gap-3"
+                                        >
+                                            <div className="w-8 h-8 rounded-lg bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-300">
+                                                <User size={14} />
+                                            </div>
+                                            <div>
+                                                <div className="text-sm text-white/80 font-medium">{playerName}</div>
+                                                <div className="text-[10px] text-white/30">Инвентарь игрока</div>
+                                            </div>
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </>,
+                document.body
+            )}
         </div>
     );
 }
