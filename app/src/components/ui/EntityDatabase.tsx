@@ -72,7 +72,7 @@ function EntityContextMenu({ state, canEdit, onRename, onDuplicate, onOpenWindow
     if (!state) return null;
 
     const menuWidth = 200;
-    const menuHeight = 140;
+    const menuHeight = canEdit ? (onGiveToPlayer ? 270 : 230) : 150;
     const x = state.x + menuWidth > window.innerWidth ? state.x - menuWidth : state.x;
     const y = state.y + menuHeight > window.innerHeight ? state.y - menuHeight : state.y;
 
