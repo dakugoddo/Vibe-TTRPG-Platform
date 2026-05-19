@@ -14,12 +14,23 @@ interface AttackSheetProps {
 
 const DISTANCES = ['ближняя', 'средняя', 'дальняя', 'экстремальная', 'запредельная'];
 
+function getEntityOwnerId(entity: Entity): string | undefined {
+    const owner = entity.properties?._playerOwner;
+    return typeof owner === 'string' ? owner : undefined;
+}
+
+function canEditEntity(entity: Entity): boolean {
+    return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
+}
+
 export function AttackSheet({ entity }: AttackSheetProps) {
     const allEntities = useEntities();
     const { openWindow } = useWindowStore();
     const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
+    const canEditAttack = canEditEntity(entity);
 
     const updateProperty = (key: string, value: unknown) => {
+        if (!canEditAttack) return;
         yjsStore.updateEntity(entity.id, {
             properties: {
                 ...entity.properties,
@@ -56,6 +67,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                         <input
                             type="number"
                             value={entity.properties.урон ?? 1}
+                            readOnly={!canEditAttack}
                             onChange={(e) => updateProperty('урон', parseInt(e.target.value) || 0)}
                             className="bg-transparent text-white font-bold text-lg w-full text-center outline-none group-hover:text-red-300 transition-colors"
                             placeholder="0"
@@ -73,6 +85,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                         <input
                             type="number"
                             value={entity.properties.масштаб ?? 1}
+                            readOnly={!canEditAttack}
                             onChange={(e) => updateProperty('масштаб', parseInt(e.target.value) || 0)}
                             className="bg-transparent text-white font-bold text-lg w-full text-center outline-none group-hover:text-red-300 transition-colors"
                             placeholder="0"
@@ -90,6 +103,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                         <input
                             type="number"
                             value={entity.properties.попадание ?? 1}
+                            readOnly={!canEditAttack}
                             onChange={(e) => updateProperty('попадание', parseInt(e.target.value) || 0)}
                             className="bg-transparent text-white font-bold text-lg w-full text-center outline-none group-hover:text-red-300 transition-colors"
                             placeholder="0"
@@ -106,6 +120,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                         </span>
                         <select
                             value={entity.properties.дистанция || DISTANCES[0]}
+                            disabled={!canEditAttack}
                             onChange={(e) => updateProperty('дистанция', e.target.value)}
                             className="bg-[#1a1c29] text-white/90 text-xs font-bold w-full text-center outline-none appearance-none rounded p-1 border border-[#1a1c29] hover:border-red-500/50 transition-all cursor-pointer focus:ring-1 focus:ring-red-500 shadow-inner"
                         >
@@ -125,24 +140,29 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                         Свойства
                     </h4>
 
-                    <button
-                        className="flex items-center gap-1 px-2 py-1 bg-white/5 border border-white/10 border-dashed rounded-md text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-wider"
-                        onClick={() => setIsTagPickerOpen(true)}
-                    >
-                        <Plus size={12} /> Добавить
-                    </button>
+                    {canEditAttack && (
+                        <>
+                            <button
+                                className="flex items-center gap-1 px-2 py-1 bg-white/5 border border-white/10 border-dashed rounded-md text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-wider"
+                                onClick={() => setIsTagPickerOpen(true)}
+                            >
+                                <Plus size={12} /> Добавить
+                            </button>
 
-                    <TagPickerPopup
-                        isOpen={isTagPickerOpen}
-                        onClose={() => setIsTagPickerOpen(false)}
-                        onSelect={(tagId) => {
-                            const newTags = [...(entity.tags || []), tagId];
-                            yjsStore.updateEntity(entity.id, { tags: newTags });
-                        }}
-                        excludeTags={entity.tags || []}
-                        allowedFolders={['folder_tags_properties']}
-                        title="Добавить свойство"
-                    />
+                            <TagPickerPopup
+                                isOpen={isTagPickerOpen}
+                                onClose={() => setIsTagPickerOpen(false)}
+                                onSelect={(tagId) => {
+                                    if (!canEditAttack) return;
+                                    const newTags = [...(entity.tags || []), tagId];
+                                    yjsStore.updateEntity(entity.id, { tags: newTags });
+                                }}
+                                excludeTags={entity.tags || []}
+                                allowedFolders={['folder_tags_properties']}
+                                title="Добавить свойство"
+                            />
+                        </>
+                    )}
                 </div>
 
                 <div className="flex flex-wrap gap-2 text-sm">
@@ -150,16 +170,18 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                         return (
                             <div key={tagId} className="group/tag flex items-center bg-[#2e3145] border border-white/5 rounded-lg overflow-hidden transition-colors hover:border-red-500/50 shadow-md">
                                 <EntityLink entityId={tagId} underline={false} className="px-2 py-1 text-white/80 font-medium whitespace-nowrap hover:text-red-300 text-xs" />
-                                <button
-                                    onClick={() => {
-                                        const newTags = entity.tags.filter(id => id !== tagId);
-                                        yjsStore.updateEntity(entity.id, { tags: newTags });
-                                    }}
-                                    className="px-2 py-1 text-white/30 hover:bg-red-900/40 hover:text-red-400 transition-colors border-l border-white/10 group-hover/tag:border-red-500/50"
-                                    title="Убрать"
-                                >
-                                    <Trash2 size={12} />
-                                </button>
+                                {canEditAttack && (
+                                    <button
+                                        onClick={() => {
+                                            const newTags = entity.tags.filter(id => id !== tagId);
+                                            yjsStore.updateEntity(entity.id, { tags: newTags });
+                                        }}
+                                        className="px-2 py-1 text-white/30 hover:bg-red-900/40 hover:text-red-400 transition-colors border-l border-white/10 group-hover/tag:border-red-500/50"
+                                        title="Убрать"
+                                    >
+                                        <Trash2 size={12} />
+                                    </button>
+                                )}
                             </div>
                         )
                     }) : <span className="text-white/30 text-xs italic">Нет свойств</span>}
