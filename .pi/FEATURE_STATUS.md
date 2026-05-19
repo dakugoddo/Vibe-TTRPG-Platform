@@ -43,7 +43,7 @@
 - Рабочий контур Codex-maxxing для проекта описан в `.pi/docs/codex-maxxing-workflow.md`.
 - Canvas `drawElements` и `fogReveals` зеркалятся из canvas Y.Doc в canvas entity properties с debounce.
 - YAML serializer/parser на клиенте и сервере теперь проходит roundtrip для массивов объектов в canvas properties.
-- Select-drag, point edit, resize и rotate draw-elements оптимизированы: live-изменения работают как локальный preview, persistent Yjs получает только финальную позицию на drag end.
+- Select-drag, point edit, resize, rotate и fog brush оптимизированы: live-изменения работают как локальный preview, persistent Yjs получает итоговое состояние только на завершении действия.
 - Раны в CharacterSheet редактируются кнопками ±1/±5 или ручным вводом прямо в блоке здоровья; изменения логируются системным сообщением в чат.
 - Добавлены focused tests для `diceParser`, `rollEngine` и permission helper; permission logic вынесена в чистый `utils/permissions.ts`.
 - "Выдать игроку" теперь создает копию в `user` базе выбранного игрока, не переносит мастер-сущность из `general`, и file sync сохраняет user-сущности по `_playerOwner`.
@@ -55,7 +55,7 @@
 - Permission guard требует ручной проверки в настоящей GM/player multiplayer сессии.
 - `root` canvas создается как системная canvas entity с id/name `root`, а UI продолжает показывать локализованный fake root.
 - External edit `.md` -> Entity -> уже открытый canvas Y.Doc поддержан для `drawElements` и `fogReveals`, но требует ручного QA с внешним редактором.
-- Fog brush пока требует отдельного performance-прохода, потому что всё ещё может писать live-изменения через Yjs.
+- Canvas local-preview optimization требует ручной GM/player проверки: remote-клиент должен получать финальный результат после завершения действия, а не поток промежуточных mousemove.
 
 ## Отложено до отдельного обсуждения
 

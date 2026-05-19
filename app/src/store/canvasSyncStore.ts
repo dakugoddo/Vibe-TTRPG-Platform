@@ -221,6 +221,8 @@ export interface CanvasSyncState {
     addFogReveal: (reveal: FogReveal) => void;
     /** Fog of War: remove dark fog patches that overlap the given shape */
     removeIntersectingReveals: (shape: FogReveal) => void;
+    /** Replace all fog patches in a single persistent transaction. */
+    syncFogArray: (reveals: FogReveal[]) => void;
     /** Fog of War: clear all reveals (full fog — default state) */
     clearAllFog: () => void;
     /** Fog of War: add a massive reveal to show everything (Сбросить всё) */
@@ -516,6 +518,15 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
                 fogMap.delete(id);
             }
         }
+    },
+
+    syncFogArray: (reveals: FogReveal[]) => {
+        const { doc, fogMap } = get();
+        if (!doc || !fogMap) return;
+
+        doc.transact(() => {
+            syncMapWithSnapshot(fogMap, reveals.map(sanitizeFogRevealForPersistence));
+        });
     },
 
     /** Cover entire canvas with fog (add one massive fog patch) */

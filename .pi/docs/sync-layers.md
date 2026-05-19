@@ -36,6 +36,7 @@ canvas entity properties -> canvas Y.Doc -> debounced canvas entity snapshot -> 
 
 - preview рисования до commit;
 - live preview перемещения, point edit, resize и rotate выбранных draw-elements до mouseup/drop;
+- live preview fog brush операций до mouseup/drop;
 - marquee/lasso selection;
 - selected ids;
 - drag snapshots;
@@ -43,7 +44,7 @@ canvas entity properties -> canvas Y.Doc -> debounced canvas entity snapshot -> 
 - inline edit overlays;
 - локальные настройки видимости вроде player fog preview toggle.
 
-Сейчас большая часть этого уже находится в `canvasDrawStore`, локальных refs `InfiniteCanvas` или локальном React-state. Перемещение, point edit, resize и rotate выбранных draw-elements используют локальный preview и пишут в persistent Y.Map только финальную позицию на drag end.
+Сейчас большая часть этого уже находится в `canvasDrawStore`, локальных refs `InfiniteCanvas` или локальном React-state. Перемещение, point edit, resize и rotate выбранных draw-elements используют локальный preview и пишут в persistent Y.Map только финальную позицию на drag end. Fog brush собирает локальный preview и коммитит итоговый массив fog patches одной транзакцией.
 
 ## Awareness State
 
@@ -69,4 +70,4 @@ canvas entity properties -> canvas Y.Doc -> debounced canvas entity snapshot -> 
 - `root` canvas теперь создается как системная canvas entity с id/name `root`, но UI по-прежнему показывает его локализованным fake root-элементом и скрывает из обычного списка.
 - External edit `.md` -> Entity -> уже открытый canvas Y.Doc поддержан для `drawElements` и `fogReveals`; этот путь нужно отдельно прогнать в ручном QA с Obsidian/VS Code.
 - `fogReveals` сохраняет старое имя поля, но текущая модель хранит dark patches. Переименование лучше делать отдельной миграцией.
-- Fog brush пока продолжает писать live-изменения через Yjs. Его нужно оптимизировать отдельным проходом, потому что у reveal/cover другая UX-модель, чем у обычного перемещения элементов.
+- Ручная GM/player проверка должна подтвердить, что remote-клиенты корректно получают финальный результат после drag end/brush end.

@@ -12,7 +12,7 @@ import { useCanvasSyncStore, PING_DURATION_MS } from '../../store/canvasSyncStor
 import { useUIStore } from '../../store/uiStore';
 import type { Entity } from '../../types';
 import type { DrawElement, LineCap, StrokeStyle } from '../../types/canvasTypes';
-import { getKonvaDash, getArrowPoints, translateElement, elementsInRect, getKonvaFontFamily, getElementBounds, getChildrenOfFrame } from '../../types/canvasTypes';
+import { getKonvaDash, getArrowPoints, translateElement, elementsInRect, getKonvaFontFamily, getElementBounds, getChildrenOfFrame, fogRevealsOverlap } from '../../types/canvasTypes';
 import type { FogReveal } from '../../types/canvasTypes';
 
 const SCALE_BY = 1.1;
@@ -1125,12 +1125,16 @@ export function InfiniteCanvas() {
 
   // ─── Fog of War ───
   const fogReveals = useCanvasSyncStore((s) => s.fogReveals);
+  const syncFogArray = useCanvasSyncStore((s) => s.syncFogArray);
   const fogTool = useCanvasDrawStore((s) => s.fogTool);
   const playerFogVisible = useCanvasDrawStore((s) => s.playerFogVisible);
   const togglePlayerFog = useCanvasDrawStore((s) => s.togglePlayerFog);
   const isGM = yjsStore.localRole === 'gm';
   const fogDrawingRef = useRef(false);
   const fogBrushTipRef = useRef({ x: 0, y: 0 });
+  const [fogPreview, setFogPreview] = useState<{ canvasId: string; reveals: FogReveal[] } | null>(null);
+  const fogPreviewRef = useRef<{ canvasId: string; reveals: FogReveal[] } | null>(null);
+  const renderedFogReveals = fogPreview?.canvasId === activeCanvasId ? fogPreview.reveals : fogReveals;
   
   const { joinCanvas, leaveCanvas, syncElementsArray: pushHistory, undo, redo } = useCanvasSyncStore();
   const [portalMenu, setPortalMenu] = useState<{
@@ -1156,6 +1160,41 @@ export function InfiniteCanvas() {
     const timer = window.setInterval(() => setCursorNow(Date.now()), 100);
     return () => window.clearInterval(timer);
   }, [hasRemotePings]);
+
+  const setCanvasFogPreview = useCallback((preview: { canvasId: string; reveals: FogReveal[] }) => {
+    fogPreviewRef.current = preview;
+    setFogPreview(preview);
+  }, []);
+
+  const clearCanvasFogPreview = useCallback(() => {
+    fogPreviewRef.current = null;
+    setFogPreview(null);
+  }, []);
+
+  const applyFogBrushOperation = useCallback(
+    (tool: 'revealBrush' | 'coverBrush', patch: FogReveal) => {
+      const currentPreview = fogPreviewRef.current;
+      const base = currentPreview?.canvasId === activeCanvasId
+        ? currentPreview.reveals
+        : useCanvasSyncStore.getState().fogReveals;
+      const reveals = tool === 'coverBrush'
+        ? [...base, patch]
+        : base.filter((reveal) => !fogRevealsOverlap(reveal, patch));
+      setCanvasFogPreview({ canvasId: activeCanvasId, reveals });
+    },
+    [activeCanvasId, setCanvasFogPreview]
+  );
+
+  const commitCanvasFogPreview = useCallback(() => {
+    const preview = fogPreviewRef.current;
+    if (!preview || preview.canvasId !== activeCanvasId) {
+      clearCanvasFogPreview();
+      return false;
+    }
+    syncFogArray(preview.reveals);
+    clearCanvasFogPreview();
+    return true;
+  }, [activeCanvasId, syncFogArray, clearCanvasFogPreview]);
   
   // ─── Ping: 'G' key hold state ───
   const pingKeyRef = useRef(false);
@@ -1930,8 +1969,7 @@ export function InfiniteCanvas() {
           const id = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
           const reveal: FogReveal = { id, type: 'circle', x: pt.x, y: pt.y, width: 80, height: 80 };
           // Cover tools ADD fog patches, Reveal tools REMOVE fog patches
-          if (currentFogTool === 'coverBrush') useCanvasSyncStore.getState().addFogReveal(reveal);
-          else useCanvasSyncStore.getState().removeIntersectingReveals(reveal);
+          applyFogBrushOperation(currentFogTool, reveal);
           return;
         }
         if (currentFogTool === 'revealRect' || currentFogTool === 'coverRect') {
@@ -2147,7 +2185,7 @@ export function InfiniteCanvas() {
         return;
       }
     },
-    [activeTool, currentStyle, drawElements.length, getCanvasPoint, startDrawing, clearSelection, handleMiddlePanStart, activeCanvasId, pushHistory, startMarquee, setTool, selectElement, sendPing, isGM]
+    [activeTool, currentStyle, drawElements.length, getCanvasPoint, startDrawing, clearSelection, handleMiddlePanStart, activeCanvasId, pushHistory, startMarquee, setTool, selectElement, sendPing, isGM, applyFogBrushOperation]
   );
 
   const handleMouseMove = useCallback(
@@ -2180,8 +2218,7 @@ export function InfiniteCanvas() {
                 fogBrushTipRef.current = { x: fogPt.x, y: fogPt.y };
                 const id = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
                 const reveal: FogReveal = { id, type: 'circle', x: fogPt.x, y: fogPt.y, width: 80, height: 80 };
-                if (currentFogTool === 'coverBrush') useCanvasSyncStore.getState().addFogReveal(reveal);
-                else useCanvasSyncStore.getState().removeIntersectingReveals(reveal);
+                applyFogBrushOperation(currentFogTool, reveal);
               }
             }
           }
@@ -2202,8 +2239,7 @@ export function InfiniteCanvas() {
               fogBrushTipRef.current = { x: pt.x, y: pt.y };
               const id = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
               const reveal: FogReveal = { id, type: 'circle', x: pt.x, y: pt.y, width: 80, height: 80 };
-              if (currentFogTool === 'coverBrush') useCanvasSyncStore.getState().addFogReveal(reveal);
-              else useCanvasSyncStore.getState().removeIntersectingReveals(reveal);
+              applyFogBrushOperation(currentFogTool, reveal);
             }
           }
           return;
@@ -2278,7 +2314,7 @@ export function InfiniteCanvas() {
         });
       }
     },
-    [activeTool, drawingElement, getCanvasPoint, updateDrawing, handleMiddlePanMove, isDraggingElement, handleSelectDragMove, updateMarquee, setLocalCursor, isGM]
+    [activeTool, drawingElement, getCanvasPoint, updateDrawing, handleMiddlePanMove, isDraggingElement, handleSelectDragMove, updateMarquee, setLocalCursor, isGM, applyFogBrushOperation]
   );
 
   const handleMouseUp = useCallback(
@@ -2311,6 +2347,7 @@ export function InfiniteCanvas() {
         }
         if (currentFogTool === 'revealBrush' || currentFogTool === 'coverBrush') {
           fogDrawingRef.current = false;
+          commitCanvasFogPreview();
           return;
         }
       }
@@ -2448,7 +2485,7 @@ export function InfiniteCanvas() {
         }, 100);
       }
     },
-    [activeCanvasId, activeTool, finishDrawing, handleMiddlePanEnd, isDraggingElement, handleSelectDragEnd, finishMarquee, selectElements, pushHistory, selectElement, setTool, setEditingFrameLabelId, clearSelection, getCanvasPoint]
+    [activeCanvasId, activeTool, finishDrawing, handleMiddlePanEnd, isDraggingElement, handleSelectDragEnd, finishMarquee, selectElements, pushHistory, selectElement, setTool, setEditingFrameLabelId, clearSelection, getCanvasPoint, commitCanvasFogPreview]
   );
 
   // ─── Select mode: double click to edit text ───
@@ -3410,7 +3447,7 @@ export function InfiniteCanvas() {
 
         {/* Layer 3: Fog of War */}
         <FogOfWarLayer
-          fogReveals={fogReveals}
+          fogReveals={renderedFogReveals}
           isGM={isGM}
           stageWidth={dimensions.width}
           stageHeight={dimensions.height}
