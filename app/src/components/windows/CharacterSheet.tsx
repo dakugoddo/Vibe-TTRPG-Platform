@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { useEntity, useEntitiesByParent } from '../../hooks/useEntities';
+import type { Entity } from '../../types';
 import { yjsStore } from '../../store/yjsStore';
 import { AttributeBlock } from './blocks/AttributeBlock';
 import { InventoryBlock } from './blocks/InventoryBlock';
@@ -14,6 +15,11 @@ interface CharacterSheetProps {
     isFullMode: boolean;
 }
 
+function getEntityOwnerId(entity: Entity): string | undefined {
+    const owner = entity.properties?._playerOwner;
+    return typeof owner === 'string' ? owner : undefined;
+}
+
 export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
 
     const entity = useEntity(entityId);
@@ -22,8 +28,10 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
     const [isEditingNotes, setIsEditingNotes] = useState(false);
 
     if (!entity) return null;
+    const canEditCharacter = yjsStore.canModify(entity.database, getEntityOwnerId(entity));
 
     const handleUpdateDescription = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        if (!canEditCharacter) return;
         yjsStore.updateEntity(entity.id, { description: e.target.value });
     };
 
@@ -63,7 +71,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                     className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap ${activeTab === 'notes' ? 'text-white border-white bg-white/10' : 'text-white/40 border-transparent hover:text-white/80 hover:bg-white/5'}`}
                 >
                     Notes
-                    {activeTab === 'notes' && (
+                    {activeTab === 'notes' && canEditCharacter && (
                         <button
                             onClick={(e) => { e.stopPropagation(); setIsEditingNotes(!isEditingNotes); }}
                             className={`p-1 rounded transition-colors ${isEditingNotes ? 'bg-white/60 text-white' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
@@ -94,7 +102,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
 
                 {activeTab === 'notes' && (
                     <div className="h-full flex flex-col min-h-[150px]">
-                        {isEditingNotes ? (
+                        {isEditingNotes && canEditCharacter ? (
                             <textarea
                                 value={entity.description || ''}
                                 onChange={handleUpdateDescription}
@@ -103,8 +111,10 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                                 autoFocus
                             />
                         ) : (
-                            <div className="flex-1 bg-black/20 rounded-lg border border-transparent p-3 backdrop-blur-md text-white/80" onDoubleClick={() => setIsEditingNotes(true)}>
-                                {entity.description ? <MarkdownRenderer content={entity.description} entityId={entity.id} /> : <span className="text-white/30 italic cursor-pointer">No notes provided. Double click to text.</span>}
+                            <div className="flex-1 bg-black/20 rounded-lg border border-transparent p-3 backdrop-blur-md text-white/80" onDoubleClick={() => { if (canEditCharacter) setIsEditingNotes(true); }}>
+                                {entity.description
+                                    ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
+                                    : <span className="text-white/30 italic cursor-pointer">{canEditCharacter ? 'No notes provided. Double click to text.' : 'No notes provided.'}</span>}
                             </div>
                         )}
                     </div>

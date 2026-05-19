@@ -22,8 +22,14 @@ const TYPE_ICONS: Partial<Record<Entity['type'] | 'spell', LucideIcon>> = {
     folder: Bookmark,
 };
 
+function getEntityOwnerId(entity: Entity): string | undefined {
+    const owner = entity.properties?._playerOwner;
+    return typeof owner === 'string' ? owner : undefined;
+}
+
 export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockProps) {
     const isHost = getIsHost();
+    const canEditImage = yjsStore.canModify(entity.database, getEntityOwnerId(entity));
     const [imageError, setImageError] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [tempUrl, setTempUrl] = useState(entity.icon_url || '');
@@ -48,18 +54,20 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
     }, [isEditing, isHost]);
 
     const handleSave = () => {
+        if (!canEditImage) return;
         yjsStore.updateEntity(entity.id, { icon_url: tempUrl });
         setIsEditing(false);
     };
 
     const handleRemove = () => {
+        if (!canEditImage) return;
         yjsStore.updateEntity(entity.id, { icon_url: '' });
         setIsEditing(false);
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !isHost) return;
+        if (!file || !isHost || !canEditImage) return;
 
         setIsUploading(true);
         const reader = new FileReader();
@@ -77,6 +85,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                 const data = await res.json();
                 if (data.success) {
                     const newUrl = data.filename; // Only save the filename for portability
+                    if (!canEditImage) return;
                     yjsStore.updateEntity(entity.id, { icon_url: newUrl });
                     setIsEditing(false);
                 }
@@ -120,6 +129,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
             )}
 
             {/* Hover overlay for editing */}
+            {canEditImage && (
             <div className={`absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center transition-all duration-300 ${isEditing ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'}`}>
                 
                 {!isEditing ? (
@@ -205,6 +215,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                     </div>
                 )}
             </div>
+            )}
             
         </div>
     );

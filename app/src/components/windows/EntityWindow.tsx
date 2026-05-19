@@ -2,6 +2,7 @@ import { Rnd } from 'react-rnd';
 import { Minimize2, X, CircleDot, Pin, PinOff, Bug } from 'lucide-react';
 import { useWindowStore } from '../../store/windowStore';
 import type { WindowState, WindowMode } from '../../store/windowStore';
+import type { Entity } from '../../types';
 import { useEntity, getEntitiesSnapshot } from '../../hooks/useEntities';
 import { useCanvasStore } from '../../store/canvasStore';
 import { CharacterSheet } from './CharacterSheet';
@@ -27,6 +28,11 @@ import { glass } from '../../utils/theme';
 
 interface EntityWindowProps {
     windowState: WindowState;
+}
+
+function getEntityOwnerId(entity: Entity): string | undefined {
+    const owner = entity.properties?._playerOwner;
+    return typeof owner === 'string' ? owner : undefined;
 }
 
 export function EntityWindow({ windowState }: EntityWindowProps) {
@@ -55,10 +61,11 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     }, [isEditingName]);
 
     if (!entity) return null; // Entity deleted while window was open
+    const canEditCurrentEntity = yjsStore.canModify(entity.database, getEntityOwnerId(entity));
 
     const handleModeChange = (newMode: WindowMode) => {
         setMode(id, newMode);
-        if (isPinned) {
+        if (isPinned && canEditCurrentEntity) {
             yjsStore.updateEntity(entityId, {
                 properties: { ...entity.properties, windowState: { ...entity.properties?.windowState, mode: newMode } }
             });
@@ -67,11 +74,12 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
 
     const handleContextMenu = (e: React.MouseEvent) => {
         e.preventDefault();
+        if (!canEditCurrentEntity) return;
         setContextMenuState({ x: e.clientX, y: e.clientY });
     };
 
     const handleRenameSubmit = () => {
-        if (tempName.trim() !== '') {
+        if (canEditCurrentEntity && tempName.trim() !== '') {
             yjsStore.updateEntity(entityId, { name: tempName });
         }
         setIsEditingName(false);
@@ -100,7 +108,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
         const newX = d.x;
         const newY = d.y;
         updateWindow(id, { x: newX, y: newY });
-        if (isPinned) {
+        if (isPinned && canEditCurrentEntity) {
             yjsStore.updateEntity(entityId, {
                 properties: { ...entity.properties, windowState: { ...entity.properties?.windowState, x: newX, y: newY } }
             });
@@ -128,7 +136,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
             x: newX,
             y: newY,
         });
-        if (isPinned) {
+        if (isPinned && canEditCurrentEntity) {
             yjsStore.updateEntity(entityId, {
                 properties: { ...entity.properties, windowState: { ...entity.properties?.windowState, x: newX, y: newY, width: newWidth, height: newHeight } }
             });
@@ -253,16 +261,18 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                 togglePin(id, activeCanvasId);
                                 updateWindow(id, { x: newX, y: newY, isPinned: newIsPinned, canvasId: newIsPinned ? activeCanvasId : undefined });
 
-                                yjsStore.updateEntity(entityId, {
-                                    properties: {
-                                        ...entity.properties, windowState: {
-                                            ...entity.properties?.windowState,
-                                            isPinned: newIsPinned,
-                                            canvasId: newIsPinned ? activeCanvasId : undefined,
-                                            x: newX, y: newY, width, height, mode, zIndex
+                                if (canEditCurrentEntity) {
+                                    yjsStore.updateEntity(entityId, {
+                                        properties: {
+                                            ...entity.properties, windowState: {
+                                                ...entity.properties?.windowState,
+                                                isPinned: newIsPinned,
+                                                canvasId: newIsPinned ? activeCanvasId : undefined,
+                                                x: newX, y: newY, width, height, mode, zIndex
+                                            }
                                         }
-                                    }
-                                });
+                                    });
+                                }
                             }}
                             className={`p-1.5 rounded transition-all hover:bg-white/10 ${isPinned ? 'text-yellow-400 bg-yellow-400/20' : 'text-white/50'}`}
                             title={isPinned ? 'Unpin from canvas' : 'Pin to canvas'}
@@ -309,25 +319,32 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                     <div className="flex items-center gap-2 flex-1">
                                         Description
                                     </div>
-                                    <button
-                                        onClick={() => setIsEditingDescription(!isEditingDescription)}
-                                        className={`p-1.5 rounded-lg transition-colors ${isEditingDescription ? 'bg-white/20 text-white shadow-sm' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
-                                    >
-                                        {isEditingDescription ? <Check size={12} /> : <Edit2 size={12} />}
-                                    </button>
+                                    {canEditCurrentEntity && (
+                                        <button
+                                            onClick={() => setIsEditingDescription(!isEditingDescription)}
+                                            className={`p-1.5 rounded-lg transition-colors ${isEditingDescription ? 'bg-white/20 text-white shadow-sm' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
+                                        >
+                                            {isEditingDescription ? <Check size={12} /> : <Edit2 size={12} />}
+                                        </button>
+                                    )}
                                 </h3>
 
-                                {isEditingDescription ? (
+                                {isEditingDescription && canEditCurrentEntity ? (
                                     <textarea
                                         value={entity.description || ''}
-                                        onChange={(e) => yjsStore.updateEntity(entity.id, { description: e.target.value })}
+                                        onChange={(e) => {
+                                            if (!canEditCurrentEntity) return;
+                                            yjsStore.updateEntity(entity.id, { description: e.target.value });
+                                        }}
                                         className={`${glass.input} w-full h-32 resize-y flex-1 custom-scrollbar text-sm font-sans`}
                                         placeholder="Type markdown description here..."
                                         autoFocus
                                     />
                                 ) : (
-                                    <div className="text-sm leading-relaxed whitespace-pre-wrap text-white/80 flex-1 h-full min-h-[100px]" onDoubleClick={() => setIsEditingDescription(true)}>
-                                        {entity.description ? <MarkdownRenderer content={entity.description} entityId={entity.id} /> : <span className="text-white/30 italic cursor-pointer">No description provided. Double click to edit.</span>}
+                                    <div className="text-sm leading-relaxed whitespace-pre-wrap text-white/80 flex-1 h-full min-h-[100px]" onDoubleClick={() => { if (canEditCurrentEntity) setIsEditingDescription(true); }}>
+                                        {entity.description
+                                            ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
+                                            : <span className="text-white/30 italic cursor-pointer">{canEditCurrentEntity ? 'No description provided. Double click to edit.' : 'No description provided.'}</span>}
                                     </div>
                                 )}
                             </div>
@@ -354,7 +371,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                         </div>
                                     </div>
 
-                                    {entity.type === 'tag' && (
+                                    {entity.type === 'tag' && canEditCurrentEntity && (
                                         <TagEditor entity={entity} />
                                     )}
 
@@ -374,39 +391,46 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                                         <EntityLink entityId={tagId} underline={false} className="px-2 py-1 text-white/80 font-medium whitespace-nowrap hover:text-white hover:bg-white/5">
                                                             #{tagEntity ? tagEntity.name : 'Unknown Tag'}
                                                         </EntityLink>
-                                                        <button
-                                                            onClick={() => {
-                                                                const newTags = entity.tags.filter(id => id !== tagId);
-                                                                yjsStore.updateEntity(entity.id, { tags: newTags });
-                                                            }}
-                                                            className="px-1.5 py-1 text-white/40 hover:bg-red-500/20 hover:text-red-400 transition-colors border-l border-white/10 group-hover/tag:border-white/30"
-                                                            title="Remove Tag"
-                                                        >
-                                                            <Trash2 size={10} />
-                                                        </button>
+                                                        {canEditCurrentEntity && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    const newTags = entity.tags.filter(id => id !== tagId);
+                                                                    yjsStore.updateEntity(entity.id, { tags: newTags });
+                                                                }}
+                                                                className="px-1.5 py-1 text-white/40 hover:bg-red-500/20 hover:text-red-400 transition-colors border-l border-white/10 group-hover/tag:border-white/30"
+                                                                title="Remove Tag"
+                                                            >
+                                                                <Trash2 size={10} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 )
                                             }) : <span className="text-white/30 text-xs italic py-1">Нет тегов</span>}
 
                                             {/* Add tag button */}
-                                            <button
-                                                className="flex items-center gap-1 px-2 py-1 bg-black/20 border border-white/10 border-dashed rounded-lg text-white/40 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all backdrop-blur-sm"
-                                                onClick={() => setIsTagPickerOpen(true)}
-                                            >
-                                                <Plus size={10} /> Добавить
-                                            </button>
+                                            {canEditCurrentEntity && (
+                                                <>
+                                                    <button
+                                                        className="flex items-center gap-1 px-2 py-1 bg-black/20 border border-white/10 border-dashed rounded-lg text-white/40 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all backdrop-blur-sm"
+                                                        onClick={() => setIsTagPickerOpen(true)}
+                                                    >
+                                                        <Plus size={10} /> Добавить
+                                                    </button>
 
-                                            <TagPickerPopup
-                                                isOpen={isTagPickerOpen}
-                                                onClose={() => setIsTagPickerOpen(false)}
-                                                onSelect={(tagId) => {
-                                                    const newTags = [...(entity.tags || []), tagId];
-                                                    yjsStore.updateEntity(entity.id, { tags: newTags });
-                                                }}
-                                                excludeTags={entity.tags || []}
-                                                allowedFolders={['folder_tags_hidden']}
-                                                title="Прикрепить (Скрытые теги)"
-                                            />
+                                                    <TagPickerPopup
+                                                        isOpen={isTagPickerOpen}
+                                                        onClose={() => setIsTagPickerOpen(false)}
+                                                        onSelect={(tagId) => {
+                                                            if (!canEditCurrentEntity) return;
+                                                            const newTags = [...(entity.tags || []), tagId];
+                                                            yjsStore.updateEntity(entity.id, { tags: newTags });
+                                                        }}
+                                                        excludeTags={entity.tags || []}
+                                                        allowedFolders={['folder_tags_hidden']}
+                                                        title="Прикрепить (Скрытые теги)"
+                                                    />
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 
@@ -421,7 +445,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                     </div>
                 </div>
             </div>
-            {contextMenuState && ReactDOM.createPortal(
+            {contextMenuState && canEditCurrentEntity && ReactDOM.createPortal(
                 <>
                     <div 
                         className="fixed inset-0 z-[99998]" 
@@ -440,7 +464,13 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                             Контекстное меню
                         </div>
                         <button
-                            onClick={(e) => { e.stopPropagation(); setTempName(entity.name); setIsEditingName(true); setContextMenuState(null); }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (!canEditCurrentEntity) return;
+                                setTempName(entity.name);
+                                setIsEditingName(true);
+                                setContextMenuState(null);
+                            }}
                             className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
                         >
                             <Edit2 size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Переименовать
@@ -449,6 +479,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
+                                if (!canEditCurrentEntity) return;
                                 setContextMenuState(null);
                                 openConfirm({
                                     title: "Удаление сущности",
