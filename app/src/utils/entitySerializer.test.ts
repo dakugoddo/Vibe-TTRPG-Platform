@@ -7,6 +7,7 @@
 
 import { serializeEntity, entityToFilename } from './entitySerializer';
 import { parseEntityFile, filenameToEntityName } from './entityParser';
+import { CURRENT_ENTITY_SCHEMA_VERSION } from './entitySchema';
 import type { Entity } from '../types';
 
 // ─── Test Helpers ───
@@ -280,6 +281,35 @@ console.log('\n📄 Test 9: Plain .md file (no frontmatter)');
     assert(entity.type === 'note', 'Defaults to note type');
     assert(entity.name === 'My Note', 'Extracts title');
     assert(entity.description === 'This is just a plain markdown file.', 'Extracts body');
+}
+
+// Test 10: Legacy markdown without schemaVersion migrates on write
+console.log('\n🧭 Test 10: Legacy schema migration');
+{
+    const legacyMd = [
+        '---',
+        'type: character',
+        'tags: [legacy, player]',
+        'stats:',
+        '  strength: 12',
+        'resources:',
+        '  hp: { max: 20, current: 8 }',
+        '---',
+        '',
+        '# Старый Герой',
+        '',
+        'Файл создан до появления schemaVersion.',
+    ].join('\n');
+
+    const { entity } = parseEntityFile(legacyMd, 'Старый Герой');
+    assert(entity.schemaVersion === CURRENT_ENTITY_SCHEMA_VERSION, 'Missing schemaVersion normalizes to current');
+    assert(entity.type === 'character', 'Legacy type preserved');
+    assertDeepEqual(entity.tags, ['legacy', 'player'], 'Legacy tags preserved');
+    assert(asRecord(entity.properties.strength).base === 12, 'Legacy stat preserved');
+    assert(asRecord(entity.properties.hp).current === 8, 'Legacy resource current preserved');
+
+    const migratedMd = serializeEntity(entity);
+    assert(migratedMd.includes(`schemaVersion: ${CURRENT_ENTITY_SCHEMA_VERSION}`), 'Migrated write includes schemaVersion');
 }
 
 // ─── Results ───

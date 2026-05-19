@@ -58,7 +58,7 @@
 - не ломать старые миры без миграции;
 - добавить документацию по структуре `properties` для базовых типов.
 
-Готовность: `schemaVersion: 1` пишется в frontmatter, старые файлы без версии читаются, `competency` и `attack` признаны валидными типами. Текущая карта `properties` описана в `.pi/docs/entity-properties.md`. Следующий проход - миграционные тесты.
+Готовность: `schemaVersion: 1` пишется в frontmatter, старые файлы без версии читаются, `competency` и `attack` признаны валидными типами. Текущая карта `properties` описана в `.pi/docs/entity-properties.md`. Миграционные focused tests закрывают client parser/serializer и server fileManager для legacy `.md` без `schemaVersion`.
 
 ## Этап 3. Слои синхронизации
 
@@ -159,5 +159,5 @@
 ## Технический долг
 
 - Навести git-гигиену после длинной агентной сессии: разделить изменения на осмысленные commits и убрать временные артефакты из рабочего дерева.
-- Добавить миграционные тесты Entity schema и расширить тесты под будущие mechanics blocks. Базовые focused tests уже есть для `diceParser`, `rollEngine`, `entitySerializer`, permission helper.
+- Расширять focused tests под будущие mechanics blocks и новые версии Entity schema. Базовые focused tests уже есть для `diceParser`, `rollEngine`, `entitySerializer`, `fileManager`, permission helper.
 - Документировать multiplayer manual QA.

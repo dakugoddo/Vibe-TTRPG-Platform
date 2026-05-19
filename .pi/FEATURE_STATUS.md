@@ -1,6 +1,6 @@
 # Vibe TTRPG Platform: статус фич
 
-> Дата: 2026-05-18
+> Дата: 2026-05-19
 
 ## Готово и подтверждено сборкой
 
@@ -26,13 +26,13 @@
 ## Сейчас в работе
 
 - Детализация Entity `properties` по типам.
-- Подготовка миграционных тестов для Entity schema.
 
 ## Только что добавлено
 
 - Entity `schemaVersion` как top-level поле и YAML frontmatter `schemaVersion: 1`.
 - Совместимое чтение старых `.md` файлов без `schemaVersion`.
 - Единые schema helpers на клиенте и сервере.
+- Миграционные focused tests для legacy `.md` без `schemaVersion` добавлены на клиенте (`entitySerializer.test.ts`) и сервере (`fileManager.test.ts`).
 - `competency` и `attack` добавлены в валидные типы parser'ов.
 - Полный `npm run lint` в `app` теперь проходит.
 - Vite build chunking оптимизирован: canvas и markdown зависимости вынесены в отдельные chunks, основной JS chunk уменьшен примерно с 1.23 MB до 306 KB.
@@ -52,7 +52,6 @@
 
 - В Codex-среде foreground dev servers стартуют, но фоновые `Start-Process` запуски ранее не удерживались. Для ручной проверки используйте обычные терминалы или `start.bat`.
 - Permission guard требует ручной проверки в настоящей GM/player multiplayer сессии.
-- Entity schema все еще требует отдельных миграционных тестов на legacy `.md`.
 - `root` canvas создается как системная canvas entity с id/name `root`, а UI продолжает показывать локализованный fake root.
 - External edit `.md` -> Entity -> уже открытый canvas Y.Doc поддержан для `drawElements` и `fogReveals`, но требует ручного QA с внешним редактором.
 
