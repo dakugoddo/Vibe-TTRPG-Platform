@@ -184,12 +184,12 @@ cd app && npm run dev -- --host
 
 ---
 
-## 7. ТЕКУЩИЙ СТАТУС РАЗРАБОТКИ
+## 7. ТЕКУЩИЙ СТАТУС РАЗРАБОТКИ (2026-05-03)
 
 ### ✅ Готово:
 - Entity System + CRDT синхронизация
 - Window Manager (3 режима)
-- Infinite Canvas с рисованием (9 тулов)
+- Infinite Canvas с рисованием (9 тулов, фазы 1-8)
 - Canvas routing (порталы)
 - Character Sheet (статы, инвентарь, атаки)
 - Math Engine (useCalculatedStat)
@@ -198,14 +198,19 @@ cd app && npm run dev -- --host
 - Login Screen
 - .md файловая система
 - Glassmorphism UI
+- **Мультиплеер** (y-websocket, роли, права) ✅
+- **Awareness** (курсоры других игроков) ✅
+- **Мультиплеерный пинг** (G+клик) ✅
+- **Snap-to-Grid** (квадраты/гексы) ✅
+- **Туман Войны** (Fog of War — world-space) ✅
 
-### 🔴 В РАБОТЕ (Этап 1):
-- Чиним мультиплеер (y-websocket версии, роли, права)
-- start.bat с --host
-- Поле имени игрока
+### 🟠 В РАБОТЕ (Этап 2.5-2.7):
+- Кнопки броска кубов из статов (`!roll 2d6+$strength`)
+- Интерактивное редактирование HP
+- Лог изменений в чат
 
-### 📋 Дальше (Этапы 2-4):
-См. `DEVELOPMENT_PLAN.md`
+### 📋 Дальше (Этапы 3+):
+См. `.pi/DEVELOPMENT_PLAN.md`
 
 ---
 
@@ -213,14 +218,15 @@ cd app && npm run dev -- --host
 
 | Документ | Что внутри |
 |----------|-----------|
-| `MASTER DESIGN DOCUMENT Vibe TTRPG Platform.md` | Полная спецификация проекта от Product Manager'а |
-| `FUTURE_DEVELOPMENT_PLAN.md` | Архитектурные решения по мультиплееру и оптимизации |
-| `MULTIPLAYER_IMPLEMENTATION_AND_TESTING.md` | Как тестировать мультиплеер с другом |
-| `Plan Excalidraw-like.md` | Статус канвас-рисования (Фазы 1-9) |
+| `AGENTS.md` (корень) | Главный вход для AI-агентов |
+| `.pi/DEVELOPMENT_PLAN.md` | Поэтапный план доработок |
 | `.pi/ARCHITECTURE_ANALYSIS.md` | Разбор проблем масштабирования |
 | `.pi/3D_FUTURE_ANALYSIS.md` | План 3D + Tauri + Steam |
-| `.pi/DEVELOPMENT_PLAN.md` | Поэтапный план доработок |
-| `.pi/skills/vibe-ui-architecture/SKILL.md` | Архитектура UI (читать перед правками интерфейса!) |
+| `.pi/MASTER DESIGN DOCUMENT Vibe TTRPG Platform.md` | Оригинальная спецификация (исторический) |
+| `.pi/Plan Excalidraw-like.md` | Лог фаз рисования (исторический) |
+| `.pi/docs/testing-multiplayer.md` | Инструкция тестирования мультиплеера |
+| `.pi/skills/vibe-ui-architecture/SKILL.md` | Архитектура UI (читать перед правками!) |
+| `.pi/rules/` | Правила кодирования, канваса, механик, TTRPG, воркфлоу |
 
 ---
 
