@@ -1,6 +1,6 @@
 # Permissions Contract
 
-> Дата: 2026-05-18
+> Дата: 2026-05-19
 
 ## Цель
 
@@ -22,7 +22,7 @@
 
 ## Текущий enforcement
 
-Файл: `app/src/store/yjsStore.ts`
+Write path:
 
 Store-level guard добавлен в:
 
@@ -34,6 +34,17 @@ Store-level guard добавлен в:
 Даже если компонент ошибочно вызовет write-метод, store блокирует запись и пишет warning в console.
 
 Чистая функция проверки находится в `app/src/utils/permissions.ts` и покрыта focused test. Сейчас owner marker может совпадать либо с локальным player id, либо с отображаемым именем игрока: это нужно для совместимости с текущими `users/<playerName>/` папками.
+
+View path:
+
+- `canViewEntity` находится в `app/src/utils/permissions.ts`;
+- `EntityDatabase` использует `canViewEntity` перед показом сущности в UI;
+- игроки не видят `gm` базу;
+- игроки видят свою `user` базу по `_playerOwner`, local player id или local player name;
+- legacy user-сущности без `_playerOwner` видны текущему владельцу локального inventory, чтобы старые данные не пропали из интерфейса;
+- ГМ видит все базы и может переключать user inventory через селектор игроков.
+
+Focused test: `app/src/utils/permissions.test.ts` проверяет write и view boundaries.
 
 ## Owner marker
 
@@ -53,6 +64,7 @@ entity.properties._playerOwner
 
 1. Новые UI-кнопки должны спрашивать `yjsStore.canModify(...)`, но не полагаться только на это.
 2. Новые write paths должны проходить через `yjsStore.addEntity/updateEntity/deleteEntity/cloneEntity`.
-3. Прямой `entitiesMap.set/delete` допустим только для системной загрузки, file sync и миграций.
-4. Перед ужесточением записи в `general` нужно отдельно обсудить игровой flow.
-5. Если когда-нибудь понадобится настоящая приватность от технически любопытного клиента, придется разделять sync rooms/docs, а не только UI.
+3. Новые UI-списки сущностей должны использовать `canViewEntity` или компонент/селектор, который уже его применяет.
+4. Прямой `entitiesMap.set/delete` допустим только для системной загрузки, file sync и миграций.
+5. Перед ужесточением записи в `general` нужно отдельно обсудить игровой flow.
+6. Если когда-нибудь понадобится настоящая приватность от технически любопытного клиента, придется разделять sync rooms/docs, а не только UI.

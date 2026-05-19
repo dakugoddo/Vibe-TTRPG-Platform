@@ -37,6 +37,7 @@
 - Полный `npm run lint` в `app` теперь проходит.
 - Vite build chunking оптимизирован: canvas и markdown зависимости вынесены в отдельные chunks, основной JS chunk уменьшен примерно с 1.23 MB до 306 KB.
 - Store-level permission guard добавлен в `yjsStore` для add/update/delete/clone.
+- View-level permission helper `canViewEntity` добавлен и подключен к `EntityDatabase`, чтобы игроки не видели GM-базу и чужие user-сущности в UI.
 - Принята доверенная privacy модель: UI должен скрывать GM-only и чужие user-данные, но отдельные sync boundaries пока не внедряются.
 - Текущие `Entity.properties` по типам описаны в `.pi/docs/entity-properties.md`.
 - Canvas sync layers описаны в `.pi/docs/sync-layers.md`.
@@ -52,7 +53,7 @@
 ## Известный технический долг
 
 - В Codex-среде foreground dev servers стартуют, но фоновые `Start-Process` запуски ранее не удерживались. Для ручной проверки используйте обычные терминалы или `start.bat`.
-- Permission guard требует ручной проверки в настоящей GM/player multiplayer сессии.
+- Permission/view guard требует ручной проверки в настоящей GM/player multiplayer сессии.
 - `root` canvas создается как системная canvas entity с id/name `root`, а UI продолжает показывать локализованный fake root.
 - External edit `.md` -> Entity -> уже открытый canvas Y.Doc поддержан для `drawElements` и `fogReveals`, но требует ручного QA с внешним редактором.
 - Canvas local-preview optimization требует ручной GM/player проверки: remote-клиент должен получать финальный результат после завершения действия, а не поток промежуточных mousemove.

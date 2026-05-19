@@ -8,6 +8,7 @@ import { useCanvasStore } from '../../store/canvasStore';
 import { DragDropPopover, type DragDropPromptData } from './DragDropPopover';
 import { importMarkdown, getIsHost, listPlayers } from '../../services/fileApi';
 import { useUIStore } from '../../store/uiStore';
+import { canViewEntity } from '../../utils/permissions';
 import type { DatabaseType, Entity, EntityType } from '../../types';
 import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map, FileText, Bookmark, Lightbulb, Star, Gift } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -419,8 +420,13 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
     const targetPlayerOwner = targetDb === 'user' ? (playerFilter || yjsStore.localPlayerName) : undefined;
     const entities = allEntities.filter((entity) => {
         const entityDb = entity.database || 'general';
+        const owner = entity.properties?._playerOwner as string | undefined;
         if (entityDb !== targetDb) return false;
-        if (playerFilter && entity.properties?._playerOwner !== playerFilter) return false;
+        if (!canViewEntity(yjsStore.localRole, entityDb, owner, yjsStore.localPlayerId, yjsStore.localPlayerName)) return false;
+        if (playerFilter) {
+            if (owner) return owner === playerFilter;
+            return playerFilter === yjsStore.localPlayerName || playerFilter === yjsStore.localPlayerId;
+        }
         return true;
     });
     const { openWindow } = useWindowStore();

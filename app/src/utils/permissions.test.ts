@@ -4,7 +4,7 @@
  * Run with: ..\server\node_modules\.bin\tsx.cmd src/utils/permissions.test.ts
  */
 
-import { canModifyEntity } from './permissions';
+import { canModifyEntity, canViewEntity } from './permissions';
 
 let passed = 0;
 let failed = 0;
@@ -42,6 +42,23 @@ console.log('\nTest 3: player database boundaries');
     assert(canModifyEntity('player', 'user', 'Игрок', 'local-id', 'Игрок') === true, 'Player can edit user inventory owned by display name');
     assert(canModifyEntity('player', 'user', 'other-player', 'local-player') === false, 'Player cannot edit another user inventory');
     assert(canModifyEntity('player', 'user', undefined, 'local-player') === true, 'Player can edit legacy unowned user inventory');
+}
+
+console.log('\nTest 4: player visibility boundaries');
+{
+    assert(canViewEntity('player', 'general') === true, 'Player can view general');
+    assert(canViewEntity('player', 'gm') === false, 'Player cannot view GM database');
+    assert(canViewEntity('player', 'user', 'local-player', 'local-player') === true, 'Player can view own user inventory');
+    assert(canViewEntity('player', 'user', 'Игрок', 'local-id', 'Игрок') === true, 'Player can view user inventory owned by display name');
+    assert(canViewEntity('player', 'user', 'other-player', 'local-player') === false, 'Player cannot view another user inventory');
+    assert(canViewEntity('player', 'user', undefined, 'local-player') === true, 'Player can view legacy unowned user inventory');
+}
+
+console.log('\nTest 5: GM visibility');
+{
+    assert(canViewEntity('gm', 'general') === true, 'GM can view general');
+    assert(canViewEntity('gm', 'gm') === true, 'GM can view gm');
+    assert(canViewEntity('gm', 'user', 'other-player', 'local-player') === true, 'GM can view every user inventory');
 }
 
 console.log(`\nResults: ${passed} passed, ${failed} failed\n`);
