@@ -10,7 +10,7 @@ import { importMarkdown, getIsHost, listPlayers } from '../../services/fileApi';
 import { useUIStore } from '../../store/uiStore';
 import { canViewEntity } from '../../utils/permissions';
 import type { DatabaseType, Entity, EntityType } from '../../types';
-import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map, FileText, Bookmark, Lightbulb, Star, Gift } from 'lucide-react';
+import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map, FileText, Bookmark, Lightbulb, Star, Gift, Copy } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const TYPE_ICONS: Partial<Record<EntityType | 'spell', LucideIcon>> = {
@@ -34,10 +34,11 @@ interface ContextMenuState {
     entityId: string;
 }
 
-function EntityContextMenu({ state, canEdit, onRename, onOpenWindow, onExport, onDelete, onGiveToPlayer, onClose }: {
+function EntityContextMenu({ state, canEdit, onRename, onDuplicate, onOpenWindow, onExport, onDelete, onGiveToPlayer, onClose }: {
     state: ContextMenuState | null;
     canEdit: boolean;
     onRename: (id: string) => void;
+    onDuplicate: (id: string) => void;
     onOpenWindow: (id: string) => void;
     onExport: (id: string) => void;
     onDelete: (id: string) => void;
@@ -100,6 +101,14 @@ function EntityContextMenu({ state, canEdit, onRename, onOpenWindow, onExport, o
                     className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
                 >
                     <Edit2 size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Переименовать
+                </button>
+            )}
+            {canEdit && (
+                <button
+                    onClick={() => { onDuplicate(state.entityId); onClose(); }}
+                    className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+                >
+                    <Copy size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Дублировать
                 </button>
             )}
             <button
@@ -543,6 +552,16 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         setRenamingId(id);
     }, [canModifyEntityInUi, entities]);
 
+    const handleDuplicateEntity = useCallback((id: string) => {
+        const entity = entities.find(e => e.id === id);
+        if (!entity || entity.id === 'root' || !canModifyEntityInUi(entity)) return;
+
+        const cloneId = yjsStore.cloneEntity(id, entity.parentId, entity.database || targetDb);
+        if (cloneId) {
+            openWindow(cloneId, Math.random() * 200 + 70, Math.random() * 200 + 70);
+        }
+    }, [canModifyEntityInUi, entities, openWindow, targetDb]);
+
     const handleCloseContextMenu = useCallback(() => {
         setContextMenuState(null);
     }, []);
@@ -842,6 +861,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                 state={contextMenuState}
                 canEdit={contextMenuCanEdit}
                 onRename={handleRenameStart}
+                onDuplicate={handleDuplicateEntity}
                 onOpenWindow={(id) => openWindow(id, Math.random() * 200 + 50, Math.random() * 200 + 50)}
                 onExport={handleExportEntity}
                 onGiveToPlayer={getIsHost() && contextMenuCanEdit ? handleGiveToPlayer : undefined}
