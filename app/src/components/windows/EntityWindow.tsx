@@ -1,8 +1,10 @@
 import { Rnd } from 'react-rnd';
-import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network, Copy } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
+import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network, Copy, Box, Lightbulb, Sword } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useWindowStore } from '../../store/windowStore';
 import type { WindowState, WindowMode } from '../../store/windowStore';
-import type { Entity } from '../../types';
+import type { Entity, EntityType } from '../../types';
 import { useEntity, useEntities, getEntitiesSnapshot } from '../../hooks/useEntities';
 import { useCanvasStore } from '../../store/canvasStore';
 import { CharacterSheet } from './CharacterSheet';
@@ -67,6 +69,61 @@ function hasWikiLinkToEntity(source: Entity, targetName: string): boolean {
 }
 
 const MAX_RELATION_LINKS = 8;
+
+interface QuickCreateAction {
+    type: EntityType;
+    label: string;
+    icon: LucideIcon;
+}
+
+function getWindowQuickCreateActions(entity: Entity): QuickCreateAction[] {
+    if (entity.type === 'character') {
+        return [
+            { type: 'object', label: 'Создать предмет', icon: Box },
+            { type: 'competency', label: 'Создать компетенцию', icon: Lightbulb },
+        ];
+    }
+
+    if (entity.type === 'object') {
+        return [{ type: 'attack', label: 'Создать атаку', icon: Sword }];
+    }
+
+    return [];
+}
+
+function createChildEntityDraft(parent: Entity, type: EntityType): Entity {
+    const owner = getEntityOwnerId(parent);
+    const draft: Entity = {
+        id: uuidv4(),
+        parentId: parent.id,
+        type,
+        database: parent.database,
+        name: type,
+        description: '',
+        tags: [],
+        properties: {},
+    };
+
+    if (type === 'object') {
+        draft.name = 'object';
+        draft.description = 'Новый предмет.';
+        draft.properties = { фигура: 1, прочность: 1, нагрузка: 1, редкость: 0, цена: 0 };
+    } else if (type === 'attack') {
+        draft.name = 'attack';
+        draft.description = 'Новая атака.';
+        draft.properties = { урон: 1, масштаб: 1, попадание: 1, дистанция: 'ближняя' };
+    } else if (type === 'competency') {
+        draft.name = 'competency';
+        draft.description = 'Новая компетенция.';
+        draft.properties = { rank: 0 };
+    }
+
+    if (parent.database === 'user' && owner) {
+        draft.properties = { ...draft.properties, _playerOwner: owner };
+    }
+
+    return draft;
+}
 
 function RelationPill({ entity }: { entity: Entity }) {
     const group = EntityGroups.find(g => g.type === entity.type);
@@ -217,6 +274,16 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
         }
     };
 
+    const handleCreateChildEntity = (type: EntityType) => {
+        setContextMenuState(null);
+        if (!canEditCurrentEntity || entity.id === 'root') return;
+
+        const child = createChildEntityDraft(entity, type);
+        if (yjsStore.addEntity(child)) {
+            openWindow(child.id, x + 72, y + 72);
+        }
+    };
+
     const handleRenameSubmit = () => {
         if (canEditCurrentEntity && tempName.trim() !== '') {
             yjsStore.updateEntity(entityId, { name: tempName });
@@ -319,8 +386,9 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     const frameClass = `w-full h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${glass.window} ${
         focusedWindowId === id ? '!border-white/30 !shadow-[0_0_40px_rgba(255,255,255,0.05)]' : ''
     } ${isPinned ? 'ring-2 ring-yellow-500/50 outline outline-2 outline-yellow-500/20' : ''}`;
+    const quickCreateActions = canEditCurrentEntity ? getWindowQuickCreateActions(entity) : [];
     const contextMenuWidth = 220;
-    const contextMenuHeight = canEditCurrentEntity ? 230 : 92;
+    const contextMenuHeight = 230 + quickCreateActions.length * 36;
 
     return (
         <Rnd
@@ -639,6 +707,26 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                         >
                             <Link2 size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Копировать [[ссылку]]
                         </button>
+                        {quickCreateActions.length > 0 && (
+                            <>
+                                <div className="border-t border-white/5 my-1 mx-2" />
+                                {quickCreateActions.map(action => {
+                                    const ActionIcon = action.icon;
+                                    return (
+                                        <button
+                                            key={action.type}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleCreateChildEntity(action.type);
+                                            }}
+                                            className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+                                        >
+                                            <ActionIcon size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {action.label}
+                                        </button>
+                                    );
+                                })}
+                            </>
+                        )}
                         <div className="border-t border-white/5 my-1 mx-2" />
                         <button
                             onClick={(e) => {
