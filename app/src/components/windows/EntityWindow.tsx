@@ -1,15 +1,14 @@
 import { Rnd } from 'react-rnd';
-import { Minimize2, X, CircleDot, Pin, PinOff, Bug } from 'lucide-react';
+import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network } from 'lucide-react';
 import { useWindowStore } from '../../store/windowStore';
 import type { WindowState, WindowMode } from '../../store/windowStore';
 import type { Entity } from '../../types';
-import { useEntity, getEntitiesSnapshot } from '../../hooks/useEntities';
+import { useEntity, useEntities, getEntitiesSnapshot } from '../../hooks/useEntities';
 import { useCanvasStore } from '../../store/canvasStore';
 import { CharacterSheet } from './CharacterSheet';
 import { yjsStore } from '../../store/yjsStore';
-import { Plus, Tag, Trash2, Edit2, Check } from 'lucide-react';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 
 interface ContextMenuState {
@@ -25,6 +24,7 @@ import { ObjectSheet } from './blocks/ObjectSheet';
 import { AttackSheet } from './blocks/AttackSheet';
 import { useUIStore } from '../../store/uiStore';
 import { glass } from '../../utils/theme';
+import { canViewEntity } from '../../utils/permissions';
 
 interface EntityWindowProps {
     windowState: WindowState;
@@ -33,6 +33,124 @@ interface EntityWindowProps {
 function getEntityOwnerId(entity: Entity): string | undefined {
     const owner = entity.properties?._playerOwner;
     return typeof owner === 'string' ? owner : undefined;
+}
+
+function canViewRelatedEntity(entity: Entity): boolean {
+    return canViewEntity(
+        yjsStore.localRole,
+        entity.database,
+        getEntityOwnerId(entity),
+        yjsStore.localPlayerId,
+        yjsStore.localPlayerName
+    );
+}
+
+function normalizeWikiTarget(target: string): string {
+    return target.split('|')[0].split('#')[0].trim().toLowerCase();
+}
+
+function hasWikiLinkToEntity(source: Entity, targetName: string): boolean {
+    if (!source.description) return false;
+
+    const normalizedTarget = targetName.trim().toLowerCase();
+    const wikiPattern = /\[\[([^\]]+)\]\]/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = wikiPattern.exec(source.description)) !== null) {
+        if (normalizeWikiTarget(match[1]) === normalizedTarget) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+const MAX_RELATION_LINKS = 8;
+
+function RelationPill({ entity }: { entity: Entity }) {
+    const group = EntityGroups.find(g => g.type === entity.type);
+
+    return (
+        <EntityLink
+            entityId={entity.id}
+            underline={false}
+            className="min-w-0 max-w-full px-2.5 py-1.5 rounded-md border border-white/10 bg-black/20 text-white/75 hover:text-white hover:border-white/25 hover:bg-white/10 text-xs"
+        >
+            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${group?.dot || 'bg-white/40'}`} />
+            <span className="truncate">{entity.name}</span>
+        </EntityLink>
+    );
+}
+
+function EntityRelationsBlock({ entity }: { entity: Entity }) {
+    const allEntities = useEntities();
+
+    const sections = useMemo(() => {
+        const visibleEntities = allEntities
+            .filter(candidate => candidate.id !== 'root')
+            .filter(canViewRelatedEntity);
+        const byId = new Map(visibleEntities.map(candidate => [candidate.id, candidate]));
+        const sortByName = (a: Entity, b: Entity) => a.name.localeCompare(b.name, 'ru');
+
+        const parent = entity.parentId ? byId.get(entity.parentId) : undefined;
+        const children = visibleEntities
+            .filter(candidate => candidate.parentId === entity.id && candidate.id !== entity.id)
+            .sort(sortByName);
+        const tags = (entity.tags || [])
+            .map(tagId => byId.get(tagId))
+            .filter((candidate): candidate is Entity => Boolean(candidate))
+            .sort(sortByName);
+        const backlinks = visibleEntities
+            .filter(candidate => candidate.id !== entity.id && hasWikiLinkToEntity(candidate, entity.name))
+            .sort(sortByName);
+
+        return [
+            { id: 'parent', label: 'Parent', icon: Network, entities: parent ? [parent] : [] },
+            { id: 'children', label: 'Children', icon: CornerDownRight, entities: children },
+            { id: 'tags', label: 'Tags', icon: Tag, entities: tags },
+            { id: 'backlinks', label: 'Backlinks', icon: Link2, entities: backlinks },
+        ].filter(section => section.entities.length > 0);
+    }, [allEntities, entity.id, entity.name, entity.parentId, entity.tags]);
+
+    if (sections.length === 0) return null;
+
+    return (
+        <div className={`${glass.blockBg} mt-1`}>
+            <h3 className={glass.blockHeader}>
+                <div className="flex items-center gap-2">
+                    <Link2 size={12} className="text-white/40" />
+                    Links
+                </div>
+            </h3>
+            <div className="grid gap-3">
+                {sections.map(section => {
+                    const visibleLinks = section.entities.slice(0, MAX_RELATION_LINKS);
+                    const hiddenCount = section.entities.length - visibleLinks.length;
+                    const Icon = section.icon;
+
+                    return (
+                        <div key={section.id} className="grid gap-1.5">
+                            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-white/35 font-bold">
+                                <Icon size={11} className="text-white/35" />
+                                <span>{section.label}</span>
+                                <span className="text-white/20">({section.entities.length})</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 min-w-0">
+                                {visibleLinks.map(relatedEntity => (
+                                    <RelationPill key={`${section.id}-${relatedEntity.id}`} entity={relatedEntity} />
+                                ))}
+                                {hiddenCount > 0 && (
+                                    <span className="px-2.5 py-1.5 rounded-md border border-white/5 bg-black/10 text-white/35 text-xs">
+                                        +{hiddenCount}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
 }
 
 export function EntityWindow({ windowState }: EntityWindowProps) {
@@ -311,7 +429,10 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                     <div className={`${glass.content} flex-1`}>
                     <EntityImageBlock entity={entity} isWide={entity.type === 'canvas'} />
                     {entity.type === 'character' ? (
-                        <CharacterSheet entityId={entityId} isFullMode={isFullMode} />
+                        <>
+                            <CharacterSheet entityId={entityId} isFullMode={isFullMode} />
+                            <EntityRelationsBlock entity={entity} />
+                        </>
                     ) : (
                         <>
                             <div className={glass.blockBg}>
@@ -356,6 +477,8 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                             {entity.type === 'attack' && (
                                 <AttackSheet entity={entity} />
                             )}
+
+                            <EntityRelationsBlock entity={entity} />
 
                             {isFullMode && (
                                 <div className="space-y-4 animate-in fade-in duration-200 mt-6 slide-in-from-bottom-2">
