@@ -58,6 +58,7 @@ UI action gating:
 - `InventoryBlock` скрывает equip toggle, quantity input, delete и drag/drop для read-only персонажа или read-only предмета; при move/copy в owned user inventory owner marker применяется к предмету и его дочерним сущностям.
 - `AttributeBlock` проверяет `yjsStore.canModify(...)` перед изменением статов, ран, active powers и статусов; при read-only состоянии UI не отправляет системные логи ран/статусов.
 - Legacy blocks `PropertiesBlock` и `StatusBlock` скрывают tag edit/drop для read-only сущностей на случай будущего повторного подключения.
+- Canvas editing проходит через тот же контракт: `canvasSyncStore` блокирует draw/fog mutations, undo/redo, full-array sync и mirror writeback без права менять текущую canvas entity; read-only canvas скрывает drawing/fog/style controls и оставляет безопасный select/navigation UI; `CanvasToolbar` применяет style/z-order через guarded `syncElementsArray`; `InfiniteCanvas` не дает перетаскивать токены/порталы или удалять портал без права редактировать соответствующую сущность.
 
 Focused test: `app/src/utils/permissions.test.ts` проверяет write и view boundaries.
 
@@ -81,5 +82,6 @@ entity.properties._playerOwner
 2. Новые write paths должны проходить через `yjsStore.addEntity/updateEntity/deleteEntity/cloneEntity`.
 3. Новые UI-списки сущностей должны использовать `canViewEntity` или компонент/селектор, который уже его применяет.
 4. Прямой `entitiesMap.set/delete` допустим только для системной загрузки, file sync и миграций.
-5. Перед ужесточением записи в `general` нужно отдельно обсудить игровой flow.
-6. Если когда-нибудь понадобится настоящая приватность от технически любопытного клиента, придется разделять sync rooms/docs, а не только UI.
+5. Прямой `elementsMap.set/delete` или `fogMap.set/delete` в UI недопустим; используй методы `canvasSyncStore`, чтобы не обходить canvas permission guard.
+6. Перед ужесточением записи в `general` нужно отдельно обсудить игровой flow.
+7. Если когда-нибудь понадобится настоящая приватность от технически любопытного клиента, придется разделять sync rooms/docs, а не только UI.

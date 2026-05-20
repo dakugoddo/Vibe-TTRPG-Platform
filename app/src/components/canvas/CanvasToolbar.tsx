@@ -7,7 +7,7 @@
  * Bug fix: Line cap selectors only show for line-type elements, not shapes.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCanvasDrawStore, type DrawStyleState } from '../../store/canvasDrawStore';
 import { useCanvasSyncStore } from '../../store/canvasSyncStore';
@@ -18,6 +18,7 @@ import { useEntitiesByParent, getEntitiesSnapshot } from '../../hooks/useEntitie
 import type { CanvasTool, StrokeStyle, LineCap, TextFontFamily, TextAlign, DrawElement } from '../../types/canvasTypes';
 import { getElementBounds, reorderElements } from '../../types/canvasTypes';
 import { yjsStore } from '../../store/yjsStore';
+import type { Entity } from '../../types';
 import React from 'react';
 
 interface ToolDef {
@@ -198,17 +199,12 @@ function applyStyleToSelected(
   selectedIds: string[],
   styleUpdate: Record<string, unknown>
 ) {
-  const elementsMap = useCanvasSyncStore.getState().elementsMap;
-  if (!elementsMap || !elementsMap.doc) return;
-  
-  elementsMap.doc.transact(() => {
-    for (const id of selectedIds) {
-      const existing = elementsMap.get(id);
-      if (existing) {
-        elementsMap.set(id, { ...existing, ...styleUpdate });
-      }
-    }
-  });
+  const { elements, syncElementsArray } = useCanvasSyncStore.getState();
+  const selected = new Set(selectedIds);
+  const updated = elements.map((element) =>
+    selected.has(element.id) ? { ...element, ...styleUpdate } : element
+  );
+  syncElementsArray(updated);
 }
 
 function getSelectedElementType(
@@ -229,6 +225,17 @@ function getSelectedElementType(
   return null;
 }
 
+function getEntityOwnerId(entity: Entity): string | undefined {
+  const owner = entity.properties?._playerOwner;
+  return typeof owner === 'string' ? owner : undefined;
+}
+
+function canEditCanvasEntity(canvasId: string | null): boolean {
+  if (!canvasId) return false;
+  const entity = yjsStore.entitiesMap.get(canvasId);
+  if (!entity || entity.type !== 'canvas') return true;
+  return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
+}
 
 export function CanvasToolbar() {
   const { t } = useTranslation();
@@ -289,11 +296,19 @@ export function CanvasToolbar() {
   };
 
   const hasSelection = selectedElementIds.length > 0;
+  const canEditActiveCanvas = canEditCanvasEntity(activeCanvasId);
+  const visibleTools = canEditActiveCanvas ? tools : tools.filter((tool) => tool.id === 'select');
   const isLineTool = activeTool === 'line' || activeTool === 'pen';
   const isShapeTool = activeTool === 'rect' || activeTool === 'ellipse' || activeTool === 'frame';
   const isTextTool = activeTool === 'text';
   const isDrawTool = isLineTool || isShapeTool || isTextTool;
-  const showStylePanel = isDrawTool || (activeTool === 'select' && hasSelection);
+  const showStylePanel = canEditActiveCanvas && (isDrawTool || (activeTool === 'select' && hasSelection));
+
+  useEffect(() => {
+    if (canEditActiveCanvas) return;
+    if (activeTool !== 'select') setTool('select');
+    if (fogEditMode) setFogEditMode(false);
+  }, [activeTool, canEditActiveCanvas, fogEditMode, setFogEditMode, setTool]);
 
   // Bug fix #1: Only show line caps when a line tool is active OR a line element is selected
   const selectedType = hasSelection ? getSelectedElementType(activeCanvasId, selectedElementIds) : null;
@@ -430,7 +445,7 @@ export function CanvasToolbar() {
 
         {/* Drawing Tools */}
         <div className="bg-black/20 backdrop-blur-2xl border border-white/10 rounded-xl shadow-xl p-1 flex gap-0.5">
-          {tools.map((tool) => (
+          {visibleTools.map((tool) => (
             <button
               key={tool.id}
               onClick={() => setTool(tool.id)}
@@ -447,6 +462,7 @@ export function CanvasToolbar() {
         </div>
 
         {/* Extra tools overflow */}
+        {canEditActiveCanvas && (
         <div className="relative">
           <button
             onClick={() => setExtraOpen(!extraOpen)}
@@ -485,6 +501,7 @@ export function CanvasToolbar() {
             </>
           )}
         </div>
+        )}
 
         {/* Grid Toggle + Settings */}
         <div className="relative">
@@ -559,7 +576,7 @@ export function CanvasToolbar() {
         </div>
 
         {/* Fog of War Button (GM only) — toggles fog edit mode */}
-        {isGM && (
+        {isGM && canEditActiveCanvas && (
           <button
             onClick={() => {
               const nextFog = !fogEditMode;
@@ -726,7 +743,7 @@ export function CanvasToolbar() {
       </div>
 
       {/* ─── Fog Tools Panel (GM only, shown when fog edit mode is active) ─── */}
-      {fogEditMode && isGM && (
+      {fogEditMode && isGM && canEditActiveCanvas && (
         <div className="flex items-center gap-1.5 bg-black/30 backdrop-blur-2xl border border-purple-500/30 rounded-xl shadow-[0_10px_30px_rgba(139,92,246,0.15)] p-1">
           {/* Reveal Brush */}
           <button
@@ -828,7 +845,7 @@ export function CanvasToolbar() {
       )}
 
       {/* Current fog tool label */}
-      {fogEditMode && isGM && (
+      {fogEditMode && isGM && canEditActiveCanvas && (
         <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest bg-black/20 backdrop-blur-md rounded-lg px-3 py-1 border border-white/5 select-none">
           {fogTool === 'revealBrush' ? '🟢 Просвет: Кисть' :
            fogTool === 'revealRect' ? '🟢 Просвет: Область' :

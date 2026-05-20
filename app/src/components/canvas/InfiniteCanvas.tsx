@@ -70,6 +70,15 @@ function generateDrawId(): string {
 
 // ─── Ramer-Douglas-Peucker line simplification ───
 
+function getEntityOwnerId(entity: Entity): string | undefined {
+  const owner = entity.properties?._playerOwner;
+  return typeof owner === 'string' ? owner : undefined;
+}
+
+function canEditEntity(entity: Entity): boolean {
+  return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
+}
+
 function perpendicularDistance(
   px: number, py: number,
   x1: number, y1: number,
@@ -3297,6 +3306,7 @@ export function InfiniteCanvas() {
 
           {/* Portals */}
           {portals.map((portal) => {
+            const canEditPortal = canEditEntity(portal);
             const targetName = portal.properties?.targetCanvasId
               ? yjsStore.entitiesMap.get(portal.properties.targetCanvasId)?.name || ''
               : '';
@@ -3305,8 +3315,9 @@ export function InfiniteCanvas() {
                 key={portal.id}
                 x={portal.properties.x || 0}
                 y={portal.properties.y || 0}
-                draggable
+                draggable={canEditPortal}
                 onDragEnd={(e) => {
+                  if (!canEditPortal) return;
                   yjsStore.updateEntity(portal.id, {
                     properties: { ...portal.properties, x: e.target.x(), y: e.target.y() },
                   });
@@ -3388,30 +3399,34 @@ export function InfiniteCanvas() {
           })}
 
           {/* Tokens */}
-          {tokens.map((token) => (
-            <Group
-              key={token.id}
-              x={token.properties.x || 0}
-              y={token.properties.y || 0}
-              draggable
-              onDragEnd={(e) => {
-                yjsStore.updateEntity(token.id, {
-                  properties: { ...token.properties, x: e.target.x(), y: e.target.y() },
-                });
-              }}
-              onDblClick={(e) => {
-                e.cancelBubble = true;
-                openWindow(token.id, e.evt.clientX, e.evt.clientY);
-              }}
-              onMouseEnter={(e) => {
-                const c = e.target.getStage()?.container();
-                if (c) c.style.cursor = 'pointer';
-              }}
-              onMouseLeave={(e) => {
-                const c = e.target.getStage()?.container();
-                if (c) c.style.cursor = getCursor();
-              }}
-            >
+          {tokens.map((token) => {
+            const canEditToken = canEditEntity(token);
+
+            return (
+              <Group
+                key={token.id}
+                x={token.properties.x || 0}
+                y={token.properties.y || 0}
+                draggable={canEditToken}
+                onDragEnd={(e) => {
+                  if (!canEditToken) return;
+                  yjsStore.updateEntity(token.id, {
+                    properties: { ...token.properties, x: e.target.x(), y: e.target.y() },
+                  });
+                }}
+                onDblClick={(e) => {
+                  e.cancelBubble = true;
+                  openWindow(token.id, e.evt.clientX, e.evt.clientY);
+                }}
+                onMouseEnter={(e) => {
+                  const c = e.target.getStage()?.container();
+                  if (c) c.style.cursor = 'pointer';
+                }}
+                onMouseLeave={(e) => {
+                  const c = e.target.getStage()?.container();
+                  if (c) c.style.cursor = getCursor();
+                }}
+              >
               <Circle
                 radius={30}
                 fill="#1f2937"
@@ -3441,8 +3456,9 @@ export function InfiniteCanvas() {
                 align="center"
                 width={120}
               />
-            </Group>
-          ))}
+              </Group>
+            );
+          })}
         </Layer>
 
         {/* Layer 3: Fog of War */}
@@ -3520,7 +3536,10 @@ export function InfiniteCanvas() {
       })()}
 
       {/* Portal Context Menu Overlay */}
-      {portalMenu && (
+      {portalMenu && (() => {
+        const canDeletePortal = canEditEntity(portalMenu.portal);
+
+        return (
         <>
           <div
             className="fixed inset-0 z-[99998]"
@@ -3547,28 +3566,36 @@ export function InfiniteCanvas() {
               <ExternalLink size={14} className="text-white/40 group-hover:text-white/80 transition-colors" />{' '}
               Открыть окно области
             </button>
-            <div className="border-t border-white/5 my-1 mx-2" />
-            <button
-              className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center gap-2 group"
-              onClick={() => {
-                setPortalMenu(null);
-                openConfirm({
-                  title: 'Удаление портала',
-                  description: `Вы уверены, что хотите удалить портал «${portalMenu.portal.name}»?`,
-                  confirmText: 'Удалить',
-                  isDestructive: true,
-                  onConfirm: () => {
-                    yjsStore.deleteEntity(portalMenu.portal.id);
-                  }
-                });
-              }}
-            >
-              <Trash2 size={14} className="text-red-500/50 group-hover:text-red-400 transition-colors" />{' '}
-              Удалить портал
-            </button>
+            {canDeletePortal && (
+              <>
+                <div className="border-t border-white/5 my-1 mx-2" />
+                <button
+                  className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center gap-2 group"
+                  onClick={() => {
+                    const portalToDelete = portalMenu.portal;
+                    setPortalMenu(null);
+                    openConfirm({
+                      title: 'Удаление портала',
+                      description: `Вы уверены, что хотите удалить портал «${portalToDelete.name}»?`,
+                      confirmText: 'Удалить',
+                      isDestructive: true,
+                      onConfirm: () => {
+                        if (canEditEntity(portalToDelete)) {
+                          yjsStore.deleteEntity(portalToDelete.id);
+                        }
+                      }
+                    });
+                  }}
+                >
+                  <Trash2 size={14} className="text-red-500/50 group-hover:text-red-400 transition-colors" />{' '}
+                  Удалить портал
+                </button>
+              </>
+            )}
           </div>
         </>
-      )}
+        );
+      })()}
 
       {/* Bottom-left hints: ping + pan + player fog toggle */}
       <div className="absolute bottom-4 left-4 z-30 flex items-center gap-2">

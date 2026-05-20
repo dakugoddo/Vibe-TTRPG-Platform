@@ -56,6 +56,17 @@ function getCanvasEntity(canvasId: string) {
     return entity?.type === 'canvas' ? entity : null;
 }
 
+function getEntityOwnerId(entity: Entity): string | undefined {
+    const owner = entity.properties?._playerOwner;
+    return typeof owner === 'string' ? owner : undefined;
+}
+
+function canModifyCanvas(canvasId: string | null): boolean {
+    if (!canvasId) return false;
+    const entity = getCanvasEntity(canvasId);
+    return entity ? yjsStore.canModify(entity.database, getEntityOwnerId(entity)) : true;
+}
+
 function seedCanvasDocFromEntity(
     canvasId: string,
     doc: Y.Doc,
@@ -130,6 +141,7 @@ function syncMapWithSnapshot<T extends { id: string }>(map: Y.Map<T>, snapshot: 
 function writeCanvasEntitySnapshot(canvasId: string): void {
     const entity = getCanvasEntity(canvasId);
     if (!entity) return;
+    if (!canModifyCanvas(canvasId)) return;
 
     const { elementsMap, fogMap } = useCanvasSyncStore.getState();
     if (!elementsMap || !fogMap) return;
@@ -375,12 +387,14 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
     },
 
     setElement: (element: DrawElement) => {
-        const { elementsMap } = get();
+        const { canvasId, elementsMap } = get();
+        if (!canModifyCanvas(canvasId)) return;
         if (elementsMap) elementsMap.set(element.id, sanitizeDrawElementForPersistence(element));
     },
 
     updateElement: (id: string, partial: Partial<DrawElement>) => {
-        const { elementsMap } = get();
+        const { canvasId, elementsMap } = get();
+        if (!canModifyCanvas(canvasId)) return;
         if (elementsMap) {
             const existing = elementsMap.get(id);
             if (existing) {
@@ -390,12 +404,14 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
     },
 
     deleteElement: (id: string) => {
-        const { elementsMap } = get();
+        const { canvasId, elementsMap } = get();
+        if (!canModifyCanvas(canvasId)) return;
         if (elementsMap) elementsMap.delete(id);
     },
 
     deleteElements: (ids: string[]) => {
-        const { doc, elementsMap } = get();
+        const { canvasId, doc, elementsMap } = get();
+        if (!canModifyCanvas(canvasId)) return;
         if (doc && elementsMap) {
             doc.transact(() => {
                 ids.forEach(id => elementsMap.delete(id));
@@ -404,7 +420,8 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
     },
 
     syncElementsArray: (newArray: DrawElement[]) => {
-        const { doc, elementsMap } = get();
+        const { canvasId, doc, elementsMap } = get();
+        if (!canModifyCanvas(canvasId)) return;
         if (!doc || !elementsMap) return;
         
         doc.transact(() => {
@@ -429,14 +446,16 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
     },
 
     undo: () => {
-        const { undoManager } = get();
+        const { canvasId, undoManager } = get();
+        if (!canModifyCanvas(canvasId)) return;
         if (undoManager) {
             undoManager.undo();
         }
     },
 
     redo: () => {
-        const { undoManager } = get();
+        const { canvasId, undoManager } = get();
+        if (!canModifyCanvas(canvasId)) return;
         if (undoManager) {
             undoManager.redo();
         }
@@ -498,14 +517,16 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
 
     /** Add a fog patch (dark area) — used by Cover tools */
     addFogReveal: (patch: FogReveal) => {
-        const { fogMap } = get();
+        const { canvasId, fogMap } = get();
+        if (!canModifyCanvas(canvasId)) return;
         if (!fogMap) return;
         fogMap.set(patch.id, sanitizeFogRevealForPersistence(patch));
     },
 
     /** Remove fog patches that overlap the given shape — used by Reveal tools */
     removeIntersectingReveals: (shape: FogReveal) => {
-        const { fogMap, fogReveals } = get();
+        const { canvasId, fogMap, fogReveals } = get();
+        if (!canModifyCanvas(canvasId)) return;
         if (!fogMap) return;
         const toRemove: string[] = [];
         for (const r of fogReveals) {
@@ -521,7 +542,8 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
     },
 
     syncFogArray: (reveals: FogReveal[]) => {
-        const { doc, fogMap } = get();
+        const { canvasId, doc, fogMap } = get();
+        if (!canModifyCanvas(canvasId)) return;
         if (!doc || !fogMap) return;
 
         doc.transact(() => {
@@ -531,7 +553,8 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
 
     /** Cover entire canvas with fog (add one massive fog patch) */
     clearAllFog: () => {
-        const { fogMap, doc } = get();
+        const { canvasId, fogMap, doc } = get();
+        if (!canModifyCanvas(canvasId)) return;
         if (!fogMap || !doc) return;
         doc.transact(() => {
             fogMap.clear();
@@ -548,7 +571,8 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
 
     /** Remove all fog patches — canvas is fully visible */
     revealAll: () => {
-        const { fogMap, doc } = get();
+        const { canvasId, fogMap, doc } = get();
+        if (!canModifyCanvas(canvasId)) return;
         if (!fogMap || !doc) return;
         doc.transact(() => {
             fogMap.clear();
