@@ -16,6 +16,11 @@ interface AttributeBlockProps {
     entity: Entity;
 }
 
+function getEntityOwnerId(entity: Entity): string | undefined {
+    const owner = entity.properties?._playerOwner;
+    return typeof owner === 'string' ? owner : undefined;
+}
+
 const StatRow = ({
     entityId,
     path,
@@ -24,7 +29,8 @@ const StatRow = ({
     properties,
     baseLabel,
     adhocLabel,
-    handleUpdateAttribute
+    handleUpdateAttribute,
+    canEdit
 }: {
     entityId: string;
     path: string[];
@@ -34,6 +40,7 @@ const StatRow = ({
     baseLabel?: string;
     adhocLabel?: string;
     handleUpdateAttribute: (p: string[], v: unknown) => void;
+    canEdit: boolean;
 }) => {
     const stat = useCalculatedStat(entityId, path);
     const allEntities = getEntitiesSnapshot();
@@ -82,6 +89,7 @@ const StatRow = ({
                                 <input
                                     type="number"
                                     value={stat.base}
+                                    readOnly={!canEdit}
                                     onChange={(e) => handleUpdateAttribute([...path, 'base'], parseInt(e.target.value) || 0)}
                                     className={`${glass.input} text-center`}
                                 />
@@ -92,6 +100,7 @@ const StatRow = ({
                                 <input
                                     type="number"
                                     value={adhoc}
+                                    readOnly={!canEdit}
                                     onChange={(e) => handleUpdateAttribute([...path, 'adhoc'], parseInt(e.target.value) || 0)}
                                     className={`${glass.input}`}
                                 />
@@ -117,6 +126,7 @@ const StatRow = ({
 
 export function AttributeBlock({ entity }: AttributeBlockProps) {
     const properties = entity.properties || {};
+    const canEditAttributes = yjsStore.canModify(entity.database, getEntityOwnerId(entity));
     const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
     const [isEditingWounds, setIsEditingWounds] = useState(false);
     const [woundsDraft, setWoundsDraft] = useState('');
@@ -166,6 +176,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
     };
 
     const handleUpdateAttribute = (path: string[], value: unknown) => {
+        if (!canEditAttributes) return;
         const newProperties = JSON.parse(JSON.stringify(properties));
         let current = newProperties;
         for (let i = 0; i < path.length - 1; i++) {
@@ -177,6 +188,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
     };
 
     const setWoundsValue = (value: number) => {
+        if (!canEditAttributes) return;
         const newValue = Math.max(0, Math.min(maxWounds, value));
         if (newValue === currentWounds) return;
 
@@ -198,11 +210,16 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
     };
 
     const startWoundsEdit = () => {
+        if (!canEditAttributes) return;
         setWoundsDraft(String(currentWounds));
         setIsEditingWounds(true);
     };
 
     const commitWoundsDraft = () => {
+        if (!canEditAttributes) {
+            setIsEditingWounds(false);
+            return;
+        }
         const trimmed = woundsDraft.trim();
         if (trimmed === '') {
             setWoundsDraft(String(currentWounds));
@@ -220,6 +237,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
     };
 
     const togglePower = (power: string) => {
+        if (!canEditAttributes) return;
         const currentPowers: string[] = properties.activePowers || [];
         if (currentPowers.includes(power)) {
             handleUpdateAttribute(['activePowers'], currentPowers.filter(p => p !== power));
@@ -257,6 +275,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                                     <input
                                                         type="number"
                                                         value={limitStat.base}
+                                                        readOnly={!canEditAttributes}
                                                         onChange={(e) => handleUpdateAttribute(['attributes', 'wounds', 'limit', 'base'], parseInt(e.target.value) || 1)}
                                                         className={`${glass.input} text-center`}
                                                     />
@@ -266,6 +285,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                                     <input
                                                         type="number"
                                                         value={woundsAdhoc}
+                                                        readOnly={!canEditAttributes}
                                                         onChange={(e) => handleUpdateAttribute(['attributes', 'wounds', 'limit', 'adhoc'], parseInt(e.target.value) || 0)}
                                                         className={`${glass.input} text-center`}
                                                     />
@@ -291,7 +311,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                             <div className="flex items-center gap-1 bg-black/30 rounded-lg px-1.5 py-1 border border-white/5 shadow-inner backdrop-blur-sm">
                                 <button
                                     onClick={() => handleChangeWounds(-5)}
-                                    disabled={currentWounds <= 0}
+                                    disabled={!canEditAttributes || currentWounds <= 0}
                                     className="p-1 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
                                     title="−5 ран"
                                 >
@@ -300,7 +320,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                 </button>
                                 <button
                                     onClick={() => handleChangeWounds(-1)}
-                                    disabled={currentWounds <= 0}
+                                    disabled={!canEditAttributes || currentWounds <= 0}
                                     className="p-1 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
                                     title="−1 рана"
                                 >
@@ -314,6 +334,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                         min={0}
                                         max={maxWounds}
                                         value={woundsDraft}
+                                        readOnly={!canEditAttributes}
                                         onChange={(e) => setWoundsDraft(e.target.value)}
                                         onBlur={commitWoundsDraft}
                                         onKeyDown={(e) => {
@@ -337,6 +358,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                 ) : (
                                     <button
                                         type="button"
+                                        disabled={!canEditAttributes}
                                         className={clsx(
                                             "h-8 w-12 text-center font-bold text-xl tabular-nums select-none transition-colors rounded-md hover:bg-white/10 hover:brightness-125",
                                             currentWounds >= limitStat.total ? "text-red-400" : "text-green-400"
@@ -350,7 +372,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
 
                                 <button
                                     onClick={() => handleChangeWounds(1)}
-                                    disabled={currentWounds >= maxWounds}
+                                    disabled={!canEditAttributes || currentWounds >= maxWounds}
                                     className="p-1 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
                                     title="+1 рана"
                                 >
@@ -358,7 +380,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                 </button>
                                 <button
                                     onClick={() => handleChangeWounds(5)}
-                                    disabled={currentWounds >= maxWounds}
+                                    disabled={!canEditAttributes || currentWounds >= maxWounds}
                                     className="p-1 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
                                     title="+5 ран"
                                 >
@@ -375,8 +397,8 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
             {/* Horizontal Progress Bar — clickable */}
             <div
                 className="h-3 w-full bg-[#1a1c29] rounded-full overflow-hidden border border-white/5 relative p-[1px] shadow-inner cursor-pointer group/bar"
-                onClick={() => handleChangeWounds(1)}
-                onContextMenu={(e) => { e.preventDefault(); handleChangeWounds(-1); }}
+                onClick={() => { if (canEditAttributes) handleChangeWounds(1); }}
+                onContextMenu={(e) => { e.preventDefault(); if (canEditAttributes) handleChangeWounds(-1); }}
                 title="ЛКМ: +1 рана | ПКМ: −1 рана"
             >
                 <div
@@ -403,12 +425,12 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                         Атрибуты
                     </h4>
                     <div className="grid grid-cols-2 gap-2">
-                        <StatRow entityId={entity.id} path={['attributes', 'constitution']} label="Телосложение" properties={properties} handleUpdateAttribute={handleUpdateAttribute} />
-                        <StatRow entityId={entity.id} path={['attributes', 'cognition']} label="Когниция" properties={properties} handleUpdateAttribute={handleUpdateAttribute} />
-                        <StatRow entityId={entity.id} path={['attributes', 'physique']} label="Фигура" properties={properties} handleUpdateAttribute={handleUpdateAttribute} />
-                        <StatRow entityId={entity.id} path={['attributes', 'mind']} label="Мышление" properties={properties} handleUpdateAttribute={handleUpdateAttribute} />
-                        <StatRow entityId={entity.id} path={['attributes', 'speed']} label="Скорость" properties={properties} handleUpdateAttribute={handleUpdateAttribute} />
-                        <StatRow entityId={entity.id} path={['attributes', 'hunger']} label="Голод" properties={properties} handleUpdateAttribute={handleUpdateAttribute} />
+                        <StatRow entityId={entity.id} path={['attributes', 'constitution']} label="Телосложение" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                        <StatRow entityId={entity.id} path={['attributes', 'cognition']} label="Когниция" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                        <StatRow entityId={entity.id} path={['attributes', 'physique']} label="Фигура" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                        <StatRow entityId={entity.id} path={['attributes', 'mind']} label="Мышление" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                        <StatRow entityId={entity.id} path={['attributes', 'speed']} label="Скорость" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                        <StatRow entityId={entity.id} path={['attributes', 'hunger']} label="Голод" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
                     </div>
                 </div>
 
@@ -428,9 +450,9 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                         </div>
 
                         <div className="grid grid-cols-3 gap-2 mb-4">
-                            <StatRow entityId={entity.id} path={['power', 'astral']} label="Астрал" properties={properties} handleUpdateAttribute={handleUpdateAttribute} />
-                            <StatRow entityId={entity.id} path={['power', 'ether']} label="Эфир" properties={properties} handleUpdateAttribute={handleUpdateAttribute} />
-                            <StatRow entityId={entity.id} path={['power', 'aura']} label="Аура" properties={properties} handleUpdateAttribute={handleUpdateAttribute} />
+                            <StatRow entityId={entity.id} path={['power', 'astral']} label="Астрал" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                            <StatRow entityId={entity.id} path={['power', 'ether']} label="Эфир" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                            <StatRow entityId={entity.id} path={['power', 'aura']} label="Аура" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
                         </div>
 
                         <div className="pt-3 border-t border-white/10">
@@ -438,14 +460,17 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                             <div className="flex bg-black/30 p-1 rounded-xl border border-white/5 gap-1 shadow-inner backdrop-blur-md">
                                 <button
                                     onClick={() => togglePower('astral')}
+                                    disabled={!canEditAttributes}
                                     className={clsx("flex-1 text-xs py-1.5 rounded-lg transition-all duration-300 font-medium", activePowers.includes('astral') ? "bg-white/15 text-white shadow-md border border-white/10 backdrop-blur-xl" : "text-white/40 hover:text-white/80 hover:bg-white/5 border border-transparent")}
                                 >Астрал</button>
                                 <button
                                     onClick={() => togglePower('ether')}
+                                    disabled={!canEditAttributes}
                                     className={clsx("flex-1 text-xs py-1.5 rounded-lg transition-all duration-300 font-medium", activePowers.includes('ether') ? "bg-white/15 text-white shadow-md border border-white/10 backdrop-blur-xl" : "text-white/40 hover:text-white/80 hover:bg-white/5 border border-transparent")}
                                 >Эфир</button>
                                 <button
                                     onClick={() => togglePower('aura')}
+                                    disabled={!canEditAttributes}
                                     className={clsx("flex-1 text-xs py-1.5 rounded-lg transition-all duration-300 font-medium", activePowers.includes('aura') ? "bg-white/15 text-white shadow-md border border-white/10 backdrop-blur-xl" : "text-white/40 hover:text-white/80 hover:bg-white/5 border border-transparent")}
                                 >Аура</button>
                             </div>
@@ -478,6 +503,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                                     <input
                                                         type="number"
                                                         value={baseEvasionStat.base}
+                                                        readOnly={!canEditAttributes}
                                                         onChange={(e) => handleUpdateAttribute(['defense', 'evasion', 'base'], parseInt(e.target.value) || 0)}
                                                         className={`${glass.input} text-center font-mono`}
                                                     />
@@ -488,6 +514,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                                     <input
                                                         type="number"
                                                         value={properties.defense?.evasion?.adhoc || 0}
+                                                        readOnly={!canEditAttributes}
                                                         onChange={(e) => handleUpdateAttribute(['defense', 'evasion', 'adhoc'], parseInt(e.target.value) || 0)}
                                                         className={`${glass.input} text-center font-mono`}
                                                     />
@@ -504,7 +531,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                 </Popover>
                             </div>
 
-                            <StatRow entityId={entity.id} path={['defense', 'armor']} label="Броня" properties={properties} handleUpdateAttribute={handleUpdateAttribute} />
+                            <StatRow entityId={entity.id} path={['defense', 'armor']} label="Броня" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
                         </div>
                     </div>
                 </div>
@@ -518,33 +545,38 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                         Статусы и Состояния
                     </h4>
 
-                    <button
-                        className="flex items-center gap-1 px-2 py-1 bg-white/5 border border-white/10 border-dashed rounded-md text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-wider"
-                        onClick={() => setIsTagPickerOpen(true)}
-                    >
-                        <Plus size={12} /> Добавить
-                    </button>
+                    {canEditAttributes && (
+                        <>
+                            <button
+                                className="flex items-center gap-1 px-2 py-1 bg-white/5 border border-white/10 border-dashed rounded-md text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-wider"
+                                onClick={() => setIsTagPickerOpen(true)}
+                            >
+                                <Plus size={12} /> Добавить
+                            </button>
 
-                    <TagPickerPopup
-                        isOpen={isTagPickerOpen}
-                        onClose={() => setIsTagPickerOpen(false)}
-                        onSelect={(tagId) => {
-                            const newTags = [...(entity.tags || []), tagId];
-                            yjsStore.updateEntity(entity.id, { tags: newTags });
-                            // Log to chat
-                            const tagEntity = getEntitiesSnapshot()[tagId];
-                            if (tagEntity) {
-                                yjsStore.sendMessage(
-                                    `🏷️ ${entity.name}: +${tagEntity.name}`,
-                                    'Система',
-                                    true
-                                );
-                            }
-                        }}
-                        excludeTags={entity.tags || []}
-                        allowedFolders={['folder_tags_statuses']}
-                        title="Добавить статус"
-                    />
+                            <TagPickerPopup
+                                isOpen={isTagPickerOpen}
+                                onClose={() => setIsTagPickerOpen(false)}
+                                onSelect={(tagId) => {
+                                    if (!canEditAttributes) return;
+                                    const newTags = [...(entity.tags || []), tagId];
+                                    yjsStore.updateEntity(entity.id, { tags: newTags });
+                                    // Log to chat
+                                    const tagEntity = getEntitiesSnapshot()[tagId];
+                                    if (tagEntity) {
+                                        yjsStore.sendMessage(
+                                            `🏷️ ${entity.name}: +${tagEntity.name}`,
+                                            'Система',
+                                            true
+                                        );
+                                    }
+                                }}
+                                excludeTags={entity.tags || []}
+                                allowedFolders={['folder_tags_statuses']}
+                                title="Добавить статус"
+                            />
+                        </>
+                    )}
                 </div>
 
                 <div className="flex flex-wrap gap-2 text-sm">
@@ -557,24 +589,27 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                         return (
                             <div key={tagId} className="group/tag flex items-center bg-[#2e3145] border border-white/5 rounded-lg overflow-hidden transition-colors hover:border-white/30 shadow-md">
                                 <EntityLink entityId={tagId} underline={false} className="px-2 py-1 text-white/80 font-medium whitespace-nowrap hover:text-white text-xs" />
-                                <button
-                                    onClick={() => {
-                                        const newTags = entity.tags.filter(id => id !== tagId);
-                                        yjsStore.updateEntity(entity.id, { tags: newTags });
-                                        // Log to chat
-                                        if (tagEntity) {
-                                            yjsStore.sendMessage(
-                                                `🏷️ ${entity.name}: −${tagEntity.name}`,
-                                                'Система',
-                                                true
-                                            );
-                                        }
-                                    }}
-                                    className="px-2 py-1 text-white/30 hover:bg-red-900/40 hover:text-red-400 transition-colors border-l border-white/10 group-hover/tag:border-white/20"
-                                    title="Убрать"
-                                >
-                                    <Trash2 size={12} />
-                                </button>
+                                {canEditAttributes && (
+                                    <button
+                                        onClick={() => {
+                                            if (!canEditAttributes) return;
+                                            const newTags = entity.tags.filter(id => id !== tagId);
+                                            yjsStore.updateEntity(entity.id, { tags: newTags });
+                                            // Log to chat
+                                            if (tagEntity) {
+                                                yjsStore.sendMessage(
+                                                    `🏷️ ${entity.name}: −${tagEntity.name}`,
+                                                    'Система',
+                                                    true
+                                                );
+                                            }
+                                        }}
+                                        className="px-2 py-1 text-white/30 hover:bg-red-900/40 hover:text-red-400 transition-colors border-l border-white/10 group-hover/tag:border-white/20"
+                                        title="Убрать"
+                                    >
+                                        <Trash2 size={12} />
+                                    </button>
+                                )}
                             </div>
                         )
                     }) : <span className="text-gray-500 text-xs italic">Нет активных статусов</span>}

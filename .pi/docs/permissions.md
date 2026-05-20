@@ -56,6 +56,8 @@ UI action gating:
 - `EntityWindow`, `CharacterSheet` notes и `EntityImageBlock` скрывают rename/delete, description/notes edit, hidden tag edit и image edit для read-only сущностей.
 - `SkillsBlock` скрывает изменение ранга навыков для read-only персонажа, но не блокирует броски навыков.
 - `InventoryBlock` скрывает equip toggle, quantity input, delete и drag/drop для read-only персонажа или read-only предмета; при move/copy в owned user inventory owner marker применяется к предмету и его дочерним сущностям.
+- `AttributeBlock` проверяет `yjsStore.canModify(...)` перед изменением статов, ран, active powers и статусов; при read-only состоянии UI не отправляет системные логи ран/статусов.
+- Legacy blocks `PropertiesBlock` и `StatusBlock` скрывают tag edit/drop для read-only сущностей на случай будущего повторного подключения.
 
 Focused test: `app/src/utils/permissions.test.ts` проверяет write и view boundaries.
 
