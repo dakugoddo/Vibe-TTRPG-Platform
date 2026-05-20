@@ -1,6 +1,6 @@
 import { Rnd } from 'react-rnd';
 import { v4 as uuidv4 } from 'uuid';
-import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network, Copy, Box, Lightbulb, Sword } from 'lucide-react';
+import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network, Copy, Box, Lightbulb, Sword, Wand2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useWindowStore } from '../../store/windowStore';
 import type { WindowState, WindowMode } from '../../store/windowStore';
@@ -81,6 +81,7 @@ function getWindowQuickCreateActions(entity: Entity): QuickCreateAction[] {
         return [
             { type: 'object', label: 'Создать предмет', icon: Box },
             { type: 'competency', label: 'Создать компетенцию', icon: Lightbulb },
+            { type: 'ability', label: 'Создать способность', icon: Wand2 },
         ];
     }
 
@@ -116,6 +117,10 @@ function createChildEntityDraft(parent: Entity, type: EntityType): Entity {
         draft.name = 'competency';
         draft.description = 'Новая компетенция.';
         draft.properties = { rank: 0 };
+    } else if (type === 'ability') {
+        draft.name = 'ability';
+        draft.description = 'Новая способность.';
+        draft.properties = { cost: { base: 0 }, diceFormula: '' };
     }
 
     if (parent.database === 'user' && owner) {

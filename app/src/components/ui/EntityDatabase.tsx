@@ -204,6 +204,7 @@ function getQuickCreateActions(entity?: Entity): QuickCreateAction[] {
         return [
             { type: 'object', label: 'Создать предмет', icon: Box },
             { type: 'competency', label: 'Создать компетенцию', icon: Lightbulb },
+            { type: 'ability', label: 'Создать способность', icon: Wand2 },
         ];
     }
 
