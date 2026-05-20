@@ -9,6 +9,7 @@ import { DragDropPopover, type DragDropPromptData } from './DragDropPopover';
 import { importMarkdown, getIsHost, listPlayers } from '../../services/fileApi';
 import { useUIStore } from '../../store/uiStore';
 import { canViewEntity } from '../../utils/permissions';
+import { writeClipboardText } from '../../utils/clipboard';
 import type { DatabaseType, Entity, EntityType } from '../../types';
 import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map as MapIcon, FileText, Bookmark, Lightbulb, Star, Gift, Copy, Link2, Search, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -216,23 +217,6 @@ function getQuickCreateActions(entity?: Entity): QuickCreateAction[] {
 function getEntityOwnerId(entity: Entity): string | undefined {
     const owner = entity.properties?._playerOwner;
     return typeof owner === 'string' ? owner : undefined;
-}
-
-async function writeClipboardText(text: string): Promise<void> {
-    if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-        return;
-    }
-
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.setAttribute('readonly', '');
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
 }
 
 interface RecursiveEntityItemProps {

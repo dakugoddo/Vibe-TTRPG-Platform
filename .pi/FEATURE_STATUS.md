@@ -59,6 +59,7 @@
 - Select-drag, point edit, resize, rotate и fog brush оптимизированы: live-изменения работают как локальный preview, persistent Yjs получает итоговое состояние только на завершении действия.
 - Canvas draw/fog write paths теперь проверяют права на canvas entity перед записью, undo/redo и persistence writeback; read-only canvas показывает только безопасный select/navigation UI, toolbar style/z-order не обходит этот guard, а drag/delete порталов и drag токенов блокируются без прав на соответствующую сущность.
 - `EntityWindow` показывает read-only блок быстрых связей: родитель, дочерние сущности, теги и обратные `[[wiki-ссылки]]`. Блок фильтрует связанные сущности через `canViewEntity`, поэтому игрок не получает UI-ссылки на GM-only и чужие user-данные.
+- Контекстное меню `EntityWindow` получило быстрые действия: дублирование редактируемой сущности рядом с оригиналом и копирование `[[wiki-ссылки]]`; clipboard fallback вынесен в общий helper `utils/clipboard.ts`.
 - Раны в CharacterSheet редактируются кнопками ±1/±5 или ручным вводом прямо в блоке здоровья; изменения логируются системным сообщением в чат.
 - Добавлены focused tests для `diceParser`, `rollEngine` и permission helper; permission logic вынесена в чистый `utils/permissions.ts`.
 - "Выдать игроку" теперь создает копию в `user` базе выбранного игрока, не переносит мастер-сущность из `general`, и file sync сохраняет user-сущности по `_playerOwner`.

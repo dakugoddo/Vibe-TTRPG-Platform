@@ -1,5 +1,5 @@
 import { Rnd } from 'react-rnd';
-import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network } from 'lucide-react';
+import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network, Copy } from 'lucide-react';
 import { useWindowStore } from '../../store/windowStore';
 import type { WindowState, WindowMode } from '../../store/windowStore';
 import type { Entity } from '../../types';
@@ -25,6 +25,7 @@ import { AttackSheet } from './blocks/AttackSheet';
 import { useUIStore } from '../../store/uiStore';
 import { glass } from '../../utils/theme';
 import { canViewEntity } from '../../utils/permissions';
+import { writeClipboardText } from '../../utils/clipboard';
 
 interface EntityWindowProps {
     windowState: WindowState;
@@ -192,8 +193,28 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
 
     const handleContextMenu = (e: React.MouseEvent) => {
         e.preventDefault();
-        if (!canEditCurrentEntity) return;
+        if (!canEditCurrentEntity) {
+            handleCopyWikiLink();
+            return;
+        }
         setContextMenuState({ x: e.clientX, y: e.clientY });
+    };
+
+    const handleCopyWikiLink = () => {
+        setContextMenuState(null);
+        void writeClipboardText(`[[${entity.name}]]`).catch((error) => {
+            console.warn(`Failed to copy wiki link for "${entity.name}"`, error);
+        });
+    };
+
+    const handleDuplicateEntity = () => {
+        setContextMenuState(null);
+        if (!canEditCurrentEntity || entity.id === 'root') return;
+
+        const cloneId = yjsStore.cloneEntity(entity.id, entity.parentId, entity.database);
+        if (cloneId) {
+            openWindow(cloneId, x + 36, y + 36);
+        }
     };
 
     const handleRenameSubmit = () => {
@@ -298,6 +319,8 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     const frameClass = `w-full h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${glass.window} ${
         focusedWindowId === id ? '!border-white/30 !shadow-[0_0_40px_rgba(255,255,255,0.05)]' : ''
     } ${isPinned ? 'ring-2 ring-yellow-500/50 outline outline-2 outline-yellow-500/20' : ''}`;
+    const contextMenuWidth = 220;
+    const contextMenuHeight = canEditCurrentEntity ? 230 : 92;
 
     return (
         <Rnd
@@ -578,8 +601,8 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                     <div
                         className="fixed rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 py-1.5 min-w-[200px] overflow-hidden backdrop-blur-3xl animate-in fade-in zoom-in-95 duration-100 bg-[#151c2b]/70"
                         style={{
-                            left: contextMenuState.x + 200 > window.innerWidth ? contextMenuState.x - 200 : contextMenuState.x,
-                            top: contextMenuState.y + 100 > window.innerHeight ? contextMenuState.y - 100 : contextMenuState.y,
+                            left: contextMenuState.x + contextMenuWidth > window.innerWidth ? contextMenuState.x - contextMenuWidth : contextMenuState.x,
+                            top: contextMenuState.y + contextMenuHeight > window.innerHeight ? contextMenuState.y - contextMenuHeight : contextMenuState.y,
                             zIndex: 99999,
                         }}
                     >
@@ -597,6 +620,24 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                             className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
                         >
                             <Edit2 size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Переименовать
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleDuplicateEntity();
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+                        >
+                            <Copy size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Дублировать
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyWikiLink();
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+                        >
+                            <Link2 size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Копировать [[ссылку]]
                         </button>
                         <div className="border-t border-white/5 my-1 mx-2" />
                         <button
