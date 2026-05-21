@@ -1,6 +1,6 @@
 # Vibe TTRPG Platform: архитектурный канон
 
-> Дата: 2026-05-18
+> Дата: 2026-05-21
 > Назначение: короткая рабочая архитектура для дальнейшей разработки.
 
 ## 1. Entity как основной контракт
@@ -13,6 +13,7 @@
 interface Entity {
   id: string;
   parentId: string | null;
+  schemaVersion?: number;
   type: EntityType;
   name: string;
   description: string;
@@ -99,8 +100,16 @@ interface RandomProvider {
 Правило:
 
 - навыки и компетенции можно использовать как рабочий vertical slice;
-- способности, атаки, статусы и предметные эффекты должны развиваться через Entity-блоки и Roll Engine;
+- способности, атаки, статусы, ресурсы и предметные эффекты должны развиваться через Entity-блоки и Roll Engine;
 - формулы и условия должны идти в сторону конфигурируемого Rules/Mechanics Engine, а не набора hardcoded проверок в UI.
+
+Текущий UI-контур:
+
+- `SkillsBlock` и `CompetenciesBlock` проверяют броски через Roll Engine;
+- `AbilitiesBlock` хранит дочерние ability-сущности и бросает `diceFormula`/legacy `dice` через Roll Engine;
+- `ResourcesBlock` хранит гибкие счетчики в `properties.resources`, без механических выводов;
+- статусный контур живет в `AttributeBlock` через status-теги;
+- `ObjectSheet` и `AttackSheet` остаются текущим контуром предметов и атак.
 
 ## 5. Права доступа
 
@@ -140,5 +149,13 @@ Canvas должен масштабироваться до больших кар�
 - `.pi/ARCHITECTURE.md` - как строим;
 - `.pi/DEVELOPMENT_PLAN.md` - текущий порядок работ;
 - `.pi/FEATURE_STATUS.md` - что готово, что рискованно, что требует проверки.
+- `.pi/docs/code-map.md` - владельцы логики и стартовые файлы для типовых задач.
+- `.pi/docs/platform-runtime-decision.md` - runtime/Steam/3D decision draft.
 
 Исторические документы остаются полезными, но новые агенты должны начинать с канонических файлов и `AGENTS.md`.
+
+## 8. Bug intake и дорогой поиск
+
+Баги сначала попадают в `.pi/BUG_BACKLOG.md` с приоритетом, модулем и batch key. `P0/P1` чинятся сразу, `P2/P3` группируются по модулю, если нет причины повышать срочность.
+
+Если агент за 3-5 точечных поисковых проходов не находит владельца логики, это считается сигналом архитектурной навигационной проблемы. Нужно обновить `.pi` code-map/architecture/design документы или предложить локальный refactor, а не продолжать слепо читать большие куски кода.

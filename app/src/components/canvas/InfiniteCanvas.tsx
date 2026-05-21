@@ -1426,8 +1426,8 @@ export function InfiniteCanvas() {
       if (ctrl && key === 'a') {
         e.preventDefault();
         const elements = getDrawElements(activeCanvasId);
-        selectElements(elements.map(el => el.id));
         if (useCanvasDrawStore.getState().activeTool !== 'select') setTool('select');
+        selectElements(elements.map(el => el.id));
         return;
       }
 
@@ -1989,11 +1989,20 @@ export function InfiniteCanvas() {
         return;
       }
 
-      // Only handle stage clicks for drawing
-      if (e.target !== e.target.getStage()) return;
-
       const point = getCanvasPoint(e);
       if (!point) return;
+
+      // Lasso selection starts anywhere on the canvas, including over existing draw elements.
+      if (activeTool === 'lasso') {
+        clearSelection();
+        isDrawingRef.current = true;
+        lassoPointsRef.current = [point.x, point.y];
+        setLassoPoints([...lassoPointsRef.current]);
+        return;
+      }
+
+      // Only empty-stage clicks start normal drawing or marquee selection.
+      if (e.target !== e.target.getStage()) return;
 
       if (activeTool === 'select') {
         // Start marquee selection (rubber-band) on empty canvas
@@ -2052,14 +2061,6 @@ export function InfiniteCanvas() {
         return;
       }
 
-      // Lasso selection tool: free-form polygon drawing
-      if (activeTool === 'lasso') {
-        clearSelection();
-        isDrawingRef.current = true;
-        lassoPointsRef.current = [point.x, point.y];
-        return;
-      }
-
       // Image tool: open file dialog
       if (activeTool === 'image') {
         const input = document.createElement('input');
@@ -2102,8 +2103,8 @@ export function InfiniteCanvas() {
                 zIndex: elements.length,
               };
               saveDrawElements(activeCanvasId, [...elements, newEl]);
-              selectElement(newEl.id);
               setTool('select');
+              selectElement(newEl.id);
             };
             img.src = dataUrl;
           };
@@ -2434,8 +2435,8 @@ export function InfiniteCanvas() {
             return false;
           });
           if (selected.length > 0) {
-            selectElements(selected.map(el => el.id));
             setTool('select');
+            selectElements(selected.map(el => el.id));
           } else {
             clearSelection();
           }
@@ -2486,8 +2487,8 @@ export function InfiniteCanvas() {
 
       // If frame, select it and open inline label editing
       if (finished.type === 'frame') {
-        selectElement(finished.id);
         setTool('select');
+        selectElement(finished.id);
         // Delay to allow re-render, then start editing label inline
         setTimeout(() => {
           setEditingFrameLabelId(finished.id);
@@ -2956,8 +2957,8 @@ export function InfiniteCanvas() {
           zIndex: elements.length,
         };
         saveDrawElements(activeCanvasId, [...elements, newEl]);
-        selectElement(newEl.id);
         setTool('select');
+        selectElement(newEl.id);
       };
       img.src = dataUrl;
     };

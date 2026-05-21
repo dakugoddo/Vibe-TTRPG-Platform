@@ -1,6 +1,6 @@
 # Vibe TTRPG Platform: статус фич
 
-> Дата: 2026-05-19
+> Дата: 2026-05-20
 
 ## Готово и подтверждено сборкой
 
@@ -8,6 +8,7 @@
 - Server TypeScript проходит `tsc --noEmit --project tsconfig.json`.
 - Базовая Entity-модель, файловый сервер, Yjs-синхронизация и окно сущности уже существуют.
 - Canvas имеет pan/zoom, drawing tools, pinned windows, snap, portals, fog of war, cursors и ping.
+- Multiplayer вручную подтвержден владельцем проекта через Radmin/Hamachi: подключение работает, курсоры видны, перемещение объектов синхронизируется после отпускания.
 - CharacterSheet содержит статы, инвентарь, заметки, навыки, компетенции и интерактивное изменение ран.
 - MarkdownRenderer поддерживает `[[wiki-ссылки]]`, inline `!roll`, блоки `stats`, `inventory`, `gm-only`.
 - Чат умеет отправлять сообщения, показывать историю бросков и отдельную вкладку событий для системных игровых действий.
@@ -25,7 +26,7 @@
 
 ## Сейчас в работе
 
-- GM Workbench: быстрые действия вокруг сущностей после закрытия базовых прав и sync-контрактов.
+- Canvas stabilization: `BUG-CANVAS-001` lasso tool исправлен кодом; нужен ручной UI QA.
 
 ## Только что добавлено
 
@@ -65,6 +66,12 @@
 - Добавлены focused tests для `diceParser`, `rollEngine` и permission helper; permission logic вынесена в чистый `utils/permissions.ts`.
 - "Выдать игроку" теперь создает копию в `user` базе выбранного игрока, не переносит мастер-сущность из `general`, и file sync сохраняет user-сущности по `_playerOwner`.
 - В ChatPanel добавлена вкладка "События": раны, статусы, выдача предметов и другие не-dice системные сообщения можно смотреть отдельно от обычного чата и истории бросков.
+- В CharacterSheet добавлена вкладка "Способности": дочерние ability-сущности можно создавать, открывать, настраивать через `cost.base`/`range`/`area`/`diceFormula` и бросать через Roll Engine.
+- В CharacterSheet добавлена вкладка "Ресурсы": гибкие счетчики `properties.resources` можно создавать и менять без привязки к финальной игровой системе.
+- Resource normalization/clamp logic вынесена в `utils/resourceModel.ts` и покрыта focused test `resourceModel.test.ts`.
+- `.pi/PRODUCT_VISION.md` и `.pi/ARCHITECTURE.md` обновлены под текущий канон: bug triage, abilities/resources, ручной multiplayer QA и правило дорогого поиска.
+- Повторный runtime-анализ оформлен в `.pi/docs/platform-runtime-decision.md`: не переписывать фундамент сейчас, позже проверять Tauri shell + sidecar прототипом.
+- Добавлен `.pi/docs/code-map.md`: карта владельцев логики для canvas, Entity/KB, character blocks, stores, server и focused tests.
 
 ## Известный технический долг
 
@@ -72,11 +79,12 @@
 - Permission/view guard требует ручной проверки в настоящей GM/player multiplayer сессии.
 - `root` canvas создается как системная canvas entity с id/name `root`, а UI продолжает показывать локализованный fake root.
 - External edit `.md` -> Entity -> уже открытый canvas Y.Doc поддержан для `drawElements` и `fogReveals`, но требует ручного QA с внешним редактором.
-- Canvas local-preview optimization требует ручной GM/player проверки: remote-клиент должен получать финальный результат после завершения действия, а не поток промежуточных mousemove.
+- Canvas local-preview optimization частично подтверждена ручной GM/player проверкой: remote-клиент получает перемещение объекта после завершения drag; lasso selection исправлен кодом, но еще требует ручного UI QA.
+- `BUG-CANVAS-001`: кодовый фикс внесен 2026-05-21; ручная проверка по `.pi/docs/testing-multiplayer.md`, тест №10, шаг 19.
 
 ## Отложено до отдельного обсуждения
 
 - Полный дизайн игровой системы.
 - Сложные взаимодействия способностей, статусов, атак, ресурсов и условий.
 - random.org provider с реальным API-ключом и сетевой политикой.
-- Tauri, Steam, 3D-режим.
+- Tauri, Steam, 3D-режим: решение на сейчас - отложить rewrite и проверять отдельными prototype branches.

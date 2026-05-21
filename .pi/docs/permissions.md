@@ -52,9 +52,11 @@ UI action gating:
 - быстрый hover-delete скрывается для read-only сущностей и системного root canvas;
 - drag/drop в `EntityDatabase` сначала проверяет право записи в целевую базу и право менять переносимую сущность;
 - `CompetenciesBlock` скрывает `Добавить`, кнопки изменения ранга и удаление для read-only сущностей; бросок кубов и открытие окна остаются доступными как безопасные действия;
+- `AbilitiesBlock` скрывает создание, редактирование полей и удаление ability-сущностей без прав, но оставляет чтение, открытие окна и бросок уже заданной формулы через Roll Engine;
 - `ObjectSheet` и `AttackSheet` проверяют `yjsStore.canModify(...)` перед записью и переводят edit-controls в read-only: свойства не меняются, tag edit скрыт, а создание/перетаскивание/удаление атак доступно только при праве редактирования;
 - `EntityWindow`, `CharacterSheet` notes и `EntityImageBlock` скрывают rename/delete, description/notes edit, hidden tag edit и image edit для read-only сущностей.
 - `SkillsBlock` скрывает изменение ранга навыков для read-only персонажа, но не блокирует броски навыков.
+- `ResourcesBlock` скрывает создание, изменение и удаление счетчиков ресурсов для read-only персонажа, сохраняя просмотр текущих значений.
 - `InventoryBlock` скрывает equip toggle, quantity input, delete и drag/drop для read-only персонажа или read-only предмета; при move/copy в owned user inventory owner marker применяется к предмету и его дочерним сущностям.
 - `AttributeBlock` проверяет `yjsStore.canModify(...)` перед изменением статов, ран, active powers и статусов; при read-only состоянии UI не отправляет системные логи ран/статусов.
 - Legacy blocks `PropertiesBlock` и `StatusBlock` скрывают tag edit/drop для read-only сущностей на случай будущего повторного подключения.

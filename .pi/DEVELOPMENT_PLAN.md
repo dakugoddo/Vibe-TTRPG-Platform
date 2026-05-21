@@ -1,6 +1,6 @@
 # Vibe TTRPG Platform: план разработки
 
-> Дата обновления: 2026-05-19
+> Дата обновления: 2026-05-20
 > Цель: довести проект до стабильного локально-первого VTT-фундамента, на который можно безопасно встраивать авторскую игровую систему.
 
 ## Текущий вектор
@@ -14,6 +14,7 @@
 - canvas и sync оптимизируются до расширения тяжелыми функциями;
 - разработка идет foundation-first: сначала контракт/данные/проверки, потом UI-полировка и расширение;
 - завершенный проверенный срез фиксируется отдельным git commit с понятной пометкой (`feat`, `fix`, `docs`, `test`, `chore`, `refactor`).
+- сообщения о багах проходят через triage в `.pi/BUG_BACKLOG.md`: критичные чинятся сразу, некритичные группируются по модулю и закрываются тематическими срезами.
 
 ## Этап 0. Канон проекта
 
@@ -21,8 +22,8 @@
 
 Чеклист:
 
-- [ ] Обновить `.pi/PRODUCT_VISION.md`.
-- [ ] Обновить `.pi/ARCHITECTURE.md`.
+- [x] Обновить `.pi/PRODUCT_VISION.md`.
+- [x] Обновить `.pi/ARCHITECTURE.md`.
 - [x] Обновить `.pi/FEATURE_STATUS.md`.
 - [x] Добавить рабочий контур `.pi/docs/codex-maxxing-workflow.md`.
 - [x] Держать `AGENTS.md` главным входом, а `.pi` - живой документацией.
@@ -72,9 +73,9 @@
 - [x] Вынести live drag/previews из persistent CRDT там, где это нужно для производительности.
 - [x] Оставить Yjs для сохраняемых данных.
 - [x] Документировать, какие события не пишутся в файлы.
-- [ ] Проверить multiplayer поведение на двух клиентах.
+- [x] Проверить multiplayer поведение на двух клиентах.
 
-Готовность: контракт описан в `.pi/docs/sync-layers.md`; canvas `drawElements` и `fogReveals` зеркалятся в canvas entity с debounce; cursor/ping остаются awareness state. Select-drag, point edit, resize, rotate и fog brush используют локальный preview и пишут в persistent Y.Map итоговое состояние только на завершении действия. Следующий проход - ручная multiplayer проверка.
+Готовность: контракт описан в `.pi/docs/sync-layers.md`; canvas `drawElements` и `fogReveals` зеркалятся в canvas entity с debounce; cursor/ping остаются awareness state. Select-drag, point edit, resize, rotate и fog brush используют локальный preview и пишут в persistent Y.Map итоговое состояние только на завершении действия. Ручная проверка владельцем проекта 2026-05-20 подтвердила подключение через Radmin/Hamachi, видимость курсоров и синхронизацию перемещения объектов после отпускания.
 
 ## Этап 4. Права доступа и GM-only
 
@@ -88,7 +89,7 @@
 - [ ] Проверить Markdown `gm-only` на player/GM ролях в живой сессии.
 - [x] Описать правила в `.pi/docs/permissions.md`.
 
-Готовность: `addEntity`, `updateEntity`, `deleteEntity` и `cloneEntity` проходят через permission guard в `yjsStore`. `EntityDatabase` фильтрует видимость через `canViewEntity`, user inventory фильтруется по `_playerOwner`, а file sync пишет user-сущности в папку владельца. UI-кнопки создания/импорта/переименования/удаления/выдачи и drag/drop проверяют `yjsStore.canModify(...)` до попытки записи. `EntityWindow`, `CharacterSheet` notes, `EntityImageBlock`, `AttributeBlock`, `SkillsBlock`, `CompetenciesBlock`, `InventoryBlock`, `ObjectSheet` и `AttackSheet` также скрывают или блокируют edit-controls для read-only сущностей, но оставляют безопасное чтение, броски и открытие окон. Canvas write paths теперь тоже проходят через permission guard: `canvasSyncStore` проверяет права перед draw/fog mutations, undo/redo и persistence writeback; read-only canvas скрывает drawing/fog/style controls; `CanvasToolbar` не пишет напрямую в `elementsMap`; `InfiniteCanvas` блокирует drag/delete порталов и drag токенов без права редактирования соответствующей сущности. Документ: `.pi/docs/permissions.md`. Ограничение осознанно принято: один общий Y.Doc не дает настоящей приватности, но для текущей настольной доверенной модели достаточно корректного UI-скрытия.
+Готовность: `addEntity`, `updateEntity`, `deleteEntity` и `cloneEntity` проходят через permission guard в `yjsStore`. `EntityDatabase` фильтрует видимость через `canViewEntity`, user inventory фильтруется по `_playerOwner`, а file sync пишет user-сущности в папку владельца. UI-кнопки создания/импорта/переименования/удаления/выдачи и drag/drop проверяют `yjsStore.canModify(...)` до попытки записи. `EntityWindow`, `CharacterSheet` notes, `EntityImageBlock`, `AttributeBlock`, `SkillsBlock`, `CompetenciesBlock`, `AbilitiesBlock`, `ResourcesBlock`, `InventoryBlock`, `ObjectSheet` и `AttackSheet` также скрывают или блокируют edit-controls для read-only сущностей, но оставляют безопасное чтение, броски и открытие окон. Canvas write paths теперь тоже проходят через permission guard: `canvasSyncStore` проверяет права перед draw/fog mutations, undo/redo и persistence writeback; read-only canvas скрывает drawing/fog/style controls; `CanvasToolbar` не пишет напрямую в `elementsMap`; `InfiniteCanvas` блокирует drag/delete порталов и drag токенов без права редактирования соответствующей сущности. Документ: `.pi/docs/permissions.md`. Ограничение осознанно принято: один общий Y.Doc не дает настоящей приватности, но для текущей настольной доверенной модели достаточно корректного UI-скрытия.
 
 ## Этап 5. GM Workbench
 
@@ -105,10 +106,21 @@
 - [x] Добавить быстрые связи в `EntityWindow`: родитель, дочерние сущности, теги и обратные `[[wiki-ссылки]]`.
 - [x] Расширить контекстное меню `EntityWindow` быстрыми действиями без возврата в базу: копировать `[[wiki-ссылку]]`, дублировать редактируемую сущность.
 - [x] Добавить quick-create дочерних сущностей из `EntityDatabase` и `EntityWindow` для персонажа и предмета, включая flexible `ability`.
-- [ ] Подготовить интерфейс для будущих способностей, атак, статусов и ресурсов.
+- [x] Подготовить интерфейс для будущих способностей, атак, статусов и ресурсов.
+  - [x] Добавить вкладку `Способности` в CharacterSheet и базовый `AbilitiesBlock` для дочерних ability-сущностей.
+  - [x] Сохранить броски способностей через единый Roll Engine (`diceFormula`/`dice` -> chat).
+  - [x] Оставить атаки в существующем ObjectSheet/AttackSheet контуре.
+  - [x] Подготовить отдельный UI-контур для ресурсов без жесткой фиксации полной игровой системы (`ResourcesBlock`, `properties.resources`).
+  - [x] Зафиксировать, что статусный UI уже существует в `AttributeBlock` через status-теги и permission guard.
 - [x] Не превращать это в декоративную landing page.
 
 Готовность: мастер может вести сессию из одного рабочего пространства без лишней навигации.
+
+## Текущая очередь багов
+
+Источник правды: `.pi/BUG_BACKLOG.md`.
+
+- [x] `BUG-CANVAS-001` (`P2`, `Canvas selection tools`): lasso selection code fixed; ручной UI QA ещё нужен. Причина была в очистке selection через `setTool('select')` и невозможности стартовать lasso поверх draw elements.
 
 ## Этап 6. Вертикальный игровой сценарий
 
@@ -116,9 +128,9 @@
 
 Сценарий проверки:
 
-- [ ] Создать или открыть мир.
-- [ ] Открыть canvas и добавить/переместить сущность.
-- [ ] Подключить игрока.
+- [x] Создать или открыть мир.
+- [x] Открыть canvas и добавить/переместить сущность.
+- [x] Подключить игрока.
 - [ ] Сделать бросок из чата.
 - [ ] Сделать бросок из Markdown.
 - [ ] Сделать бросок из навыка и компетенции.
@@ -147,24 +159,25 @@
 
 ## Этап 8. Долгосрочная платформа: Tauri, Rust, Steam, 3D
 
-Статус: отложено до стабилизации VTT-фундамента; перед внедрением требуется повторный архитектурный анализ.
+Статус: повторный анализ выполнен в `.pi/docs/platform-runtime-decision.md`; миграция отложена, минимальный будущий прототип - Tauri shell + sidecar без переписывания фундамента.
 
 Правило: не начинать миграцию на Tauri/Rust только потому, что это уже упоминалось в старых анализах. Перед таким переходом нужно заново проверить, что он действительно выгоднее текущего browser-first стека и альтернатив.
 
 Чеклист будущего анализа:
 
-- [ ] Переоценить целесообразность Tauri + Rust для десктопного билда, встроенного сервера, файлового доступа и Steamworks.
-- [ ] Сравнить альтернативы: оставить browser-first + PWA/launcher, Electron, Neutralino, Tauri, Rust-sidecar, Godot/Unity для отдельных 3D-сцен, Three.js/Babylon.js внутри текущего React-приложения.
-- [ ] Оценить стоимость миграции: сколько кода нужно переносить, какие API сломаются, как сохранить `.md` source of truth и совместимость миров.
-- [ ] Сравнить производительность и размер билда на целевых сценариях: большой мир, много canvas, 10-15 игроков, ассеты, будущий 3D-режим.
-- [ ] Отдельно проверить Steam-путь: Workshop, Cloud, Networking, лобби, достижения, упаковка и обновления.
-- [ ] Определить минимальный прототип для проверки: например Tauri-shell без переноса всей логики или отдельный Three.js viewport.
-- [ ] Оформить итог как decision document: `принять`, `отложить`, `отказаться`, `сделать прототип`.
+- [x] Переоценить целесообразность Tauri + Rust для десктопного билда, встроенного сервера, файлового доступа и Steamworks.
+- [x] Сравнить альтернативы: оставить browser-first + PWA/launcher, Electron, Neutralino, Tauri, Rust-sidecar, Godot/Unity для отдельных 3D-сцен, Three.js/Babylon.js внутри текущего React-приложения.
+- [x] Оценить стоимость миграции: сколько кода нужно переносить, какие API сломаются, как сохранить `.md` source of truth и совместимость миров.
+- [ ] Сравнить производительность и размер билда на целевых сценариях: большой мир, много canvas, 10-15 игроков, ассеты, будущий 3D-режим. Качественная оценка есть, реальный benchmark отложен до prototype branch.
+- [ ] Отдельно проверить Steam-путь: Workshop, Cloud, Networking, лобби, достижения, упаковка и обновления. Документация изучена, но реальная проверка требует Steamworks SDK/App ID.
+- [x] Определить минимальный прототип для проверки: Tauri shell + bundled sidecar без переноса всей логики; отдельный Three.js/Babylon viewport как независимый 3D prototype.
+- [x] Оформить итог как decision document: `defer rewrite, prototype shell later`.
 
 Готовность: миграция или обертка разрешается только после отдельного анализа и согласования. До этого код должен оставаться платформенно-нейтральным: файловая модель, Roll Engine, Entity schema, sync layers и UI не должны завязываться на конкретную десктопную оболочку.
 
 ## Технический долг
 
 - [x] Навести git-гигиену после длинной агентной сессии: разделить изменения на осмысленные commits и убрать временные артефакты из рабочего дерева.
-- [ ] Расширять focused tests под будущие mechanics blocks и новые версии Entity schema. Базовые focused tests уже есть для `diceParser`, `rollEngine`, `entitySerializer`, `fileManager`, permission helper.
+- [ ] Расширять focused tests под будущие mechanics blocks и новые версии Entity schema. Базовые focused tests уже есть для `diceParser`, `rollEngine`, `entitySerializer`, `fileManager`, permission helper и `resourceModel`.
 - [x] Поддерживать multiplayer manual QA в актуальном состоянии при изменении вертикального сценария.
+- [ ] Улучшать `.pi` архитектурные/design/code-map документы, если агент тратит слишком много токенов на поиск владельца логики. Базовый code-map создан: `.pi/docs/code-map.md`.

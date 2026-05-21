@@ -50,6 +50,12 @@ properties: {
     armor?: StatValue;
   };
   activePowers?: Array<'astral' | 'ether' | 'aura'>;
+  resources?: Record<string, {
+    label?: string;
+    current?: number;
+    max?: number;
+    note?: string;
+  }>;
   skills?: Record<string, { rank: number }>;
 }
 ```
@@ -74,6 +80,8 @@ type StatValue = number | {
 5. add -> multiply -> min/max.
 
 `attributes.wounds.current` хранит текущее количество ран. `attributes.wounds.limit` считается через общий `useCalculatedStat`, а максимальное значение в текущем UI равно `limit.total * 2`. CharacterSheet меняет `current` через единый путь: кнопки ±1/±5, клик по числу для ручного ввода, clamp в диапазон `0..limit*2`, затем системное сообщение в чат.
+
+`resources` используется `ResourcesBlock` как гибкая карта счетчиков персонажа: запас, фокус, заряды, очки действия и любые будущие ресурсы системы. Это намеренно не фиксирует механику: UI хранит только label/current/max/note и не делает автоматических игровых выводов.
 
 ## Object
 
@@ -126,13 +134,13 @@ properties: {
 
 ## Ability
 
-Текущий тип существует как заготовка.
+Используется `AbilitiesBlock` в CharacterSheet и остается гибкой заготовкой под будущую систему способностей.
 
 Уже встречающиеся поля:
 
 ```ts
 properties: {
-  cost?: unknown;
+  cost?: { base?: number } | number | string;
   range?: string | number;
   area?: string;
   dice?: string;
@@ -141,7 +149,9 @@ properties: {
 }
 ```
 
-Правило развития: способность должна описывать, что она просит у Rules/Roll Engine, а не сама бросать кубы внутри UI.
+`diceFormula` - предпочтительное поле для новой UI-формы. `dice` читается как legacy fallback. `AbilitiesBlock` может создавать дочерние ability-сущности у персонажа, редактировать `cost.base`, `range`, `area`, `diceFormula`, открывать ability в отдельном окне и отправлять бросок в чат через единый Roll Engine.
+
+Правило развития: способность должна описывать, что она просит у Rules/Roll Engine, а не сама считать результат внутри UI.
 
 ## Tag
 

@@ -7,6 +7,8 @@ import { AttributeBlock } from './blocks/AttributeBlock';
 import { InventoryBlock } from './blocks/InventoryBlock';
 import { SkillsBlock } from './blocks/SkillsBlock';
 import { CompetenciesBlock } from './blocks/CompetenciesBlock';
+import { AbilitiesBlock } from './blocks/AbilitiesBlock';
+import { ResourcesBlock } from './blocks/ResourcesBlock';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { Edit2, Check } from 'lucide-react';
 
@@ -24,7 +26,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
 
     const entity = useEntity(entityId);
     const children = useEntitiesByParent(entityId);
-    const [activeTab, setActiveTab] = useState<'stats' | 'skills' | 'competencies' | 'inventory' | 'notes'>('stats');
+    const [activeTab, setActiveTab] = useState<'stats' | 'skills' | 'competencies' | 'abilities' | 'resources' | 'inventory' | 'notes'>('stats');
     const [isEditingNotes, setIsEditingNotes] = useState(false);
 
     if (!entity) return null;
@@ -37,6 +39,10 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
 
     const inventoryCount = children.filter(e => e.type === 'object').length;
     const competenciesCount = children.filter(e => e.type === 'competency').length;
+    const abilitiesCount = children.filter(e => e.type === 'ability').length;
+    const resourcesCount = entity.properties?.resources && typeof entity.properties.resources === 'object'
+        ? Object.keys(entity.properties.resources).length
+        : 0;
 
     return (
         <div className="flex flex-col h-full animate-in fade-in duration-200">
@@ -59,6 +65,18 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                     className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${activeTab === 'competencies' ? 'text-white border-white bg-white/10' : 'text-white/40 border-transparent hover:text-white/80 hover:bg-white/5'}`}
                 >
                     Компетенции ({competenciesCount})
+                </button>
+                <button
+                    onClick={() => setActiveTab('abilities')}
+                    className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${activeTab === 'abilities' ? 'text-white border-white bg-white/10' : 'text-white/40 border-transparent hover:text-white/80 hover:bg-white/5'}`}
+                >
+                    Способности ({abilitiesCount})
+                </button>
+                <button
+                    onClick={() => setActiveTab('resources')}
+                    className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${activeTab === 'resources' ? 'text-white border-white bg-white/10' : 'text-white/40 border-transparent hover:text-white/80 hover:bg-white/5'}`}
+                >
+                    Ресурсы ({resourcesCount})
                 </button>
                 <button
                     onClick={() => setActiveTab('inventory')}
@@ -96,6 +114,14 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                     <CompetenciesBlock entity={entity} />
                 )}
 
+                {activeTab === 'abilities' && (
+                    <AbilitiesBlock entity={entity} />
+                )}
+
+                {activeTab === 'resources' && (
+                    <ResourcesBlock entity={entity} />
+                )}
+
                 {activeTab === 'inventory' && (
                     <InventoryBlock entity={entity} />
                 )}
@@ -122,7 +148,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
             </div>
 
             {
-                !isFullMode && activeTab !== 'notes' && activeTab !== 'skills' && activeTab !== 'competencies' && (
+                !isFullMode && activeTab !== 'notes' && activeTab !== 'skills' && activeTab !== 'competencies' && activeTab !== 'abilities' && activeTab !== 'resources' && (
                     <div className="mt-4 pt-3 border-t border-white/10 text-[10px] text-white/40 text-center italic">
                         Expand window to see more details.
                     </div>
