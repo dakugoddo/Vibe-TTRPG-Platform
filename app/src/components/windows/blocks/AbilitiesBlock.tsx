@@ -8,6 +8,7 @@ import { useUIStore } from '../../../store/uiStore';
 import { rollEngine } from '../../../services/rollEngine';
 import { Dices, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { glass } from '../../../utils/theme';
+import { getAbilityCostBase, getAbilityFormula, setAbilityCostBase } from '../../../utils/abilityModel';
 import clsx from 'clsx';
 
 interface AbilitiesBlockProps {
@@ -28,28 +29,6 @@ function stringifyProperty(value: unknown): string {
     if (typeof value === 'string') return value;
     if (typeof value === 'number' || typeof value === 'boolean') return String(value);
     return '';
-}
-
-function getAbilityFormula(ability: Entity): string {
-    const properties = ability.properties ?? {};
-    const hasDiceFormula = Object.prototype.hasOwnProperty.call(properties, 'diceFormula');
-    const raw = hasDiceFormula ? stringifyProperty(properties.diceFormula) : stringifyProperty(properties.dice);
-    return raw
-        .replace(/^\/r\s+/i, '')
-        .replace(/^\/roll\s+/i, '')
-        .replace(/^!roll\s+/i, '')
-        .trim();
-}
-
-function getCostBase(ability: Entity): number {
-    const cost = ability.properties?.cost;
-    if (typeof cost === 'number') return cost;
-    if (typeof cost === 'string') return Number(cost) || 0;
-    if (cost && typeof cost === 'object' && 'base' in cost) {
-        const base = (cost as { base?: unknown }).base;
-        return typeof base === 'number' ? base : Number(base) || 0;
-    }
-    return 0;
 }
 
 function updateAbilityProperty(ability: Entity, key: string, value: unknown) {
@@ -146,7 +125,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                             const canEditAbility = canEditEntity(ability);
                             const formula = getAbilityFormula(ability);
                             const canRoll = formula.length > 0;
-                            const costBase = getCostBase(ability);
+                            const costBase = getAbilityCostBase(ability);
 
                             return (
                                 <div
@@ -223,8 +202,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                                                 min={0}
                                                 readOnly={!canEditAbility}
                                                 onChange={(e) => {
-                                                    const nextCost = { ...(typeof ability.properties?.cost === 'object' && ability.properties.cost ? ability.properties.cost : {}), base: Number(e.target.value) || 0 };
-                                                    updateAbilityProperty(ability, 'cost', nextCost);
+                                                    updateAbilityProperty(ability, 'cost', setAbilityCostBase(ability, Number(e.target.value) || 0));
                                                 }}
                                                 className="w-full bg-black/25 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/80 outline-none focus:border-cyan-400/50 read-only:text-white/40 read-only:cursor-default"
                                             />

@@ -24,6 +24,7 @@ import { EntityImageBlock } from './blocks/EntityImageBlock';
 import { EntityGroups } from '../ui/EntityDatabase';
 import { ObjectSheet } from './blocks/ObjectSheet';
 import { AttackSheet } from './blocks/AttackSheet';
+import { AbilitySheet } from './blocks/AbilitySheet';
 import { useUIStore } from '../../store/uiStore';
 import { glass } from '../../utils/theme';
 import { canViewEntity } from '../../utils/permissions';
@@ -572,6 +573,10 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
 
                             {entity.type === 'attack' && (
                                 <AttackSheet entity={entity} />
+                            )}
+
+                            {entity.type === 'ability' && (
+                                <AbilitySheet entity={entity} />
                             )}
 
                             <EntityRelationsBlock entity={entity} />

@@ -54,6 +54,7 @@
 | `SkillsBlock.tsx` | skill ranks and skill+competency rolls |
 | `CompetenciesBlock.tsx` | child competency entities, rank, roll, open/delete |
 | `AbilitiesBlock.tsx` | child ability entities, cost/range/area/diceFormula, Roll Engine action |
+| `AbilitySheet.tsx` | standalone ability window fields and Roll Engine action |
 | `ResourcesBlock.tsx` | flexible `properties.resources` counters |
 | `InventoryBlock.tsx` | inventory list, equip/quantity/delete, item drag/drop, player ownership |
 | `ObjectSheet.tsx` | object properties, tags, embedded attacks |
@@ -65,6 +66,7 @@ Pure helpers:
 - `app/src/hooks/useCalculatedStat.ts` - calculated stats and tag modifiers.
 - `app/src/services/rollEngine.ts` - single Roll Engine facade.
 - `app/src/utils/diceParser.ts` - notation parser and low-level dice rolls.
+- `app/src/utils/abilityModel.ts` - ability formula and cost helpers.
 - `app/src/utils/permissions.ts` - pure permission/view helper.
 - `app/src/utils/resourceModel.ts` - resource normalization and clamp logic.
 
@@ -88,6 +90,7 @@ Run app focused tests from `app/` with the server-provided `tsx`:
 ..\server\node_modules\.bin\tsx.cmd src\services\rollEngine.test.ts
 ..\server\node_modules\.bin\tsx.cmd src\utils\entitySerializer.test.ts
 ..\server\node_modules\.bin\tsx.cmd src\utils\permissions.test.ts
+..\server\node_modules\.bin\tsx.cmd src\utils\abilityModel.test.ts
 ..\server\node_modules\.bin\tsx.cmd src\utils\resourceModel.test.ts
 ```
 

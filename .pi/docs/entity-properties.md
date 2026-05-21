@@ -134,7 +134,7 @@ properties: {
 
 ## Ability
 
-Используется `AbilitiesBlock` в CharacterSheet и остается гибкой заготовкой под будущую систему способностей.
+Используется `AbilitiesBlock` в CharacterSheet и `AbilitySheet` в окне ability. Остается гибкой заготовкой под будущую систему способностей.
 
 Уже встречающиеся поля:
 
@@ -149,7 +149,7 @@ properties: {
 }
 ```
 
-`diceFormula` - предпочтительное поле для новой UI-формы. `dice` читается как legacy fallback. `AbilitiesBlock` может создавать дочерние ability-сущности у персонажа, редактировать `cost.base`, `range`, `area`, `diceFormula`, открывать ability в отдельном окне и отправлять бросок в чат через единый Roll Engine.
+`diceFormula` - предпочтительное поле для новой UI-формы. `dice` читается как legacy fallback. `AbilitiesBlock` может создавать дочерние ability-сущности у персонажа, редактировать `cost.base`, `range`, `area`, `diceFormula`, открывать ability в отдельном окне и отправлять бросок в чат через единый Roll Engine. `AbilitySheet` использует те же helpers из `utils/abilityModel.ts`, чтобы список и отдельное окно не расходились.
 
 Правило развития: способность должна описывать, что она просит у Rules/Roll Engine, а не сама считать результат внутри UI.
 

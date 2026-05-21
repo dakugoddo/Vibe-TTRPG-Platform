@@ -107,7 +107,7 @@
 - [x] Расширить контекстное меню `EntityWindow` быстрыми действиями без возврата в базу: копировать `[[wiki-ссылку]]`, дублировать редактируемую сущность.
 - [x] Добавить quick-create дочерних сущностей из `EntityDatabase` и `EntityWindow` для персонажа и предмета, включая flexible `ability`.
 - [x] Подготовить интерфейс для будущих способностей, атак, статусов и ресурсов.
-  - [x] Добавить вкладку `Способности` в CharacterSheet и базовый `AbilitiesBlock` для дочерних ability-сущностей.
+  - [x] Добавить вкладку `Способности` в CharacterSheet, базовый `AbilitiesBlock` для дочерних ability-сущностей и `AbilitySheet` для отдельного окна ability.
   - [x] Сохранить броски способностей через единый Roll Engine (`diceFormula`/`dice` -> chat).
   - [x] Оставить атаки в существующем ObjectSheet/AttackSheet контуре.
   - [x] Подготовить отдельный UI-контур для ресурсов без жесткой фиксации полной игровой системы (`ResourcesBlock`, `properties.resources`).
@@ -178,6 +178,6 @@
 ## Технический долг
 
 - [x] Навести git-гигиену после длинной агентной сессии: разделить изменения на осмысленные commits и убрать временные артефакты из рабочего дерева.
-- [ ] Расширять focused tests под будущие mechanics blocks и новые версии Entity schema. Базовые focused tests уже есть для `diceParser`, `rollEngine`, `entitySerializer`, `fileManager`, permission helper и `resourceModel`.
+- [ ] Расширять focused tests под будущие mechanics blocks и новые версии Entity schema. Базовые focused tests уже есть для `diceParser`, `rollEngine`, `entitySerializer`, `fileManager`, permission helper, `abilityModel` и `resourceModel`.
 - [x] Поддерживать multiplayer manual QA в актуальном состоянии при изменении вертикального сценария.
 - [ ] Улучшать `.pi` архитектурные/design/code-map документы, если агент тратит слишком много токенов на поиск владельца логики. Базовый code-map создан: `.pi/docs/code-map.md`.

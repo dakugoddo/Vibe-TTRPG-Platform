@@ -67,7 +67,9 @@
 - "Выдать игроку" теперь создает копию в `user` базе выбранного игрока, не переносит мастер-сущность из `general`, и file sync сохраняет user-сущности по `_playerOwner`.
 - В ChatPanel добавлена вкладка "События": раны, статусы, выдача предметов и другие не-dice системные сообщения можно смотреть отдельно от обычного чата и истории бросков.
 - В CharacterSheet добавлена вкладка "Способности": дочерние ability-сущности можно создавать, открывать, настраивать через `cost.base`/`range`/`area`/`diceFormula` и бросать через Roll Engine.
+- В окне ability добавлен `AbilitySheet` с теми же полями и броском через Roll Engine.
 - В CharacterSheet добавлена вкладка "Ресурсы": гибкие счетчики `properties.resources` можно создавать и менять без привязки к финальной игровой системе.
+- Ability formula/cost logic вынесена в `utils/abilityModel.ts` и покрыта focused test `abilityModel.test.ts`.
 - Resource normalization/clamp logic вынесена в `utils/resourceModel.ts` и покрыта focused test `resourceModel.test.ts`.
 - `.pi/PRODUCT_VISION.md` и `.pi/ARCHITECTURE.md` обновлены под текущий канон: bug triage, abilities/resources, ручной multiplayer QA и правило дорогого поиска.
 - Повторный runtime-анализ оформлен в `.pi/docs/platform-runtime-decision.md`: не переписывать фундамент сейчас, позже проверять Tauri shell + sidecar прототипом.
