@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, X, Plus } from 'lucide-react';
-import { useEntitiesByType } from '../../../hooks/useEntities';
+import { getEntitiesSnapshot, useEntitiesByType } from '../../../hooks/useEntities';
 import { yjsStore } from '../../../store/yjsStore';
+import { generateEntityId } from '../../../utils/entityId';
 
 interface TagPickerPopupProps {
     isOpen: boolean;
@@ -41,7 +42,7 @@ export function TagPickerPopup({ isOpen, onClose, onSelect, excludeTags = [], al
         if (!searchQuery.trim()) return;
         const parentId = allowedFolders.length > 0 ? allowedFolders[0] : null;
 
-        const newTagId = Date.now().toString() + Math.floor(Math.random() * 1000).toString();
+        const newTagId = generateEntityId(Object.keys(getEntitiesSnapshot()));
         yjsStore.addEntity({
             id: newTagId,
             parentId: parentId,

@@ -25,8 +25,11 @@ export const EntityLink: React.FC<EntityLinkProps> = ({ entityName, entityId, ch
     } else if (entityName) {
         // Name lookup: rare case, use snapshot (non-reactive but avoids subscribing to all entities)
         const all = getEntitiesSnapshot();
-        const matches = Object.values(all).filter(ent => ent.name.toLowerCase() === entityName.toLowerCase());
-        target = matches.find(ent => ent.parentId === null) || matches[0];
+        target = all[entityName];
+        if (!target) {
+            const matches = Object.values(all).filter(ent => ent.name.toLowerCase() === entityName.toLowerCase());
+            target = matches.find(ent => ent.parentId === null) || matches[0];
+        }
     }
 
     if (!target) {

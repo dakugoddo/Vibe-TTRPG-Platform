@@ -1,14 +1,23 @@
+import { useState } from 'react';
 import type { Entity } from '../../../types';
 import { yjsStore } from '../../../store/yjsStore';
+import { getEntitiesSnapshot } from '../../../hooks/useEntities';
 import { rollEngine } from '../../../services/rollEngine';
 import { getAbilityCostBase, getAbilityFormula, setAbilityCostBase } from '../../../utils/abilityModel';
 import { glass } from '../../../utils/theme';
-import { Dices } from 'lucide-react';
+import { createEntityRollVariableResolver } from '../../../utils/rollVariables';
+import { MarkdownRenderer } from '../../ui/MarkdownRenderer';
+import { SheetTabs, type SheetTab } from '../../ui/SheetTabs';
+import { WikiLinkTextarea } from '../../ui/WikiLinkTextarea';
+import { Box, Check, Dices, Edit2, FileText, SlidersHorizontal } from 'lucide-react';
 import clsx from 'clsx';
+import { EntityCanvasTokenSettings } from './EntityCanvasTokenSettings';
 
 interface AbilitySheetProps {
     entity: Entity;
 }
+
+type AbilityTab = 'params' | 'description' | 'canvas';
 
 function getEntityOwnerId(entity: Entity): string | undefined {
     const owner = entity.properties?._playerOwner;
@@ -40,7 +49,11 @@ function sendAbilityRollToChat(ability: Entity) {
     const formula = getAbilityFormula(ability);
     if (!formula) return;
 
-    const result = rollEngine.rollDiceNotation(formula);
+    const entities = getEntitiesSnapshot();
+    const parentEntity = ability.parentId ? entities[ability.parentId] : undefined;
+    const result = rollEngine.rollExpression(formula, {
+        resolveVariable: createEntityRollVariableResolver(ability, parentEntity ? [parentEntity] : []),
+    });
     if (result.error) {
         yjsStore.sendMessage(`Ошибка броска ${ability.name}: ${result.error}`, 'Система', true);
         return;
@@ -54,9 +67,32 @@ export function AbilitySheet({ entity }: AbilitySheetProps) {
     const formula = getAbilityFormula(entity);
     const costBase = getAbilityCostBase(entity);
     const canRoll = formula.length > 0;
+    const [activeTab, setActiveTab] = useState<AbilityTab>('params');
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
+    const tabs: SheetTab<AbilityTab>[] = [
+        { id: 'params', label: 'Параметры', icon: SlidersHorizontal },
+        { id: 'description', label: 'Описание', icon: FileText },
+        { id: 'canvas', label: 'Настройки', icon: Box },
+    ];
 
     return (
         <div className="space-y-4 animate-in fade-in duration-200 mt-4">
+            <SheetTabs
+                tabs={tabs}
+                activeTab={activeTab}
+                onChange={setActiveTab}
+                endSlot={activeTab === 'description' && canEditAbility ? (
+                    <button
+                        onClick={() => setIsEditingDescription(!isEditingDescription)}
+                        className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${isEditingDescription ? 'bg-white/20 text-white shadow-sm' : 'text-white/45 hover:bg-white/10 hover:text-white'}`}
+                        title={isEditingDescription ? 'Завершить редактирование' : 'Редактировать описание'}
+                    >
+                        {isEditingDescription ? <Check size={14} /> : <Edit2 size={14} />}
+                    </button>
+                ) : null}
+            />
+
+            {activeTab === 'params' && (
             <div className={`${glass.blockBg} border-cyan-500/20 shadow-[inset_0_0_20px_rgba(34,211,238,0.05)]`}>
                 <div className="flex items-center justify-between gap-3 mb-4">
                     <h3 className={glass.blockHeader + ' text-cyan-300 border-cyan-500/20 mb-0'}>
@@ -124,6 +160,33 @@ export function AbilitySheet({ entity }: AbilitySheetProps) {
                     </label>
                 </div>
             </div>
+            )}
+
+            {activeTab === 'description' && (
+                <div className={`${glass.blockBg} min-h-[220px]`}>
+                    <h3 className={glass.blockHeader}>Описание</h3>
+                    {isEditingDescription && canEditAbility ? (
+                        <WikiLinkTextarea
+                            value={entity.description || ''}
+                            onValueChange={(value) => yjsStore.updateEntity(entity.id, { description: value })}
+                            excludeEntityId={entity.id}
+                            className={`${glass.input} w-full min-h-[180px] resize-y custom-scrollbar text-sm font-sans`}
+                            placeholder="Описание способности, условия применения, эффекты..."
+                            autoFocus
+                        />
+                    ) : (
+                        <div className="min-h-[180px] text-sm leading-relaxed text-white/80" onDoubleClick={() => { if (canEditAbility) setIsEditingDescription(true); }}>
+                            {entity.description
+                                ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
+                                : <span className="text-white/30 italic cursor-pointer">{canEditAbility ? 'Описание пустое. Дважды кликните для редактирования.' : 'Описание пустое.'}</span>}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'canvas' && (
+                <EntityCanvasTokenSettings entity={entity} canEdit={canEditAbility} />
+            )}
         </div>
     );
 }

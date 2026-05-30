@@ -184,7 +184,7 @@ cd app && npm run dev -- --host
 
 ---
 
-## 7. ТЕКУЩИЙ СТАТУС РАЗРАБОТКИ (2026-05-03)
+## 7. ТЕКУЩИЙ СТАТУС РАЗРАБОТКИ (2026-05-28)
 
 ### ✅ Готово:
 - Entity System + CRDT синхронизация
@@ -204,13 +204,14 @@ cd app && npm run dev -- --host
 - **Snap-to-Grid** (квадраты/гексы) ✅
 - **Туман Войны** (Fog of War — world-space) ✅
 
-### 🟠 В РАБОТЕ (Этап 2.5-2.7):
-- Кнопки броска кубов из статов (`!roll 2d6+$strength`)
-- Интерактивное редактирование HP
-- Лог изменений в чат
+### 🟠 В РАБОТЕ:
+- Аудио-модуль как отдельный local-first модуль: нижний плеер, GM-пульт, ambience/SFX, session audio.
+- Уведомления и approval-flow для больших player uploads.
+- Canvas/asset QA: GIF/video assets, line binding, cards/tokens, undo/redo.
+- Entity/roles/search: стабильные ID, права видимости, player identity, full-text search polish.
 
-### 📋 Дальше (Этапы 3+):
-См. `.pi/DEVELOPMENT_PLAN.md`
+### 📋 Дальше:
+См. `.pi/DEVELOPMENT_PLAN.md`, `.pi/FEATURE_BACKLOG.md` и `.pi/BUG_BACKLOG.md`.
 
 ---
 
@@ -219,7 +220,11 @@ cd app && npm run dev -- --host
 | Документ | Что внутри |
 |----------|-----------|
 | `AGENTS.md` (корень) | Главный вход для AI-агентов |
-| `.pi/DEVELOPMENT_PLAN.md` | Поэтапный план доработок |
+| `.pi/DEVELOPMENT_PLAN.md` | Короткий текущий чеклист и следующий безопасный срез |
+| `.pi/FEATURE_BACKLOG.md` | Очередь новых функций, зависимости и acceptance criteria |
+| `.pi/BUG_BACKLOG.md` | Очередь багов, приоритеты и batch-группы |
+| `.pi/docs/code-map.md` | Карта владельцев логики в коде |
+| `.pi/docs/module-architecture.md` | План отключаемых внутренних модулей и future extensions |
 | `.pi/ARCHITECTURE_ANALYSIS.md` | Разбор проблем масштабирования |
 | `.pi/3D_FUTURE_ANALYSIS.md` | План 3D + Tauri + Steam |
 | `.pi/MASTER DESIGN DOCUMENT Vibe TTRPG Platform.md` | Оригинальная спецификация (исторический) |

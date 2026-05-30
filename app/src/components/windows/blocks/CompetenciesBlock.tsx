@@ -1,5 +1,4 @@
-import { useCallback } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { useCallback, useState } from 'react';
 import type { Entity } from '../../../types';
 import { yjsStore } from '../../../store/yjsStore';
 import { useEntitiesByParent, getEntitiesSnapshot } from '../../../hooks/useEntities';
@@ -8,6 +7,12 @@ import { useUIStore } from '../../../store/uiStore';
 import { rollEngine } from '../../../services/rollEngine';
 import { Dices, Plus, Minus, Trash2, ExternalLink } from 'lucide-react';
 import { glass } from '../../../utils/theme';
+import { generateEntityId } from '../../../utils/entityId';
+import { getEntityDropActions } from '../../../utils/entityDropRouter';
+import { readEntityDragIds } from '../../../utils/entityDragPayload';
+import { applyOwnerToEntityTree, getEntityOwnerId, moveEntityTreeToParent } from '../../../utils/entityTreeMutations';
+import { getTopLevelEntityIds } from '../../../utils/entityTreeSelection';
+import { DragDropPopover, type DragDropPromptData } from '../../ui/DragDropPopover';
 import clsx from 'clsx';
 
 const RANK_MIN = 0;
@@ -15,11 +20,6 @@ const RANK_MAX = 5;
 
 interface CompetenciesBlockProps {
     entity: Entity;
-}
-
-function getEntityOwnerId(entity: Entity): string | undefined {
-    const owner = entity.properties?._playerOwner;
-    return typeof owner === 'string' ? owner : undefined;
 }
 
 function canEditEntity(entity: Entity): boolean {
@@ -43,10 +43,11 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
     const { openWindow } = useWindowStore();
     const { openConfirm } = useUIStore();
     const canEditParent = canEditEntity(entity);
+    const [dragDropPrompt, setDragDropPrompt] = useState<DragDropPromptData | null>(null);
 
     const handleAddCompetency = useCallback(() => {
         if (!canEditParent) return;
-        const id = uuidv4();
+        const id = generateEntityId(Object.keys(getEntitiesSnapshot()));
         const ownerId = getEntityOwnerId(entity);
         const newComp: Entity = {
             id,
@@ -90,10 +91,98 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
         sendRollToChat(compName, rank, rank);
     }, []);
 
+    const getCompetencyDropActions = useCallback((competency: Entity) => {
+        if (competency.type !== 'competency' || competency.parentId === entity.id) return [];
+        return getEntityDropActions(
+            { id: competency.id, type: competency.type, database: competency.database, parentId: competency.parentId },
+            { kind: 'entity', entityId: entity.id, entityType: entity.type, slot: 'competencies' },
+            {
+                role: yjsStore.localRole,
+                canModifySource: canEditEntity(competency),
+                canModifyTarget: canEditParent,
+            }
+        );
+    }, [canEditParent, entity.id, entity.type]);
+
+    const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+        if (!canEditParent) return;
+        const snapshot = getEntitiesSnapshot();
+        const allEntities = Object.values(snapshot);
+        const competencyIds = getTopLevelEntityIds(readEntityDragIds(event.dataTransfer), allEntities);
+        const droppedCompetencies = competencyIds
+            .map(id => snapshot[id])
+            .filter((candidate): candidate is Entity => Boolean(candidate));
+        if (droppedCompetencies.length === 0 || droppedCompetencies.length !== competencyIds.length || droppedCompetencies.some(competency => competency.type !== 'competency')) return;
+
+        const actionsByCompetency = droppedCompetencies.map(competency => getCompetencyDropActions(competency));
+        if (actionsByCompetency.some(actions => actions.length === 0)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = actionsByCompetency.every(actions => actions.some((action) => action.id === 'move-entity')) ? 'move' : 'copy';
+    }, [canEditParent, getCompetencyDropActions]);
+
+    const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+        if (!canEditParent) return;
+        const snapshot = getEntitiesSnapshot();
+        const allEntities = Object.values(snapshot);
+        const competencyIds = getTopLevelEntityIds(readEntityDragIds(event.dataTransfer), allEntities);
+        const droppedCompetencies = competencyIds
+            .map(id => snapshot[id])
+            .filter((candidate): candidate is Entity => Boolean(candidate));
+        if (droppedCompetencies.length === 0 || droppedCompetencies.length !== competencyIds.length || droppedCompetencies.some(competency => competency.type !== 'competency')) return;
+
+        const actionsByCompetency = droppedCompetencies.map(competency => getCompetencyDropActions(competency));
+        const copyAction = actionsByCompetency[0]?.find((action) => action.id === 'copy-entity');
+        const moveAction = actionsByCompetency[0]?.find((action) => action.id === 'move-entity');
+        const canCopyAll = Boolean(copyAction) && actionsByCompetency.every(actions => actions.some((action) => action.id === 'copy-entity'));
+        const canMoveAll = Boolean(moveAction) && actionsByCompetency.every(actions => actions.some((action) => action.id === 'move-entity'));
+        if (!canCopyAll && !canMoveAll) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        const ownerId = getEntityOwnerId(entity);
+
+        setDragDropPrompt({
+            x: event.clientX,
+            y: event.clientY,
+            entityName: droppedCompetencies.length === 1 ? droppedCompetencies[0].name : `${droppedCompetencies.length} сущностей`,
+            canCopy: canCopyAll,
+            canMove: canMoveAll,
+            copyLabel: copyAction?.label,
+            moveLabel: moveAction?.label,
+            onMove: () => {
+                if (canMoveAll) {
+                    droppedCompetencies.forEach((competency) => {
+                    moveEntityTreeToParent(competency.id, entity.id, entity.database, { ownerId });
+                    });
+                }
+                setDragDropPrompt(null);
+            },
+            onCopy: () => {
+                if (canCopyAll) {
+                    droppedCompetencies.forEach((competency) => {
+                    const newId = yjsStore.cloneEntity(competency.id, entity.id, entity.database);
+                    if (newId) applyOwnerToEntityTree(newId, ownerId);
+                    });
+                }
+                setDragDropPrompt(null);
+            },
+            onCancel: () => setDragDropPrompt(null),
+        });
+    }, [canEditParent, entity, getCompetencyDropActions]);
+
     return (
         <div className="space-y-4">
             {/* COMPETENCIES BLOCK */}
-            <div className={glass.blockBg}>
+            <div
+                data-entity-drop-target="true"
+                data-entity-id={entity.id}
+                data-entity-slot="competencies"
+                data-entity-accepts="competency"
+                className={glass.blockBg}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+            >
                 <div className="flex items-center justify-between mb-4">
                     <h4 className={glass.blockHeader + " mb-0"}>
                         Компетенции ({competencies.length})
@@ -223,6 +312,7 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                     </div>
                 )}
             </div>
+            <DragDropPopover data={dragDropPrompt} />
         </div>
     );
 }

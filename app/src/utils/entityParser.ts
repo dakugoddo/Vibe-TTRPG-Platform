@@ -108,6 +108,7 @@ function parseValue(rawValue: string, lines: string[], currentLine: number, pare
     if (rawValue === 'null' || rawValue === '~') return { value: null, nextLine: currentLine + 1 };
 
     // Number
+    if (/^\d{16,}$/.test(rawValue)) return { value: rawValue, nextLine: currentLine + 1 };
     const num = Number(rawValue);
     if (!isNaN(num) && rawValue !== '') return { value: num, nextLine: currentLine + 1 };
 
@@ -272,6 +273,7 @@ function parseInlineArray(str: string): unknown[] {
         if (item === 'true') return true;
         if (item === 'false') return false;
         if (item === 'null') return null;
+        if (/^\d{16,}$/.test(item)) return item;
         const n = Number(item);
         if (!isNaN(n) && item !== '') return n;
         return item;
@@ -327,7 +329,7 @@ function parseInlineObject(str: string): Record<string, unknown> {
             else if (value === 'true') value = true;
             else if (value === 'false') value = false;
             else if (value === 'null') value = null;
-            else {
+            else if (!/^\d{16,}$/.test(value)) {
                 const n = Number(value);
                 if (!isNaN(n) && value !== '') value = n;
             }
@@ -371,7 +373,10 @@ export function parseEntityFile(content: string, fallbackId: string): ParsedEnti
         : 'note') as EntityType;
 
     // Determine ID
-    const id = (parsed.uid as string) || fallbackId;
+    const frontmatterId = parsed.id ?? parsed.uid;
+    const id = frontmatterId !== undefined && frontmatterId !== null && String(frontmatterId).trim()
+        ? String(frontmatterId)
+        : fallbackId;
 
     // Tags
     const tags = Array.isArray(parsed.tags)

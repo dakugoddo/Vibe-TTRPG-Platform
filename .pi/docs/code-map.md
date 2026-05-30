@@ -1,6 +1,6 @@
 # Code Map
 
-> Дата: 2026-05-21
+> Дата: 2026-05-25
 > Назначение: быстрый навигатор по владельцам логики, чтобы агент не тратил лишние проходы `rg` на типовые задачи.
 
 ## Frontend entry
@@ -8,6 +8,17 @@
 | Зона | Файлы | Когда идти сюда |
 |------|-------|-----------------|
 | App shell | `app/src/App.tsx`, `app/src/main.tsx`, `app/src/i18n.ts` | старт приложения, глобальная компоновка, локализация |
+| Side drawers | `app/src/components/ui/LeftDrawer.tsx`, `app/src/components/ui/RightDrawer.tsx` | открытие боковых панелей, header pattern, GM player selector, tabs базы/файлов/чата |
+| Settings shell | `app/src/components/ui/SettingsWindow.tsx`, `app/src/App.tsx`, `app/src/utils/permissions.ts` | окно настроек, player-safe tabs, GM-only world/roles tabs, read-only role policy matrix |
+| Theme runtime | `app/src/utils/theme.ts`, `app/src/hooks/useThemePreset.ts`, `app/src/index.css`, `app/src/components/ui/SettingsWindow.tsx` | built-in presets, local custom palette, CSS variables, localStorage-backed theme choice |
+| Module registry | `app/src/utils/appModules.ts`, `.pi/docs/module-architecture.md` | pure internal module definitions, default enablement, core-lock normalization for future optional modules |
+| Audio session bridge | `app/src/components/ui/AudioSessionBridge.tsx`, `app/src/hooks/useAudioSessionEnabled.ts` | player opt-in, приём Yjs audio commands, fade-aware локальное воспроизведение SFX/tracks |
+| Audio module shell | `app/src/components/ui/AudioControlDock.tsx`, `app/src/components/ui/AudioDesk.tsx`, `.pi/docs/gm-audio-desk.md` | отдельный нижний аудио-док, temporary mixer popup, local cue buttons, channel stop/all-stop, optional broadcast controls |
+| Audio playback service | `app/src/services/audioPlayback.ts` | `HTMLAudioElement` playback, Web Audio buffer cache, duration metadata, channel/effective volume, local fade helpers, audio-output priming |
+| Audio channel mixer hook | `app/src/hooks/useAudioChannelVolumes.ts` | localStorage-backed channel volumes for music/ambience/sfx/voice |
+| Audio playlist model | `app/src/utils/audioPlaylists.ts` | localStorage-backed audio queue playlist helpers; UI integration moved out of `AssetBrowser` and awaits standalone audio module design |
+| GM audio desk model | `.pi/docs/gm-audio-desk.md`, `app/src/utils/audioDeckModel.ts` | normalized cue/playlist/scene model for the future GM soundboard and session playlist state |
+| Notifications | `app/src/utils/notificationModel.ts`, `app/src/utils/sessionNotificationModel.ts`, `app/src/store/notificationStore.ts`, `app/src/components/ui/NotificationCenter.tsx`, `app/src/components/ui/SessionNotificationBridge.tsx`, `.pi/docs/notification-system.md` | local notifications, session metadata events, upload approvals, toast/center UI, player -> GM approval request routing |
 | Global styles | `app/src/index.css`, `app/src/utils/theme.ts` | базовые токены, scrollbar, glass classes, Tailwind-level styling |
 | Types | `app/src/types.ts`, `app/src/types/canvasTypes.ts` | Entity/ChatMessage/canvas draw element contracts |
 
@@ -15,7 +26,7 @@
 
 | Store | Ответственность |
 |-------|-----------------|
-| `app/src/store/yjsStore.ts` | Yjs connection, roles, permissions gate for Entity mutations, chat messages |
+| `app/src/store/yjsStore.ts` | Yjs connection, roles, permissions gate for Entity mutations, chat messages, latest audio session command |
 | `app/src/store/entityStore.ts` | local entity store snapshot and entity CRUD bridge |
 | `app/src/store/canvasStore.ts` | active canvas, camera transform, canvas history |
 | `app/src/store/canvasDrawStore.ts` | active canvas tool, draw style, selection, marquee, undo/redo state, fog tool UI state |
@@ -29,7 +40,12 @@
 |--------|------------|
 | Toolbar/tool buttons/style controls | `app/src/components/canvas/CanvasToolbar.tsx` |
 | Pointer flow, drawing, lasso, selection, drag, resize, rotate | `app/src/components/canvas/InfiniteCanvas.tsx` |
+| Canvas image picker | `app/src/components/canvas/CanvasImagePicker.tsx`, `app/src/components/canvas/InfiniteCanvas.tsx` |
 | Draw element bounds, z-order, selection math, fog geometry | `app/src/types/canvasTypes.ts` |
+| Canvas object anchors / line endpoint snap | `app/src/utils/canvasAnchors.ts`, `app/src/components/canvas/InfiniteCanvas.tsx` |
+| Canvas line routing/editing helpers | `app/src/utils/canvasLineRouting.ts`, `app/src/types/canvasTypes.ts`, `app/src/components/canvas/CanvasToolbar.tsx`, `app/src/components/canvas/InfiniteCanvas.tsx` |
+| Canvas visual style presets | `app/src/utils/canvasVisualStyle.ts`, `app/src/types/canvasTypes.ts`, `app/src/components/canvas/CanvasToolbar.tsx`, `app/src/components/canvas/InfiniteCanvas.tsx` |
+| Canvas linked entity tokens/cards | `app/src/types/canvasTypes.ts`, `app/src/components/canvas/InfiniteCanvas.tsx`, `app/src/components/canvas/CanvasToolbar.tsx`, `app/src/utils/canvasEntityTokenFrame.ts`, `app/src/utils/entityCanvasDefaults.ts`, `app/src/components/windows/blocks/EntityCanvasTokenSettings.tsx`, `.pi/docs/canvas-entity-tokens.md` |
 | Canvas persistence filter/cleanup | `app/src/utils/canvasPersistence.ts` |
 | Persistent draw/fog sync | `app/src/store/canvasSyncStore.ts` |
 
@@ -38,12 +54,22 @@
 | Задача | Начинать с |
 |--------|------------|
 | Left database tree, search, context menu, quick-create | `app/src/components/ui/EntityDatabase.tsx` |
+| Entity bulk selection, delete, and selected-row batch drag/drop | `.pi/docs/bulk-entity-actions.md`, `app/src/components/ui/EntityDatabase.tsx`, `app/src/utils/entityDragPayload.ts`, `app/src/utils/entityTreeSelection.ts` |
 | Entity windows, context menu, quick links, sheet selection | `app/src/components/windows/EntityWindow.tsx` |
+| Entity window technical/debug mode | `app/src/components/windows/EntityWindow.tsx`, `.pi/docs/entity-window-debug-mode.md` |
 | Window layout and pinned windows | `app/src/components/windows/WindowManager.tsx` |
-| Wiki link rendering and custom markdown blocks | `app/src/components/ui/MarkdownRenderer.tsx` |
+| Wiki link rendering and custom markdown blocks | `app/src/components/ui/MarkdownRenderer.tsx`, `app/src/components/ui/EntityLink.tsx` |
+| Wiki link editing autocomplete | `app/src/components/ui/WikiLinkTextarea.tsx` |
+| Asset browser UI, SFX preview, asset selection and bulk delete | `app/src/components/ui/AssetBrowser.tsx`, `app/src/services/fileApi.ts`, `.pi/docs/bulk-entity-actions.md` |
+| Asset drag payloads, binary upload, file reads and canvas image drop/migration | `app/src/utils/assetDrag.ts`, `app/src/utils/fileRead.ts`, `app/src/utils/canvasInlineImageMigration.ts`, `app/src/services/fileApi.ts`, `server/src/index.ts`, `app/src/components/canvas/InfiniteCanvas.tsx`, `app/src/types/canvasTypes.ts` |
+| Entity image picker | `app/src/components/windows/blocks/EntityImageBlock.tsx`, `app/src/services/fileApi.ts` |
 | Entity selectors and snapshots | `app/src/hooks/useEntities.ts` |
+| Entity search matching, snippets, facets, query syntax, property filters, recent history and saved searches | `app/src/utils/entitySearch.ts`, `app/src/utils/entitySearch.test.ts`, `app/src/components/ui/EntityDatabase.tsx` |
 | Markdown/frontmatter client parser | `app/src/utils/entityParser.ts`, `app/src/utils/entitySerializer.ts` |
-| Schema version helpers | `app/src/utils/entitySchema.ts`, `server/src/entitySchema.ts` |
+| Entity ID/schema helpers | `app/src/utils/entityId.ts`, `app/src/utils/entitySchema.ts`, `server/src/entityId.ts`, `server/src/entitySchema.ts` |
+| Entity drag/drop routing contract | `.pi/docs/entity-drop-router.md`, `app/src/utils/entityDropRouter.ts`, `app/src/utils/entityDropRouter.test.ts`, `app/src/utils/entityDragPayload.ts`, `app/src/utils/entityTreeMutations.ts`, `app/src/components/ui/EntityDatabase.tsx`, `app/src/components/windows/EntityWindow.tsx`, `app/src/components/canvas/InfiniteCanvas.tsx`, `app/src/components/windows/blocks/InventoryBlock.tsx`, `app/src/components/windows/blocks/AbilitiesBlock.tsx`, `app/src/components/windows/blocks/CompetenciesBlock.tsx`, `app/src/components/windows/blocks/ObjectSheet.tsx`, `app/src/components/windows/blocks/StatusBlock.tsx` |
+| Entity title-driven filenames | `.pi/docs/entity-title-filenames.md`, `server/src/entityTitleFilename.ts`, `server/src/entityTitleFilename.test.ts`, `server/src/entityTitleRename.ts`, `server/src/entityTitleRename.test.ts`, `server/src/fileManager.ts`, `server/src/index.ts`, `app/src/services/fileApi.ts`, `app/src/services/fileSyncService.ts` |
+| Entity visibility and canvas access | `.pi/docs/entity-visibility-permissions.md`, `app/src/utils/permissions.ts`, `app/src/components/canvas/InfiniteCanvas.tsx`, `app/src/components/windows/blocks/EntityCanvasTokenSettings.tsx` |
 
 ## Character and mechanics blocks
 
@@ -66,17 +92,22 @@ Pure helpers:
 - `app/src/hooks/useCalculatedStat.ts` - calculated stats and tag modifiers.
 - `app/src/services/rollEngine.ts` - single Roll Engine facade.
 - `app/src/utils/diceParser.ts` - notation parser and low-level dice rolls.
+- `app/src/utils/rollVariables.ts` - Entity roll formula variable resolver (`$урон`, `$strength`, ranks/base values).
 - `app/src/utils/abilityModel.ts` - ability formula and cost helpers.
-- `app/src/utils/permissions.ts` - pure permission/view helper.
+- `app/src/utils/permissions.ts` - pure permission/view helper, `Base Player` role policy and effective permissions.
+- `app/src/utils/entityTreeMutations.ts` - shared entity tree move and owner propagation helper for canvas/database/window drops.
+- `app/src/utils/entityDragPayload.ts` - shared DataTransfer reader/writer for single and selected multi-entity drags.
+- `app/src/utils/entityTreeSelection.ts` - pure helper for reducing selected entity ids to top-level roots before batch operations.
 - `app/src/utils/resourceModel.ts` - resource normalization and clamp logic.
 
 ## Server
 
 | Файл | Ответственность |
 |------|-----------------|
-| `server/src/index.ts` | Express API, websocket/y-websocket boot, request routing |
+| `server/src/index.ts` | Express API, websocket/y-websocket boot, request routing, world/entity maintenance endpoints |
 | `server/src/worldManager.ts` | create/open worlds and world metadata |
-| `server/src/fileManager.ts` | CRUD `.md` entities, folder routing, serialization bridge |
+| `server/src/fileManager.ts` | CRUD `.md` entities, folder routing, serialization bridge, minimal entity-id migration utility |
+| `server/src/assetManager.ts` | recursive `assets/` index, stable path-based asset IDs, MIME/type detection, safe asset path resolution |
 | `server/src/fileWatcher.ts` | chokidar external edit watcher |
 | `server/src/renameManager.ts` | cascade rename and wiki-link updates |
 | `server/src/shared/types.ts` | server-side shared Entity types |
@@ -88,7 +119,18 @@ Run app focused tests from `app/` with the server-provided `tsx`:
 ```bat
 ..\server\node_modules\.bin\tsx.cmd src\utils\diceParser.test.ts
 ..\server\node_modules\.bin\tsx.cmd src\services\rollEngine.test.ts
+..\server\node_modules\.bin\tsx.cmd src\services\audioPlayback.test.ts
+..\server\node_modules\.bin\tsx.cmd src\utils\audioPlaylists.test.ts
+..\server\node_modules\.bin\tsx.cmd src\utils\audioDeckModel.test.ts
 ..\server\node_modules\.bin\tsx.cmd src\utils\entitySerializer.test.ts
+..\server\node_modules\.bin\tsx.cmd src\utils\entityId.test.ts
+..\server\node_modules\.bin\tsx.cmd src\utils\entitySearch.test.ts
+..\server\node_modules\.bin\tsx.cmd src\utils\entityDropRouter.test.ts
+..\server\node_modules\.bin\tsx.cmd src\utils\entityTreeSelection.test.ts
+..\server\node_modules\.bin\tsx.cmd src\utils\canvasInlineImageMigration.test.ts
+..\server\node_modules\.bin\tsx.cmd src\utils\theme.test.ts
+..\server\node_modules\.bin\tsx.cmd src\utils\canvasAnchors.test.ts
+..\server\node_modules\.bin\tsx.cmd src\utils\rollVariables.test.ts
 ..\server\node_modules\.bin\tsx.cmd src\utils\permissions.test.ts
 ..\server\node_modules\.bin\tsx.cmd src\utils\abilityModel.test.ts
 ..\server\node_modules\.bin\tsx.cmd src\utils\resourceModel.test.ts
@@ -98,6 +140,10 @@ Run server focused tests from `server/`:
 
 ```bat
 npx tsx src\fileManager.test.ts
+npx tsx src\assetManager.test.ts
+npx tsx src\entityId.test.ts
+npx tsx src\entityTitleFilename.test.ts
+npx tsx src\entityTitleRename.test.ts
 ```
 
 Full frontend checks:

@@ -14,6 +14,7 @@ import type { Entity } from '../types';
 import {
     listEntities,
     saveEntity,
+    renameEntityFileToTitle,
     deleteEntity as deleteEntityFile,
     openWorld,
     createWorld,
@@ -26,11 +27,14 @@ import {
     type WorldMeta
 } from './fileApi';
 import { yjsStore } from '../store/yjsStore';
+import { sanitizeCanvasEntityForSharedSync } from '../utils/canvasPersistence';
 
 // ─── Debounced writeback ───
 
 /** Entities that have been changed in Yjs but not yet written to disk */
 const dirtyEntities = new Map<string, { entity: Entity; db: DatabaseType }>();
+const savedEntitySignatures = new Map<string, string>();
+const lastRenamedTitleBySaveKey = new Map<string, string>();
 
 /** Timer for debounced flush */
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -54,6 +58,43 @@ function getUserEntityPlayer(entity?: Entity): string | undefined {
     }
 
     return _playerName;
+}
+
+function getEntitySaveKey(db: DatabaseType, entityId: string, player?: string): string {
+    return `${db}:${player || ''}:${entityId}`;
+}
+
+function stableStringify(value: unknown): string {
+    if (Array.isArray(value)) {
+        return `[${value.map(stableStringify).join(',')}]`;
+    }
+    if (value && typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+        return `{${Object.keys(record)
+            .sort()
+            .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+            .join(',')}}`;
+    }
+    return JSON.stringify(value);
+}
+
+function getEntitySignature(db: DatabaseType, entity: Entity, player?: string): string {
+    return stableStringify({
+        db,
+        player: player || null,
+        entity: sanitizeCanvasEntityForSharedSync(entity),
+    });
+}
+
+function rememberSavedEntity(db: DatabaseType, entity: Entity, player?: string): void {
+    const id = entity.id || entity.name;
+    if (!id) return;
+
+    const saveKey = getEntitySaveKey(db, id, player);
+    savedEntitySignatures.set(saveKey, getEntitySignature(db, entity, player));
+    if (entity.name) {
+        lastRenamedTitleBySaveKey.set(saveKey, entity.name);
+    }
 }
 
 // ─── Callbacks ───
@@ -151,11 +192,13 @@ export async function loadWorld(
                 ...generalEntities.map(e => ({ ...e, database: 'general' as const })),
                 ...userEntities.map(e => ({ ...e, database: 'user' as const })),
                 ...gmEntities.map(e => ({ ...e, database: 'gm' as const })),
-            ];
+            ].map(sanitizeCanvasEntityForSharedSync);
             const total = allEntities.length;
 
             for (const entity of allEntities) {
                 const id = entity.id || entity.name;
+                const db = entity.database || 'general';
+                const player = db === 'user' ? getUserEntityPlayer(entity) : undefined;
                 const existingEntity = yjsStore.entitiesMap.get(id);
 
                 // Only update if entity doesn't exist or has changed
@@ -165,6 +208,8 @@ export async function loadWorld(
                         id, // Ensure ID is consistent
                     });
                 }
+
+                rememberSavedEntity(db, entity, player);
 
                 loaded++;
                 _onProgress?.(loaded, total);
@@ -276,7 +321,32 @@ async function flushDirtyEntities(): Promise<void> {
     for (const { entity, db } of batch.values()) {
         try {
             const player = db === 'user' ? getUserEntityPlayer(entity) : undefined;
-            await saveEntity(db, entity, player);
+            const normalizedEntity = sanitizeCanvasEntityForSharedSync(entity);
+            const id = normalizedEntity.id || normalizedEntity.name;
+            const saveKey = getEntitySaveKey(db, id, player);
+            const nextSignature = getEntitySignature(db, normalizedEntity, player);
+            const titleChanged = Boolean(
+                normalizedEntity.id &&
+                normalizedEntity.name &&
+                lastRenamedTitleBySaveKey.get(saveKey) !== normalizedEntity.name
+            );
+
+            if (savedEntitySignatures.get(saveKey) === nextSignature && !titleChanged) {
+                continue;
+            }
+
+            await saveEntity(db, normalizedEntity, player);
+            savedEntitySignatures.set(saveKey, nextSignature);
+            if (normalizedEntity.id && normalizedEntity.name) {
+                try {
+                    if (titleChanged) {
+                        await renameEntityFileToTitle(db, normalizedEntity.id, normalizedEntity.name, player, { dryRun: false });
+                        lastRenamedTitleBySaveKey.set(saveKey, normalizedEntity.name);
+                    }
+                } catch (renameErr) {
+                    console.warn(`Failed to rename file path for ${normalizedEntity.name}:`, renameErr);
+                }
+            }
         } catch (err) {
             errors++;
             console.warn(`⚠️ Failed to save ${entity.name}:`, err);
@@ -310,10 +380,15 @@ function setupFileChangeHandler(): void {
                 }
             } else if (event.entity) {
                 // File was added or changed externally
-                const entity = event.entity;
+                const entity = sanitizeCanvasEntityForSharedSync(event.entity);
                 const id = entity.id || entity.name;
                 console.log(`📝 External ${event.type}: ${entity.name}`);
                 yjsStore.entitiesMap.set(id, { ...entity, id });
+                rememberSavedEntity(
+                    event.database,
+                    { ...entity, id },
+                    event.database === 'user' ? getUserEntityPlayer(entity) : undefined
+                );
             }
         } finally {
             // Re-enable writeback after a short delay 

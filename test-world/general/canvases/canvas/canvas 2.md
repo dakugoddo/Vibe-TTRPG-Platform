@@ -1,6 +1,7 @@
 ---
 type: portal
 schemaVersion: 1
+id: canvas 2
 ---
 
 # canvas 2

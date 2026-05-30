@@ -7,14 +7,37 @@
 
 // ─── Drawing element types ───
 
-export type DrawElementType = 'line' | 'arrow' | 'rectangle' | 'ellipse' | 'image' | 'text' | 'frame';
+export type DrawElementType = 'line' | 'arrow' | 'rectangle' | 'ellipse' | 'image' | 'entityToken' | 'text' | 'frame';
 
 export type StrokeStyle = 'solid' | 'dashed' | 'dotted';
+
+export type DrawVisualStyle = 'clean' | 'soft' | 'sketch';
+
+export type DrawLineMode = 'straight' | 'curved' | 'elbow';
+
+export type EntityTokenMode = 'token' | 'art';
+export type EntityTokenFrame = 'plain' | 'ring' | 'badge' | 'hex';
 
 export type LineCap = 'none' | 'arrow' | 'circle' | 'diamond' | 'square';
 
 export type TextFontFamily = 'sans' | 'serif' | 'mono' | 'handwritten';
 export type TextAlign = 'left' | 'center' | 'right';
+
+export type CanvasAnchorId =
+  | 'center'
+  | 'top'
+  | 'right'
+  | 'bottom'
+  | 'left'
+  | 'topLeft'
+  | 'topRight'
+  | 'bottomRight'
+  | 'bottomLeft';
+
+export interface DrawElementBinding {
+  elementId: string;
+  anchor: CanvasAnchorId;
+}
 
 export interface DrawElement {
   id: string;
@@ -22,6 +45,7 @@ export interface DrawElement {
 
   // For lines/arrows: flat array [x1,y1, x2,y2, ...]
   points?: number[];
+  lineMode?: DrawLineMode;
 
   // For rectangles/ellipses/images
   x?: number;
@@ -33,6 +57,7 @@ export interface DrawElement {
   stroke: string;
   strokeWidth: number;
   strokeStyle: StrokeStyle;
+  visualStyle?: DrawVisualStyle;
   fill?: string;
   opacity: number;
 
@@ -46,6 +71,16 @@ export interface DrawElement {
 
   // For type='image'
   imageUrl?: string;
+  imageAssetPath?: string;
+
+  // For type='entityToken': linked entity representation on canvas without moving/copying the entity.
+  linkedEntityId?: string;
+  entityTokenMode?: EntityTokenMode;
+  entityTokenFrame?: EntityTokenFrame;
+
+  // For type='line' / 'arrow': optional persistent attachment to another draw element anchor.
+  startBinding?: DrawElementBinding;
+  endBinding?: DrawElementBinding;
 
   // For type='text'
   text?: string;
@@ -87,6 +122,9 @@ export const DEFAULT_DRAW_STYLE = {
   stroke: '#a78bfa',       // soft purple
   strokeWidth: 2,
   strokeStyle: 'solid' as StrokeStyle,
+  visualStyle: 'clean' as DrawVisualStyle,
+  lineMode: 'straight' as DrawLineMode,
+  entityTokenFrame: 'ring' as EntityTokenFrame,
   fill: '',
   opacity: 1,
   startCap: 'none' as LineCap,
@@ -133,7 +171,7 @@ export function getArrowPoints(
  * Get bounding box of a draw element.
  */
 export function getElementBounds(el: DrawElement): { x: number; y: number; w: number; h: number } {
-  if (el.type === 'rectangle' || el.type === 'ellipse' || el.type === 'image' || el.type === 'frame') {
+  if (el.type === 'rectangle' || el.type === 'ellipse' || el.type === 'image' || el.type === 'entityToken' || el.type === 'frame') {
     return {
       x: el.x || 0,
       y: el.y || 0,

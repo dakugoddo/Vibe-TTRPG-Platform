@@ -69,6 +69,28 @@ try {
         const result = rollEngine.rollDiceNotation('1d6');
         assert(result.error?.includes('random.org provider is not configured') === true, 'Reports unconfigured random.org provider');
     }
+
+    console.log('\nTest 5: expression resolver');
+    {
+        rollEngine.setRandomProvider(fixedProvider([5, 6]));
+        const result = rollEngine.rollExpression('2d6+$strength+1', {
+            resolveVariable: (name) => name === 'strength' ? 2 : null,
+        });
+        assert(result.total === 14, 'Resolves variables inside dice notation');
+        assert(result.resolvedExpression === '2d6+2+1', 'Keeps resolved expression metadata');
+        assert(result.notation === '2d6+3', 'Normalizes summed modifiers');
+
+        rollEngine.setRandomProvider(fixedProvider([4, 5, 6]));
+        const pool = rollEngine.rollExpression('3', { plainNumberAsD6Pool: true });
+        assert(pool.total === 15, 'Plain number can roll a d6 pool when enabled');
+        assert(pool.notation.includes('3d6'), 'Pool result keeps d6 notation');
+
+        rollEngine.setRandomProvider(fixedProvider([10]));
+        const localized = rollEngine.rollExpression('1d20+$урон', {
+            resolveVariable: (name) => name === 'урон' ? 4 : null,
+        });
+        assert(localized.total === 14, 'Supports localized variable names');
+    }
 } finally {
     rollEngine.resetRandomProvider();
 }

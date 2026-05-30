@@ -1,6 +1,5 @@
 import { Rnd } from 'react-rnd';
-import { v4 as uuidv4 } from 'uuid';
-import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network, Copy, Box, Lightbulb, Sword, Wand2 } from 'lucide-react';
+import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network, Copy, Box, FileText, Lightbulb, Sword, Wand2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useWindowStore } from '../../store/windowStore';
 import type { WindowState, WindowMode } from '../../store/windowStore';
@@ -10,6 +9,8 @@ import { useCanvasStore } from '../../store/canvasStore';
 import { CharacterSheet } from './CharacterSheet';
 import { yjsStore } from '../../store/yjsStore';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
+import { SheetTabs, type SheetTab } from '../ui/SheetTabs';
+import { WikiLinkTextarea } from '../ui/WikiLinkTextarea';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 
@@ -21,6 +22,7 @@ import { TagEditor } from './blocks/TagEditor';
 import { TagPickerPopup } from './blocks/TagPickerPopup';
 import { EntityLink } from '../ui/EntityLink';
 import { EntityImageBlock } from './blocks/EntityImageBlock';
+import { EntityCanvasTokenSettings } from './blocks/EntityCanvasTokenSettings';
 import { EntityGroups } from '../ui/EntityDatabase';
 import { ObjectSheet } from './blocks/ObjectSheet';
 import { AttackSheet } from './blocks/AttackSheet';
@@ -29,6 +31,7 @@ import { useUIStore } from '../../store/uiStore';
 import { glass } from '../../utils/theme';
 import { canViewEntity } from '../../utils/permissions';
 import { writeClipboardText } from '../../utils/clipboard';
+import { generateEntityId } from '../../utils/entityId';
 
 interface EntityWindowProps {
     windowState: WindowState;
@@ -53,15 +56,18 @@ function normalizeWikiTarget(target: string): string {
     return target.split('|')[0].split('#')[0].trim().toLowerCase();
 }
 
-function hasWikiLinkToEntity(source: Entity, targetName: string): boolean {
+function hasWikiLinkToEntity(source: Entity, target: Entity): boolean {
     if (!source.description) return false;
 
-    const normalizedTarget = targetName.trim().toLowerCase();
+    const normalizedTargets = new Set([
+        target.id.trim().toLowerCase(),
+        target.name.trim().toLowerCase(),
+    ]);
     const wikiPattern = /\[\[([^\]]+)\]\]/g;
     let match: RegExpExecArray | null;
 
     while ((match = wikiPattern.exec(source.description)) !== null) {
-        if (normalizeWikiTarget(match[1]) === normalizedTarget) {
+        if (normalizedTargets.has(normalizeWikiTarget(match[1]))) {
             return true;
         }
     }
@@ -76,6 +82,8 @@ interface QuickCreateAction {
     label: string;
     icon: LucideIcon;
 }
+
+type GenericEntityTab = 'description' | 'canvas';
 
 function getWindowQuickCreateActions(entity: Entity): QuickCreateAction[] {
     if (entity.type === 'character') {
@@ -96,7 +104,7 @@ function getWindowQuickCreateActions(entity: Entity): QuickCreateAction[] {
 function createChildEntityDraft(parent: Entity, type: EntityType): Entity {
     const owner = getEntityOwnerId(parent);
     const draft: Entity = {
-        id: uuidv4(),
+        id: generateEntityId(Object.keys(getEntitiesSnapshot())),
         parentId: parent.id,
         type,
         database: parent.database,
@@ -165,7 +173,7 @@ function EntityRelationsBlock({ entity }: { entity: Entity }) {
             .filter((candidate): candidate is Entity => Boolean(candidate))
             .sort(sortByName);
         const backlinks = visibleEntities
-            .filter(candidate => candidate.id !== entity.id && hasWikiLinkToEntity(candidate, entity.name))
+            .filter(candidate => candidate.id !== entity.id && hasWikiLinkToEntity(candidate, entity))
             .sort(sortByName);
 
         return [
@@ -174,7 +182,7 @@ function EntityRelationsBlock({ entity }: { entity: Entity }) {
             { id: 'tags', label: 'Tags', icon: Tag, entities: tags },
             { id: 'backlinks', label: 'Backlinks', icon: Link2, entities: backlinks },
         ].filter(section => section.entities.length > 0);
-    }, [allEntities, entity.id, entity.name, entity.parentId, entity.tags]);
+    }, [allEntities, entity]);
 
     if (sections.length === 0) return null;
 
@@ -223,6 +231,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     const [isEditingName, setIsEditingName] = useState(false);
     const [tempName, setTempName] = useState('');
     const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
+    const [genericTab, setGenericTab] = useState<GenericEntityTab>('description');
 
     const entity = useEntity(entityId);
     const { focusWindow, closeWindow, updateWindow, setMode, togglePin, focusedWindowId, openWindow } = useWindowStore();
@@ -265,7 +274,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
 
     const handleCopyWikiLink = () => {
         setContextMenuState(null);
-        void writeClipboardText(`[[${entity.name}]]`).catch((error) => {
+        void writeClipboardText(`[[${entity.id}]]`).catch((error) => {
             console.warn(`Failed to copy wiki link for "${entity.name}"`, error);
         });
     };
@@ -373,7 +382,12 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                 style={customRndStyle}
                 scale={isPinned ? stageScale : 1}
             >
-                <div className={`w-16 h-16 bg-white/10 border-2 border-white/20 shadow-xl shadow-black/40 flex flex-col items-center justify-center cursor-pointer hover:bg-white/20 backdrop-blur-3xl transition-colors tooltip-trigger relative group ${isPinned ? 'rounded-full' : 'rounded-3xl'}`}>
+                <div
+                    data-canvas-drop-blocker="true"
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    className={`w-16 h-16 bg-white/10 border-2 border-white/20 shadow-xl shadow-black/40 flex flex-col items-center justify-center cursor-pointer hover:bg-white/20 backdrop-blur-3xl transition-colors tooltip-trigger relative group ${isPinned ? 'rounded-full' : 'rounded-3xl'}`}
+                >
                     <CircleDot size={20} className="text-white mb-1" />
                     <span className="text-[10px] text-white font-bold truncate w-14 text-center px-1">
                         {entity.name}
@@ -395,6 +409,12 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     const quickCreateActions = canEditCurrentEntity ? getWindowQuickCreateActions(entity) : [];
     const contextMenuWidth = 220;
     const contextMenuHeight = 230 + quickCreateActions.length * 36;
+    const supportsCanvasTokenSettings = entity.type !== 'canvas' && entity.type !== 'folder';
+    const usesSpecialTabbedSheet = entity.type === 'character' || entity.type === 'object' || entity.type === 'ability' || entity.type === 'attack';
+    const genericTabs: SheetTab<GenericEntityTab>[] = [
+        { id: 'description', label: 'Описание', icon: FileText },
+        { id: 'canvas', label: 'Настройки', icon: Box },
+    ];
 
     return (
         <Rnd
@@ -411,7 +431,12 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
             dragHandleClassName="draggable-header"
             scale={isPinned ? stageScale : 1}
         >
-            <div className={frameClass}>
+            <div
+                data-canvas-drop-blocker="true"
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                className={frameClass}
+            >
                 {/* Header toolbar */}
                 <div className={`draggable-header flex items-center justify-between cursor-move select-none relative group ${glass.header} transition-colors p-3 py-2 border-b-2 ${focusedWindowId === id ? 'border-white/30' : 'border-white/5'}`}
                     onContextMenu={handleContextMenu}
@@ -490,7 +515,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                 }
                             }}
                             className={`p-1.5 rounded transition-all hover:bg-white/10 ${isPinned ? 'text-yellow-400 bg-yellow-400/20' : 'text-white/50'}`}
-                            title={isPinned ? 'Unpin from canvas' : 'Pin to canvas'}
+                            title={isPinned ? 'Открепить от канваса' : 'Закрепить на канвасе'}
                         >
                             {isPinned ? <Pin size={14} /> : <PinOff size={14} />}
                         </button>
@@ -498,21 +523,21 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                         <button
                             onClick={(e) => { e.stopPropagation(); handleModeChange('icon'); }}
                             className="p-1.5 object-cover text-white/50 hover:text-white hover:bg-white/10 rounded transition-colors group-hover:opacity-100"
-                            title="Minimize to icon"
+                            title="Свернуть в иконку"
                         >
                             <CircleDot size={14} />
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); handleModeChange(isFullMode ? 'compact' : 'full'); }}
                             className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded transition-colors"
-                            title={isFullMode ? 'Compact Mode' : 'Режим отладки'}
+                            title={isFullMode ? 'Обычный режим' : 'Технический режим: свойства, скрытые теги и System ID'}
                         >
                             {isFullMode ? <Minimize2 size={14} /> : <Bug size={14} />}
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); closeWindow(id); }}
                             className="p-1.5 text-white/50 hover:text-red-400 hover:bg-red-500/20 rounded transition-colors ml-1"
-                            title="Close window"
+                            title="Закрыть окно"
                         >
                             <X size={14} />
                         </button>
@@ -532,40 +557,68 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                         </>
                     ) : (
                         <>
-                            <div className={glass.blockBg}>
-                                <h3 className={glass.blockHeader}>
-                                    <div className="flex items-center gap-2 flex-1">
-                                        Description
-                                    </div>
-                                    {canEditCurrentEntity && (
-                                        <button
-                                            onClick={() => setIsEditingDescription(!isEditingDescription)}
-                                            className={`p-1.5 rounded-lg transition-colors ${isEditingDescription ? 'bg-white/20 text-white shadow-sm' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
-                                        >
-                                            {isEditingDescription ? <Check size={12} /> : <Edit2 size={12} />}
-                                        </button>
+                            {!usesSpecialTabbedSheet && (
+                                <>
+                                    {supportsCanvasTokenSettings && (
+                                        <SheetTabs
+                                            tabs={genericTabs}
+                                            activeTab={genericTab}
+                                            onChange={setGenericTab}
+                                            endSlot={genericTab === 'description' && canEditCurrentEntity ? (
+                                                <button
+                                                    onClick={() => setIsEditingDescription(!isEditingDescription)}
+                                                    className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${isEditingDescription ? 'bg-white/20 text-white shadow-sm' : 'text-white/45 hover:bg-white/10 hover:text-white'}`}
+                                                    title={isEditingDescription ? 'Завершить редактирование' : 'Редактировать описание'}
+                                                >
+                                                    {isEditingDescription ? <Check size={14} /> : <Edit2 size={14} />}
+                                                </button>
+                                            ) : null}
+                                        />
                                     )}
-                                </h3>
 
-                                {isEditingDescription && canEditCurrentEntity ? (
-                                    <textarea
-                                        value={entity.description || ''}
-                                        onChange={(e) => {
-                                            if (!canEditCurrentEntity) return;
-                                            yjsStore.updateEntity(entity.id, { description: e.target.value });
-                                        }}
-                                        className={`${glass.input} w-full h-32 resize-y flex-1 custom-scrollbar text-sm font-sans`}
-                                        placeholder="Type markdown description here..."
-                                        autoFocus
-                                    />
-                                ) : (
-                                    <div className="text-sm leading-relaxed whitespace-pre-wrap text-white/80 flex-1 h-full min-h-[100px]" onDoubleClick={() => { if (canEditCurrentEntity) setIsEditingDescription(true); }}>
-                                        {entity.description
-                                            ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
-                                            : <span className="text-white/30 italic cursor-pointer">{canEditCurrentEntity ? 'No description provided. Double click to edit.' : 'No description provided.'}</span>}
-                                    </div>
-                                )}
-                            </div>
+                                    {(!supportsCanvasTokenSettings || genericTab === 'description') && (
+                                        <div className={glass.blockBg}>
+                                            <h3 className={glass.blockHeader}>
+                                                <div className="flex items-center gap-2 flex-1">
+                                                    Description
+                                                </div>
+                                                {!supportsCanvasTokenSettings && canEditCurrentEntity && (
+                                                    <button
+                                                        onClick={() => setIsEditingDescription(!isEditingDescription)}
+                                                        className={`p-1.5 rounded-lg transition-colors ${isEditingDescription ? 'bg-white/20 text-white shadow-sm' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
+                                                    >
+                                                        {isEditingDescription ? <Check size={12} /> : <Edit2 size={12} />}
+                                                    </button>
+                                                )}
+                                            </h3>
+
+                                            {isEditingDescription && canEditCurrentEntity ? (
+                                                <WikiLinkTextarea
+                                                    value={entity.description || ''}
+                                                    onValueChange={(value) => {
+                                                        if (!canEditCurrentEntity) return;
+                                                        yjsStore.updateEntity(entity.id, { description: value });
+                                                    }}
+                                                    excludeEntityId={entity.id}
+                                                    className={`${glass.input} w-full h-32 resize-y flex-1 custom-scrollbar text-sm font-sans`}
+                                                    placeholder="Type markdown description here..."
+                                                    autoFocus
+                                                />
+                                            ) : (
+                                                <div className="text-sm leading-relaxed whitespace-pre-wrap text-white/80 flex-1 h-full min-h-[100px]" onDoubleClick={() => { if (canEditCurrentEntity) setIsEditingDescription(true); }}>
+                                                    {entity.description
+                                                        ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
+                                                        : <span className="text-white/30 italic cursor-pointer">{canEditCurrentEntity ? 'No description provided. Double click to edit.' : 'No description provided.'}</span>}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {supportsCanvasTokenSettings && genericTab === 'canvas' && (
+                                        <EntityCanvasTokenSettings entity={entity} canEdit={canEditCurrentEntity} />
+                                    )}
+                                </>
+                            )}
 
                             {entity.type === 'object' && (
                                 <ObjectSheet entity={entity} />

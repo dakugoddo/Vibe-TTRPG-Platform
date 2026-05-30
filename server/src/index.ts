@@ -18,7 +18,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { setupWSConnection } = require('y-websocket/bin/utils');
 
-import { createWorld, openWorld, getCurrentWorldPath, getCurrentWorldName, getAssetsPath, saveWorldIndex, getDbPath } from './worldManager.js';
+import { createWorld, openWorld, getCurrentWorldPath, getCurrentWorldName, getAssetsPath, saveWorldIndex, getDbPath, loadAudioDeck, saveAudioDeck } from './worldManager.js';
 import {
     listEntities,
     readEntity,
@@ -84,6 +84,34 @@ app.post('/api/world/open', (req, res) => {
         const meta = openWorld(worldPath);
         startWatching();
         res.json(meta);
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.get('/api/world/audio-deck', (_req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        const data = loadAudioDeck();
+        res.json(data || {});
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.post('/api/world/audio-deck', (req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        saveAudioDeck(req.body);
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: (err as Error).message });
     }

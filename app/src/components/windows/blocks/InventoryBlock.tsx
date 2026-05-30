@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import type { Entity } from '../../../types';
 import { yjsStore } from '../../../store/yjsStore';
-import { getEntitiesSnapshot, useEntities } from '../../../hooks/useEntities';
+import { useEntities } from '../../../hooks/useEntities';
 import { DragDropPopover, type DragDropPromptData } from '../../ui/DragDropPopover';
 import { useUIStore } from '../../../store/uiStore';
 import { Trash2, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
 import { EntityLink } from '../../ui/EntityLink';
 import { glass } from '../../../utils/theme';
+import { getEntityDropActions } from '../../../utils/entityDropRouter';
+import { readEntityDragIds, writeEntityDragIds } from '../../../utils/entityDragPayload';
+import { applyOwnerToEntityTree, getEntityOwnerId, moveEntityTreeToParent } from '../../../utils/entityTreeMutations';
+import { getTopLevelEntityIds } from '../../../utils/entityTreeSelection';
 
 interface InventoryBlockProps {
     entity: Entity;
@@ -20,33 +24,8 @@ type SortConfig = {
     direction: 'asc' | 'desc';
 } | null;
 
-function getEntityOwnerId(entity: Entity): string | undefined {
-    const owner = entity.properties?._playerOwner;
-    return typeof owner === 'string' ? owner : undefined;
-}
-
 function canEditEntity(entity: Entity): boolean {
     return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
-}
-
-function applyOwnerToEntityTree(rootId: string, ownerId: string | undefined) {
-    if (!ownerId) return;
-
-    const snapshot = getEntitiesSnapshot();
-    const visit = (id: string) => {
-        const current = yjsStore.entitiesMap.get(id) ?? snapshot[id];
-        if (!current) return;
-
-        yjsStore.updateEntity(id, {
-            properties: { ...current.properties, _playerOwner: ownerId },
-        });
-
-        Object.values(snapshot)
-            .filter(candidate => candidate.parentId === id)
-            .forEach(child => visit(child.id));
-    };
-
-    visit(rootId);
 }
 
 export function InventoryBlock({ entity }: InventoryBlockProps) {
@@ -102,59 +81,88 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
         e.preventDefault();
         e.stopPropagation();
 
-        const droppedEntityId = e.dataTransfer.getData("application/entity-id");
+        const droppedIds = getTopLevelEntityIds(readEntityDragIds(e.dataTransfer), allEntities);
+        const droppedEntities = droppedIds
+            .map(id => allEntities.find(ent => ent.id === id))
+            .filter((candidate): candidate is Entity => Boolean(candidate));
 
-        if (droppedEntityId) {
-            const droppedEntity = allEntities.find(ent => ent.id === droppedEntityId);
-            if (droppedEntity && droppedEntity.type === 'object') {
-                if (droppedEntity.parentId === entity.id) {
-                    // Already inside this character -> just change category
-                    updateItemProperty(droppedEntity.id, 'category', targetCategory);
-                } else {
-                    const canMoveDropped = canEditEntity(droppedEntity);
-                    const ownerId = getEntityOwnerId(entity);
-                    // Coming from outside
-                    setDragDropPrompt({
-                        x: e.clientX,
-                        y: e.clientY,
-                        entityName: droppedEntity.name,
-                        onMove: () => {
-                            if (!canEditInventory || !canMoveDropped) {
-                                setDragDropPrompt(null);
-                                return;
-                            }
-                            yjsStore.updateEntity(droppedEntity.id, {
-                                parentId: entity.id,
-                                database: entity.database,
-                                properties: { ...droppedEntity.properties, category: targetCategory, ...(ownerId ? { _playerOwner: ownerId } : {}) }
-                            });
-                            applyOwnerToEntityTree(droppedEntity.id, ownerId);
-                            setDragDropPrompt(null);
-                        },
-                        onCopy: () => {
-                            if (!canEditInventory) {
-                                setDragDropPrompt(null);
-                                return;
-                            }
-                            const newId = yjsStore.cloneEntity(droppedEntity.id, entity.id, entity.database);
-                            if (newId) {
-                                const newEnt = getEntitySnapshot(newId);
-                                if (newEnt) {
-                                    yjsStore.updateEntity(newId, {
-                                        properties: { ...newEnt.properties, category: targetCategory, ...(ownerId ? { _playerOwner: ownerId } : {}) }
-                                    });
-                                    applyOwnerToEntityTree(newId, ownerId);
-                                }
-                            }
-                            setDragDropPrompt(null);
-                        },
-                        onCancel: () => {
-                            setDragDropPrompt(null);
-                        }
-                    });
-                }
-            }
+        if (droppedEntities.length === 0 || droppedEntities.length !== droppedIds.length || droppedEntities.some(droppedEntity => droppedEntity.type !== 'object')) return;
+
+        const insideInventory = droppedEntities.filter(droppedEntity => droppedEntity.parentId === entity.id);
+        const incomingEntities = droppedEntities.filter(droppedEntity => droppedEntity.parentId !== entity.id);
+
+        if (incomingEntities.length === 0) {
+            insideInventory.forEach(droppedEntity => updateItemProperty(droppedEntity.id, 'category', targetCategory));
+            return;
         }
+
+        const actionsByEntity = incomingEntities.map(droppedEntity => getEntityDropActions(
+            {
+                id: droppedEntity.id,
+                type: droppedEntity.type,
+                database: droppedEntity.database,
+                parentId: droppedEntity.parentId,
+            },
+            { kind: 'entity', entityId: entity.id, entityType: entity.type, slot: 'inventory' },
+            {
+                role: yjsStore.localRole,
+                canModifySource: canEditEntity(droppedEntity),
+                canModifyTarget: canEditInventory,
+            }
+        ));
+        const moveAction = actionsByEntity[0]?.find(action => action.id === 'move-entity');
+        const copyAction = actionsByEntity[0]?.find(action => action.id === 'copy-entity');
+        const canMoveAll = Boolean(moveAction) && actionsByEntity.every(actions => actions.some(action => action.id === 'move-entity'));
+        const canCopyAll = Boolean(copyAction) && actionsByEntity.every(actions => actions.some(action => action.id === 'copy-entity'));
+        if (!canMoveAll && !canCopyAll) return;
+
+        const ownerId = getEntityOwnerId(entity);
+        setDragDropPrompt({
+            x: e.clientX,
+            y: e.clientY,
+            entityName: droppedEntities.length === 1 ? droppedEntities[0].name : `${droppedEntities.length} сущностей`,
+            canMove: canMoveAll,
+            canCopy: canCopyAll,
+            moveLabel: moveAction?.label,
+            copyLabel: copyAction?.label,
+            onMove: () => {
+                if (!canMoveAll || !canEditInventory) {
+                    setDragDropPrompt(null);
+                    return;
+                }
+                insideInventory.forEach(droppedEntity => updateItemProperty(droppedEntity.id, 'category', targetCategory));
+                incomingEntities.forEach((droppedEntity) => {
+                    if (!canEditEntity(droppedEntity)) return;
+                    moveEntityTreeToParent(droppedEntity.id, entity.id, entity.database, {
+                        ownerId,
+                        rootProperties: { category: targetCategory },
+                    });
+                });
+                setDragDropPrompt(null);
+            },
+            onCopy: () => {
+                if (!canCopyAll || !canEditInventory) {
+                    setDragDropPrompt(null);
+                    return;
+                }
+                incomingEntities.forEach((droppedEntity) => {
+                    const newId = yjsStore.cloneEntity(droppedEntity.id, entity.id, entity.database);
+                    if (newId) {
+                        const newEnt = getEntitySnapshot(newId);
+                        if (newEnt) {
+                            yjsStore.updateEntity(newId, {
+                                properties: { ...newEnt.properties, category: targetCategory, ...(ownerId ? { _playerOwner: ownerId } : {}) }
+                            });
+                            applyOwnerToEntityTree(newId, ownerId);
+                        }
+                    }
+                });
+                setDragDropPrompt(null);
+            },
+            onCancel: () => {
+                setDragDropPrompt(null);
+            }
+        });
     };
 
     // Helper just to get snapshot inside callback
@@ -255,6 +263,10 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                         return (
                             <div
                                 key={category}
+                                data-entity-drop-target="true"
+                                data-entity-id={entity.id}
+                                data-entity-slot="inventory"
+                                data-entity-accepts="object"
                                 className="border border-white/5 rounded-lg overflow-hidden bg-[#2a2d3d]/40 pb-2 shadow-sm"
                                 onDragOver={(e) => { if (canEditInventory) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
                                 onDragEnter={(e) => { if (canEditInventory) e.preventDefault(); }}
@@ -319,7 +331,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                                     e.preventDefault();
                                                                     return;
                                                                 }
-                                                                e.dataTransfer.setData("application/entity-id", item.id);
+                                                                writeEntityDragIds(e.dataTransfer, [item.id]);
                                                                 e.dataTransfer.effectAllowed = "move";
                                                             }}
                                                         >

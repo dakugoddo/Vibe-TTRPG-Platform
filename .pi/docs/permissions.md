@@ -10,9 +10,13 @@
 
 ## Роли
 
+- `base-player` / `Base Player` - неснимаемая базовая роль, которая применяется ко всем обычным player roles в `getEffectivePermissions`.
 - `gm` - может менять все базы.
 - `player` - не может менять GM-базу.
+- `trusted-player` - заготовка для будущих расширенных прав, но default effective permissions всё ещё ограничиваются `Base Player`.
 - `spectator` - не может писать.
+
+Runtime role policy находится в `app/src/utils/permissions.ts`: `BASE_PLAYER_ROLE`, `DEFAULT_ROLE_DEFINITIONS`, `getEffectivePermissions`, `canBroadcastAudio`. Сейчас базовый запрет работает как clamp: обычная роль не может обойти `Base Player` deny без будущего явного GM override. Это сохраняет текущую доверенную privacy model и готовит основу для editable role matrix.
 
 ## Базы
 
@@ -55,14 +59,17 @@ UI action gating:
 - `AbilitiesBlock` и `AbilitySheet` скрывают создание, редактирование полей и удаление ability-сущностей без прав, но оставляют чтение, открытие окна и бросок уже заданной формулы через Roll Engine;
 - `ObjectSheet` и `AttackSheet` проверяют `yjsStore.canModify(...)` перед записью и переводят edit-controls в read-only: свойства не меняются, tag edit скрыт, а создание/перетаскивание/удаление атак доступно только при праве редактирования;
 - `EntityWindow`, `CharacterSheet` notes и `EntityImageBlock` скрывают rename/delete, description/notes edit, hidden tag edit и image edit для read-only сущностей.
+- `MarkdownRenderer` показывает содержимое custom block `gm-only` только при `yjsStore.localRole === 'gm'`; player видит placeholder `Скрытый блок ГМа`, без рендера вложенного Markdown.
 - `SkillsBlock` скрывает изменение ранга навыков для read-only персонажа, но не блокирует броски навыков.
 - `ResourcesBlock` скрывает создание, изменение и удаление счетчиков ресурсов для read-only персонажа, сохраняя просмотр текущих значений.
 - `InventoryBlock` скрывает equip toggle, quantity input, delete и drag/drop для read-only персонажа или read-only предмета; при move/copy в owned user inventory owner marker применяется к предмету и его дочерним сущностям.
 - `AttributeBlock` проверяет `yjsStore.canModify(...)` перед изменением статов, ран, active powers и статусов; при read-only состоянии UI не отправляет системные логи ран/статусов.
 - Legacy blocks `PropertiesBlock` и `StatusBlock` скрывают tag edit/drop для read-only сущностей на случай будущего повторного подключения.
 - Canvas editing проходит через тот же контракт: `canvasSyncStore` блокирует draw/fog mutations, undo/redo, full-array sync и mirror writeback без права менять текущую canvas entity; read-only canvas скрывает drawing/fog/style controls и оставляет безопасный select/navigation UI; `CanvasToolbar` применяет style/z-order через guarded `syncElementsArray`; `InfiniteCanvas` не дает перетаскивать токены/порталы или удалять портал без права редактировать соответствующую сущность.
+- Порталы на canvas не открывают и не показывают имя целевой области, если целевая canvas-сущность не проходит `canViewEntity` для текущей роли. Это закрывает UI-leak сценарий `general portal -> gm canvas`.
+- Audio broadcast теперь проверяет `canBroadcastAudio(...)` в `yjsStore.sendAudioCommand`. По умолчанию это сохраняет прежнее поведение: только GM может транслировать audio/SFX session commands, но будущая делегация SFX игрокам будет идти через тот же role policy.
 
-Focused test: `app/src/utils/permissions.test.ts` проверяет write и view boundaries.
+Focused test: `app/src/utils/permissions.test.ts` проверяет write/view boundaries и то, что `Base Player` остаётся locked clamp для default player roles.
 
 ## Owner marker
 

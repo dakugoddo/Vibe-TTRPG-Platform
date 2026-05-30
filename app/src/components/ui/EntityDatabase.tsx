@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { yjsStore } from '../../store/yjsStore';
@@ -6,12 +5,19 @@ import { useEntities } from '../../hooks/useEntities';
 import { useWindowStore } from '../../store/windowStore';
 import { useCanvasStore } from '../../store/canvasStore';
 import { DragDropPopover, type DragDropPromptData } from './DragDropPopover';
-import { importMarkdown, getIsHost, listPlayers } from '../../services/fileApi';
+import { getAssetUrl, importMarkdown, getIsHost, listPlayers, showEntityInExplorer } from '../../services/fileApi';
 import { useUIStore } from '../../store/uiStore';
 import { canViewEntity } from '../../utils/permissions';
 import { writeClipboardText } from '../../utils/clipboard';
+import { generateEntityId } from '../../utils/entityId';
+import { addRecentEntitySearchQuery, addSavedEntitySearchQuery, getEntitySearchResult, getEntitySearchTerms, removeSavedEntitySearchQuery, type EntitySearchMatchField, type EntitySearchResult } from '../../utils/entitySearch';
+import { serializeEntity } from '../../utils/entitySerializer';
+import { getEntityDropActions, type EntityDropAction, type EntityDropContext, type EntityDropSource, type EntityDropTarget } from '../../utils/entityDropRouter';
+import { readEntityDragIds, writeEntityDragIds } from '../../utils/entityDragPayload';
+import { applyOwnerToEntityTree, getEntityOwnerId, moveEntityTreeToParent } from '../../utils/entityTreeMutations';
+import { getTopLevelEntityIds } from '../../utils/entityTreeSelection';
 import type { DatabaseType, Entity, EntityType } from '../../types';
-import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map as MapIcon, FileText, Bookmark, Lightbulb, Star, Gift, Copy, Link2, Search, X } from 'lucide-react';
+import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map as MapIcon, FileText, Bookmark, Lightbulb, Star, Gift, Copy, Link2, FolderSearch, Search, Upload, X, CheckSquare } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const TYPE_ICONS: Partial<Record<EntityType | 'spell', LucideIcon>> = {
@@ -27,7 +33,122 @@ const TYPE_ICONS: Partial<Record<EntityType | 'spell', LucideIcon>> = {
     folder: Bookmark,
 };
 
+const ENTITY_SEARCH_HISTORY_STORAGE_KEY = 'vibe.entitySearch.recentQueries';
+const ENTITY_SEARCH_SAVED_STORAGE_KEY = 'vibe.entitySearch.savedQueries';
+const ENTITY_SEARCH_HISTORY_LIMIT = 8;
+const ENTITY_SEARCH_SAVED_LIMIT = 12;
+
+function loadRecentEntitySearches(): string[] {
+    if (typeof window === 'undefined') return [];
+    try {
+        const raw = window.localStorage.getItem(ENTITY_SEARCH_HISTORY_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string').slice(0, ENTITY_SEARCH_HISTORY_LIMIT) : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveRecentEntitySearches(history: string[]): void {
+    if (typeof window === 'undefined') return;
+    try {
+        if (history.length === 0) {
+            window.localStorage.removeItem(ENTITY_SEARCH_HISTORY_STORAGE_KEY);
+            return;
+        }
+        window.localStorage.setItem(ENTITY_SEARCH_HISTORY_STORAGE_KEY, JSON.stringify(history.slice(0, ENTITY_SEARCH_HISTORY_LIMIT)));
+    } catch {
+        // Local history is a convenience feature; storage failures should not break the database panel.
+    }
+}
+
+function loadSavedEntitySearches(): string[] {
+    if (typeof window === 'undefined') return [];
+    try {
+        const raw = window.localStorage.getItem(ENTITY_SEARCH_SAVED_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string').slice(0, ENTITY_SEARCH_SAVED_LIMIT) : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveSavedEntitySearches(savedQueries: string[]): void {
+    if (typeof window === 'undefined') return;
+    try {
+        if (savedQueries.length === 0) {
+            window.localStorage.removeItem(ENTITY_SEARCH_SAVED_STORAGE_KEY);
+            return;
+        }
+        window.localStorage.setItem(ENTITY_SEARCH_SAVED_STORAGE_KEY, JSON.stringify(savedQueries.slice(0, ENTITY_SEARCH_SAVED_LIMIT)));
+    } catch {
+        // Saved searches are local UI state; storage failures should not block entity work.
+    }
+}
+
+const SEARCH_FIELD_LABELS: Record<EntitySearchMatchField, string> = {
+    name: 'имя',
+    description: 'описание',
+    property: 'свойства',
+    tag: 'теги',
+    type: 'тип',
+    id: 'id',
+    database: 'база',
+};
+
+function getEntityGroupType(entity: Entity): string {
+    const folderType = entity.type === 'folder' ? entity.properties?.folderType : undefined;
+    return typeof folderType === 'string' && folderType ? folderType : entity.type;
+}
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function renderHighlightedText(text: string, terms: string[]): React.ReactNode {
+    const visibleTerms = terms.filter(term => term.length > 0).sort((left, right) => right.length - left.length);
+    if (visibleTerms.length === 0 || !text) return text;
+
+    const pattern = new RegExp(`(${visibleTerms.map(escapeRegExp).join('|')})`, 'ig');
+    return text.split(pattern).map((part, index) => {
+        const isMatch = visibleTerms.some(term => part.toLowerCase() === term.toLowerCase());
+        if (!isMatch) return part;
+        return (
+            <mark key={`${part}-${index}`} className="rounded bg-cyan-300/20 px-0.5 text-cyan-100">
+                {part}
+            </mark>
+        );
+    });
+}
+
+function formatSearchFields(result?: EntitySearchResult): string {
+    if (!result || result.matchedFields.length === 0) return '';
+    return result.matchedFields.slice(0, 3).map(field => SEARCH_FIELD_LABELS[field]).join(', ');
+}
+
 // ─── Custom Context Menu (rendered via React Portal in <body>) ───
+
+function getSharedEntityDropActions(
+    sources: EntityDropSource[],
+    target: EntityDropTarget,
+    context: EntityDropContext
+): { copyAction?: EntityDropAction; moveAction?: EntityDropAction } {
+    if (sources.length === 0) return {};
+
+    const sourceTypes = new Set(sources.map(source => source.type));
+    if (target.kind !== 'canvas' && sources.length > 1 && sourceTypes.size > 1) return {};
+
+    const actionsBySource = sources.map(source => getEntityDropActions(source, target, context));
+    if (actionsBySource.some(actions => actions.length === 0)) return {};
+
+    const copyAction = actionsBySource[0].find(action => action.id === 'copy-entity');
+    const moveAction = actionsBySource[0].find(action => action.id === 'move-entity');
+
+    return {
+        copyAction: copyAction && actionsBySource.every(actions => actions.some(action => action.id === 'copy-entity')) ? copyAction : undefined,
+        moveAction: moveAction && actionsBySource.every(actions => actions.some(action => action.id === 'move-entity')) ? moveAction : undefined,
+    };
+}
 
 interface ContextMenuState {
     x: number;
@@ -35,15 +156,17 @@ interface ContextMenuState {
     entityId: string;
 }
 
-function EntityContextMenu({ state, canEdit, quickCreateActions, onRename, onDuplicate, onCreateChild, onOpenWindow, onCopyWikiLink, onExport, onDelete, onGiveToPlayer, onClose }: {
+function EntityContextMenu({ state, canEdit, canShowInExplorer, quickCreateActions, onRename, onDuplicate, onCreateChild, onOpenWindow, onCopyWikiLink, onShowInExplorer, onExport, onDelete, onGiveToPlayer, onClose }: {
     state: ContextMenuState | null;
     canEdit: boolean;
+    canShowInExplorer: boolean;
     quickCreateActions: QuickCreateAction[];
     onRename: (id: string) => void;
     onDuplicate: (id: string) => void;
     onCreateChild: (id: string, type: EntityType) => void;
     onOpenWindow: (id: string) => void;
     onCopyWikiLink: (id: string) => void;
+    onShowInExplorer: (id: string) => void;
     onExport: (id: string) => void;
     onDelete: (id: string) => void;
     onGiveToPlayer?: (id: string) => void;
@@ -75,7 +198,7 @@ function EntityContextMenu({ state, canEdit, quickCreateActions, onRename, onDup
     if (!state) return null;
 
     const menuWidth = 200;
-    const menuHeight = canEdit ? 280 + quickCreateActions.length * 36 + (onGiveToPlayer ? 44 : 0) : 150;
+    const menuHeight = canEdit ? 320 + quickCreateActions.length * 36 + (onGiveToPlayer ? 44 : 0) : 190;
     const x = state.x + menuWidth > window.innerWidth ? state.x - menuWidth : state.x;
     const y = state.y + menuHeight > window.innerHeight ? state.y - menuHeight : state.y;
 
@@ -144,6 +267,14 @@ function EntityContextMenu({ state, canEdit, quickCreateActions, onRename, onDup
             >
                 <Link2 size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Копировать [[ссылку]]
             </button>
+            {canShowInExplorer && (
+                <button
+                    onClick={() => { onShowInExplorer(state.entityId); onClose(); }}
+                    className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+                >
+                    <FolderSearch size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Показать в проводнике
+                </button>
+            )}
             <button
                 onClick={() => { onExport(state.entityId); onClose(); }}
                 className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
@@ -215,11 +346,6 @@ function getQuickCreateActions(entity?: Entity): QuickCreateAction[] {
     return [];
 }
 
-function getEntityOwnerId(entity: Entity): string | undefined {
-    const owner = entity.properties?._playerOwner;
-    return typeof owner === 'string' ? owner : undefined;
-}
-
 interface RecursiveEntityItemProps {
     entity: Entity;
     entities: Entity[];
@@ -237,32 +363,13 @@ interface RecursiveEntityItemProps {
     onShowContextMenu: (e: React.MouseEvent, entityId: string) => void;
     canModifyEntityInUi: (entity: Entity) => boolean;
     canModifyTargetDb: boolean;
+    searchResultsById: Map<string, EntitySearchResult>;
+    searchTerms: string[];
+    selectedEntityIds: Set<string>;
+    onEntitySelectionClick: (entityId: string, event: React.MouseEvent) => boolean;
 }
 
-function assignUserOwnerToSubtree(rootId: string, owner: string) {
-    const queue = [rootId];
-    const visited = new Set<string>();
-
-    while (queue.length > 0) {
-        const id = queue.shift();
-        if (!id || visited.has(id)) continue;
-        visited.add(id);
-
-        const entity = yjsStore.entitiesMap.get(id);
-        if (!entity) continue;
-
-        yjsStore.updateEntity(id, {
-            database: 'user',
-            properties: { ...entity.properties, _playerOwner: owner },
-        });
-
-        yjsStore.entitiesMap.forEach((candidate) => {
-            if (candidate.parentId === id) queue.push(candidate.id);
-        });
-    }
-}
-
-function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false, defaultGroupContext, baseParentId, targetDb, targetPlayerOwner, onPromptDrop, renamingId, onRenameStart, onRenameSubmit, onRenameCancel, onShowContextMenu, canModifyEntityInUi, canModifyTargetDb }: RecursiveEntityItemProps) {
+function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false, defaultGroupContext, baseParentId, targetDb, targetPlayerOwner, onPromptDrop, renamingId, onRenameStart, onRenameSubmit, onRenameCancel, onShowContextMenu, canModifyEntityInUi, canModifyTargetDb, searchResultsById, searchTerms, selectedEntityIds, onEntitySelectionClick }: RecursiveEntityItemProps) {
     const [expanded, setExpanded] = useState(false);
     const [renameValue, setRenameValue] = useState(entity.name);
     const renameInputRef = useRef<HTMLInputElement>(null);
@@ -308,10 +415,13 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
     const expandsOnRowClick = entity.type === 'character' || entity.type === 'folder' || entity.type === 'competency';
     const canExpandEntity = expandsOnRowClick || entity.type === 'canvas' || children.length > 0;
     const isExpanded = expanded || searchActive;
+    const searchResult = searchResultsById.get(entity.id);
+    const searchFieldLabel = formatSearchFields(searchResult);
+    const isSelected = selectedEntityIds.has(entity.id);
 
     let fullUrl = entity.icon_url;
     if (fullUrl && !fullUrl.startsWith('http') && !fullUrl.startsWith('data:')) {
-        fullUrl = `http://localhost:3001/api/assets/${fullUrl}`;
+        fullUrl = getAssetUrl(fullUrl);
     }
 
     const Icon = TYPE_ICONS[entity.type] || ImageIcon;
@@ -319,7 +429,8 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
     return (
         <div className="flex flex-col gap-1 w-full relative">
             <div
-                onClick={() => {
+                onClick={(event) => {
+                    if (onEntitySelectionClick(entity.id, event)) return;
                     if (expandsOnRowClick) setExpanded(!expanded);
                     else {
                         if (entity.type === 'canvas') navigate(entity.id);
@@ -334,66 +445,101 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
                 }}
                 draggable={true}
                 onDragStart={(e) => {
-                    e.dataTransfer.setData("application/entity-id", entity.id);
+                    const selectedDragIds = selectedEntityIds.has(entity.id) && selectedEntityIds.size > 1 ? Array.from(selectedEntityIds) : [entity.id];
+                    writeEntityDragIds(e.dataTransfer, selectedDragIds);
                     e.dataTransfer.setData("application/source-database", entity.database || targetDb || 'general');
-                    e.dataTransfer.setData("text/plain", `[[${entity.name}]]`);
+                    e.dataTransfer.setData("text/plain", `[[${entity.id}]]`);
                     e.dataTransfer.effectAllowed = "copyMove";
                 }}
                 onDragOver={(e) => {
-                    if (canModifyTargetDb && (entity.type === 'folder' || entity.type === 'character')) {
+                    const draggedIds = getTopLevelEntityIds(readEntityDragIds(e.dataTransfer), entities);
+                    const draggedEntities = draggedIds
+                        .map(id => yjsStore.entitiesMap.get(id) || entities.find(entity => entity.id === id))
+                        .filter((candidate): candidate is Entity => Boolean(candidate));
+                    if (draggedEntities.length === 0 || draggedEntities.length !== draggedIds.length || draggedEntities.some(candidate => candidate.type === 'canvas')) return;
+
+                    const { copyAction, moveAction } = getSharedEntityDropActions(
+                        draggedEntities.map(draggedEnt => ({ id: draggedEnt.id, type: draggedEnt.type, database: draggedEnt.database, parentId: draggedEnt.parentId })),
+                        { kind: 'entity', entityId: entity.id, entityType: entity.type },
+                        {
+                            role: yjsStore.localRole,
+                            canModifySource: draggedEntities.every(draggedEnt => canModifyEntityInUi(draggedEnt)),
+                            canModifyTarget: canEditEntity && canModifyTargetDb,
+                        }
+                    );
+                    if (copyAction || moveAction) {
                         e.preventDefault();
-                        e.dataTransfer.dropEffect = "move";
+                        e.dataTransfer.dropEffect = moveAction ? "move" : "copy";
                     }
                 }}
                 onDrop={(e) => {
-                    if (canModifyTargetDb && (entity.type === 'folder' || entity.type === 'character')) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const draggedId = e.dataTransfer.getData("application/entity-id");
-                        const sourceDb = e.dataTransfer.getData("application/source-database");
-                        const currentDb = targetDb || 'general';
+                    const draggedIds = getTopLevelEntityIds(readEntityDragIds(e.dataTransfer), entities);
+                    const draggedEntities = draggedIds
+                        .map(id => yjsStore.entitiesMap.get(id) || entities.find(entity => entity.id === id))
+                        .filter((candidate): candidate is Entity => Boolean(candidate));
+                    if (draggedEntities.length === 0 || draggedEntities.length !== draggedIds.length || draggedEntities.some(candidate => candidate.type === 'canvas')) return;
 
-                        if (draggedId && draggedId !== entity.id) {
-                            const draggedEnt = yjsStore.entitiesMap.get(draggedId) || entities.find(e => e.id === draggedId);
-                            if (!draggedEnt || draggedEnt.type === 'canvas') return;
-                            if (!canModifyEntityInUi(draggedEnt)) return;
-
-                            // Prevent dragging tags into anything other than folders
-                            if (draggedEnt.type === 'tag' && entity.type !== 'folder') return;
-
-                            if (sourceDb === currentDb) {
-                                // Same database: just move silently
-                                yjsStore.updateEntity(draggedId, { parentId: entity.id });
-                                setTimeout(() => setExpanded(true), 50);
-                            } else {
-                                // Different database: ask user Copy/Move
-                                onPromptDrop({
-                                    x: e.clientX,
-                                    y: e.clientY,
-                                    entityName: draggedEnt.name,
-                                    onMove: () => {
-                                        yjsStore.updateEntity(draggedId, { parentId: entity.id, database: targetDb });
-                                        if (targetDb === 'user' && targetPlayerOwner) {
-                                            assignUserOwnerToSubtree(draggedId, targetPlayerOwner);
-                                        }
-                                    },
-                                    onCopy: () => {
-                                        const newId = yjsStore.cloneEntity(draggedId, entity.id, targetDb);
-                                        if (newId && targetDb === 'user' && targetPlayerOwner) {
-                                            assignUserOwnerToSubtree(newId, targetPlayerOwner);
-                                        }
-                                    },
-                                    onCancel: () => { }
-                                });
-                            }
+                    const targetDatabase = entity.database || targetDb || 'general';
+                    const targetOwner = getEntityOwnerId(entity) || targetPlayerOwner;
+                    const { copyAction, moveAction } = getSharedEntityDropActions(
+                        draggedEntities.map(draggedEnt => ({ id: draggedEnt.id, type: draggedEnt.type, database: draggedEnt.database, parentId: draggedEnt.parentId })),
+                        { kind: 'entity', entityId: entity.id, entityType: entity.type },
+                        {
+                            role: yjsStore.localRole,
+                            canModifySource: draggedEntities.every(draggedEnt => canModifyEntityInUi(draggedEnt)),
+                            canModifyTarget: canEditEntity && canModifyTargetDb,
                         }
-                    }
+                    );
+                    if (!copyAction && !moveAction) return;
+
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onPromptDrop({
+                        x: e.clientX,
+                        y: e.clientY,
+                        entityName: draggedEntities.length === 1 ? draggedEntities[0].name : `${draggedEntities.length} сущностей`,
+                        canCopy: Boolean(copyAction),
+                        canMove: Boolean(moveAction),
+                        copyLabel: copyAction?.label,
+                        moveLabel: moveAction?.label,
+                        onMove: () => {
+                            draggedEntities.forEach((draggedEnt) => {
+                                moveEntityTreeToParent(draggedEnt.id, entity.id, targetDatabase, {
+                                    ownerId: targetDatabase === 'user' ? targetOwner : undefined,
+                                });
+                            });
+                            setTimeout(() => setExpanded(true), 50);
+                        },
+                        onCopy: () => {
+                            draggedEntities.forEach((draggedEnt) => {
+                                const newId = yjsStore.cloneEntity(draggedEnt.id, entity.id, targetDatabase);
+                                if (newId && targetDatabase === 'user' && targetOwner) {
+                                    applyOwnerToEntityTree(newId, targetOwner);
+                                }
+                            });
+                            setTimeout(() => setExpanded(true), 50);
+                        },
+                        onCancel: () => { }
+                    });
                 }}
                 onContextMenu={handleContextMenu}
-                className={`p-3 rounded-xl border cursor-pointer transition-all group/item flex items-center justify-between ${group.focus} bg-white/5 border-white/10 hover:bg-white/10 shadow-sm backdrop-blur-md`}
+                className={`p-3 rounded-xl border cursor-pointer transition-all group/item flex items-center justify-between ${group.focus} ${
+                    isSelected
+                        ? 'bg-cyan-400/15 border-cyan-200/45 shadow-[0_0_0_1px_rgba(103,232,249,0.16),0_14px_34px_rgba(8,145,178,0.12)]'
+                        : 'bg-white/5 border-white/10 hover:bg-white/10 shadow-sm'
+                } backdrop-blur-md`}
                 style={{ marginLeft: level * 12 }}
             >
                 <div className="flex items-center gap-3 overflow-hidden flex-1">
+                    <div
+                        className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border transition-all ${
+                            isSelected
+                                ? 'border-cyan-200/50 bg-cyan-300/20 text-cyan-50'
+                                : 'border-white/10 bg-black/20 text-white/20 opacity-0 group-hover/item:opacity-40'
+                        }`}
+                    >
+                        <CheckSquare size={13} strokeWidth={2.3} />
+                    </div>
                     <div className={`w-8 h-8 overflow-hidden flex-shrink-0 flex items-center justify-center border transition-colors rounded-lg bg-black/20 border-white/10 shadow-inner ${group.text} ${group.iconHov}`}>
                         {fullUrl ? (
                             <img src={fullUrl} alt="" className="w-full h-full object-cover pointer-events-none" />
@@ -401,7 +547,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
                             <Icon size={16} strokeWidth={2} className="opacity-70" />
                         )}
                     </div>
-                    <div className="truncate pr-2">
+                    <div className="min-w-0 flex-1 pr-2">
                         {isRenaming ? (
                             <input
                                 ref={renameInputRef}
@@ -413,9 +559,19 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
                                 className="bg-black/40 text-white/90 text-sm font-bold px-2 py-0.5 rounded border border-white/20 outline-none w-full"
                             />
                         ) : (
-                            <h4 className={`font-bold text-sm transition-colors truncate leading-tight select-none text-white/90 ${group.labelHov}`}>{entity.name}</h4>
+                            <h4 className={`font-bold text-sm transition-colors truncate leading-tight select-none text-white/90 ${group.labelHov}`}>
+                                {renderHighlightedText(entity.name, searchTerms)}
+                            </h4>
                         )}
-                        <p className="text-[10px] text-white/40 font-mono mt-0.5 truncate select-none text-left">{entity.type}</p>
+                        <p className="text-[10px] text-white/40 font-mono mt-0.5 truncate select-none text-left">
+                            {entity.type}
+                            {searchFieldLabel && <span className="ml-1 font-sans text-cyan-100/45">· {searchFieldLabel}</span>}
+                        </p>
+                        {searchResult?.snippet && (
+                            <p className="mt-1 truncate text-[10px] leading-snug text-cyan-100/45">
+                                {renderHighlightedText(searchResult.snippet, searchTerms)}
+                            </p>
+                        )}
                     </div>
                 </div>
 
@@ -481,6 +637,10 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
                                     onShowContextMenu={onShowContextMenu}
                                     canModifyEntityInUi={canModifyEntityInUi}
                                     canModifyTargetDb={canModifyTargetDb}
+                                    searchResultsById={searchResultsById}
+                                    searchTerms={searchTerms}
+                                    selectedEntityIds={selectedEntityIds}
+                                    onEntitySelectionClick={onEntitySelectionClick}
                                 />
                             ))
                         )}
@@ -525,14 +685,48 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
     const [giveToPlayerEntityId, setGiveToPlayerEntityId] = useState<string | null>(null);
     const [giveToPlayerList, setGiveToPlayerList] = useState<string[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [recentSearches, setRecentSearches] = useState<string[]>(loadRecentEntitySearches);
+    const [savedSearches, setSavedSearches] = useState<string[]>(loadSavedEntitySearches);
+    const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
+    const [lastSelectedEntityId, setLastSelectedEntityId] = useState<string | null>(null);
     const importInputRef = useRef<HTMLInputElement>(null);
     const canModifyTargetDb = yjsStore.canModify(targetDb, targetPlayerOwner);
-    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const normalizedSearch = searchQuery.trim();
+    const normalizedSearchKey = normalizedSearch.replace(/\s+/g, ' ').toLowerCase();
     const searchActive = normalizedSearch.length > 0;
+    const searchTerms = useMemo(() => getEntitySearchTerms(searchQuery), [searchQuery]);
+    const isCurrentSearchSaved = normalizedSearchKey.length > 0 && savedSearches.some((query) => query.replace(/\s+/g, ' ').trim().toLowerCase() === normalizedSearchKey);
+
+    useEffect(() => {
+        if (normalizedSearch.length < 2) return;
+        const timer = window.setTimeout(() => {
+            setRecentSearches((current) => {
+                const next = addRecentEntitySearchQuery(current, normalizedSearch, ENTITY_SEARCH_HISTORY_LIMIT);
+                if (next.length === current.length && next.every((item, index) => item === current[index])) return current;
+                saveRecentEntitySearches(next);
+                return next;
+            });
+        }, 900);
+
+        return () => window.clearTimeout(timer);
+    }, [normalizedSearch]);
 
     const canModifyEntityInUi = useCallback((entity: Entity) => {
         return yjsStore.canModify(entity.database || targetDb, getEntityOwnerId(entity));
     }, [targetDb]);
+
+    const searchResultsById = useMemo(() => {
+        const results = new Map<string, EntitySearchResult>();
+        if (!normalizedSearch) return results;
+
+        const byId = new Map(entities.map(entity => [entity.id, entity]));
+        entities.forEach((entity) => {
+            const result = getEntitySearchResult(entity, normalizedSearch, tagId => byId.get(tagId)?.name);
+            if (result.matches) results.set(entity.id, result);
+        });
+
+        return results;
+    }, [entities, normalizedSearch]);
 
     const visibleEntities = useMemo(() => {
         if (!normalizedSearch) return entities;
@@ -546,20 +740,6 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
             siblings.push(entity);
             childrenByParent.set(entity.parentId, siblings);
         });
-
-        const entityMatches = (entity: Entity) => {
-            const tagText = (entity.tags || [])
-                .map(tagId => byId.get(tagId)?.name || tagId)
-                .join(' ');
-            const propertyText = entity.properties ? JSON.stringify(entity.properties) : '';
-            return [
-                entity.name,
-                entity.type,
-                entity.description,
-                tagText,
-                propertyText,
-            ].some(value => String(value || '').toLowerCase().includes(normalizedSearch));
-        };
 
         const visibleIds = new Set<string>();
         const includeDescendants = (entityId: string) => {
@@ -580,13 +760,116 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         };
 
         entities.forEach((entity) => {
-            if (!entityMatches(entity)) return;
+            if (!searchResultsById.has(entity.id)) return;
             includeAncestors(entity);
             includeDescendants(entity.id);
         });
 
         return entities.filter(entity => visibleIds.has(entity.id));
-    }, [entities, normalizedSearch]);
+    }, [entities, normalizedSearch, searchResultsById]);
+
+    const orderedVisibleEntityIds = useMemo(() => {
+        return visibleEntities.filter(entity => entity.id !== 'root').map(entity => entity.id);
+    }, [visibleEntities]);
+
+    const selectedEntities = useMemo(() => {
+        return selectedEntityIds
+            .map(id => visibleEntities.find(entity => entity.id === id))
+            .filter((entity): entity is Entity => Boolean(entity));
+    }, [selectedEntityIds, visibleEntities]);
+
+    const selectedEntityIdSet = useMemo(() => new Set(selectedEntities.map(entity => entity.id)), [selectedEntities]);
+
+    const bulkDeletableEntities = useMemo(() => {
+        return selectedEntities.filter(entity => entity.id !== 'root' && canModifyEntityInUi(entity));
+    }, [canModifyEntityInUi, selectedEntities]);
+
+    const bulkDeleteRootIds = useMemo(() => {
+        return getTopLevelEntityIds(bulkDeletableEntities.map(entity => entity.id), entities);
+    }, [bulkDeletableEntities, entities]);
+
+    const clearEntitySelection = useCallback(() => {
+        setSelectedEntityIds([]);
+        setLastSelectedEntityId(null);
+    }, []);
+
+    const handleEntitySelectionClick = useCallback((entityId: string, event: React.MouseEvent) => {
+        if (entityId === 'root' || renamingId === entityId) return false;
+
+        const isRangeSelection = event.shiftKey;
+        const isToggleSelection = event.ctrlKey || event.metaKey;
+
+        if (!isRangeSelection && !isToggleSelection) {
+            if (selectedEntityIds.length > 0) clearEntitySelection();
+            return false;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (isRangeSelection) {
+            const fromIndex = lastSelectedEntityId ? orderedVisibleEntityIds.indexOf(lastSelectedEntityId) : -1;
+            const toIndex = orderedVisibleEntityIds.indexOf(entityId);
+
+            if (fromIndex >= 0 && toIndex >= 0) {
+                const start = Math.min(fromIndex, toIndex);
+                const end = Math.max(fromIndex, toIndex);
+                const rangeIds = orderedVisibleEntityIds.slice(start, end + 1);
+                setSelectedEntityIds((current) => Array.from(new Set([...current, ...rangeIds])));
+            } else {
+                setSelectedEntityIds([entityId]);
+            }
+        } else {
+            setSelectedEntityIds((current) => {
+                if (current.includes(entityId)) return current.filter(id => id !== entityId);
+                return [...current, entityId];
+            });
+        }
+
+        setLastSelectedEntityId(entityId);
+        return true;
+    }, [clearEntitySelection, lastSelectedEntityId, orderedVisibleEntityIds, renamingId, selectedEntityIds.length]);
+
+    const directSearchMatches = useMemo(() => {
+        if (!searchActive) return [];
+        return entities
+            .filter(entity => searchResultsById.has(entity.id))
+            .sort((left, right) => (searchResultsById.get(right.id)?.score || 0) - (searchResultsById.get(left.id)?.score || 0));
+    }, [entities, searchActive, searchResultsById]);
+
+    const searchMatchCountsByType = useMemo(() => {
+        return directSearchMatches.reduce<Record<string, number>>((acc, entity) => {
+            const groupType = getEntityGroupType(entity);
+            acc[groupType] = (acc[groupType] || 0) + 1;
+            return acc;
+        }, {});
+    }, [directSearchMatches]);
+
+    const handleSelectRecentSearch = useCallback((query: string) => {
+        setSearchQuery(query);
+    }, []);
+
+    const handleClearRecentSearches = useCallback(() => {
+        setRecentSearches([]);
+        saveRecentEntitySearches([]);
+    }, []);
+
+    const handleSaveCurrentSearch = useCallback(() => {
+        if (!normalizedSearch) return;
+        setSavedSearches((current) => {
+            const next = addSavedEntitySearchQuery(current, normalizedSearch, ENTITY_SEARCH_SAVED_LIMIT);
+            saveSavedEntitySearches(next);
+            return next;
+        });
+    }, [normalizedSearch]);
+
+    const handleRemoveSavedSearch = useCallback((query: string) => {
+        setSavedSearches((current) => {
+            const next = removeSavedEntitySearchQuery(current, query);
+            saveSavedEntitySearches(next);
+            return next;
+        });
+    }, []);
 
     // ─── Import .md files ───
     const handleImportFiles = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -616,15 +899,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         const entity = entities.find(e => e.id === id);
         if (!entity) return;
 
-        // Simple client-side serialization (no server needed)
-        const fmLines: string[] = [`type: ${entity.type}`];
-        if (entity.tags?.length) fmLines.push(`tags: [${entity.tags.join(', ')}]`);
-        if (entity.imageId) fmLines.push(`image: ${entity.imageId}`);
-        if (Object.keys(entity.properties || {}).length > 0) {
-            fmLines.push(`properties: ${JSON.stringify(entity.properties)}`);
-        }
-
-        const md = `---\n${fmLines.join('\n')}\n---\n\n# ${entity.name}\n\n${entity.description || ''}\n`;
+        const md = serializeEntity(entity, { includeUid: entity.database === 'user' || entity.database === 'gm' });
 
         // Trigger download
         const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
@@ -675,14 +950,45 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         }
     }, [canModifyEntityInUi, entities, openWindow, targetDb]);
 
+    const handleBulkDelete = useCallback(() => {
+        if (bulkDeleteRootIds.length === 0) return;
+
+        const previewNames = bulkDeletableEntities.slice(0, 4).map(entity => entity.name).join(', ');
+        const hiddenCount = Math.max(0, bulkDeletableEntities.length - 4);
+
+        openConfirm({
+            title: 'Массовое удаление',
+            description: `Удалить выбранные сущности (${bulkDeletableEntities.length})? ${previewNames}${hiddenCount > 0 ? ` и ещё ${hiddenCount}` : ''}. Вложенные выбранные сущности будут удалены вместе с родителями.`,
+            confirmText: 'Удалить выбранные',
+            isDestructive: true,
+            onConfirm: () => {
+                const { closeWindow } = useWindowStore.getState();
+                selectedEntityIds.forEach(id => closeWindow(id));
+                bulkDeleteRootIds.forEach(id => yjsStore.deleteEntity(id));
+                clearEntitySelection();
+            }
+        });
+    }, [bulkDeleteRootIds, bulkDeletableEntities, clearEntitySelection, openConfirm, selectedEntityIds]);
+
     const handleCopyWikiLink = useCallback((id: string) => {
         const entity = entities.find(e => e.id === id);
         if (!entity) return;
 
-        void writeClipboardText(`[[${entity.name}]]`).catch((error) => {
+        void writeClipboardText(`[[${entity.id}]]`).catch((error) => {
             console.warn(`Failed to copy wiki link for "${entity.name}"`, error);
         });
     }, [entities]);
+
+    const handleShowInExplorer = useCallback((id: string) => {
+        const entity = entities.find(e => e.id === id);
+        if (!entity) return;
+
+        const db = entity.database || targetDb;
+        const owner = getEntityOwnerId(entity) || targetPlayerOwner;
+        void showEntityInExplorer(db, entity.id, owner).then((ok) => {
+            if (!ok) console.warn(`Не удалось открыть файл сущности в проводнике: ${entity.name}`);
+        });
+    }, [entities, targetDb, targetPlayerOwner]);
 
     const handleCloseContextMenu = useCallback(() => {
         setContextMenuState(null);
@@ -707,7 +1013,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         const newId = yjsStore.cloneEntity(giveToPlayerEntityId, null, 'user');
         if (!newId) return;
 
-        assignUserOwnerToSubtree(newId, playerName);
+        applyOwnerToEntityTree(newId, playerName);
 
         // Log to chat
         yjsStore.sendMessage(
@@ -729,50 +1035,72 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         });
     };
 
+    const getRootDropState = useCallback((dataTransfer: DataTransfer) => {
+        if (!canModifyTargetDb) return null;
+
+        const draggedIds = getTopLevelEntityIds(readEntityDragIds(dataTransfer), allEntities);
+        const draggedEntities = draggedIds
+            .map(id => allEntities.find(ent => ent.id === id))
+            .filter((candidate): candidate is Entity => Boolean(candidate));
+        if (draggedEntities.length === 0 || draggedEntities.length !== draggedIds.length || draggedEntities.some(candidate => candidate.type === 'canvas')) return null;
+
+        const { copyAction, moveAction } = getSharedEntityDropActions(
+            draggedEntities.map(draggedEnt => ({ id: draggedEnt.id, type: draggedEnt.type, database: draggedEnt.database, parentId: draggedEnt.parentId })),
+            { kind: 'database', database: targetDb, parentId: baseParentId },
+            {
+                role: yjsStore.localRole,
+                canModifySource: draggedEntities.every(draggedEnt => canModifyEntityInUi(draggedEnt)),
+                canModifyTarget: canModifyTargetDb,
+            }
+        );
+
+        if (!copyAction && !moveAction) return null;
+        return { draggedEntities, copyAction, moveAction };
+    }, [allEntities, baseParentId, canModifyEntityInUi, canModifyTargetDb, targetDb]);
+
+    const handleRootDragOver = (e: React.DragEvent) => {
+        const dropState = getRootDropState(e.dataTransfer);
+        if (!dropState) return;
+
+        e.preventDefault();
+        e.dataTransfer.dropEffect = dropState.moveAction ? 'move' : 'copy';
+    };
+
     const handleRootDrop = (e: React.DragEvent) => {
+        const dropState = getRootDropState(e.dataTransfer);
+        if (!dropState) return;
+
+        const { draggedEntities, copyAction, moveAction } = dropState;
+
         e.preventDefault();
         e.stopPropagation();
-        if (!canModifyTargetDb) return;
-        const draggedId = e.dataTransfer.getData("application/entity-id");
-        const sourceDb = e.dataTransfer.getData("application/source-database");
-        const currentDb = targetDb || 'general';
-
-        if (draggedId) {
-            const draggedEnt = allEntities.find(ent => ent.id === draggedId);
-            if (!draggedEnt || draggedEnt.type === 'canvas') return;
-            if (!canModifyEntityInUi(draggedEnt)) return;
-
-            // Allow dragging tags to root if we are in the main database ('global') 
-            // but restrict adding tags to 'activeCanvasId' or character 'inventory'.
-            if (draggedEnt.type === 'tag' && baseParentId !== null && baseParentId !== 'global') {
-                return; // Disallow dragging tags to personal inventory or root canvas hierarchy
-            }
-
-            if (sourceDb === currentDb) {
-                // Moving to the root of the SAME db
-                yjsStore.updateEntity(draggedId, { parentId: baseParentId });
-            } else {
-                // Moving from a DIFFERENT db
-                handlePromptDrop({
-                    x: e.clientX,
-                    y: e.clientY,
-                    entityName: draggedEnt.name,
-                    onMove: () => {
-                        yjsStore.updateEntity(draggedId, { parentId: baseParentId, database: targetDb });
-                        if (targetDb === 'user' && targetPlayerOwner) {
-                            assignUserOwnerToSubtree(draggedId, targetPlayerOwner);
-                        }
-                    },
-                    onCopy: () => {
-                        const newId = yjsStore.cloneEntity(draggedId, baseParentId, targetDb);
-                        if (newId && targetDb === 'user' && targetPlayerOwner) {
-                            assignUserOwnerToSubtree(newId, targetPlayerOwner);
-                        }
-                    },
-                    onCancel: () => { }
+        handlePromptDrop({
+            x: e.clientX,
+            y: e.clientY,
+            entityName: draggedEntities.length === 1 ? draggedEntities[0].name : `${draggedEntities.length} сущностей`,
+            canCopy: Boolean(copyAction),
+            canMove: Boolean(moveAction),
+            copyLabel: copyAction?.label,
+            moveLabel: moveAction?.label,
+            onMove: () => {
+                draggedEntities.forEach((draggedEnt) => {
+                    moveEntityTreeToParent(draggedEnt.id, baseParentId, targetDb, {
+                        ownerId: targetDb === 'user' ? targetPlayerOwner : undefined,
+                    });
                 });
-            }
-        }
+                clearEntitySelection();
+            },
+            onCopy: () => {
+                draggedEntities.forEach((draggedEnt) => {
+                    const newId = yjsStore.cloneEntity(draggedEnt.id, baseParentId, targetDb);
+                    if (newId && targetDb === 'user' && targetPlayerOwner) {
+                        applyOwnerToEntityTree(newId, targetPlayerOwner);
+                    }
+                });
+                clearEntitySelection();
+            },
+            onCancel: () => { }
+        });
     };
 
     const createEntity = useCallback((
@@ -786,7 +1114,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         const ownerMarker = entityDb === 'user' ? owner : undefined;
         if (!yjsStore.canModify(entityDb, ownerMarker)) return null;
 
-        const id = uuidv4();
+        const id = generateEntityId(entities.map(entity => entity.id));
         const base = { id, parentId, type, database: entityDb, name: type, description: '', tags: [], properties: {} };
 
         if (type === 'character') {
@@ -818,7 +1146,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
             openWindow(id, Math.random() * 200 + 70, Math.random() * 200 + 70);
         }
         return id;
-    }, [baseParentId, openWindow, targetDb, targetPlayerOwner]);
+    }, [baseParentId, entities, openWindow, targetDb, targetPlayerOwner]);
 
     const addTestEntity = useCallback((type: EntityType, folderType?: string) => {
         createEntity(type, baseParentId, folderType);
@@ -841,11 +1169,12 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
     const tabsToShow = EntityGroups.filter(g => !allowedTabs || allowedTabs.includes(g.type));
     const contextMenuEntity = contextMenuState ? entities.find(e => e.id === contextMenuState.entityId) : undefined;
     const contextMenuCanEdit = Boolean(contextMenuEntity && contextMenuEntity.id !== 'root' && canModifyEntityInUi(contextMenuEntity));
+    const contextMenuCanShowInExplorer = Boolean(contextMenuEntity && contextMenuEntity.id !== 'root' && getIsHost());
     const contextMenuQuickCreateActions = contextMenuCanEdit ? getQuickCreateActions(contextMenuEntity) : [];
     const hasVisibleSearchResults = visibleEntities.some(entity => entity.id !== 'root');
 
     return (
-        <div className="flex flex-col h-full bg-transparent relative" onDragOver={(e) => { if (canModifyTargetDb) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }} onDrop={handleRootDrop}>
+        <div className="flex flex-col h-full bg-transparent relative" onDragOver={handleRootDragOver} onDrop={handleRootDrop}>
             {/* Hidden import file input */}
             <input
                 ref={importInputRef}
@@ -861,10 +1190,11 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                     {getIsHost() && canModifyTargetDb && (
                         <button
                             onClick={() => importInputRef.current?.click()}
-                            className="text-[10px] font-bold text-white/60 hover:text-white/60 bg-white/10 hover:bg-white/10 border border-white/60/40 px-2 py-1 rounded transition-colors flex items-center gap-1"
+                            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-cyan-300/20 bg-cyan-400/10 px-2.5 text-[10px] font-bold uppercase tracking-wider text-cyan-100/80 shadow-inner transition-all hover:border-cyan-200/35 hover:bg-cyan-300/15 hover:text-white"
                             title="Импорт .md файлов"
                         >
-                            📥 Импорт .md
+                            <Upload size={13} />
+                            Импорт .md
                         </button>
                     )}
                 </div>
@@ -875,7 +1205,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Поиск сущностей..."
+                        placeholder="Поиск: атлетика 3, type:character, prop:hp.current>=7"
                         className="w-full h-9 rounded-lg bg-black/25 border border-white/10 pl-9 pr-9 text-xs text-white/80 placeholder:text-white/30 outline-none focus:border-white/25 focus:bg-black/35 transition-colors"
                     />
                     {searchQuery && (
@@ -888,6 +1218,121 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                         </button>
                     )}
                 </div>
+
+                {!searchActive && savedSearches.length > 0 && (
+                    <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-amber-100/35">Сохранённые</span>
+                        {savedSearches.slice(0, 8).map((query) => (
+                            <div
+                                key={query}
+                                className="inline-flex max-w-[220px] items-center overflow-hidden rounded-lg border border-amber-200/15 bg-amber-300/[0.07] text-[10px] font-medium text-amber-50/65 transition-colors hover:border-amber-100/30 hover:text-amber-50"
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => handleSelectRecentSearch(query)}
+                                    className="truncate px-2 py-1 text-left"
+                                    title={query}
+                                >
+                                    {query}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveSavedSearch(query)}
+                                    className="border-l border-amber-100/10 px-1.5 py-1 text-amber-50/35 transition-colors hover:bg-amber-200/10 hover:text-amber-50"
+                                    title="Убрать сохранённый поиск"
+                                >
+                                    <X size={11} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {!searchActive && recentSearches.length > 0 && (
+                    <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-white/25">Недавние</span>
+                        {recentSearches.slice(0, 5).map((query) => (
+                            <button
+                                key={query}
+                                type="button"
+                                onClick={() => handleSelectRecentSearch(query)}
+                                className="max-w-[180px] truncate rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-medium text-white/45 transition-colors hover:border-cyan-200/25 hover:text-cyan-50"
+                                title={query}
+                            >
+                                {query}
+                            </button>
+                        ))}
+                        <button
+                            type="button"
+                            onClick={handleClearRecentSearches}
+                            className="rounded-lg border border-white/10 bg-black/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white/30 transition-colors hover:border-white/20 hover:text-white/65"
+                            title="Очистить историю поиска"
+                        >
+                            Сброс
+                        </button>
+                    </div>
+                )}
+
+                {searchActive && (
+                    <div className="mb-3 rounded-xl border border-cyan-300/15 bg-cyan-400/10 p-2.5 shadow-inner">
+                        <div className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wider text-cyan-100/75">
+                            <span className="flex items-center gap-2">
+                                <Search size={12} />
+                                {directSearchMatches.length} совпадений
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-white/35">{visibleEntities.filter(entity => entity.id !== 'root').length} с контекстом</span>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveCurrentSearch}
+                                    disabled={isCurrentSearchSaved}
+                                    className={`inline-flex h-6 items-center gap-1 rounded-md border px-1.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                                        isCurrentSearchSaved
+                                            ? 'cursor-default border-amber-200/10 bg-amber-300/10 text-amber-100/45'
+                                            : 'border-amber-200/20 bg-amber-300/10 text-amber-50/70 hover:border-amber-100/35 hover:bg-amber-300/15 hover:text-amber-50'
+                                    }`}
+                                    title={isCurrentSearchSaved ? 'Поиск уже сохранён' : 'Сохранить текущий поиск'}
+                                >
+                                    <Bookmark size={11} />
+                                    {isCurrentSearchSaved ? 'Сохранено' : 'Сохранить'}
+                                </button>
+                            </div>
+                        </div>
+                        {directSearchMatches.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('all')}
+                                    className={`rounded-lg border px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                                        activeTab === 'all'
+                                            ? 'border-cyan-200/35 bg-cyan-300/20 text-cyan-50'
+                                            : 'border-white/10 bg-black/15 text-white/45 hover:border-white/20 hover:text-white/75'
+                                    }`}
+                                >
+                                    Все <span className="font-mono text-white/35">{directSearchMatches.length}</span>
+                                </button>
+                                {tabsToShow.map((group) => {
+                                    const count = searchMatchCountsByType[group.type] || 0;
+                                    if (count === 0) return null;
+                                    return (
+                                        <button
+                                            key={group.type}
+                                            type="button"
+                                            onClick={() => setActiveTab(group.type)}
+                                            className={`rounded-lg border px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                                                activeTab === group.type
+                                                    ? 'border-cyan-200/35 bg-cyan-300/20 text-cyan-50'
+                                                    : 'border-white/10 bg-black/15 text-white/45 hover:border-white/20 hover:text-white/75'
+                                            }`}
+                                        >
+                                            {group.label} <span className="font-mono text-white/35">{count}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Tabs */}
                 <div className="flex flex-wrap gap-1 pb-1">
@@ -907,6 +1352,41 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                         </button>
                     ))}
                 </div>
+
+                {selectedEntities.length > 0 && (
+                    <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-cyan-200/15 bg-cyan-300/[0.08] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                        <div className="min-w-0">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-50/75">
+                                Выбрано <span className="font-mono text-cyan-50">{selectedEntities.length}</span>
+                            </div>
+                            {bulkDeletableEntities.length !== selectedEntities.length && (
+                                <div className="mt-0.5 truncate text-[9px] font-medium text-amber-100/55">
+                                    Доступно для удаления: {bulkDeletableEntities.length}
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={handleBulkDelete}
+                                disabled={bulkDeleteRootIds.length === 0}
+                                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-red-300/20 bg-red-400/10 px-2.5 text-[10px] font-bold uppercase tracking-wider text-red-100/80 transition-colors hover:border-red-200/35 hover:bg-red-400/20 hover:text-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-white/25"
+                                title="Удалить выбранные сущности"
+                            >
+                                <Trash2 size={13} />
+                                Удалить
+                            </button>
+                            <button
+                                type="button"
+                                onClick={clearEntitySelection}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/20 text-white/45 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
+                                title="Сбросить выделение"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 pb-32 custom-scrollbar">
@@ -940,6 +1420,10 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                 onShowContextMenu={handleShowContextMenu}
                                 canModifyEntityInUi={canModifyEntityInUi}
                                 canModifyTargetDb={canModifyTargetDb}
+                                searchResultsById={searchResultsById}
+                                searchTerms={searchTerms}
+                                selectedEntityIds={selectedEntityIdSet}
+                                onEntitySelectionClick={handleEntitySelectionClick}
                             />
                         );
                     })()}
@@ -976,8 +1460,8 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                         {canModifyTargetDb && baseParentId && baseParentId.includes('personal-inventory') && group.type === 'object' && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); addTestEntity('object'); }}
-                                                className="text-white/40 hover:text-white p-1 rounded transition-colors opacity-0 group-hover:opacity-100 hover:bg-white/10"
-                                                title="Add Item"
+                                                className="rounded border border-white/10 bg-white/5 p-1 text-white/55 shadow-inner transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
+                                                title="Создать предмет"
                                             >
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                             </button>
@@ -986,8 +1470,8 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                             <>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); addTestEntity(group.type); }}
-                                                    className="text-white/40 hover:text-white p-1 rounded transition-colors opacity-0 group-hover:opacity-100 hover:bg-white/10"
-                                                    title={`Add ${group.label}`}
+                                                    className="rounded border border-white/10 bg-white/5 p-1 text-white/55 shadow-inner transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
+                                                    title={`Создать: ${group.label}`}
                                                 >
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                                 </button>
@@ -1026,6 +1510,10 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                                     onShowContextMenu={handleShowContextMenu}
                                                     canModifyEntityInUi={canModifyEntityInUi}
                                                     canModifyTargetDb={canModifyTargetDb}
+                                                    searchResultsById={searchResultsById}
+                                                    searchTerms={searchTerms}
+                                                    selectedEntityIds={selectedEntityIdSet}
+                                                    onEntitySelectionClick={handleEntitySelectionClick}
                                                 />
                                             ))
                                         )}
@@ -1043,12 +1531,14 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
             <EntityContextMenu
                 state={contextMenuState}
                 canEdit={contextMenuCanEdit}
+                canShowInExplorer={contextMenuCanShowInExplorer}
                 quickCreateActions={contextMenuQuickCreateActions}
                 onRename={handleRenameStart}
                 onDuplicate={handleDuplicateEntity}
                 onCreateChild={handleCreateChildEntity}
                 onOpenWindow={(id) => openWindow(id, Math.random() * 200 + 50, Math.random() * 200 + 50)}
                 onCopyWikiLink={handleCopyWikiLink}
+                onShowInExplorer={handleShowInExplorer}
                 onExport={handleExportEntity}
                 onGiveToPlayer={getIsHost() && contextMenuCanEdit ? handleGiveToPlayer : undefined}
                 onDelete={(id) => {

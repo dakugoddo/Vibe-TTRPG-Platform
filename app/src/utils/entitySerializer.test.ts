@@ -165,11 +165,13 @@ console.log('📝 Test 1: Note roundtrip');
     const md = serializeEntity(noteEntity);
     assert(md.includes('---'), 'Has frontmatter delimiters');
     assert(md.includes('type: note'), 'Has type in frontmatter');
+    assert(md.includes('id: rules_magic'), 'Has stable id in frontmatter');
     assert(md.includes('# Правила Магии'), 'Has title');
     assert(md.includes('[[Огненный Шар]]'), 'Preserves wiki-links');
 
     const { entity } = parseEntityFile(md, 'Правила Магии');
     assert(entity.type === 'note', 'Parsed type is note');
+    assert(entity.id === 'rules_magic', 'Parsed stable id');
     assert(entity.name === 'Правила Магии', 'Parsed name matches');
     assertDeepEqual(entity.tags, ['магия', 'правила'], 'Tags preserved');
     assert(entity.description.includes('[[Огненный Шар]]'), 'Description preserved');
@@ -266,6 +268,7 @@ console.log('\n📁 Test 7: Filename utilities');
 console.log('\n👤 Test 8: User DB serialization (with uid)');
 {
     const md = serializeEntity(objectEntity, { includeUid: true, source: 'Экскалибур' });
+    assert(md.includes('id: excalibur'), 'Has id in frontmatter');
     assert(md.includes('uid: excalibur'), 'Has uid in frontmatter');
     assert(md.includes('source: Экскалибур'), 'Has source in frontmatter');
 

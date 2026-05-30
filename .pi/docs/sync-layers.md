@@ -1,7 +1,7 @@
 # Sync Layers Contract
 
 > Дата: 2026-05-19
-> Статус: рабочий контракт после первого прохода по canvas sync.
+> Статус: рабочий контракт после первого прохода по canvas sync; audio session commands добавлены 2026-05-21.
 
 ## Цель
 
@@ -46,6 +46,8 @@ canvas entity properties -> canvas Y.Doc -> debounced canvas entity snapshot -> 
 
 Сейчас большая часть этого уже находится в `canvasDrawStore`, локальных refs `InfiniteCanvas` или локальном React-state. Перемещение, point edit, resize и rotate выбранных draw-elements используют локальный preview и пишут в persistent Y.Map только финальную позицию на drag end. Fog brush собирает локальный preview и коммитит итоговый массив fog patches одной транзакцией.
 
+Audio MVP использует отдельный session-command подход: в глобальном Yjs doc лежит только последняя `AudioSessionCommand` для SFX (`play/stop`, `assetId`, `assetPath`, `volume`, `startedAt`). Она не пишется в `.md`, не считается фактом мира и должна быть вынесена в отдельный session/event слой, если появятся полноценные плейлисты, микшер или музыка с восстановлением после reconnect.
+
 ## Awareness State
 
 Данные присутствия, которые живут в Yjs awareness и не являются фактом мира:
@@ -64,6 +66,7 @@ canvas entity properties -> canvas Y.Doc -> debounced canvas entity snapshot -> 
 3. Если состояние нужно другим игрокам только как присутствие или preview, использовать awareness/ephemeral transport, а не persistent Entity.
 4. Любой бросок кубов идет через Roll Engine; результат броска может быть persistent только если он является частью истории/лога сессии.
 5. Временные поля с префиксом `_` не должны попадать в canvas persistence.
+6. Audio commands должны ссылаться на stable `assetId`/`assetPath`, а не на отображаемый label файла.
 
 ## Известные Ограничения
 

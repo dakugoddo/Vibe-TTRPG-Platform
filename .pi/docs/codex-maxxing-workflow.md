@@ -20,7 +20,7 @@
 
 Агент может:
 
-- читать `AGENTS.md`, `.pi/DEVELOPMENT_PLAN.md`, `.pi/FEATURE_STATUS.md` и профильные `.pi/docs/*` перед работой;
+- читать `AGENTS.md`, `.pi/DEVELOPMENT_PLAN.md`, `.pi/FEATURE_BACKLOG.md`, `.pi/BUG_BACKLOG.md` и профильные `.pi/docs/*` перед работой;
 - обновлять `.pi` после значимых решений, проверок и архитектурных развилок;
 - делать кодовые изменения в проекте;
 - запускать локальные проверки: lint, build, TypeScript, focused tests;
@@ -68,7 +68,8 @@
 - `.pi/ARCHITECTURE.md` - текущие архитектурные правила;
 - `.pi/ARCHITECTURE_ANALYSIS.md` - риски и фундаментальные развилки;
 - `.pi/DEVELOPMENT_PLAN.md` - маршрут разработки;
-- `.pi/FEATURE_STATUS.md` - что уже работает;
+- `.pi/FEATURE_BACKLOG.md` - что запланировано, что реализовано и от чего зависит;
+- `.pi/BUG_BACKLOG.md` - известные баги, приоритеты и тематические batch keys;
 - `.pi/docs/*` - детальные контракты.
 
 Правило: если решение важно для будущей разработки, оно должно попасть в один из этих файлов.

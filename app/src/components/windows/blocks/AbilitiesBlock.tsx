@@ -1,5 +1,4 @@
-import { useCallback } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { useCallback, useState } from 'react';
 import type { Entity } from '../../../types';
 import { yjsStore } from '../../../store/yjsStore';
 import { useEntitiesByParent, getEntitiesSnapshot } from '../../../hooks/useEntities';
@@ -9,15 +8,17 @@ import { rollEngine } from '../../../services/rollEngine';
 import { Dices, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { glass } from '../../../utils/theme';
 import { getAbilityCostBase, getAbilityFormula, setAbilityCostBase } from '../../../utils/abilityModel';
+import { generateEntityId } from '../../../utils/entityId';
+import { createEntityRollVariableResolver } from '../../../utils/rollVariables';
+import { getEntityDropActions } from '../../../utils/entityDropRouter';
+import { readEntityDragIds } from '../../../utils/entityDragPayload';
+import { applyOwnerToEntityTree, getEntityOwnerId, moveEntityTreeToParent } from '../../../utils/entityTreeMutations';
+import { getTopLevelEntityIds } from '../../../utils/entityTreeSelection';
+import { DragDropPopover, type DragDropPromptData } from '../../ui/DragDropPopover';
 import clsx from 'clsx';
 
 interface AbilitiesBlockProps {
     entity: Entity;
-}
-
-function getEntityOwnerId(entity: Entity): string | undefined {
-    const owner = entity.properties?._playerOwner;
-    return typeof owner === 'string' ? owner : undefined;
 }
 
 function canEditEntity(entity: Entity): boolean {
@@ -41,11 +42,13 @@ function updateAbilityProperty(ability: Entity, key: string, value: unknown) {
     });
 }
 
-function sendAbilityRollToChat(ability: Entity) {
+function sendAbilityRollToChat(ability: Entity, parentEntity?: Entity) {
     const formula = getAbilityFormula(ability);
     if (!formula) return;
 
-    const result = rollEngine.rollDiceNotation(formula);
+    const result = rollEngine.rollExpression(formula, {
+        resolveVariable: createEntityRollVariableResolver(ability, parentEntity ? [parentEntity] : []),
+    });
     if (result.error) {
         yjsStore.sendMessage(`Ошибка броска ${ability.name}: ${result.error}`, 'Система', true);
         return;
@@ -59,12 +62,13 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
     const { openWindow } = useWindowStore();
     const { openConfirm } = useUIStore();
     const canEditParent = canEditEntity(entity);
+    const [dragDropPrompt, setDragDropPrompt] = useState<DragDropPromptData | null>(null);
 
     const handleAddAbility = useCallback(() => {
         if (!canEditParent) return;
         const ownerId = getEntityOwnerId(entity);
         const newAbility: Entity = {
-            id: uuidv4(),
+            id: generateEntityId(Object.keys(getEntitiesSnapshot())),
             parentId: entity.id,
             type: 'ability',
             name: 'Новая способность',
@@ -98,9 +102,97 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
         });
     }, [openConfirm]);
 
+    const getAbilityDropActions = useCallback((ability: Entity) => {
+        if (ability.type !== 'ability' || ability.parentId === entity.id) return [];
+        return getEntityDropActions(
+            { id: ability.id, type: ability.type, database: ability.database, parentId: ability.parentId },
+            { kind: 'entity', entityId: entity.id, entityType: entity.type, slot: 'abilities' },
+            {
+                role: yjsStore.localRole,
+                canModifySource: canEditEntity(ability),
+                canModifyTarget: canEditParent,
+            }
+        );
+    }, [canEditParent, entity.id, entity.type]);
+
+    const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+        if (!canEditParent) return;
+        const snapshot = getEntitiesSnapshot();
+        const allEntities = Object.values(snapshot);
+        const abilityIds = getTopLevelEntityIds(readEntityDragIds(event.dataTransfer), allEntities);
+        const droppedAbilities = abilityIds
+            .map(id => snapshot[id])
+            .filter((candidate): candidate is Entity => Boolean(candidate));
+        if (droppedAbilities.length === 0 || droppedAbilities.length !== abilityIds.length || droppedAbilities.some(ability => ability.type !== 'ability')) return;
+
+        const actionsByAbility = droppedAbilities.map(ability => getAbilityDropActions(ability));
+        if (actionsByAbility.some(actions => actions.length === 0)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = actionsByAbility.every(actions => actions.some((action) => action.id === 'move-entity')) ? 'move' : 'copy';
+    }, [canEditParent, getAbilityDropActions]);
+
+    const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+        if (!canEditParent) return;
+        const snapshot = getEntitiesSnapshot();
+        const allEntities = Object.values(snapshot);
+        const abilityIds = getTopLevelEntityIds(readEntityDragIds(event.dataTransfer), allEntities);
+        const droppedAbilities = abilityIds
+            .map(id => snapshot[id])
+            .filter((candidate): candidate is Entity => Boolean(candidate));
+        if (droppedAbilities.length === 0 || droppedAbilities.length !== abilityIds.length || droppedAbilities.some(ability => ability.type !== 'ability')) return;
+
+        const actionsByAbility = droppedAbilities.map(ability => getAbilityDropActions(ability));
+        const copyAction = actionsByAbility[0]?.find((action) => action.id === 'copy-entity');
+        const moveAction = actionsByAbility[0]?.find((action) => action.id === 'move-entity');
+        const canCopyAll = Boolean(copyAction) && actionsByAbility.every(actions => actions.some((action) => action.id === 'copy-entity'));
+        const canMoveAll = Boolean(moveAction) && actionsByAbility.every(actions => actions.some((action) => action.id === 'move-entity'));
+        if (!canCopyAll && !canMoveAll) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        const ownerId = getEntityOwnerId(entity);
+
+        setDragDropPrompt({
+            x: event.clientX,
+            y: event.clientY,
+            entityName: droppedAbilities.length === 1 ? droppedAbilities[0].name : `${droppedAbilities.length} сущностей`,
+            canCopy: canCopyAll,
+            canMove: canMoveAll,
+            copyLabel: copyAction?.label,
+            moveLabel: moveAction?.label,
+            onMove: () => {
+                if (canMoveAll) {
+                    droppedAbilities.forEach((ability) => {
+                    moveEntityTreeToParent(ability.id, entity.id, entity.database, { ownerId });
+                    });
+                }
+                setDragDropPrompt(null);
+            },
+            onCopy: () => {
+                if (canCopyAll) {
+                    droppedAbilities.forEach((ability) => {
+                    const newId = yjsStore.cloneEntity(ability.id, entity.id, entity.database);
+                    if (newId) applyOwnerToEntityTree(newId, ownerId);
+                    });
+                }
+                setDragDropPrompt(null);
+            },
+            onCancel: () => setDragDropPrompt(null),
+        });
+    }, [canEditParent, entity, getAbilityDropActions]);
+
     return (
         <div className="space-y-4">
-            <div className={glass.blockBg}>
+            <div
+                data-entity-drop-target="true"
+                data-entity-id={entity.id}
+                data-entity-slot="abilities"
+                data-entity-accepts="ability"
+                className={glass.blockBg}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+            >
                 <div className="flex items-center justify-between gap-3 mb-4">
                     <h4 className={glass.blockHeader + ' mb-0'}>
                         Способности ({abilities.length})
@@ -154,7 +246,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                sendAbilityRollToChat(ability);
+                                                sendAbilityRollToChat(ability, entity);
                                             }}
                                             disabled={!canRoll}
                                             title={canRoll ? `Бросить ${formula}` : 'Укажите формулу броска'}
@@ -247,6 +339,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                     </div>
                 )}
             </div>
+            <DragDropPopover data={dragDropPrompt} />
         </div>
     );
 }

@@ -32,3 +32,44 @@ export interface ChatMessage {
     timestamp: number;
     isSystem?: boolean; // Для бросков кубиков и уведомлений
 }
+
+export type AudioChannel = 'music' | 'ambience' | 'sfx' | 'voice';
+
+export interface AudioSessionCommand {
+    id: string;
+    action: 'play' | 'stop';
+    assetId: string;
+    assetPath: string;
+    assetName: string;
+    channel?: AudioChannel;
+    volume: number;
+    duration?: number | null;
+    loop?: boolean;
+    fadeMs?: number;
+    issuedAt: number;
+    startedAt?: number;
+    senderId?: string;
+    senderName?: string;
+}
+
+export type SessionNotificationType = 'large-upload-approval';
+export type SessionNotificationScope = 'gm' | 'player' | 'session';
+export type SessionNotificationStatus = 'pending' | 'approved' | 'rejected' | 'uploading' | 'done' | 'failed';
+
+export interface SessionNotificationEvent {
+    id: string;
+    type: SessionNotificationType;
+    scope: SessionNotificationScope;
+    status: SessionNotificationStatus;
+    title: string;
+    message?: string;
+    actorId?: string;
+    actorName?: string;
+    targetPlayerId?: string;
+    targetPlayerName?: string;
+    responseById?: string;
+    responseByName?: string;
+    issuedAt: number;
+    updatedAt?: number;
+    payload?: Record<string, unknown>;
+}

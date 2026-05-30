@@ -9,14 +9,21 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Redo2, Undo2 } from 'lucide-react';
 import { useCanvasDrawStore, type DrawStyleState } from '../../store/canvasDrawStore';
 import { useCanvasSyncStore } from '../../store/canvasSyncStore';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useWindowStore } from '../../store/windowStore';
 import { useUIStore } from '../../store/uiStore';
 import { useEntitiesByParent, getEntitiesSnapshot } from '../../hooks/useEntities';
-import type { CanvasTool, StrokeStyle, LineCap, TextFontFamily, TextAlign, DrawElement } from '../../types/canvasTypes';
+import type { CanvasTool, StrokeStyle, LineCap, TextFontFamily, TextAlign, DrawElement, EntityTokenMode } from '../../types/canvasTypes';
 import { getElementBounds, reorderElements } from '../../types/canvasTypes';
+import { CANVAS_VISUAL_STYLE_OPTIONS } from '../../utils/canvasVisualStyle';
+import { CANVAS_LINE_MODE_OPTIONS } from '../../utils/canvasLineRouting';
+import { ENTITY_TOKEN_FRAME_OPTIONS } from '../../utils/canvasEntityTokenFrame';
+import { getEntityCanvasTokenDefaults, getEntityCanvasTokenImageSource } from '../../utils/entityCanvasDefaults';
+import { fitEntityArtSizeToImage } from '../../utils/entityTokenSizing';
+import { getAssetUrl } from '../../services/fileApi';
 import { yjsStore } from '../../store/yjsStore';
 import type { Entity } from '../../types';
 import React from 'react';
@@ -130,13 +137,9 @@ const PALETTE_COLORS = [
 ];
 
 const FILL_COLORS = [
-  '', // no fill
-  // Semi-transparent fills (most common for shapes)
-  '#a78bfa33', '#f8717133', '#fb923c33', '#fbbf2433',
-  '#34d39933', '#38bdf833', '#e879f933', '#ffffff22',
-  // Solid fills (for when you want full coverage)
   '#a78bfa', '#f87171', '#fb923c', '#fbbf24',
   '#34d399', '#38bdf8', '#e879f9', '#94a3b8',
+  '#ffffff', '#000000',
 ];
 
 const STROKE_WIDTHS = [1, 2, 4, 8];
@@ -194,6 +197,11 @@ const ALIGN_OPTIONS: { id: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bot
   { id: 'bottom', title: 'По нижнему краю', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="20" x2="20" y2="20"/><rect x="10" y="4" width="4" height="12"/><rect x="4" y="8" width="4" height="8"/></svg> },
 ];
 
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
 function applyStyleToSelected(
   _activeCanvasId: string,
   selectedIds: string[],
@@ -237,6 +245,57 @@ function canEditCanvasEntity(canvasId: string | null): boolean {
   return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
 }
 
+function resolveEntityTokenImageSource(rawImageSource: string): string {
+  if (!rawImageSource) return '';
+  return rawImageSource.startsWith('http') || rawImageSource.startsWith('data:')
+    ? rawImageSource
+    : getAssetUrl(rawImageSource);
+}
+
+function loadNaturalImageSize(sourceUrl: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const image = new window.Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => {
+      resolve({
+        width: image.naturalWidth || image.width,
+        height: image.naturalHeight || image.height,
+      });
+    };
+    image.onerror = () => reject(new Error('Image failed to load'));
+    image.src = sourceUrl;
+  });
+}
+
+async function getEntityTokenModeSize(element: DrawElement, mode: EntityTokenMode): Promise<{ width: number; height: number }> {
+  const linkedEntity = element.linkedEntityId ? getEntitiesSnapshot()[element.linkedEntityId] : undefined;
+  if (!linkedEntity) {
+    return mode === 'art'
+      ? { width: element.width || 220, height: element.height || 150 }
+      : { width: 72, height: 92 };
+  }
+
+  const defaults = getEntityCanvasTokenDefaults(linkedEntity, mode);
+  if (mode !== 'art') {
+    return { width: defaults.width, height: defaults.height };
+  }
+
+  const imageSource = resolveEntityTokenImageSource(getEntityCanvasTokenImageSource(linkedEntity, 'art'));
+  if (!imageSource) {
+    return { width: defaults.width, height: defaults.height };
+  }
+
+  try {
+    const imageSize = await loadNaturalImageSize(imageSource);
+    return fitEntityArtSizeToImage(
+      { width: defaults.artWidth, height: defaults.artHeight },
+      imageSize
+    );
+  } catch {
+    return { width: defaults.width, height: defaults.height };
+  }
+}
+
 export function CanvasToolbar() {
   const { t } = useTranslation();
   const {
@@ -250,6 +309,10 @@ export function CanvasToolbar() {
   const { activeCanvasId, canvasHistory, goBack, setTransform } = useCanvasStore();
   const { windows } = useWindowStore();
   const elements = useCanvasSyncStore(state => state.elements);
+  const canUndo = useCanvasSyncStore(state => state.canUndo);
+  const canRedo = useCanvasSyncStore(state => state.canRedo);
+  const undoCanvas = useCanvasSyncStore(state => state.undo);
+  const redoCanvas = useCanvasSyncStore(state => state.redo);
 
   const [elementsOpen, setElementsOpen] = useState(false);
   const [extraOpen, setExtraOpen] = useState(false);
@@ -316,13 +379,18 @@ export function CanvasToolbar() {
   const isSelectedShape = selectedType === 'shape' || selectedType === 'mixed';
   const isSelectedText = hasSelection && elements.some((el: DrawElement) => selectedElementIds.includes(el.id) && el.type === 'text');
   const isSelectedImage = hasSelection && elements.some((el: DrawElement) => selectedElementIds.includes(el.id) && el.type === 'image');
+  const selectedEntityTokens = hasSelection
+    ? elements.filter((el: DrawElement) => selectedElementIds.includes(el.id) && el.type === 'entityToken')
+    : [];
+  const isSelectedEntityToken = selectedEntityTokens.length > 0;
+  const selectedEntityTokenFrame = selectedEntityTokens[0]?.entityTokenFrame ?? currentStyle.entityTokenFrame ?? 'ring';
   const isSelectedFrame = hasSelection && elements.some((el: DrawElement) => selectedElementIds.includes(el.id) && el.type === 'frame');
   const hasTextDescription = hasSelection && elements.some((el: DrawElement) => selectedElementIds.includes(el.id) && el.description);
 
   const showLineCaps = isLineTool || (activeTool === 'select' && isSelectedLine);
   const showFillColor = isShapeTool || (activeTool === 'select' && (isSelectedShape || isSelectedFrame));
   const showTextStyles = isTextTool || editingTextId !== null || (activeTool === 'select' && (isSelectedText || hasTextDescription));
-  const showStrokeStyles = isLineTool || isShapeTool || (activeTool === 'select' && (isSelectedLine || isSelectedShape || isSelectedFrame || isSelectedImage));
+  const showStrokeStyles = isLineTool || isShapeTool || (activeTool === 'select' && (isSelectedLine || isSelectedShape || isSelectedFrame || isSelectedImage || isSelectedEntityToken));
   const showStrokeColor = showStrokeStyles;
 
   // Style change: also apply to selected elements if in select mode
@@ -334,6 +402,37 @@ export function CanvasToolbar() {
       }
     },
     [setStyle, activeTool, hasSelection, activeCanvasId, selectedElementIds]
+  );
+
+  const handleEntityTokenModeChange = useCallback(
+    (mode: EntityTokenMode) => {
+      if (activeTool !== 'select' || !hasSelection) return;
+
+      const { elements: currentElements, syncElementsArray } = useCanvasSyncStore.getState();
+      const selected = new Set(selectedElementIds);
+      const targets = currentElements.filter((element) => selected.has(element.id) && element.type === 'entityToken');
+      if (targets.length === 0) return;
+
+      void Promise.all(
+        targets.map(async (element) => {
+          const size = await getEntityTokenModeSize(element, mode);
+          const currentWidth = element.width || size.width;
+          const currentHeight = element.height || size.height;
+          return {
+            ...element,
+            entityTokenMode: mode,
+            x: (element.x || 0) + (currentWidth - size.width) / 2,
+            y: (element.y || 0) + (currentHeight - size.height) / 2,
+            width: size.width,
+            height: size.height,
+          };
+        })
+      ).then((updatedTargets) => {
+        const updates = new Map(updatedTargets.map((element) => [element.id, element]));
+        syncElementsArray(currentElements.map((element) => updates.get(element.id) ?? element));
+      });
+    },
+    [activeTool, hasSelection, selectedElementIds]
   );
 
   const handleAlign = useCallback(
@@ -439,6 +538,32 @@ export function CanvasToolbar() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="m15 18-6-6 6-6" />
           </svg>
+        </button>
+
+        <button
+          onClick={undoCanvas}
+          disabled={!canEditActiveCanvas || !canUndo}
+          className={`bg-black/20 backdrop-blur-2xl border border-white/10 w-10 h-10 rounded-xl flex justify-center items-center shadow-xl transition-all
+            ${!canEditActiveCanvas || !canUndo
+              ? 'opacity-30 cursor-not-allowed text-white/30'
+              : 'text-white/70 hover:text-white hover:border-white/30 hover:bg-white/10 cursor-pointer'
+            }`}
+          title="Отменить (Ctrl+Z)"
+        >
+          <Undo2 size={18} strokeWidth={2} />
+        </button>
+
+        <button
+          onClick={redoCanvas}
+          disabled={!canEditActiveCanvas || !canRedo}
+          className={`bg-black/20 backdrop-blur-2xl border border-white/10 w-10 h-10 rounded-xl flex justify-center items-center shadow-xl transition-all
+            ${!canEditActiveCanvas || !canRedo
+              ? 'opacity-30 cursor-not-allowed text-white/30'
+              : 'text-white/70 hover:text-white hover:border-white/30 hover:bg-white/10 cursor-pointer'
+            }`}
+          title="Повторить (Ctrl+Shift+Z / Ctrl+Y)"
+        >
+          <Redo2 size={18} strokeWidth={2} />
         </button>
 
         <div className="w-px h-6 bg-white/10 mx-0.5" />
@@ -890,28 +1015,9 @@ export function CanvasToolbar() {
                 <div>
                   <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">Заливка</span>
                   <div className="grid grid-cols-5 gap-1.5 w-max">
-                    {FILL_COLORS.slice(0, 9).map((color, i) => (
+                    {FILL_COLORS.map((color) => (
                       <button
-                        key={`fill-${i}`}
-                        onClick={() => handleStyleChange({ fill: color })}
-                        className={`w-4 h-4 rounded transition-all duration-100 border cursor-pointer
-                          ${currentStyle.fill === color
-                            ? 'border-white scale-125 shadow-lg'
-                            : 'border-transparent hover:border-white/30 hover:scale-110'
-                          }`}
-                        style={{
-                          backgroundColor: color || 'transparent',
-                          backgroundImage: color ? undefined : 'linear-gradient(135deg, transparent 40%, #f87171 40%, #f87171 60%, transparent 60%)',
-                        }}
-                        title={color || 'Без заливки'}
-                      />
-                    ))}
-                  </div>
-                  {/* Solid fill row */}
-                  <div className="grid grid-cols-5 gap-1.5 w-max mt-1.5">
-                    {FILL_COLORS.slice(9).map((color, i) => (
-                      <button
-                        key={`sfill-${i}`}
+                        key={`fill-${color}`}
                         onClick={() => handleStyleChange({ fill: color })}
                         className={`w-4 h-4 rounded transition-all duration-100 border cursor-pointer
                           ${currentStyle.fill === color
@@ -919,7 +1025,7 @@ export function CanvasToolbar() {
                             : 'border-transparent hover:border-white/30 hover:scale-110'
                           }`}
                         style={{ backgroundColor: color }}
-                        title={`${color} (сплошная)`}
+                        title={color}
                       />
                     ))}
                   </div>
@@ -943,7 +1049,18 @@ export function CanvasToolbar() {
                       [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md
                       [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:border-0"
                   />
-                  <span className="text-[7px] text-white/20 w-7 text-right">{Math.round(currentStyle.strokeOpacity * 100)}%</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={clampPercent(currentStyle.strokeOpacity * 100)}
+                    onFocus={(e) => e.currentTarget.select()}
+                    onChange={(e) => handleStyleChange({ strokeOpacity: clampPercent(Number(e.target.value)) / 100 })}
+                    className="h-5 w-10 rounded border border-white/10 bg-white/[0.04] px-1 text-right text-[9px] font-bold text-white/45 outline-none transition-colors focus:border-white/35 focus:text-white"
+                    title="Прозрачность обводки, %"
+                    aria-label="Прозрачность обводки в процентах"
+                  />
                 </div>
                 {/* Fill Opacity (only for shapes) */}
                 {(showFillColor) && (
@@ -961,7 +1078,18 @@ export function CanvasToolbar() {
                         [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md
                         [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:border-0"
                     />
-                    <span className="text-[7px] text-white/20 w-7 text-right">{Math.round(currentStyle.fillOpacity * 100)}%</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={clampPercent(currentStyle.fillOpacity * 100)}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onChange={(e) => handleStyleChange({ fillOpacity: clampPercent(Number(e.target.value)) / 100 })}
+                      className="h-5 w-10 rounded border border-white/10 bg-white/[0.04] px-1 text-right text-[9px] font-bold text-white/45 outline-none transition-colors focus:border-white/35 focus:text-white"
+                      title="Прозрачность заливки, %"
+                      aria-label="Прозрачность заливки в процентах"
+                    />
                   </div>
                 )}
                 {/* Text Opacity (only for text/shapes with text) */}
@@ -980,7 +1108,18 @@ export function CanvasToolbar() {
                         [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md
                         [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:border-0"
                     />
-                    <span className="text-[7px] text-white/20 w-7 text-right">{Math.round(currentStyle.textOpacity * 100)}%</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={clampPercent(currentStyle.textOpacity * 100)}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onChange={(e) => handleStyleChange({ textOpacity: clampPercent(Number(e.target.value)) / 100 })}
+                      className="h-5 w-10 rounded border border-white/10 bg-white/[0.04] px-1 text-right text-[9px] font-bold text-white/45 outline-none transition-colors focus:border-white/35 focus:text-white"
+                      title="Прозрачность текста, %"
+                      aria-label="Прозрачность текста в процентах"
+                    />
                   </div>
                 )}
               </div>
@@ -1113,6 +1252,26 @@ export function CanvasToolbar() {
                     ))}
                   </div>
                 </div>
+
+                <div>
+                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">Вид</span>
+                  <div className="flex gap-1 rounded-lg bg-white/[0.03] p-0.5">
+                    {CANVAS_VISUAL_STYLE_OPTIONS.map((style) => (
+                      <button
+                        key={style.id}
+                        onClick={() => handleStyleChange({ visualStyle: style.id })}
+                        className={`h-6 px-2 rounded-md flex items-center transition-all text-[10px] cursor-pointer
+                          ${currentStyle.visualStyle === style.id
+                            ? 'bg-white/20 text-white shadow-sm'
+                            : 'text-white/40 hover:bg-white/10 hover:text-white/70'
+                          }`}
+                        title={style.description}
+                      >
+                        {style.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1121,6 +1280,25 @@ export function CanvasToolbar() {
               <>
                 <div className="w-px self-stretch bg-white/10" />
                 <div className="flex flex-col gap-3 justify-center h-full pt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] text-white/25 uppercase font-bold w-12 select-none tracking-widest text-right">Линия</span>
+                    <div className="flex gap-1 rounded-lg bg-white/[0.03] p-0.5">
+                      {CANVAS_LINE_MODE_OPTIONS.map((mode) => (
+                        <button
+                          key={mode.id}
+                          onClick={() => handleStyleChange({ lineMode: mode.id })}
+                          className={`h-6 px-2 rounded-md flex items-center transition-all text-[10px] cursor-pointer
+                            ${currentStyle.lineMode === mode.id
+                              ? 'bg-white/20 text-white shadow-sm'
+                              : 'text-white/40 hover:bg-white/10 hover:text-white/70'
+                            }`}
+                          title={mode.description}
+                        >
+                          {mode.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   
                   {/* Start cap */}
                   <div className="flex items-center gap-2">
@@ -1168,6 +1346,55 @@ export function CanvasToolbar() {
               </>
             )}
 
+            {isSelectedEntityToken && (
+              <>
+                <div className="w-px self-stretch bg-white/10" />
+                <div className="flex flex-col gap-2 justify-center h-full pt-1">
+                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block">Сущность</span>
+                  <div className="flex gap-1 rounded-lg bg-white/[0.03] p-0.5">
+                    {ENTITY_TOKEN_FRAME_OPTIONS.map((frame) => (
+                      <button
+                        key={frame.id}
+                        onClick={() => handleStyleChange({ entityTokenFrame: frame.id })}
+                        className={`h-6 px-2 rounded-md flex items-center transition-all text-[10px] cursor-pointer
+                          ${selectedEntityTokenFrame === frame.id
+                            ? 'bg-white/20 text-white shadow-sm'
+                            : 'text-white/40 hover:bg-white/10 hover:text-white/70'
+                          }`}
+                        title={frame.description}
+                      >
+                        {frame.shortLabel}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-1 rounded-lg bg-white/[0.03] p-0.5">
+                    <button
+                      onClick={() => handleEntityTokenModeChange('token')}
+                      className={`h-6 px-2 rounded-md flex items-center transition-all text-[10px] cursor-pointer
+                        ${elements.some((el: DrawElement) => selectedElementIds.includes(el.id) && el.type === 'entityToken' && (el.entityTokenMode || 'token') === 'token')
+                          ? 'bg-white/20 text-white shadow-sm'
+                          : 'text-white/40 hover:bg-white/10 hover:text-white/70'
+                        }`}
+                      title="Компактная фишка сущности"
+                    >
+                      Фишка
+                    </button>
+                    <button
+                      onClick={() => handleEntityTokenModeChange('art')}
+                      className={`h-6 px-2 rounded-md flex items-center transition-all text-[10px] cursor-pointer
+                        ${elements.some((el: DrawElement) => selectedElementIds.includes(el.id) && el.type === 'entityToken' && el.entityTokenMode === 'art')
+                          ? 'bg-white/20 text-white shadow-sm'
+                          : 'text-white/40 hover:bg-white/10 hover:text-white/70'
+                        }`}
+                      title="Карточка сущности с сохранением пропорций изображения"
+                    >
+                      Карточка
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
           </div>
 
           {/* Alignment options (Bottom Row separate if multiples selected) */}
@@ -1196,7 +1423,13 @@ export function CanvasToolbar() {
               ? elements.find((el: DrawElement) => el.id === selectedElementIds[0]) 
               : null;
             const hasName = firstSelected?.objectName || firstSelected?.frameLabel;
-            const isNameable = firstSelected && (firstSelected.type === 'rectangle' || firstSelected.type === 'ellipse' || firstSelected.type === 'line' || firstSelected.type === 'arrow');
+            const isNameable = firstSelected && (
+              firstSelected.type === 'rectangle' ||
+              firstSelected.type === 'ellipse' ||
+              firstSelected.type === 'line' ||
+              firstSelected.type === 'arrow' ||
+              firstSelected.type === 'entityToken'
+            );
             const hasDescription = firstSelected?.description;
 
             return (

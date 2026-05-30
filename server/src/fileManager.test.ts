@@ -6,7 +6,7 @@
  */
 
 import path from 'node:path';
-import { parseEntityFile, serializeEntity } from './fileManager.js';
+import { injectEntityIdIntoMarkdown, parseEntityFile, serializeEntity } from './fileManager.js';
 import { CURRENT_ENTITY_SCHEMA_VERSION } from './entitySchema.js';
 import type { Entity } from './shared/types.js';
 
@@ -50,7 +50,7 @@ console.log('Test 1: Legacy general entity without schemaVersion');
 
     const entity = parseEntityFile(legacyMd, 'fallback-id', dbRoot, filePath, 'general');
 
-    assert(entity.id === 'Старый Герой', 'General DB uses title/name as id');
+    assert(entity.id === 'fallback-id', 'Legacy general entity falls back to filename-derived id');
     assert(entity.schemaVersion === CURRENT_ENTITY_SCHEMA_VERSION, 'Missing schemaVersion normalizes to current');
     assert(entity.type === 'character', 'Type preserved');
     assert(entity.database === 'general', 'Database is preserved');
@@ -58,6 +58,7 @@ console.log('Test 1: Legacy general entity without schemaVersion');
     assert(asRecord(entity.properties.hp).current === 8, 'Resource current is preserved');
 
     const migratedMd = serializeEntity(entity);
+    assert(migratedMd.includes('id: fallback-id'), 'Serialized legacy entity writes stable id');
     assert(migratedMd.includes(`schemaVersion: ${CURRENT_ENTITY_SCHEMA_VERSION}`), 'Serialized legacy entity writes schemaVersion');
 }
 
@@ -87,8 +88,48 @@ console.log('\nTest 2: Legacy user entity keeps uid');
     assert(entity.properties.charges === 2, 'Generic properties are preserved');
 
     const migratedMd = serializeEntity(entity, { includeUid: true });
+    assert(migratedMd.includes('id: item-001'), 'Serialized user entity writes stable id');
     assert(migratedMd.includes('uid: item-001'), 'Serialized user entity keeps uid');
     assert(migratedMd.includes(`schemaVersion: ${CURRENT_ENTITY_SCHEMA_VERSION}`), 'Serialized user entity writes schemaVersion');
+}
+
+console.log('\nTest 3: Minimal id injection preserves markdown shape');
+{
+    const withFrontmatter = [
+        '---',
+        'type: note',
+        'schemaVersion: 1',
+        'tags: [lore]',
+        '---',
+        '',
+        '# Ancient Door',
+        '',
+        'Keeps its body intact.',
+    ].join('\n');
+
+    const injected = injectEntityIdIntoMarkdown(withFrontmatter, '20260521112233444');
+    assert(injected.includes('id: "20260521112233444"'), 'Injection writes quoted timestamp id');
+    assert(injected.indexOf('schemaVersion: 1') < injected.indexOf('id: "20260521112233444"'), 'Id is inserted after schemaVersion');
+    assert(injected.includes('Keeps its body intact.'), 'Body text is preserved');
+
+    const withEmptyId = [
+        '---',
+        'type: note',
+        'id:',
+        '---',
+        '',
+        '# Empty Id',
+    ].join('\n');
+
+    const replaced = injectEntityIdIntoMarkdown(withEmptyId, '20260521112233445');
+    assert((replaced.match(/^id:/gm) || []).length === 1, 'Empty id line is replaced instead of duplicated');
+    assert(replaced.includes('id: "20260521112233445"'), 'Empty id is replaced with quoted id');
+
+    const noFrontmatter = '# Plain Note\n\nBody only.';
+    const created = injectEntityIdIntoMarkdown(noFrontmatter, '20260521112233446');
+    assert(created.startsWith('---\ntype: note'), 'Missing frontmatter gets note frontmatter');
+    assert(created.includes('id: "20260521112233446"'), 'Created frontmatter includes id');
+    assert(created.endsWith('Body only.'), 'Plain markdown body is preserved');
 }
 
 console.log(`\nResults: ${passed} passed, ${failed} failed\n`);

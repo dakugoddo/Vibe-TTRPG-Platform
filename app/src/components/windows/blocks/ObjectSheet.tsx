@@ -2,27 +2,62 @@ import React, { useState } from 'react';
 import { yjsStore } from '../../../store/yjsStore';
 import { useEntities } from '../../../hooks/useEntities';
 import { useWindowStore } from '../../../store/windowStore';
+import { rollEngine } from '../../../services/rollEngine';
 import type { Entity } from '../../../types';
-import { Plus, GripVertical, Trash2, Tag } from 'lucide-react';
+import { Box, Check, Dices, Edit2, FileText, GripVertical, Package, Plus, Swords, Trash2, Tag } from 'lucide-react';
 import { EntityLink } from '../../ui/EntityLink';
+import { MarkdownRenderer } from '../../ui/MarkdownRenderer';
+import { SheetTabs, type SheetTab } from '../../ui/SheetTabs';
+import { WikiLinkTextarea } from '../../ui/WikiLinkTextarea';
 import { TagPickerPopup } from './TagPickerPopup';
 import { DragDropPopover, type DragDropPromptData } from '../../ui/DragDropPopover';
 import { useUIStore } from '../../../store/uiStore';
 import { glass } from '../../../utils/theme';
+import { generateEntityId } from '../../../utils/entityId';
+import { createEntityRollVariableResolver } from '../../../utils/rollVariables';
+import { EntityCanvasTokenSettings } from './EntityCanvasTokenSettings';
+import { getEntityDropActions } from '../../../utils/entityDropRouter';
+import { readEntityDragIds } from '../../../utils/entityDragPayload';
+import { applyOwnerToEntityTree, getEntityOwnerId, moveEntityTreeToParent } from '../../../utils/entityTreeMutations';
+import { getTopLevelEntityIds } from '../../../utils/entityTreeSelection';
 
 interface ObjectSheetProps {
     entity: Entity;
 }
 
-const CATEGORIES = ['оружие', 'броня', 'расходуемое', 'другое'];
+type ObjectTab = 'stats' | 'attacks' | 'description' | 'canvas';
 
-function getEntityOwnerId(entity: Entity): string | undefined {
-    const owner = entity.properties?._playerOwner;
-    return typeof owner === 'string' ? owner : undefined;
-}
+const CATEGORIES = ['оружие', 'броня', 'расходуемое', 'другое'];
 
 function canEditEntity(entity: Entity): boolean {
     return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
+}
+
+function stringifyProperty(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    return '';
+}
+
+function getAttackFormula(attack: Entity): string {
+    return stringifyProperty(attack.properties?.diceFormula ?? attack.properties?.dice).trim();
+}
+
+function sendAttackRollToChat(attack: Entity, parentObject?: Entity) {
+    const formula = getAttackFormula(attack);
+    if (!formula) return;
+
+    const result = rollEngine.rollExpression(formula, {
+        plainNumberAsD6Pool: true,
+        resolveVariable: createEntityRollVariableResolver(attack, parentObject ? [parentObject] : []),
+    });
+    if (result.error) {
+        yjsStore.sendMessage(`Ошибка броска ${attack.name}: ${result.error}`, 'Система', true);
+        return;
+    }
+
+    yjsStore.sendMessage(rollEngine.formatRollMessage(`${attack.name}: ${formula}`, result), 'Система', true);
 }
 
 export function ObjectSheet({ entity }: ObjectSheetProps) {
@@ -31,10 +66,18 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
     const { openConfirm } = useUIStore();
     const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
     const [dragDropPrompt, setDragDropPrompt] = useState<DragDropPromptData | null>(null);
+    const [activeTab, setActiveTab] = useState<ObjectTab>('stats');
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
     const canEditObject = canEditEntity(entity);
 
     // Find child attacks
     const attacks = allEntities.filter(e => e.parentId === entity.id && e.type === 'attack');
+    const tabs: SheetTab<ObjectTab>[] = [
+        { id: 'stats', label: 'Параметры', icon: Package },
+        { id: 'attacks', label: 'Атаки', badge: attacks.length, icon: Swords },
+        { id: 'description', label: 'Описание', icon: FileText },
+        { id: 'canvas', label: 'Настройки', icon: Box },
+    ];
 
     const updateProperty = (key: string, value: unknown) => {
         if (!canEditObject) return;
@@ -46,9 +89,14 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
         });
     };
 
+    const updateDescription = (value: string) => {
+        if (!canEditObject) return;
+        yjsStore.updateEntity(entity.id, { description: value });
+    };
+
     const handleCreateAttack = () => {
         if (!canEditObject) return;
-        const id = Date.now().toString() + Math.random().toString(36).substring(7);
+        const id = generateEntityId(allEntities.map(entity => entity.id));
         const ownerId = getEntityOwnerId(entity);
         const newAttack: Entity = {
             id,
@@ -63,6 +111,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                 масштаб: 1,
                 попадание: 1,
                 дистанция: 'ближняя',
+                diceFormula: '',
                 ...(ownerId ? { _playerOwner: ownerId } : {})
             }
         };
@@ -73,44 +122,66 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
         if (!canEditObject) return;
         e.preventDefault();
         e.stopPropagation();
-        const draggedId = e.dataTransfer.getData("application/entity-id");
-        if (draggedId) {
-            const draggedEnt = allEntities.find(ent => ent.id === draggedId);
-            if (draggedEnt && draggedEnt.type === 'attack' && draggedId !== entity.id) {
-                const canMoveDragged = canEditEntity(draggedEnt);
-                setDragDropPrompt({
-                    x: e.clientX,
-                    y: e.clientY,
-                    entityName: draggedEnt.name,
-                    onMove: () => {
-                        if (!canEditObject || !canMoveDragged) {
-                            setDragDropPrompt(null);
-                            return;
-                        }
-                        yjsStore.updateEntity(draggedId, { parentId: entity.id, database: entity.database });
-                        setDragDropPrompt(null);
-                    },
-                    onCopy: () => {
-                        if (!canEditObject) {
-                            setDragDropPrompt(null);
-                            return;
-                        }
-                        const newId = Date.now().toString() + Math.random().toString(36).substring(7);
-                        const ownerId = getEntityOwnerId(entity);
-                        const cloned = JSON.parse(JSON.stringify(draggedEnt));
-                        cloned.id = newId;
-                        cloned.parentId = entity.id;
-                        cloned.database = entity.database;
-                        if (ownerId) {
-                            cloned.properties = { ...cloned.properties, _playerOwner: ownerId };
-                        }
-                        yjsStore.addEntity(cloned);
-                        setDragDropPrompt(null);
-                    },
-                    onCancel: () => setDragDropPrompt(null)
-                });
+        const draggedIds = getTopLevelEntityIds(readEntityDragIds(e.dataTransfer), allEntities);
+        const draggedEntities = draggedIds
+            .map(id => allEntities.find(ent => ent.id === id))
+            .filter((candidate): candidate is Entity => Boolean(candidate));
+        if (draggedEntities.length === 0 || draggedEntities.length !== draggedIds.length || draggedEntities.some(draggedEnt => draggedEnt.type !== 'attack' || draggedEnt.id === entity.id)) return;
+
+        const actionsByEntity = draggedEntities.map(draggedEnt => getEntityDropActions(
+            {
+                id: draggedEnt.id,
+                type: draggedEnt.type,
+                database: draggedEnt.database,
+                parentId: draggedEnt.parentId,
+            },
+            { kind: 'entity', entityId: entity.id, entityType: entity.type, slot: 'attacks' },
+            {
+                role: yjsStore.localRole,
+                canModifySource: canEditEntity(draggedEnt),
+                canModifyTarget: canEditObject,
             }
-        }
+        ));
+        const moveAction = actionsByEntity[0]?.find(action => action.id === 'move-entity');
+        const copyAction = actionsByEntity[0]?.find(action => action.id === 'copy-entity');
+        const canMoveAll = Boolean(moveAction) && actionsByEntity.every(actions => actions.some(action => action.id === 'move-entity'));
+        const canCopyAll = Boolean(copyAction) && actionsByEntity.every(actions => actions.some(action => action.id === 'copy-entity'));
+        if (!canMoveAll && !canCopyAll) return;
+
+        setDragDropPrompt({
+            x: e.clientX,
+            y: e.clientY,
+            entityName: draggedEntities.length === 1 ? draggedEntities[0].name : `${draggedEntities.length} сущностей`,
+            canMove: canMoveAll,
+            canCopy: canCopyAll,
+            moveLabel: moveAction?.label,
+            copyLabel: copyAction?.label,
+            onMove: () => {
+                if (!canMoveAll || !canEditObject) {
+                    setDragDropPrompt(null);
+                    return;
+                }
+                const ownerId = getEntityOwnerId(entity);
+                draggedEntities.forEach((draggedEnt) => {
+                    if (!canEditEntity(draggedEnt)) return;
+                    moveEntityTreeToParent(draggedEnt.id, entity.id, entity.database, { ownerId });
+                });
+                setDragDropPrompt(null);
+            },
+            onCopy: () => {
+                if (!canCopyAll || !canEditObject) {
+                    setDragDropPrompt(null);
+                    return;
+                }
+                const ownerId = getEntityOwnerId(entity);
+                draggedEntities.forEach((draggedEnt) => {
+                    const newId = yjsStore.cloneEntity(draggedEnt.id, entity.id, entity.database);
+                    if (newId) applyOwnerToEntityTree(newId, ownerId);
+                });
+                setDragDropPrompt(null);
+            },
+            onCancel: () => setDragDropPrompt(null)
+        });
     };
 
     const handleOpenNote = (noteName: string) => {
@@ -130,11 +201,28 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                 />
             )}
 
-            {/* Базовые параметры */}
-            <div className={`${glass.blockBg}`}>
-                <h3 className={glass.blockHeader}>
-                    Характеристики Предмета
-                </h3>
+            <SheetTabs
+                tabs={tabs}
+                activeTab={activeTab}
+                onChange={setActiveTab}
+                endSlot={activeTab === 'description' && canEditObject ? (
+                    <button
+                        onClick={() => setIsEditingDescription(!isEditingDescription)}
+                        className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${isEditingDescription ? 'bg-white/20 text-white shadow-sm' : 'text-white/45 hover:bg-white/10 hover:text-white'}`}
+                        title={isEditingDescription ? 'Завершить редактирование' : 'Редактировать описание'}
+                    >
+                        {isEditingDescription ? <Check size={14} /> : <Edit2 size={14} />}
+                    </button>
+                ) : null}
+            />
+
+            {activeTab === 'stats' && (
+                <>
+                    {/* Базовые параметры */}
+                    <div className={`${glass.blockBg}`}>
+                        <h3 className={glass.blockHeader}>
+                            Характеристики Предмета
+                        </h3>
 
                 <div className="grid grid-cols-3 gap-3">
                     {/* Категория (для инвентаря персонажа) */}
@@ -232,16 +320,16 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                             placeholder="0"
                         />
                     </div>
-                </div>
-            </div>
+                    </div>
+                    </div>
 
-            {/* ПРОПЕРТИЗ БЛОК (Свойства) */}
-            <div className={`${glass.blockBg} border-white/20 shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]`}>
-                <div className="flex items-center justify-between mb-4">
-                    <h4 className={glass.blockHeader + " mb-0"}>
-                        <Tag size={14} className="mr-2" />
-                        Свойства
-                    </h4>
+                    {/* ПРОПЕРТИЗ БЛОК (Свойства) */}
+                    <div className={`${glass.blockBg} border-white/20 shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]`}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className={glass.blockHeader + " mb-0"}>
+                                <Tag size={14} className="mr-2" />
+                                Свойства
+                            </h4>
 
                     {canEditObject && (
                         <>
@@ -266,54 +354,61 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                             />
                         </>
                     )}
-                </div>
+                        </div>
 
-                <div className="flex flex-wrap gap-2 text-sm">
-                    {entity.tags && entity.tags.length > 0 ? entity.tags.map(tagId => {
+                        <div className="flex flex-wrap gap-2 text-sm">
+                            {entity.tags && entity.tags.length > 0 ? entity.tags.map(tagId => {
 
-                        // Show all tags, or if there's a strict folder, you might filter. 
-                        // But since users might assign general tags, let's show anyway.
+                                // Show all tags, or if there's a strict folder, you might filter.
+                                // But since users might assign general tags, let's show anyway.
 
-                        return (
-                            <div key={tagId} className="group/tag flex items-center bg-[#2e3145] border border-white/5 rounded-lg overflow-hidden transition-colors hover:border-white/30 shadow-md">
-                                <EntityLink entityId={tagId} underline={false} className="px-2 py-1 text-white/80 font-medium whitespace-nowrap hover:text-white text-xs" />
-                                {canEditObject && (
-                                    <button
-                                        onClick={() => {
-                                            const newTags = entity.tags.filter(id => id !== tagId);
-                                            yjsStore.updateEntity(entity.id, { tags: newTags });
-                                        }}
-                                        className="px-2 py-1 text-white/30 hover:bg-red-900/40 hover:text-red-400 transition-colors border-l border-white/10 group-hover/tag:border-white/20"
-                                        title="Убрать"
-                                    >
-                                        <Trash2 size={12} />
-                                    </button>
-                                )}
-                            </div>
-                        )
-                    }) : <span className="text-white/30 text-xs italic">Нет свойств</span>}
-                </div>
-            </div>
+                                return (
+                                    <div key={tagId} className="group/tag flex items-center bg-[#2e3145] border border-white/5 rounded-lg overflow-hidden transition-colors hover:border-white/30 shadow-md">
+                                        <EntityLink entityId={tagId} underline={false} className="px-2 py-1 text-white/80 font-medium whitespace-nowrap hover:text-white text-xs" />
+                                        {canEditObject && (
+                                            <button
+                                                onClick={() => {
+                                                    const newTags = entity.tags.filter(id => id !== tagId);
+                                                    yjsStore.updateEntity(entity.id, { tags: newTags });
+                                                }}
+                                                className="px-2 py-1 text-white/30 hover:bg-red-900/40 hover:text-red-400 transition-colors border-l border-white/10 group-hover/tag:border-white/20"
+                                                title="Убрать"
+                                            >
+                                                <Trash2 size={12} />
+                                            </button>
+                                        )}
+                                    </div>
+                                )
+                            }) : <span className="text-white/30 text-xs italic">Нет свойств</span>}
+                        </div>
+                    </div>
+                </>
+            )}
 
             {/* Список Атак внутри предмета */}
-            <div
-                className={`${glass.blockBg} border-red-500/20 min-h-[100px] shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]`}
-                onDragOver={(e) => { if (canEditObject) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
-                onDrop={handleRootDrop}
-            >
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className={glass.blockHeader + " text-red-400 border-red-500/20 mb-0"}>
-                        Встроенные Атаки
-                    </h3>
-                    {canEditObject && (
-                        <button
-                            onClick={handleCreateAttack}
-                            className="text-[10px] bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 transition-colors px-2 py-1 rounded font-bold uppercase tracking-wider flex items-center gap-1 border border-red-500/30"
-                        >
-                            <Plus size={10} /> Добавить
-                        </button>
-                    )}
-                </div>
+            {activeTab === 'attacks' && (
+                <div
+                    data-entity-drop-target="true"
+                    data-entity-id={entity.id}
+                    data-entity-slot="attacks"
+                    data-entity-accepts="attack"
+                    className={`${glass.blockBg} border-red-500/20 min-h-[100px] shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]`}
+                    onDragOver={(e) => { if (canEditObject) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
+                    onDrop={handleRootDrop}
+                >
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className={glass.blockHeader + " text-red-400 border-red-500/20 mb-0"}>
+                            Встроенные Атаки
+                        </h3>
+                        {canEditObject && (
+                            <button
+                                onClick={handleCreateAttack}
+                                className="text-[10px] bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 transition-colors px-2 py-1 rounded font-bold uppercase tracking-wider flex items-center gap-1 border border-red-500/30"
+                            >
+                                <Plus size={10} /> Добавить
+                            </button>
+                        )}
+                    </div>
 
                 <div className="space-y-2">
                     {attacks.length === 0 ? (
@@ -323,6 +418,8 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                     ) : (
                         attacks.map(attack => {
                             const canEditAttack = canEditObject && canEditEntity(attack);
+                            const formula = getAttackFormula(attack);
+                            const canRoll = formula.length > 0;
 
                             return (
                                 <div key={attack.id} className="flex items-center gap-3 bg-[#1a1c29]/60 border border-white/5 p-2 rounded-lg hover:border-red-500/50 hover:bg-[#1a1c29] transition-all shadow-sm group/atk">
@@ -333,13 +430,25 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                                 )}
                                 <div className="flex-1 overflow-hidden pointer-events-none">
                                     <EntityLink entityId={attack.id} className="font-bold text-sm text-white/90 hover:text-red-300 truncate block pointer-events-auto transition-colors" underline={false} />
-                                    <div className="text-[10px] text-white/50 font-mono flex gap-3 mt-1">
+                                    <div className="text-[10px] text-white/50 font-mono flex flex-wrap gap-x-3 gap-y-1 mt-1">
                                         <span title="Урон">🗡️ <span className="font-bold text-white/90">{attack.properties.урон ?? 1}</span></span>
                                         <span title="Масштаб">📏 <span className="font-bold text-white/90">{attack.properties.масштаб ?? 1}</span></span>
                                         <span title="Попадание">🎯 <span className="font-bold text-white/90">{attack.properties.попадание ?? 1}</span></span>
                                         <span title="Дистанция" className="text-red-400/80 uppercase">({attack.properties.дистанция ?? 'ближняя'})</span>
+                                        {formula && <span title="Формула броска" className="text-emerald-300/75">🎲 {formula}</span>}
                                     </div>
                                 </div>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        sendAttackRollToChat(attack, entity);
+                                    }}
+                                    disabled={!canRoll}
+                                    className={`p-1.5 rounded-lg transition-all flex-shrink-0 ${canRoll ? 'bg-red-500/20 text-red-300 hover:bg-red-500/35 hover:text-red-100 border border-red-500/30' : 'bg-white/5 text-white/20 border border-transparent cursor-not-allowed'}`}
+                                    title={canRoll ? `Бросить ${formula}` : 'У атаки нет формулы броска'}
+                                >
+                                    <Dices size={14} />
+                                </button>
                                 {canEditAttack && (
                                     <button
                                         onClick={(e) => {
@@ -365,7 +474,37 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                         })
                     )}
                 </div>
-            </div>
+                </div>
+            )}
+
+            {activeTab === 'description' && (
+                <div className={`${glass.blockBg} min-h-[220px]`}>
+                    <h3 className={glass.blockHeader}>
+                        Описание
+                    </h3>
+
+                    {isEditingDescription && canEditObject ? (
+                        <WikiLinkTextarea
+                            value={entity.description || ''}
+                            onValueChange={updateDescription}
+                            excludeEntityId={entity.id}
+                            className={`${glass.input} w-full min-h-[180px] resize-y custom-scrollbar text-sm font-sans`}
+                            placeholder="Описание предмета, правила, заметки..."
+                            autoFocus
+                        />
+                    ) : (
+                        <div className="min-h-[180px] text-sm leading-relaxed text-white/80" onDoubleClick={() => { if (canEditObject) setIsEditingDescription(true); }}>
+                            {entity.description
+                                ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
+                                : <span className="text-white/30 italic cursor-pointer">{canEditObject ? 'Описание пустое. Дважды кликните для редактирования.' : 'Описание пустое.'}</span>}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'canvas' && (
+                <EntityCanvasTokenSettings entity={entity} canEdit={canEditObject} />
+            )}
         </div>
     );
 }

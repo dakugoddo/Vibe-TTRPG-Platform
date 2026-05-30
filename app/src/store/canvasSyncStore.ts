@@ -10,9 +10,11 @@ import {
     CANVAS_FOG_REVEALS_PROPERTY,
     readCanvasDrawElements,
     readCanvasFogReveals,
-    sanitizeDrawElementForPersistence,
+    normalizeDrawElementsForSharedSync,
+    sanitizeDrawElementForSharedSync,
     sanitizeFogRevealForPersistence,
 } from '../utils/canvasPersistence';
+import { getYjsPersistenceKey } from '../utils/yjsCache';
 import { useCanvasDrawStore } from './canvasDrawStore';
 import { yjsStore } from './yjsStore';
 
@@ -41,6 +43,11 @@ const CANVAS_ENTITY_WRITEBACK_DELAY_MS = 1000;
 const canvasEntityWriteTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const hydratingCanvasIds = new Set<string>();
 const mirroringCanvasIds = new Set<string>();
+const CANVAS_LOCAL_CHANGE_ORIGIN = 'canvas-local-change';
+const CURSOR_AWARENESS_MIN_INTERVAL_MS = 50;
+let lastCursorAwarenessAt = 0;
+let cursorAwarenessTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingCursorAwareness: { provider: WebsocketProvider; x: number; y: number } | null = null;
 
 /** Deterministic color from player ID */
 function getPlayerColor(playerId: string): string {
@@ -49,6 +56,40 @@ function getPlayerColor(playerId: string): string {
         hash = playerId.charCodeAt(i) + ((hash << 5) - hash);
     }
     return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length];
+}
+
+function writeLocalCursorAwareness(provider: WebsocketProvider, x: number, y: number): void {
+    const existing = provider.awareness.getLocalState()?.cursor || {};
+    provider.awareness.setLocalStateField('cursor', {
+        ...existing,
+        x,
+        y,
+        name: yjsStore.localPlayerName,
+        color: getPlayerColor(yjsStore.localPlayerId),
+        role: yjsStore.localRole,
+    });
+    lastCursorAwarenessAt = Date.now();
+}
+
+function scheduleLocalCursorAwareness(provider: WebsocketProvider, x: number, y: number): void {
+    const now = Date.now();
+    const elapsed = now - lastCursorAwarenessAt;
+    pendingCursorAwareness = { provider, x, y };
+
+    if (elapsed >= CURSOR_AWARENESS_MIN_INTERVAL_MS) {
+        const pending = pendingCursorAwareness;
+        pendingCursorAwareness = null;
+        if (pending) writeLocalCursorAwareness(pending.provider, pending.x, pending.y);
+        return;
+    }
+
+    if (cursorAwarenessTimer) return;
+    cursorAwarenessTimer = setTimeout(() => {
+        cursorAwarenessTimer = null;
+        const pending = pendingCursorAwareness;
+        pendingCursorAwareness = null;
+        if (pending) writeLocalCursorAwareness(pending.provider, pending.x, pending.y);
+    }, Math.max(0, CURSOR_AWARENESS_MIN_INTERVAL_MS - elapsed));
 }
 
 function getCanvasEntity(canvasId: string) {
@@ -85,7 +126,7 @@ function seedCanvasDocFromEntity(
         doc.transact(() => {
             if (elementsMap.size === 0) {
                 for (const element of drawElements) {
-                    elementsMap.set(element.id, sanitizeDrawElementForPersistence(element));
+                    elementsMap.set(element.id, sanitizeDrawElementForSharedSync(element));
                 }
             }
             if (fogMap.size === 0) {
@@ -114,7 +155,7 @@ function replaceCanvasDocFromEntity(
     hydratingCanvasIds.add(canvasId);
     try {
         doc.transact(() => {
-            syncMapWithSnapshot(elementsMap, drawElements.map(sanitizeDrawElementForPersistence));
+            syncMapWithSnapshot(elementsMap, drawElements.map(sanitizeDrawElementForSharedSync));
             syncMapWithSnapshot(fogMap, fogReveals.map(sanitizeFogRevealForPersistence));
         });
     } finally {
@@ -146,9 +187,9 @@ function writeCanvasEntitySnapshot(canvasId: string): void {
     const { elementsMap, fogMap } = useCanvasSyncStore.getState();
     if (!elementsMap || !fogMap) return;
 
-    const drawElements = Array.from(elementsMap.values()).map(sanitizeDrawElementForPersistence);
+    const drawElements = normalizeDrawElementsForSharedSync(Array.from(elementsMap.values()));
     const fogReveals = Array.from(fogMap.values()).map(sanitizeFogRevealForPersistence);
-    const currentDrawElements = readCanvasDrawElements(entity.properties);
+    const currentDrawElements = normalizeDrawElementsForSharedSync(readCanvasDrawElements(entity.properties));
     const currentFogReveals = readCanvasFogReveals(entity.properties);
 
     if (
@@ -194,6 +235,13 @@ function flushCanvasEntityWriteback(canvasId: string | null): void {
     writeCanvasEntitySnapshot(canvasId);
 }
 
+function getUndoAvailability(undoManager: Y.UndoManager | null): { canUndo: boolean; canRedo: boolean } {
+    return {
+        canUndo: Boolean(undoManager && undoManager.undoStack.length > 0),
+        canRedo: Boolean(undoManager && undoManager.redoStack.length > 0),
+    };
+}
+
 export interface CanvasSyncState {
     canvasId: string | null;
     elements: DrawElement[];
@@ -203,6 +251,8 @@ export interface CanvasSyncState {
     doc: Y.Doc | null;
     elementsMap: Y.Map<DrawElement> | null;
     undoManager: Y.UndoManager | null;
+    canUndo: boolean;
+    canRedo: boolean;
 
     /** Remote cursors: Map<peerId → RemoteCursor> */
     remoteCursors: Record<string, RemoteCursor>;
@@ -250,6 +300,8 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
     doc: null,
     elementsMap: null,
     undoManager: null,
+    canUndo: false,
+    canRedo: false,
     remoteCursors: {},
     fogReveals: [],
     fogMap: null,
@@ -267,10 +319,12 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
         const savedIp = localStorage.getItem('vibe_server_ip');
         const host = savedIp && savedIp.trim() !== '' ? savedIp.trim() : window.location.hostname;
         const roomName = `canvas-${canvasId}`;
-        const provider = new WebsocketProvider(`ws://${host}:3001/ws/canvas/${canvasId}`, roomName, doc, { connect: true });
-        const persistence = new IndexeddbPersistence(roomName, doc);
+        const persistence = new IndexeddbPersistence(getYjsPersistenceKey(roomName), doc);
         seedCanvasDocFromEntity(canvasId, doc, elementsMap, fogMap);
-        const undoManager = new Y.UndoManager(elementsMap);
+        const provider = new WebsocketProvider(`ws://${host}:3001/ws/canvas/${canvasId}`, roomName, doc, { connect: true });
+        const undoManager = new Y.UndoManager(elementsMap, {
+            trackedOrigins: new Set([CANVAS_LOCAL_CHANGE_ORIGIN]),
+        });
 
         provider.on('sync', (isSynced: boolean) => {
             set({ isSynced });
@@ -298,6 +352,10 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
         // Set isCanvasDirty when local actions add to undo history
         undoManager.on('stack-item-added', () => {
             useCanvasDrawStore.getState().setCanvasDirty(true);
+            set(getUndoAvailability(undoManager));
+        });
+        undoManager.on('stack-item-popped', () => {
+            set(getUndoAvailability(undoManager));
         });
 
         // ─── Awareness: track remote cursors ───
@@ -344,6 +402,7 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
             elementsMap,
             fogMap,
             undoManager,
+            ...getUndoAvailability(undoManager),
             provider,
             persistence,
             elements: Array.from(elementsMap.values()),
@@ -381,46 +440,62 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
             elementsMap: null,
             fogMap: null,
             undoManager: null,
+            canUndo: false,
+            canRedo: false,
             remoteCursors: {},
             fogReveals: [],
         });
     },
 
     setElement: (element: DrawElement) => {
-        const { canvasId, elementsMap } = get();
+        const { canvasId, doc, elementsMap, undoManager } = get();
         if (!canModifyCanvas(canvasId)) return;
-        if (elementsMap) elementsMap.set(element.id, sanitizeDrawElementForPersistence(element));
+        if (doc && elementsMap) {
+            doc.transact(() => {
+                elementsMap.set(element.id, sanitizeDrawElementForSharedSync(element));
+            }, CANVAS_LOCAL_CHANGE_ORIGIN);
+            set(getUndoAvailability(undoManager));
+        }
     },
 
     updateElement: (id: string, partial: Partial<DrawElement>) => {
-        const { canvasId, elementsMap } = get();
+        const { canvasId, doc, elementsMap, undoManager } = get();
         if (!canModifyCanvas(canvasId)) return;
-        if (elementsMap) {
+        if (doc && elementsMap) {
             const existing = elementsMap.get(id);
             if (existing) {
-                elementsMap.set(id, sanitizeDrawElementForPersistence({ ...existing, ...partial }));
+                doc.transact(() => {
+                    elementsMap.set(id, sanitizeDrawElementForSharedSync({ ...existing, ...partial }));
+                }, CANVAS_LOCAL_CHANGE_ORIGIN);
+                set(getUndoAvailability(undoManager));
             }
         }
     },
 
     deleteElement: (id: string) => {
-        const { canvasId, elementsMap } = get();
+        const { canvasId, doc, elementsMap, undoManager } = get();
         if (!canModifyCanvas(canvasId)) return;
-        if (elementsMap) elementsMap.delete(id);
+        if (doc && elementsMap) {
+            doc.transact(() => {
+                elementsMap.delete(id);
+            }, CANVAS_LOCAL_CHANGE_ORIGIN);
+            set(getUndoAvailability(undoManager));
+        }
     },
 
     deleteElements: (ids: string[]) => {
-        const { canvasId, doc, elementsMap } = get();
+        const { canvasId, doc, elementsMap, undoManager } = get();
         if (!canModifyCanvas(canvasId)) return;
         if (doc && elementsMap) {
             doc.transact(() => {
                 ids.forEach(id => elementsMap.delete(id));
-            });
+            }, CANVAS_LOCAL_CHANGE_ORIGIN);
+            set(getUndoAvailability(undoManager));
         }
     },
 
     syncElementsArray: (newArray: DrawElement[]) => {
-        const { canvasId, doc, elementsMap } = get();
+        const { canvasId, doc, elementsMap, undoManager } = get();
         if (!canModifyCanvas(canvasId)) return;
         if (!doc || !elementsMap) return;
         
@@ -431,7 +506,7 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
             for (const el of newArray) {
                 newKeys.add(el.id);
                 const existing = elementsMap.get(el.id);
-                const cleanElement = sanitizeDrawElementForPersistence(el);
+                const cleanElement = sanitizeDrawElementForSharedSync(el);
                 if (JSON.stringify(existing) !== JSON.stringify(cleanElement)) {
                     elementsMap.set(el.id, cleanElement);
                 }
@@ -442,7 +517,8 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
                     elementsMap.delete(key);
                 }
             }
-        });
+        }, CANVAS_LOCAL_CHANGE_ORIGIN);
+        set(getUndoAvailability(undoManager));
     },
 
     undo: () => {
@@ -450,6 +526,7 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
         if (!canModifyCanvas(canvasId)) return;
         if (undoManager) {
             undoManager.undo();
+            set(getUndoAvailability(undoManager));
         }
     },
 
@@ -458,27 +535,21 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
         if (!canModifyCanvas(canvasId)) return;
         if (undoManager) {
             undoManager.redo();
+            set(getUndoAvailability(undoManager));
         }
     },
     
     clearHistory: () => {
         const { undoManager } = get();
         if (undoManager) undoManager.clear();
+        set(getUndoAvailability(undoManager));
         useCanvasDrawStore.getState().setCanvasDirty(false);
     },
 
     setLocalCursor: (x: number, y: number) => {
         const { provider } = get();
         if (provider?.awareness) {
-            const existing = provider.awareness.getLocalState()?.cursor || {};
-            provider.awareness.setLocalStateField('cursor', {
-                ...existing,
-                x,
-                y,
-                name: yjsStore.localPlayerName,
-                color: getPlayerColor(yjsStore.localPlayerId),
-                role: yjsStore.localRole,
-            });
+            scheduleLocalCursorAwareness(provider, x, y);
         }
     },
 

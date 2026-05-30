@@ -1,6 +1,7 @@
 ---
 type: object
 schemaVersion: 1
+id: 7005d46b-22e7-4481-a351-a1dfdc7d693f
 uid: 7005d46b-22e7-4481-a351-a1dfdc7d693f
 properties:
   фигура: 1

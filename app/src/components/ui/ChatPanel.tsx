@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { yjsStore } from '../../store/yjsStore';
 import type { ChatMessage } from '../../types';
 import { rollEngine } from '../../services/rollEngine';
-import { MessageSquare, Send, Dices, History, ScrollText } from 'lucide-react';
+import { ArrowDown, MessageSquare, Send, Dices, History, ScrollText } from 'lucide-react';
 
 interface DiceHistoryEntry {
     id: string;
@@ -49,9 +49,39 @@ export function ChatPanel() {
     const [messages, setMessages] = useState<ChatMessage[]>(() => yjsStore.chatArray.toArray());
     const [input, setInput] = useState('');
     const [activeTab, setActiveTab] = useState<'chat' | 'history' | 'events'>('chat');
+    const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+    const chatScrollRef = useRef<HTMLDivElement>(null);
+    const historyScrollRef = useRef<HTMLDivElement>(null);
+    const eventsScrollRef = useRef<HTMLDivElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const historyEndRef = useRef<HTMLDivElement>(null);
     const eventsEndRef = useRef<HTMLDivElement>(null);
+
+    const getActiveScrollRef = useCallback((tab: typeof activeTab = activeTab) => {
+        if (tab === 'history') return historyScrollRef;
+        if (tab === 'events') return eventsScrollRef;
+        return chatScrollRef;
+    }, [activeTab]);
+
+    const getActiveEndRef = useCallback((tab: typeof activeTab = activeTab) => {
+        if (tab === 'history') return historyEndRef;
+        if (tab === 'events') return eventsEndRef;
+        return messagesEndRef;
+    }, [activeTab]);
+
+    const isNearBottom = (element: HTMLDivElement) =>
+        element.scrollHeight - element.scrollTop - element.clientHeight < 64;
+
+    const scrollToLatest = useCallback((tab: typeof activeTab = activeTab, behavior: ScrollBehavior = 'smooth') => {
+        getActiveEndRef(tab).current?.scrollIntoView({ behavior, block: 'end' });
+        setShowJumpToLatest(false);
+    }, [activeTab, getActiveEndRef]);
+
+    const handleScroll = useCallback(() => {
+        const element = getActiveScrollRef().current;
+        if (!element) return;
+        setShowJumpToLatest(!isNearBottom(element));
+    }, [getActiveScrollRef]);
 
     useEffect(() => {
         const observer = () => {
@@ -64,30 +94,25 @@ export function ChatPanel() {
     }, []);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+        requestAnimationFrame(() => scrollToLatest(activeTab, 'auto'));
+    }, [activeTab, scrollToLatest]);
 
     useEffect(() => {
-        if (activeTab === 'history') {
-            historyEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }
-        if (activeTab === 'events') {
-            eventsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [activeTab, messages]);
+        const element = getActiveScrollRef().current;
+        if (!element || showJumpToLatest) return;
+        requestAnimationFrame(() => scrollToLatest(activeTab, 'smooth'));
+    }, [activeTab, getActiveScrollRef, messages.length, scrollToLatest, showJumpToLatest]);
 
     // Parse dice history from messages
     const diceHistory = useMemo(() => {
         return messages
             .map(parseDiceMessage)
             .filter((e): e is DiceHistoryEntry => e !== null)
-            .reverse(); // newest first
     }, [messages]);
 
     const actionLog = useMemo(() => {
         return messages
-            .filter((msg) => msg.isSystem && !parseDiceMessage(msg))
-            .reverse(); // newest first
+            .filter((msg) => msg.isSystem && !parseDiceMessage(msg));
     }, [messages]);
 
     const handleSend = () => {
@@ -124,7 +149,7 @@ export function ChatPanel() {
     };
 
     return (
-        <div className="flex flex-col h-full bg-black/20 border-l border-white/10 animate-in slide-in-from-right-8 duration-300 backdrop-blur-md">
+        <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-black/20 border-l border-white/10 animate-in slide-in-from-right-8 duration-300 backdrop-blur-md">
             {/* Header with tabs */}
             <div className="p-3 border-b border-white/10 bg-white/5">
                 <div className="flex items-center gap-1">
@@ -155,7 +180,7 @@ export function ChatPanel() {
             {/* Chat tab */}
             {activeTab === 'chat' && (
                 <>
-                    <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+                    <div ref={chatScrollRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-y-auto p-3 pb-5 space-y-3 custom-scrollbar">
                         {messages.length === 0 ? (
                             <div className="text-center text-gray-500 text-xs italic mt-10">
                                 Чат пуст. Напишите сообщение или используйте /r 1d20 для броска кубиков.
@@ -200,7 +225,7 @@ export function ChatPanel() {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    <div className="p-3 border-t border-white/10 bg-white/5">
+                    <div className="p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] border-t border-white/10 bg-white/5">
                         <div className="flex bg-white/5 rounded-lg border border-white/10 focus-within:bg-white/10 focus-within:border-white/30 transition-all overflow-hidden backdrop-blur-sm shadow-inner">
                             <input
                                 type="text"
@@ -227,7 +252,7 @@ export function ChatPanel() {
 
             {/* History tab */}
             {activeTab === 'history' && (
-                <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+                <div ref={historyScrollRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-y-auto p-3 pb-5 custom-scrollbar">
                     {diceHistory.length === 0 ? (
                         <div className="text-center text-gray-500 text-xs italic mt-10">
                             История бросков пуста. Бросьте кубики через чат, навыки или заметки.
@@ -288,7 +313,7 @@ export function ChatPanel() {
 
             {/* Events tab */}
             {activeTab === 'events' && (
-                <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+                <div ref={eventsScrollRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-y-auto p-3 pb-5 custom-scrollbar">
                     {actionLog.length === 0 ? (
                         <div className="text-center text-gray-500 text-xs italic mt-10">
                             Событий пока нет. Измените раны, статус или выдайте предмет игроку.
@@ -323,6 +348,17 @@ export function ChatPanel() {
                         </div>
                     )}
                 </div>
+            )}
+
+            {showJumpToLatest && (
+                <button
+                    type="button"
+                    onClick={() => scrollToLatest(activeTab)}
+                    className="absolute bottom-20 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-[#111827]/90 text-white/70 shadow-[0_14px_35px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all hover:border-white/30 hover:bg-white/15 hover:text-white"
+                    title="К последним сообщениям"
+                >
+                    <ArrowDown size={16} />
+                </button>
             )}
         </div>
     );

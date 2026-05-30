@@ -11,6 +11,31 @@ export interface RandomProvider {
     nextInt: RandomInt;
 }
 
+export type RollVariableResolver = (variableName: string) => number | null | undefined;
+
+export interface RollExpressionOptions {
+    resolveVariable?: RollVariableResolver;
+    plainNumberAsD6Pool?: boolean;
+    label?: string;
+}
+
+export interface ResolvedRollExpression {
+    kind: 'notation' | 'd6-pool';
+    sourceExpression: string;
+    resolvedExpression: string;
+    notation: string;
+    diceCount: number;
+    faces: number;
+    modifier: number;
+    missingVariables: string[];
+}
+
+export interface RollExpressionResult extends DiceRollResult {
+    sourceExpression: string;
+    resolvedExpression: string;
+    missingVariables?: string[];
+}
+
 class LocalCryptoRandomProvider implements RandomProvider {
     id = 'local-crypto';
     label = 'Local crypto random';
@@ -78,6 +103,89 @@ function createRollError(rawCommand: string, error: unknown): DiceRollResult {
     };
 }
 
+function normalizeRollInput(expression: string): string {
+    return expression
+        .trim()
+        .replace(/^\/r\s+/i, '')
+        .replace(/^\/roll\s+/i, '')
+        .replace(/^!roll\s+/i, '');
+}
+
+export function resolveRollExpression(expression: string, options: RollExpressionOptions = {}): ResolvedRollExpression | null {
+    const sourceExpression = normalizeRollInput(expression);
+    if (!sourceExpression) return null;
+
+    const missingVariables: string[] = [];
+    let resolvedExpression = sourceExpression.trim().replace(/\s+/g, '');
+    resolvedExpression = resolvedExpression.replace(/\$([\p{L}_][\p{L}\p{N}_.-]*)/gu, (_match, variableName: string) => {
+        const value = options.resolveVariable?.(variableName);
+        if (value === undefined || value === null || !Number.isFinite(value)) {
+            missingVariables.push(variableName);
+            return '0';
+        }
+        return String(value);
+    });
+
+    const diceMatch = resolvedExpression.match(/^(\d*)d(\d+)((?:[+-]\d+)*)$/i);
+    if (diceMatch) {
+        const modifierPart = diceMatch[3] ?? '';
+        const modifier = Array.from(modifierPart.matchAll(/[+-]\d+/g))
+            .reduce((total, match) => total + Number(match[0]), 0);
+        const diceCount = diceMatch[1] ? Number(diceMatch[1]) : 1;
+        const faces = Number(diceMatch[2]);
+        const notation = `${diceCount}d${faces}${modifier !== 0 ? `${modifier > 0 ? '+' : ''}${modifier}` : ''}`;
+
+        return {
+            kind: 'notation',
+            sourceExpression,
+            resolvedExpression,
+            notation,
+            diceCount,
+            faces,
+            modifier,
+            missingVariables,
+        };
+    }
+
+    const poolCount = Number(resolvedExpression);
+    if (options.plainNumberAsD6Pool && Number.isInteger(poolCount) && poolCount > 0) {
+        return {
+            kind: 'd6-pool',
+            sourceExpression,
+            resolvedExpression,
+            notation: `${poolCount}d6`,
+            diceCount: poolCount,
+            faces: 6,
+            modifier: 0,
+            missingVariables,
+        };
+    }
+
+    return null;
+}
+
+export function rollExpression(expression: string, options: RollExpressionOptions = {}): RollExpressionResult {
+    const resolved = resolveRollExpression(expression, options);
+    if (!resolved) {
+        return {
+            ...createRollError(expression, 'Неверное выражение броска. Используйте 2d6+3, d20 или числовой d6-pool.'),
+            sourceExpression: expression,
+            resolvedExpression: expression,
+        };
+    }
+
+    const result = resolved.kind === 'd6-pool'
+        ? rollD6Pool(resolved.diceCount, options.label ?? resolved.sourceExpression)
+        : rollDiceNotation(resolved.notation);
+
+    return {
+        ...result,
+        sourceExpression: resolved.sourceExpression,
+        resolvedExpression: resolved.resolvedExpression,
+        missingVariables: resolved.missingVariables.length > 0 ? resolved.missingVariables : undefined,
+    };
+}
+
 export function setRollRandomProvider(provider: RandomProvider) {
     activeProvider = provider;
 }
@@ -127,6 +235,8 @@ export function formatRollMessage(expression: string, result: DiceRollResult): s
 export const rollEngine = {
     rollDiceCommand,
     rollDiceNotation,
+    rollExpression,
+    resolveRollExpression,
     rollD6Pool,
     formatRollMessage,
     getRandomProvider: getRollRandomProvider,

@@ -58,6 +58,8 @@ interface Entity {
 
 Этот слой не должен раздувать CRDT-документы. Для него нужен отдельный WebSocket/event канал.
 
+Текущий audio MVP использует тонкий session-command слой поверх глобального Yjs doc: хранится только последняя `AudioSessionCommand` (`play/stop`, `assetId`, `assetPath`, `volume`, `startedAt`). Команда не зеркалится в `.md`, старые SFX-команды игнорируются по TTL, а player-клиент воспроизводит её только после ручного opt-in `Звук сессии`. Если аудио вырастет в полноценный микшер/плейлисты, этот слой нужно отделить от persistent Entity data так же строго, как awareness.
+
 ### Awareness state
 
 Данные присутствия:
@@ -92,6 +94,8 @@ interface RandomProvider {
 ```
 
 Если random.org будет асинхронным, Roll Engine нужно расширить до async API. До этого UI должен зависеть от фасада движка, а не от конкретной реализации.
+
+Текущий фасад уже включает `rollExpression`/`resolveRollExpression`: Markdown `!roll`, будущие атаки, способности, предметные эффекты и статусы должны передавать формулу и resolver переменных в Roll Engine, а не держать собственный парсер бросков в UI.
 
 ## 4. Механики игровой системы
 
@@ -148,7 +152,8 @@ Canvas должен масштабироваться до больших кар�
 - `.pi/PRODUCT_VISION.md` - что строим;
 - `.pi/ARCHITECTURE.md` - как строим;
 - `.pi/DEVELOPMENT_PLAN.md` - текущий порядок работ;
-- `.pi/FEATURE_STATUS.md` - что готово, что рискованно, что требует проверки.
+- `.pi/FEATURE_BACKLOG.md` - очередь новых функций, статусы и зависимости;
+- `.pi/BUG_BACKLOG.md` - очередь багов, приоритеты и batch keys;
 - `.pi/docs/code-map.md` - владельцы логики и стартовые файлы для типовых задач.
 - `.pi/docs/platform-runtime-decision.md` - runtime/Steam/3D decision draft.
 

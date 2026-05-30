@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Settings as SettingsIcon } from 'lucide-react';
 import { yjsStore } from './store/yjsStore';
 import { initEntityStoreObserver, getEntitiesSnapshot } from './store/entityStore';
 import { useCanvasStore } from './store/canvasStore';
@@ -10,6 +11,8 @@ import { WindowManager } from './components/windows/WindowManager';
 import { InfiniteCanvas } from './components/canvas/InfiniteCanvas';
 import { CanvasToolbar } from './components/canvas/CanvasToolbar';
 import { DragDropPopover, type DragDropPromptData } from './components/ui/DragDropPopover';
+import { useAppModuleEnabled } from './hooks/useAppModuleEnablement';
+import { useThemePreset } from './hooks/useThemePreset';
 
 import { LoginScreen } from './components/ui/LoginScreen';
 import { HudBar } from './components/ui/HudBar';
@@ -17,14 +20,22 @@ import { LeftDrawer } from './components/ui/LeftDrawer';
 import { RightDrawer } from './components/ui/RightDrawer';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { HotkeyHelp } from './components/ui/HotkeyHelp';
-import { glass } from './utils/theme';
+import { AudioSessionBridge } from './components/ui/AudioSessionBridge';
+import { AudioControlDock } from './components/ui/AudioControlDock';
+import { NotificationCenter } from './components/ui/NotificationCenter';
+import { SessionNotificationBridge } from './components/ui/SessionNotificationBridge';
+import { SettingsWindow } from './components/ui/SettingsWindow';
+import { generateEntityId } from './utils/entityId';
 
 function App() {
+  useThemePreset();
   const [roomName, setRoomName] = useState('');
   const [inRoom, setInRoom] = useState(false);
   const [dbOpen, setDbOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [canvasDropPrompt, setCanvasDropPrompt] = useState<DragDropPromptData | null>(null);
+  const [audioModuleEnabled] = useAppModuleEnabled('audio');
 
   const { activeCanvasId } = useCanvasStore();
   const isDraggingGlobal = useCanvasDrawStore((s) => s.isDraggingGlobal);
@@ -78,7 +89,7 @@ function App() {
 
   return (
     <div
-      className={`min-h-screen text-white w-full relative overflow-hidden flex ${glass.bg}`}
+      className="vibe-app-bg min-h-screen w-full relative overflow-hidden flex"
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "copy";
@@ -126,7 +137,7 @@ function App() {
             const stageY = (e.clientY - offset.y) / scale;
 
             if (isCanvas) {
-              const portalId = `portal_${Date.now()}`;
+              const portalId = generateEntityId(Object.keys(getEntitiesSnapshot()));
               yjsStore.addEntity({
                 id: portalId,
                 parentId: activeCanvasId,
@@ -210,6 +221,13 @@ function App() {
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
         </button>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="pointer-events-auto w-14 h-14 bg-white/5 backdrop-blur-xl rounded-2xl shadow-xl border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors text-white/50 hover:text-white"
+          title="Настройки"
+        >
+          <SettingsIcon size={22} />
+        </button>
       </div>
 
       <div className="ui-layer">
@@ -220,6 +238,15 @@ function App() {
       <DragDropPopover data={canvasDropPrompt} />
       <ConfirmDialog />
       <HotkeyHelp />
+      <SessionNotificationBridge />
+      <NotificationCenter />
+      {audioModuleEnabled && (
+        <>
+          <AudioSessionBridge />
+          <AudioControlDock />
+        </>
+      )}
+      <SettingsWindow isOpen={settingsOpen} roomName={roomName} onClose={() => setSettingsOpen(false)} />
     </div >
   );
 }

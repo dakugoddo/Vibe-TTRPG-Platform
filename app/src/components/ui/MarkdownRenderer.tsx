@@ -7,19 +7,13 @@ import { yjsStore } from '../../store/yjsStore';
 import { rollEngine } from '../../services/rollEngine';
 import { getEntitiesSnapshot, useEntitiesByParent, useEntity } from '../../hooks/useEntities';
 import { glass } from '../../utils/theme';
+import { createEntityRollVariableResolver } from '../../utils/rollVariables';
 import type { Entity } from '../../types';
 
 interface MarkdownRendererProps {
     content: string;
     entityId?: string;
     allowCustomBlocks?: boolean;
-}
-
-interface ResolvedRollExpression {
-    diceCount: number;
-    faces: number;
-    modifier: number;
-    resolvedExpr: string;
 }
 
 interface StatBlockRow {
@@ -85,97 +79,30 @@ function coerceStatValue(value: unknown): number | null {
     return null;
 }
 
-function findNamedNumericValue(source: unknown, desiredKey: string, depth = 0): number | null {
-    if (!source || typeof source !== 'object' || depth > 5) return null;
-
-    const record = source as Record<string, unknown>;
-    const direct = getRecordValue(record, desiredKey);
-    const directValue = coerceStatValue(direct);
-    if (directValue !== null) return directValue;
-
-    for (const [key, value] of Object.entries(record)) {
-        if (normalizeKey(key) === normalizeKey(desiredKey)) {
-            const valueNumber = coerceStatValue(value);
-            if (valueNumber !== null) return valueNumber;
-        }
-    }
-
-    for (const value of Object.values(record)) {
-        const nested = findNamedNumericValue(value, desiredKey, depth + 1);
-        if (nested !== null) return nested;
-    }
-
-    return null;
-}
-
 function resolveVariable(varName: string, contextEntity?: Entity): number {
     const allEntities = getEntitiesSnapshot();
-    const candidates = [
-        ...(contextEntity ? [contextEntity] : []),
-        ...Object.values(allEntities).filter(entity => entity.id !== contextEntity?.id),
-    ];
-
-    for (const entity of candidates) {
-        const skills = getRecordValue(entity.properties, 'skills');
-        const skillValue = findNamedNumericValue(skills, varName);
-        if (skillValue !== null) return skillValue;
-
-        const propertyValue = findNamedNumericValue(entity.properties, varName);
-        if (propertyValue !== null) return propertyValue;
-    }
-
-    return 0;
-}
-
-function resolveRollExpression(expression: string, contextEntity?: Entity): ResolvedRollExpression | null {
-    let resolved = expression.trim().replace(/\s+/g, '');
-    resolved = resolved.replace(/\$(\w+)/g, (_match, varName: string) => String(resolveVariable(varName, contextEntity)));
-
-    const diceMatch = resolved.match(/^(\d*)d(\d+)((?:[+-]\d+)*)$/i);
-    if (diceMatch) {
-        const modifierPart = diceMatch[3] ?? '';
-        const modifier = Array.from(modifierPart.matchAll(/[+-]\d+/g))
-            .reduce((total, match) => total + Number(match[0]), 0);
-
-        return {
-            diceCount: diceMatch[1] ? Number(diceMatch[1]) : 1,
-            faces: Number(diceMatch[2]),
-            modifier,
-            resolvedExpr: resolved,
-        };
-    }
-
-    const poolCount = Number(resolved);
-    if (Number.isInteger(poolCount) && poolCount > 0) {
-        return {
-            diceCount: poolCount,
-            faces: 6,
-            modifier: 0,
-            resolvedExpr: `${poolCount}d6`,
-        };
-    }
-
-    return null;
+    return createEntityRollVariableResolver(contextEntity, Object.values(allEntities))(varName) ?? 0;
 }
 
 function handleInlineRoll(expression: string, contextEntity?: Entity) {
-    const resolved = resolveRollExpression(expression, contextEntity);
-    if (!resolved || resolved.diceCount <= 0) {
-        yjsStore.sendMessage(`Ошибка броска: ${expression}`, 'Система', true);
+    const result = rollEngine.rollExpression(expression, {
+        plainNumberAsD6Pool: true,
+        resolveVariable: (variableName) => resolveVariable(variableName, contextEntity),
+    });
+
+    if (result.error) {
+        yjsStore.sendMessage(`Ошибка броска: ${result.error}`, 'Система', true);
         return;
     }
 
-    const notation = `${resolved.diceCount}d${resolved.faces}${resolved.modifier !== 0 ? `${resolved.modifier > 0 ? '+' : ''}${resolved.modifier}` : ''}`;
-    const result = resolved.faces === 6 && resolved.modifier === 0
-        ? rollEngine.rollD6Pool(resolved.diceCount, expression.trim())
-        : rollEngine.rollDiceNotation(notation);
+    yjsStore.sendMessage(rollEngine.formatRollMessage(expression, result), 'Система', true);
+}
 
-    if (result && !result.error) {
-        yjsStore.sendMessage(rollEngine.formatRollMessage(expression, result), 'Система', true);
-        return;
-    }
-
-    yjsStore.sendMessage(`Ошибка броска: ${result?.error ?? resolved.resolvedExpr}`, 'Система', true);
+function parseWikiLinkTarget(source: string): { target: string; label?: string } {
+    const [targetRaw, ...labelParts] = source.split('|');
+    const target = targetRaw.trim();
+    const label = labelParts.join('|').trim();
+    return label ? { target, label } : { target };
 }
 
 function parseStatsBlockConfig(source: string): StatBlockRow[] {
@@ -338,7 +265,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, ent
             return `[🎲 ${trimmedExpression}](#roll:${encodeURIComponent(trimmedExpression)})`;
         })
         .replace(/\[\[(.*?)\]\]/g, (_match, entityName: string) => {
-            return `[${entityName}](#entity:${encodeURIComponent(entityName)})`;
+            const { target, label } = parseWikiLinkTarget(entityName);
+            return `[${label || target}](#entity:${encodeURIComponent(target)}${label ? `?label=${encodeURIComponent(label)}` : ''})`;
         }), [content]);
 
     const markdownComponents = useMemo<Components>(() => ({
@@ -362,8 +290,15 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, ent
             }
 
             if (href?.startsWith('#entity:')) {
-                const entityName = decodeURIComponent(href.replace('#entity:', ''));
-                return <EntityLink key={entityName} entityName={entityName}>{children}</EntityLink>;
+                const raw = href.replace('#entity:', '');
+                const [targetPart, labelPart] = raw.split('?label=');
+                const target = decodeURIComponent(targetPart);
+                const label = labelPart ? decodeURIComponent(labelPart) : undefined;
+                const targetEntity = getEntitiesSnapshot()[target];
+                if (targetEntity) {
+                    return <EntityLink key={target} entityId={target}>{label ? children : undefined}</EntityLink>;
+                }
+                return <EntityLink key={target} entityName={target}>{label ? children : undefined}</EntityLink>;
             }
 
             return (

@@ -103,6 +103,19 @@ export async function openWorld(worldPath: string): Promise<WorldMeta> {
     });
 }
 
+export async function getAudioDeck(): Promise<any> {
+    if (!(await shouldCallFileApi())) return null;
+    return apiFetch('/api/world/audio-deck');
+}
+
+export async function saveAudioDeck(data: any): Promise<void> {
+    if (!(await shouldCallFileApi())) return;
+    return apiFetch('/api/world/audio-deck', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
 // ─── Players ───
 
 export async function listPlayers(): Promise<string[]> {
@@ -253,4 +266,156 @@ export function disconnectFileWatcher(): void {
         ws.close();
         ws = null;
     }
+}
+
+export interface AssetRecord {
+    id: string;
+    name: string;
+    path: string;
+    relativePath: string;
+    ext: string;
+    type: 'image' | 'audio' | 'model' | 'video' | 'other';
+    mime: string;
+    size: number;
+    createdAt: string;
+    modifiedAt: string;
+    url: string;
+}
+
+export type AssetKind = 'all' | 'image' | 'audio' | 'model' | 'video' | 'other';
+
+export interface UploadAssetFileOptions {
+    onProgress?: (progress: { loaded: number; total: number; percent: number }) => void;
+    signal?: AbortSignal;
+}
+
+export async function listAssetRecords(): Promise<AssetRecord[]> {
+    if (!(await shouldCallFileApi())) return [];
+    return apiFetch('/api/assets/index');
+}
+
+export async function deleteAssetFile(assetPath: string): Promise<void> {
+    if (!(await shouldCallFileApi())) return;
+    const params = new URLSearchParams({ path: assetPath });
+    await apiFetch(`/api/assets/file?${params}`, {
+        method: 'DELETE',
+    });
+}
+
+export async function showAssetInExplorer(assetPath: string): Promise<boolean> {
+    if (!(await shouldCallFileApi())) return false;
+    await apiFetch('/api/assets/show-in-explorer', {
+        method: 'POST',
+        body: JSON.stringify({ path: assetPath }),
+    });
+    return true;
+}
+
+export async function showEntityInExplorer(db: DatabaseType, id: string, player?: string): Promise<boolean> {
+    if (!(await shouldCallFileApi())) return false;
+    const params = new URLSearchParams({ db });
+    if (player) params.append('player', player);
+    await apiFetch(`/api/entities/${encodeURIComponent(id)}/show-in-explorer?${params}`, {
+        method: 'POST',
+    });
+    return true;
+}
+
+export async function renameEntityFileToTitle(db: DatabaseType, id: string, title: string, player?: string, options?: { dryRun?: boolean }): Promise<any> {
+    if (!(await shouldCallFileApi())) return null;
+    const params = new URLSearchParams({ db });
+    if (player) params.append('player', player);
+    return apiFetch(`/api/entities/${encodeURIComponent(id)}/rename-path?${params}`, {
+        method: 'POST',
+        body: JSON.stringify({ title, dryRun: options?.dryRun }),
+    });
+}
+
+export async function uploadAsset(filename: string, base64: string): Promise<{ filename: string; url: string }> {
+    if (!(await shouldCallFileApi())) {
+        throw new Error('File API is available only for the host');
+    }
+    const data = await apiFetch<{ success?: boolean; filename?: string; url?: string }>('/api/assets/upload', {
+        method: 'POST',
+        body: JSON.stringify({ filename, base64 }),
+    });
+    if (!data.filename) {
+        throw new Error('Asset upload did not return a filename');
+    }
+    return {
+        filename: data.filename,
+        url: data.url || getAssetUrl(data.filename),
+    };
+}
+
+export async function uploadAssetFile(file: File, options: UploadAssetFileOptions = {}): Promise<{ filename: string; url: string }> {
+    if (!(await shouldCallFileApi())) {
+        throw new Error('File API is available only for the host');
+    }
+    return uploadAssetFileToHost(file, options);
+}
+
+export async function uploadAssetFileToHost(file: File, options: UploadAssetFileOptions = {}): Promise<{ filename: string; url: string }> {
+    const params = new URLSearchParams({ filename: file.name });
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const cleanup = () => {
+            options.signal?.removeEventListener('abort', handleAbort);
+        };
+        const handleAbort = () => {
+            xhr.abort();
+            cleanup();
+            reject(new DOMException('Upload aborted', 'AbortError'));
+        };
+
+        xhr.open('POST', `${SERVER_URL}/api/assets/upload-binary?${params}`);
+        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+
+        xhr.upload.onprogress = (event) => {
+            const total = event.lengthComputable ? event.total : file.size;
+            const loaded = event.loaded;
+            const percent = total > 0 ? Math.max(0, Math.min(100, Math.round((loaded / total) * 100))) : 0;
+            options.onProgress?.({ loaded, total, percent });
+        };
+
+        xhr.onload = () => {
+            cleanup();
+            let data: { success?: boolean; filename?: string; url?: string; error?: string } = {};
+            try {
+                data = JSON.parse(xhr.responseText || '{}');
+            } catch {
+                data = {};
+            }
+            if (xhr.status < 200 || xhr.status >= 300) {
+                reject(new Error(data.error || xhr.statusText || `HTTP ${xhr.status}`));
+                return;
+            }
+            if (!data.filename) {
+                reject(new Error('Asset upload did not return a filename'));
+                return;
+            }
+            options.onProgress?.({ loaded: file.size, total: file.size, percent: 100 });
+            resolve({
+                filename: data.filename,
+                url: data.url || getAssetUrl(data.filename),
+            });
+        };
+
+        xhr.onerror = () => {
+            cleanup();
+            reject(new Error(xhr.statusText || 'Asset upload failed'));
+        };
+
+        xhr.onabort = () => {
+            cleanup();
+            reject(new DOMException('Upload aborted', 'AbortError'));
+        };
+
+        if (options.signal?.aborted) {
+            handleAbort();
+            return;
+        }
+        options.signal?.addEventListener('abort', handleAbort, { once: true });
+        xhr.send(file);
+    });
 }

@@ -284,3 +284,35 @@ function findFileRecursive(dir: string, filename: string): string | null {
     }
     return null;
 }
+
+/**
+ * Load the audio deck settings from the current world's gm folder.
+ */
+export function loadAudioDeck(): any {
+    if (!currentWorldPath) throw new Error('No world is currently open');
+    const deckPath = path.join(currentWorldPath, 'gm', 'audio_deck.json');
+    if (!fs.existsSync(deckPath)) {
+        return null;
+    }
+    try {
+        const data = fs.readFileSync(deckPath, 'utf-8');
+        return JSON.parse(data);
+    } catch (err) {
+        console.warn('⚠️ Failed to load audio_deck.json:', (err as Error).message);
+        return null;
+    }
+}
+
+/**
+ * Save the audio deck settings to the current world's gm folder.
+ */
+export function saveAudioDeck(data: any): void {
+    if (!currentWorldPath) throw new Error('No world is currently open');
+    const deckPath = path.join(currentWorldPath, 'gm', 'audio_deck.json');
+    try {
+        fs.writeFileSync(deckPath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+        console.warn('⚠️ Failed to save audio_deck.json:', (err as Error).message);
+        throw err;
+    }
+}

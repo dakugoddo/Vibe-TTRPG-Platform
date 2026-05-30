@@ -1,10 +1,13 @@
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { IndexeddbPersistence } from 'y-indexeddb';
-import type { Entity, ChatMessage, DatabaseType } from '../types';
+import type { AudioSessionCommand, Entity, ChatMessage, DatabaseType, SessionNotificationEvent, SessionNotificationStatus } from '../types';
 import { getIsHost } from '../services/fileApi';
+import { sanitizeCanvasEntityForSharedSync } from '../utils/canvasPersistence';
 import { CURRENT_ENTITY_SCHEMA_VERSION, withCurrentEntitySchema } from '../utils/entitySchema';
-import { canModifyEntity, type UserRole } from '../utils/permissions';
+import { generateEntityId } from '../utils/entityId';
+import { canBroadcastAudio, canModifyEntity, type UserRole } from '../utils/permissions';
+import { getYjsPersistenceKey } from '../utils/yjsCache';
 
 export class YjsStore {
     doc: Y.Doc;
@@ -12,11 +15,15 @@ export class YjsStore {
     persistence: IndexeddbPersistence | null = null;
     entitiesMap: Y.Map<Entity>;
     chatArray: Y.Array<ChatMessage>;
+    audioMap: Y.Map<AudioSessionCommand>;
+    sessionNotificationsMap: Y.Map<SessionNotificationEvent>;
     /** Stores user roles: Map<peerId, UserRole> */
     rolesMap: Y.Map<UserRole>;
 
     /** Fast lookup: lowercase name → entity id */
     private nameCache: Map<string, string> = new Map();
+    private readonly maxSessionNotifications = 60;
+    private readonly resolvedSessionNotificationTtlMs = 30 * 60 * 1000;
 
     /** Current user's display name (for chat) */
     localPlayerName: string = 'Игрок';
@@ -31,6 +38,8 @@ export class YjsStore {
         this.doc = new Y.Doc();
         this.entitiesMap = this.doc.getMap<Entity>('entities');
         this.chatArray = this.doc.getArray<ChatMessage>('chat');
+        this.audioMap = this.doc.getMap<AudioSessionCommand>('audio');
+        this.sessionNotificationsMap = this.doc.getMap<SessionNotificationEvent>('sessionNotifications');
         this.rolesMap = this.doc.getMap<UserRole>('roles');
     }
 
@@ -43,7 +52,7 @@ export class YjsStore {
         }
 
         // Offline persistence
-        this.persistence = new IndexeddbPersistence(roomName, this.doc);
+        this.persistence = new IndexeddbPersistence(getYjsPersistenceKey(roomName), this.doc);
 
         // Connect to the host's Express server on port 3001
         const savedIp = localStorage.getItem('vibe_server_ip');
@@ -55,6 +64,7 @@ export class YjsStore {
             if (isSynced) {
                 this.ensureDefaultFolders();
                 this.ensureEntitySchemaVersions();
+                this.pruneSessionNotifications();
                 this.rebuildNameCache();
                 this.announcePlayerInfo();
             }
@@ -63,6 +73,7 @@ export class YjsStore {
             this.persistence.on('synced', () => {
                 this.ensureDefaultFolders();
                 this.ensureEntitySchemaVersions();
+                this.pruneSessionNotifications();
                 this.rebuildNameCache();
                 this.announcePlayerInfo();
             });
@@ -116,8 +127,22 @@ export class YjsStore {
     private rebuildNameCache() {
         this.nameCache.clear();
         this.entitiesMap.forEach((ent) => {
-            this.nameCache.set(ent.name.toLowerCase(), ent.id);
+            const key = ent.name.toLowerCase();
+            if (!this.nameCache.has(key)) {
+                this.nameCache.set(key, ent.id);
+            }
         });
+    }
+
+    private getExistingEntityIds(): string[] {
+        const ids: string[] = [];
+        this.entitiesMap.forEach((_entity, id) => ids.push(id));
+        return ids;
+    }
+
+    private getAvailableEntityId(preferredId?: string): string {
+        if (preferredId && !this.entitiesMap.has(preferredId)) return preferredId;
+        return generateEntityId(this.getExistingEntityIds());
     }
 
     private ensureDefaultFolders() {
@@ -173,8 +198,8 @@ export class YjsStore {
 
     private ensureEntitySchemaVersions() {
         this.entitiesMap.forEach((entity, id) => {
-            const normalizedEntity = withCurrentEntitySchema(entity);
-            if (normalizedEntity.schemaVersion !== entity.schemaVersion) {
+            const normalizedEntity = sanitizeCanvasEntityForSharedSync(withCurrentEntitySchema(entity));
+            if (JSON.stringify(normalizedEntity) !== JSON.stringify(entity)) {
                 this.entitiesMap.set(id, normalizedEntity);
             }
         });
@@ -219,10 +244,11 @@ export class YjsStore {
     }
 
     addEntity(entity: Entity): boolean {
-        const normalizedEntity = withCurrentEntitySchema({
+        const normalizedEntity = sanitizeCanvasEntityForSharedSync(withCurrentEntitySchema({
             ...entity,
-            name: this.getUniqueName(entity.name, entity.id),
-        });
+            id: this.getAvailableEntityId(entity.id),
+            name: entity.name.trim() || 'Unnamed',
+        }));
         if (!this.canModifyStoredEntity(normalizedEntity)) {
             console.warn(`Blocked addEntity for "${normalizedEntity.name}": insufficient permissions`);
             return false;
@@ -236,7 +262,7 @@ export class YjsStore {
     updateEntity(id: string, partial: Partial<Entity>): boolean {
         const existing = this.entitiesMap.get(id);
         if (existing) {
-            const nextEntity = withCurrentEntitySchema({ ...existing, ...partial });
+            const nextEntity = sanitizeCanvasEntityForSharedSync(withCurrentEntitySchema({ ...existing, ...partial }));
             if (!this.canModifyStoredEntity(existing) || !this.canModifyStoredEntity(nextEntity)) {
                 console.warn(`Blocked updateEntity for "${existing.name}": insufficient permissions`);
                 return false;
@@ -244,10 +270,10 @@ export class YjsStore {
             // If name is changing, update the cache
             if (partial.name && partial.name !== existing.name) {
                 this.nameCache.delete(existing.name.toLowerCase());
-                partial.name = this.getUniqueName(partial.name, id);
+                partial.name = partial.name.trim() || 'Unnamed';
                 this.nameCache.set(partial.name.toLowerCase(), id);
             }
-            this.entitiesMap.set(id, withCurrentEntitySchema({ ...existing, ...partial }));
+            this.entitiesMap.set(id, sanitizeCanvasEntityForSharedSync(withCurrentEntitySchema({ ...existing, ...partial })));
             return true;
         }
         return false;
@@ -319,12 +345,12 @@ export class YjsStore {
         const source = this.entitiesMap.get(sourceId);
         if (!source) return null;
 
-        const newId = Date.now().toString() + Math.floor(Math.random() * 1000).toString();
+        const newId = generateEntityId(this.getExistingEntityIds());
         const cloned: Entity = {
             ...source,
             id: newId,
             parentId: newParentId,
-            name: this.getUniqueName(source.name),
+            name: source.name,
             properties: JSON.parse(JSON.stringify(source.properties)),
             tags: [...source.tags]
         };
@@ -355,6 +381,156 @@ export class YjsStore {
             isSystem
         };
         this.chatArray.push([message]);
+    }
+
+    sendAudioCommand(command: Omit<AudioSessionCommand, 'id' | 'issuedAt' | 'senderId' | 'senderName'>): boolean {
+        if (!canBroadcastAudio(this.localRole)) {
+            console.warn('Blocked audio session command: insufficient audio broadcast permissions');
+            return false;
+        }
+
+        const issuedAt = Date.now();
+        this.audioMap.set('latest', {
+            ...command,
+            id: `${issuedAt.toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+            issuedAt,
+            startedAt: command.action === 'play' ? command.startedAt ?? issuedAt : command.startedAt,
+            senderId: this.localPlayerId,
+            senderName: this.localPlayerName,
+        });
+        return true;
+    }
+
+    getLatestAudioCommand(): AudioSessionCommand | null {
+        return this.audioMap.get('latest') ?? null;
+    }
+
+    observeAudioCommands(handler: (command: AudioSessionCommand) => void): () => void {
+        const observer = (event: Y.YMapEvent<AudioSessionCommand>) => {
+            if (!event.keysChanged.has('latest')) return;
+            const command = this.getLatestAudioCommand();
+            if (command) handler(command);
+        };
+
+        this.audioMap.observe(observer);
+        return () => this.audioMap.unobserve(observer);
+    }
+
+    sendSessionNotification(
+        input: Omit<SessionNotificationEvent, 'id' | 'issuedAt' | 'actorId' | 'actorName'> & Partial<Pick<SessionNotificationEvent, 'id' | 'issuedAt' | 'actorId' | 'actorName'>>,
+    ): SessionNotificationEvent {
+        const issuedAt = input.issuedAt ?? Date.now();
+        const id = input.id?.trim() || `session_note_${issuedAt.toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+        const event: SessionNotificationEvent = {
+            ...input,
+            id,
+            issuedAt,
+            actorId: input.actorId?.trim() || this.localPlayerId || undefined,
+            actorName: input.actorName?.trim() || this.localPlayerName || undefined,
+        };
+
+        this.sessionNotificationsMap.set(id, event);
+        this.pruneSessionNotifications();
+        return event;
+    }
+
+    respondToSessionNotification(id: string, status: Extract<SessionNotificationStatus, 'approved' | 'rejected'>): boolean {
+        const existing = this.sessionNotificationsMap.get(id);
+        if (!existing) return false;
+        if (existing.type === 'large-upload-approval' && this.localRole !== 'gm') {
+            console.warn('Blocked session notification response: only GM can approve upload requests');
+            return false;
+        }
+        if (existing.status !== 'pending') return false;
+
+        const updatedAt = Date.now();
+        this.sessionNotificationsMap.set(id, {
+            ...existing,
+            status,
+            updatedAt,
+            responseById: this.localPlayerId || undefined,
+            responseByName: this.localPlayerName || undefined,
+        });
+        this.pruneSessionNotifications();
+        return true;
+    }
+
+    updateSessionNotification(
+        id: string,
+        updates: Partial<Pick<SessionNotificationEvent, 'status' | 'title' | 'message' | 'payload'>>,
+    ): boolean {
+        const existing = this.sessionNotificationsMap.get(id);
+        if (!existing) return false;
+
+        const isActor = Boolean(
+            (existing.actorId && this.localPlayerId && existing.actorId === this.localPlayerId)
+            || (existing.actorName && this.localPlayerName && existing.actorName === this.localPlayerName)
+        );
+        if (!isActor && this.localRole !== 'gm') {
+            console.warn('Blocked session notification update: insufficient permissions');
+            return false;
+        }
+        if (existing.status === 'rejected' && updates.status && updates.status !== 'rejected') return false;
+
+        this.sessionNotificationsMap.set(id, {
+            ...existing,
+            ...updates,
+            payload: updates.payload ? { ...existing.payload, ...updates.payload } : existing.payload,
+            updatedAt: Date.now(),
+        });
+        this.pruneSessionNotifications();
+        return true;
+    }
+
+    private pruneSessionNotifications(now = Date.now()): void {
+        if (!getIsHost() && this.localRole !== 'gm') return;
+        if (this.sessionNotificationsMap.size <= this.maxSessionNotifications) {
+            let hasExpiredResolved = false;
+            this.sessionNotificationsMap.forEach((notification) => {
+                const active = notification.status === 'pending' || notification.status === 'uploading';
+                const timestamp = notification.updatedAt ?? notification.issuedAt;
+                if (!active && now - timestamp > this.resolvedSessionNotificationTtlMs) {
+                    hasExpiredResolved = true;
+                }
+            });
+            if (!hasExpiredResolved) return;
+        }
+
+        const entries = Array.from(this.sessionNotificationsMap.entries())
+            .sort((left, right) => {
+                const leftTime = left[1].updatedAt ?? left[1].issuedAt;
+                const rightTime = right[1].updatedAt ?? right[1].issuedAt;
+                return rightTime - leftTime;
+            });
+        const keepIds = new Set<string>();
+
+        entries.forEach(([id, notification], index) => {
+            const active = notification.status === 'pending' || notification.status === 'uploading';
+            const timestamp = notification.updatedAt ?? notification.issuedAt;
+            if (active || (index < this.maxSessionNotifications && now - timestamp <= this.resolvedSessionNotificationTtlMs)) {
+                keepIds.add(id);
+            }
+        });
+
+        entries.forEach(([id]) => {
+            if (!keepIds.has(id)) this.sessionNotificationsMap.delete(id);
+        });
+    }
+
+    getSessionNotifications(): SessionNotificationEvent[] {
+        return Array.from(this.sessionNotificationsMap.values());
+    }
+
+    observeSessionNotifications(handler: (notification: SessionNotificationEvent) => void): () => void {
+        const observer = (event: Y.YMapEvent<SessionNotificationEvent>) => {
+            event.keysChanged.forEach((id) => {
+                const notification = this.sessionNotificationsMap.get(id);
+                if (notification) handler(notification);
+            });
+        };
+
+        this.sessionNotificationsMap.observe(observer);
+        return () => this.sessionNotificationsMap.unobserve(observer);
     }
 }
 

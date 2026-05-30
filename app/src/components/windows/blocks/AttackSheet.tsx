@@ -2,15 +2,23 @@ import { useState } from 'react';
 import { yjsStore } from '../../../store/yjsStore';
 import { useEntities } from '../../../hooks/useEntities';
 import { useWindowStore } from '../../../store/windowStore';
+import { rollEngine } from '../../../services/rollEngine';
 import type { Entity } from '../../../types';
-import { Plus, Trash2, Tag } from 'lucide-react';
+import { Box, Check, Dices, Edit2, FileText, Plus, SlidersHorizontal, Trash2, Tag } from 'lucide-react';
 import { EntityLink } from '../../ui/EntityLink';
+import { MarkdownRenderer } from '../../ui/MarkdownRenderer';
+import { SheetTabs, type SheetTab } from '../../ui/SheetTabs';
 import { TagPickerPopup } from './TagPickerPopup';
+import { WikiLinkTextarea } from '../../ui/WikiLinkTextarea';
 import { glass } from '../../../utils/theme';
+import { createEntityRollVariableResolver } from '../../../utils/rollVariables';
+import { EntityCanvasTokenSettings } from './EntityCanvasTokenSettings';
 
 interface AttackSheetProps {
     entity: Entity;
 }
+
+type AttackTab = 'stats' | 'description' | 'canvas';
 
 const DISTANCES = ['ближняя', 'средняя', 'дальняя', 'экстремальная', 'запредельная'];
 
@@ -23,11 +31,48 @@ function canEditEntity(entity: Entity): boolean {
     return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
 }
 
+function stringifyProperty(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    return '';
+}
+
+function getAttackFormula(entity: Entity): string {
+    return stringifyProperty(entity.properties?.diceFormula ?? entity.properties?.dice).trim();
+}
+
+function sendAttackRollToChat(entity: Entity, relatedEntities: Entity[] = []) {
+    const formula = getAttackFormula(entity);
+    if (!formula) return;
+
+    const result = rollEngine.rollExpression(formula, {
+        plainNumberAsD6Pool: true,
+        resolveVariable: createEntityRollVariableResolver(entity, relatedEntities),
+    });
+    if (result.error) {
+        yjsStore.sendMessage(`Ошибка броска ${entity.name}: ${result.error}`, 'Система', true);
+        return;
+    }
+
+    yjsStore.sendMessage(rollEngine.formatRollMessage(`${entity.name}: ${formula}`, result), 'Система', true);
+}
+
 export function AttackSheet({ entity }: AttackSheetProps) {
     const allEntities = useEntities();
     const { openWindow } = useWindowStore();
     const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<AttackTab>('stats');
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
     const canEditAttack = canEditEntity(entity);
+    const rollFormula = getAttackFormula(entity);
+    const canRoll = rollFormula.length > 0;
+    const parentEntity = allEntities.find(item => item.id === entity.parentId);
+    const tabs: SheetTab<AttackTab>[] = [
+        { id: 'stats', label: 'Параметры', icon: SlidersHorizontal },
+        { id: 'description', label: 'Описание', icon: FileText },
+        { id: 'canvas', label: 'Настройки', icon: Box },
+    ];
 
     const updateProperty = (key: string, value: unknown) => {
         if (!canEditAttack) return;
@@ -50,6 +95,23 @@ export function AttackSheet({ entity }: AttackSheetProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-200 mt-4">
+            <SheetTabs
+                tabs={tabs}
+                activeTab={activeTab}
+                onChange={setActiveTab}
+                endSlot={activeTab === 'description' && canEditAttack ? (
+                    <button
+                        onClick={() => setIsEditingDescription(!isEditingDescription)}
+                        className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${isEditingDescription ? 'bg-white/20 text-white shadow-sm' : 'text-white/45 hover:bg-white/10 hover:text-white'}`}
+                        title={isEditingDescription ? 'Завершить редактирование' : 'Редактировать описание'}
+                    >
+                        {isEditingDescription ? <Check size={14} /> : <Edit2 size={14} />}
+                    </button>
+                ) : null}
+            />
+
+            {activeTab === 'stats' && (
+                <>
             <div className={`${glass.blockBg} border-red-500/20 shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]`}>
                 <h3 className={glass.blockHeader + " text-red-400 border-red-500/20 mb-3"}>
                     Характеристики Атаки
@@ -129,6 +191,31 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                             ))}
                         </select>
                     </div>
+
+                    <div className="col-span-2 bg-[#2a2d3d]/40 p-2 rounded-lg border border-red-500/20 flex flex-col gap-1.5 group hover:bg-[#2a2d3d] hover:border-red-500/40 transition-all shadow-sm">
+                        <span className="text-[10px] text-red-300/70 uppercase font-bold">
+                            Формула броска
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="text"
+                                value={rollFormula}
+                                readOnly={!canEditAttack}
+                                onChange={(e) => updateProperty('diceFormula', e.target.value)}
+                                className="min-w-0 flex-1 bg-[#1a1c29] text-white/90 text-xs font-mono outline-none rounded p-1.5 border border-white/10 focus:border-red-400/50 read-only:text-white/40 read-only:cursor-default"
+                                placeholder="1d20+2 / 2d6"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => sendAttackRollToChat(entity, parentEntity ? [parentEntity] : [])}
+                                disabled={!canRoll}
+                                className={`grid h-8 w-8 place-items-center rounded-lg border transition-all ${canRoll ? 'border-red-500/35 bg-red-500/20 text-red-200 hover:bg-red-500/35 hover:text-red-100' : 'border-transparent bg-white/5 text-white/20 cursor-not-allowed'}`}
+                                title={canRoll ? `Бросить ${rollFormula}` : 'Укажите формулу броска'}
+                            >
+                                <Dices size={14} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -187,6 +274,34 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                     }) : <span className="text-white/30 text-xs italic">Нет свойств</span>}
                 </div>
             </div>
+                </>
+            )}
+
+            {activeTab === 'description' && (
+                <div className={`${glass.blockBg} min-h-[220px]`}>
+                    <h3 className={glass.blockHeader}>Описание</h3>
+                    {isEditingDescription && canEditAttack ? (
+                        <WikiLinkTextarea
+                            value={entity.description || ''}
+                            onValueChange={(value) => yjsStore.updateEntity(entity.id, { description: value })}
+                            excludeEntityId={entity.id}
+                            className={`${glass.input} w-full min-h-[180px] resize-y custom-scrollbar text-sm font-sans`}
+                            placeholder="Описание атаки, эффекты, условия применения..."
+                            autoFocus
+                        />
+                    ) : (
+                        <div className="min-h-[180px] text-sm leading-relaxed text-white/80" onDoubleClick={() => { if (canEditAttack) setIsEditingDescription(true); }}>
+                            {entity.description
+                                ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
+                                : <span className="text-white/30 italic cursor-pointer">{canEditAttack ? 'Описание пустое. Дважды кликните для редактирования.' : 'Описание пустое.'}</span>}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'canvas' && (
+                <EntityCanvasTokenSettings entity={entity} canEdit={canEditAttack} />
+            )}
         </div>
     );
 }

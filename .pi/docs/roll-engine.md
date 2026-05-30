@@ -22,6 +22,8 @@ Roll Engine - единая точка входа для всех бросков 
 
 - `rollEngine.rollDiceCommand(command)` - парсит команды вида `/r 1d20+5`;
 - `rollEngine.rollDiceNotation(notation)` - бросает нотацию вида `2d6+3`;
+- `rollEngine.resolveRollExpression(expression, options)` - нормализует выражение, подставляет переменные `$stat` и возвращает metadata без броска;
+- `rollEngine.rollExpression(expression, options)` - единый путь для `!roll`, будущих атак/способностей и любых Entity-механик с формулами;
 - `rollEngine.rollD6Pool(count, label?)` - бросает pool d6 для навыков/компетенций;
 - `rollEngine.formatRollMessage(expression, result)` - единый формат сообщения для чата;
 - `rollEngine.setRandomProvider(provider)` - замена источника случайности;
@@ -73,4 +75,14 @@ const result = rollEngine.rollDiceNotation('1d20+5');
 yjsStore.sendMessage(rollEngine.formatRollMessage('Атака мечом', result), 'Система', true);
 ```
 
-Для механики сущности сначала соберите формулу из данных Entity/Rules Engine, затем передайте ее в Roll Engine.
+Для механики сущности сначала соберите формулу из данных Entity/Rules Engine, затем передайте ее в Roll Engine:
+
+```ts
+const result = rollEngine.rollExpression('2d6+$strength', {
+  resolveVariable: (name) => readEntityStat(entity, name),
+});
+```
+
+Markdown `!roll` теперь использует этот же путь, а не локальный парсер внутри renderer.
+
+Для Entity-механик используется helper `utils/rollVariables.ts`: он ищет переменные по текущей сущности и связанным сущностям, понимает `base + adhoc`, `rank`, `value`, а также русские имена вроде `$урон`.

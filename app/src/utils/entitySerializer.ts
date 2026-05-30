@@ -132,6 +132,7 @@ export function serializeEntity(entity: Entity, options: SerializeOptions = {}):
     // Type (always first)
     frontmatter.type = entity.type;
     frontmatter.schemaVersion = normalizeEntitySchemaVersion(entity.schemaVersion);
+    frontmatter.id = entity.id;
 
     // UID (for user/GM databases)
     if (options.includeUid) {

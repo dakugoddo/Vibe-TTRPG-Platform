@@ -1,6 +1,7 @@
 ---
 type: tag
 schemaVersion: 1
+id: tag
 modifiers: []
 ---
 

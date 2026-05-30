@@ -4,7 +4,9 @@ import type { Entity } from '../../../types';
 import { glass } from '../../../utils/theme';
 import { Image as ImageIcon, Upload, X, AlertTriangle, User, Box, Sword, Wand2, Map, FileText, Bookmark } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { getIsHost } from '../../../services/fileApi';
+import { getAssetUrl, getIsHost, listAssetRecords, uploadAssetFile, type AssetRecord } from '../../../services/fileApi';
+import { useNotificationStore } from '../../../store/notificationStore';
+import { LARGE_ASSET_UPLOAD_APPROVAL_BYTES, formatNotificationFileSize } from '../../../utils/notificationModel';
 
 interface EntityImageBlockProps {
     entity: Entity;
@@ -33,8 +35,12 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
     const [imageError, setImageError] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [tempUrl, setTempUrl] = useState(entity.icon_url || '');
-    const [availableImages, setAvailableImages] = useState<string[]>([]);
+    const [availableImages, setAvailableImages] = useState<AssetRecord[]>([]);
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const addNotification = useNotificationStore((state) => state.addNotification);
+    const updateNotification = useNotificationStore((state) => state.updateNotification);
+    const updateNotificationProgress = useNotificationStore((state) => state.updateProgress);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const Icon = TYPE_ICONS[entity.type] || ImageIcon;
@@ -46,9 +52,8 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
 
     useEffect(() => {
         if (isEditing && isHost) {
-            fetch('http://localhost:3001/api/assets')
-                .then(res => res.json())
-                .then(data => setAvailableImages(Array.isArray(data) ? data : []))
+            listAssetRecords()
+                .then(data => setAvailableImages(data.filter(asset => asset.type === 'image' || /\.(avif|gif|jpe?g|png|webp)$/i.test(asset.path))))
                 .catch(err => console.error("Failed to load assets list", err));
         }
     }, [isEditing, isHost]);
@@ -70,38 +75,65 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
         if (!file || !isHost || !canEditImage) return;
 
         setIsUploading(true);
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-            const base64String = (reader.result as string).split(',')[1];
-            try {
-                const res = await fetch('http://localhost:3001/api/assets/upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: file.name,
-                        base64: base64String
-                    })
+        setUploadError(null);
+        const isLargeUpload = file.size > LARGE_ASSET_UPLOAD_APPROVAL_BYTES;
+        const uploadNotification = addNotification({
+            kind: 'progress',
+            scope: 'local',
+            status: 'pending',
+            title: isLargeUpload ? 'Крупное фото сущности' : 'Загрузка фото сущности',
+            message: `${file.name} • ${formatNotificationFileSize(file.size)}`,
+            progress: 0,
+            payload: {
+                entityId: entity.id,
+                fileName: file.name,
+                size: file.size,
+                requiresGmApproval: isLargeUpload,
+            },
+        });
+
+        try {
+            const data = await uploadAssetFile(file, {
+                onProgress: (progress) => updateNotificationProgress(uploadNotification.id, progress.percent),
+            });
+            const newUrl = data.filename; // Only save the filename for portability
+            if (!canEditImage) {
+                updateNotification(uploadNotification.id, {
+                    kind: 'warning',
+                    status: 'failed',
+                    title: 'Нет прав на сущность',
+                    message: `${file.name} загружен, но не привязан к сущности.`,
                 });
-                const data = await res.json();
-                if (data.success) {
-                    const newUrl = data.filename; // Only save the filename for portability
-                    if (!canEditImage) return;
-                    yjsStore.updateEntity(entity.id, { icon_url: newUrl });
-                    setIsEditing(false);
-                }
-            } catch (err) {
-                console.error("Upload error", err);
-            } finally {
-                setIsUploading(false);
+                return;
             }
-        };
-        reader.readAsDataURL(file);
+            yjsStore.updateEntity(entity.id, { icon_url: newUrl });
+            updateNotification(uploadNotification.id, {
+                kind: 'success',
+                status: 'done',
+                title: 'Фото сущности загружено',
+                message: `${file.name} • ${formatNotificationFileSize(file.size)}`,
+                progress: 100,
+            });
+            setIsEditing(false);
+        } catch (err) {
+            console.error("Upload error", err);
+            updateNotification(uploadNotification.id, {
+                kind: 'error',
+                status: 'failed',
+                title: 'Фото не загрузилось',
+                message: `${file.name}: ${(err as Error).message}`,
+            });
+            setUploadError((err as Error).message);
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
     };
 
     // Calculate full URL for img src
     let fullUrl = entity.icon_url;
     if (fullUrl && !fullUrl.startsWith('http') && !fullUrl.startsWith('data:')) {
-        fullUrl = `http://localhost:3001/api/assets/${fullUrl}`;
+        fullUrl = getAssetUrl(fullUrl);
     }
 
     return (
@@ -168,8 +200,8 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                                     value=""
                                 >
                                     <option value="" disabled>...или выберите существующее</option>
-                                    {availableImages.map(img => (
-                                        <option key={img} value={img}>{img}</option>
+                                    {availableImages.map(asset => (
+                                        <option key={asset.id} value={asset.path}>{asset.path}</option>
                                     ))}
                                 </select>
                             )}
@@ -209,6 +241,11 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                                         <Upload size={14} />
                                         {isUploading ? 'Загрузка...' : 'Загрузить новое фото'}
                                     </button>
+                                    {uploadError && (
+                                        <div className="mt-2 rounded-md border border-red-500/20 bg-red-500/10 px-2 py-1.5 text-[10px] font-semibold text-red-200">
+                                            {uploadError}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

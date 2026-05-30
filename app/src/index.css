@@ -1,11 +1,21 @@
 @import "tailwindcss";
+
+:root {
+  --vibe-app-bg: linear-gradient(135deg, #061e2e 0%, #043330 50%, #091524 100%);
+  --vibe-body-bg: #061e2e;
+  --vibe-text-primary: #f8fafc;
+  --vibe-accent: #67e8f9;
+  --vibe-accent-soft: rgba(103, 232, 249, 0.16);
+  --vibe-scrollbar-thumb: rgba(75, 85, 99, 0.55);
+}
+
 body {
   margin: 0;
   display: flex;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #1a1a1a;
-  color: #f1f1f1;
+  background: var(--vibe-body-bg);
+  color: var(--vibe-text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
@@ -13,6 +23,11 @@ body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+}
+
+.vibe-app-bg {
+  background: var(--vibe-app-bg);
+  color: var(--vibe-text-primary);
 }
 
 /* Custom React Contexify Dark Theme (Windows 11 inspired) */
@@ -54,6 +69,11 @@ body.dragging-global .ui-layer * {
 }
 
 /* Custom Webkit Scrollbars for .custom-scrollbar and globally matching theme */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--vibe-scrollbar-thumb) transparent;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -64,10 +84,19 @@ body.dragging-global .ui-layer * {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(75, 85, 99, 0.4);
+  background: var(--vibe-scrollbar-thumb);
   border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(107, 114, 128, 0.8);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

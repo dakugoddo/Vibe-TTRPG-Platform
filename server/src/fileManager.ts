@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { getDbPath } from './worldManager.js';
 import { normalizeEntitySchemaVersion } from './entitySchema.js';
+import { generateEntityId } from './entityId.js';
 import type { Entity, EntityType, DatabaseType } from './shared/types.js';
 
 // ─── Re-export parser/serializer logic inline (adapted from app/src/utils) ───
@@ -54,6 +55,19 @@ export function sanitizeFilename(name: string): string {
 
 export function entityToFilename(name: string): string {
     return `${sanitizeFilename(name)}.md`;
+}
+
+function getAvailableEntityFilePath(targetDir: string, name: string): string {
+    const baseName = sanitizeFilename(name);
+    let filePath = path.join(targetDir, `${baseName}.md`);
+    let counter = 2;
+
+    while (fs.existsSync(filePath)) {
+        filePath = path.join(targetDir, `${baseName} (${counter}).md`);
+        counter += 1;
+    }
+
+    return filePath;
 }
 
 export function filenameToEntityName(filename: string): string {
@@ -105,7 +119,12 @@ export function resolveParentId(filePath: string, dbRoot: string): string | null
     // Check if a sibling .md file exists with the same name as the folder
     const siblingMd = path.join(path.dirname(parentDir), `${folderName}.md`);
     if (fs.existsSync(siblingMd)) {
-        return folderName; // In General DB, name = ID
+        try {
+            const content = fs.readFileSync(siblingMd, 'utf-8');
+            return readEntityIdentity(content, folderName).id;
+        } catch {
+            return folderName;
+        }
     }
 
     return null;
@@ -346,9 +365,84 @@ function parseScalar(value: string): any {
     if (value === 'true') return true;
     if (value === 'false') return false;
     if (value === 'null' || value === '~') return null;
+    if (/^\d{16,}$/.test(value)) return value;
     const num = Number(value);
     if (!isNaN(num) && value !== '') return num;
     return value;
+}
+
+function readEntityIdentity(content: string, fallbackId: string): { id: string; name: string } {
+    const { frontmatter, body } = splitFrontmatter(content);
+    const parsed = frontmatter ? parseSimpleYaml(frontmatter) : {};
+    const titleMatch = body.match(/^#\s+(.+)$/m);
+    const name = titleMatch ? titleMatch[1].trim() : fallbackId;
+    const rawId = parsed.id ?? parsed.uid;
+    const id = rawId !== undefined && rawId !== null && String(rawId).trim()
+        ? String(rawId)
+        : fallbackId;
+    return { id, name };
+}
+
+interface RawFrontmatter {
+    frontmatter: string;
+    body: string;
+    lineEnding: string;
+}
+
+function splitRawFrontmatter(content: string): RawFrontmatter | null {
+    const normalized = content.replace(/^\uFEFF/, '');
+    const lineEnding = normalized.includes('\r\n') ? '\r\n' : '\n';
+    const match = normalized.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n)?/);
+    if (!match) return null;
+
+    return {
+        frontmatter: match[1],
+        body: normalized.slice(match[0].length),
+        lineEnding,
+    };
+}
+
+function normalizeFrontmatterId(value: unknown): string | null {
+    if (value === undefined || value === null) return null;
+    const id = String(value).trim();
+    return id ? id : null;
+}
+
+function quoteYamlString(value: string): string {
+    return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+export function injectEntityIdIntoMarkdown(content: string, id: string, entity?: Pick<Entity, 'type' | 'schemaVersion'>): string {
+    const raw = splitRawFrontmatter(content);
+    const quotedId = quoteYamlString(id);
+
+    if (!raw) {
+        const type = entity?.type && VALID_ENTITY_TYPES.includes(entity.type) ? entity.type : 'note';
+        const schemaVersion = normalizeEntitySchemaVersion(entity?.schemaVersion);
+        const frontmatter = [
+            '---',
+            `type: ${type}`,
+            `schemaVersion: ${schemaVersion}`,
+            `id: ${quotedId}`,
+            '---',
+            '',
+        ].join('\n');
+        return `${frontmatter}${content.trimStart()}`;
+    }
+
+    const lines = raw.frontmatter.split(/\r?\n/);
+    const existingIdIndex = lines.findIndex(line => /^\s*id\s*:/.test(line));
+
+    if (existingIdIndex >= 0) {
+        lines[existingIdIndex] = `id: ${quotedId}`;
+    } else {
+        const schemaIndex = lines.findIndex(line => /^\s*schemaVersion\s*:/.test(line));
+        const typeIndex = lines.findIndex(line => /^\s*type\s*:/.test(line));
+        const insertAfter = schemaIndex >= 0 ? schemaIndex : typeIndex;
+        lines.splice(insertAfter >= 0 ? insertAfter + 1 : 0, 0, `id: ${quotedId}`);
+    }
+
+    return ['---', lines.join(raw.lineEnding), '---', raw.body].join(raw.lineEnding);
 }
 
 // ─── Parse .md → Entity ───
@@ -365,8 +459,10 @@ export function parseEntityFile(content: string, fallbackId: string, dbRoot: str
     // Type
     const type = (VALID_ENTITY_TYPES.includes(parsed.type as EntityType) ? parsed.type : 'note') as EntityType;
 
-    // ID: in General DB, name is the ID. In User/GM, use uid.
-    const id = db === 'general' ? name : ((parsed.uid as string) || fallbackId);
+    const rawId = parsed.id ?? parsed.uid;
+    const id = rawId !== undefined && rawId !== null && String(rawId).trim()
+        ? String(rawId)
+        : fallbackId;
 
     // Tags
     const tags = Array.isArray(parsed.tags) ? parsed.tags.map(String) : [];
@@ -483,6 +579,7 @@ export function serializeEntity(entity: Entity, options: { includeUid?: boolean;
     const fm: Record<string, any> = {};
     fm.type = entity.type;
     fm.schemaVersion = normalizeEntitySchemaVersion(entity.schemaVersion);
+    fm.id = entity.id;
 
     if (options.includeUid) fm.uid = entity.id;
     if (options.source) fm.source = options.source;
@@ -558,6 +655,21 @@ function findEntityFile(dbRoot: string, entityName: string): string | null {
                 return path.join(dir, entry.name);
             }
         }
+        for (const entry of entries) {
+            if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+
+            const fullPath = path.join(dir, entry.name);
+            try {
+                const content = fs.readFileSync(fullPath, 'utf-8');
+                const fallbackId = filenameToEntityName(entry.name);
+                const identity = readEntityIdentity(content, fallbackId);
+                if (identity.id === entityName || identity.name === entityName) {
+                    return fullPath;
+                }
+            } catch {
+                // Ignore corrupt files for lookup.
+            }
+        }
         // Search subdirectories
         for (const entry of entries) {
             if (entry.isDirectory()) {
@@ -569,6 +681,44 @@ function findEntityFile(dbRoot: string, entityName: string): string | null {
     }
 
     return searchDir(dbRoot);
+}
+
+export function getEntityFilePath(db: DatabaseType, entityId: string, playerName?: string): string | null {
+    const dbRoot = getDbPath(db, playerName);
+    const directPath = findEntityFile(dbRoot, entityId);
+    if (directPath) return directPath;
+
+    let found: string | null = null;
+
+    function walkDir(dir: string): void {
+        if (found || !fs.existsSync(dir)) return;
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+        for (const entry of entries) {
+            if (found) return;
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                walkDir(fullPath);
+                continue;
+            }
+            if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+
+            try {
+                const content = fs.readFileSync(fullPath, 'utf-8');
+                const fallbackId = filenameToEntityName(entry.name);
+                const entity = parseEntityFile(content, fallbackId, dbRoot, fullPath, db);
+                if (entity.id === entityId || entity.name === entityId) {
+                    found = fullPath;
+                    return;
+                }
+            } catch {
+                // Ignore corrupt files for this lookup; listEntities reports validation warnings separately.
+            }
+        }
+    }
+
+    walkDir(dbRoot);
+    return found;
 }
 
 /**
@@ -612,26 +762,16 @@ export function listEntities(db: DatabaseType, playerName?: string): Entity[] {
 
     walkDir(dbRoot);
 
-    // Validation: detect duplicate names in General DB
+    // Validation: detect duplicate names in General DB.
+    // Names are display labels now; duplicates are allowed when stable frontmatter IDs differ.
     if (db === 'general') {
         const nameCount = new Map<string, number>();
         for (const e of entities) {
             const lower = e.name.toLowerCase();
             nameCount.set(lower, (nameCount.get(lower) || 0) + 1);
         }
-        const seen = new Map<string, number>();
-        for (const e of entities) {
-            const lower = e.name.toLowerCase();
-            if ((nameCount.get(lower) || 0) > 1) {
-                const count = (seen.get(lower) || 0) + 1;
-                seen.set(lower, count);
-                if (count > 1) {
-                    const oldName = e.name;
-                    e.name = `${e.name} (${count})`;
-                    e.id = e.name;
-                    warnings.push(`⚠️ Duplicate name renamed: "${oldName}" → "${e.name}"`);
-                }
-            }
+        for (const [name, count] of nameCount) {
+            if (count > 1) warnings.push(`⚠️ Duplicate display name allowed: "${name}" (${count})`);
         }
     }
 
@@ -660,6 +800,143 @@ export function listEntities(db: DatabaseType, playerName?: string): Entity[] {
     return entities;
 }
 
+export interface EntityIdMigrationFile {
+    path: string;
+    relativePath: string;
+    id: string;
+    name: string;
+    database: DatabaseType;
+    player?: string;
+    source: 'uid' | 'generated' | 'empty-id-replaced';
+}
+
+export interface EntityIdMigrationResult {
+    database: DatabaseType;
+    player?: string;
+    dryRun: boolean;
+    scanned: number;
+    changed: number;
+    skipped: number;
+    failed: number;
+    files: EntityIdMigrationFile[];
+    warnings: string[];
+}
+
+function collectMarkdownFiles(root: string): string[] {
+    const files: string[] = [];
+
+    function walkDir(dir: string): void {
+        if (!fs.existsSync(dir)) return;
+        const entries = fs.readdirSync(dir, { withFileTypes: true })
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                walkDir(fullPath);
+            } else if (entry.isFile() && entry.name.endsWith('.md')) {
+                files.push(fullPath);
+            }
+        }
+    }
+
+    walkDir(root);
+    return files;
+}
+
+/**
+ * Adds stable frontmatter id values to legacy .md entities.
+ * Dry-run is the default at API level; this function supports both preview and apply.
+ */
+export function migrateEntityIds(
+    db: DatabaseType,
+    playerName?: string,
+    options: { dryRun?: boolean } = {},
+): EntityIdMigrationResult {
+    const dryRun = options.dryRun ?? true;
+    const dbRoot = getDbPath(db, playerName);
+    const filePaths = collectMarkdownFiles(dbRoot);
+    const occupiedIds = new Set<string>();
+    const parsedCache = new Map<string, { content: string; parsed: Record<string, any>; raw: RawFrontmatter | null }>();
+
+    for (const filePath of filePaths) {
+        try {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            const raw = splitRawFrontmatter(content);
+            const parsed = raw ? parseSimpleYaml(raw.frontmatter) : {};
+            parsedCache.set(filePath, { content, parsed, raw });
+
+            const existingId = normalizeFrontmatterId(parsed.id ?? parsed.uid);
+            if (existingId) occupiedIds.add(existingId);
+        } catch {
+            // Reported in the migration pass below.
+        }
+    }
+
+    const result: EntityIdMigrationResult = {
+        database: db,
+        player: playerName,
+        dryRun,
+        scanned: 0,
+        changed: 0,
+        skipped: 0,
+        failed: 0,
+        files: [],
+        warnings: [],
+    };
+
+    for (const filePath of filePaths) {
+        result.scanned += 1;
+
+        try {
+            const cached = parsedCache.get(filePath);
+            const content = cached?.content ?? fs.readFileSync(filePath, 'utf-8');
+            const raw = cached?.raw ?? splitRawFrontmatter(content);
+            const parsed = cached?.parsed ?? (raw ? parseSimpleYaml(raw.frontmatter) : {});
+            const idValue = normalizeFrontmatterId(parsed.id);
+
+            if (idValue) {
+                result.skipped += 1;
+                continue;
+            }
+
+            const fallbackId = filenameToEntityName(path.basename(filePath));
+            const entity = parseEntityFile(content, fallbackId, dbRoot, filePath, db);
+            const uidValue = normalizeFrontmatterId(parsed.uid);
+            const generatedId = uidValue ?? generateEntityId(occupiedIds);
+            occupiedIds.add(generatedId);
+
+            const migratedContent = injectEntityIdIntoMarkdown(content, generatedId, entity);
+            const source: EntityIdMigrationFile['source'] = uidValue
+                ? 'uid'
+                : parsed.id !== undefined
+                    ? 'empty-id-replaced'
+                    : 'generated';
+
+            result.changed += 1;
+            result.files.push({
+                path: filePath,
+                relativePath: path.relative(dbRoot, filePath),
+                id: generatedId,
+                name: entity.name,
+                database: db,
+                player: playerName,
+                source,
+            });
+
+            if (!dryRun && migratedContent !== content) {
+                markAsOurWrite(filePath);
+                fs.writeFileSync(filePath, migratedContent, 'utf-8');
+            }
+        } catch (err) {
+            result.failed += 1;
+            result.warnings.push(`${filePath}: ${(err as Error).message}`);
+        }
+    }
+
+    return result;
+}
+
 /**
  * Read a single entity by name/id.
  */
@@ -669,7 +946,8 @@ export function readEntity(db: DatabaseType, entityId: string, playerName?: stri
     if (!filePath) return null;
 
     const content = fs.readFileSync(filePath, 'utf-8');
-    return parseEntityFile(content, entityId, dbRoot, filePath, db);
+    const fallbackId = filenameToEntityName(path.basename(filePath));
+    return parseEntityFile(content, fallbackId, dbRoot, filePath, db);
 }
 
 /**
@@ -678,14 +956,21 @@ export function readEntity(db: DatabaseType, entityId: string, playerName?: stri
 export function writeEntity(db: DatabaseType, entity: Entity, playerName?: string): void {
     const dbRoot = getDbPath(db, playerName);
     const isUserDb = db === 'user' || db === 'gm';
+    if (!entity.id) {
+        entity.id = generateEntityId();
+    }
+    const existingFile = findEntityFile(dbRoot, entity.id);
 
     // Determine target directory
     let targetDir: string;
-    if (entity.parentId) {
+    if (existingFile) {
+        targetDir = path.dirname(existingFile);
+    } else if (entity.parentId) {
         // Matryoshka: entity goes inside parent's folder
         const parentFile = findEntityFile(dbRoot, entity.parentId);
         if (parentFile) {
-            const parentFolder = path.join(path.dirname(parentFile), sanitizeFilename(entity.parentId));
+            const parentFolderName = sanitizeFilename(filenameToEntityName(path.basename(parentFile)));
+            const parentFolder = path.join(path.dirname(parentFile), parentFolderName);
             ensureChildFolder(parentFolder);
             targetDir = parentFolder;
         } else {
@@ -702,8 +987,7 @@ export function writeEntity(db: DatabaseType, entity: Entity, playerName?: strin
 
     fs.mkdirSync(targetDir, { recursive: true });
 
-    const filename = entityToFilename(entity.name);
-    const filePath = path.join(targetDir, filename);
+    const filePath = existingFile ?? getAvailableEntityFilePath(targetDir, entity.name);
 
     const options = isUserDb ? { includeUid: true } : {};
     const content = serializeEntity(entity, options);
@@ -721,7 +1005,7 @@ export function deleteEntity(db: DatabaseType, entityId: string, playerName?: st
     if (!filePath) return false;
 
     // Delete child folder (Matryoshka)
-    const childFolder = path.join(path.dirname(filePath), sanitizeFilename(entityId));
+    const childFolder = path.join(path.dirname(filePath), sanitizeFilename(filenameToEntityName(path.basename(filePath))));
     if (fs.existsSync(childFolder) && fs.statSync(childFolder).isDirectory()) {
         fs.rmSync(childFolder, { recursive: true, force: true });
     }
@@ -747,6 +1031,9 @@ export function importRawMarkdown(content: string, filename: string, db: Databas
 
     // Parse whatever we get
     const entity = parseEntityFile(content, fallbackName, dbRoot, path.join(dbRoot, 'notes', filename), db);
+    if (entity.id === fallbackName) {
+        entity.id = generateEntityId();
+    }
 
     // Ensure it has a valid type (default to 'note')
     if (!entity.type) entity.type = 'note';

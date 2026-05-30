@@ -1,6 +1,7 @@
 ---
 type: object
 schemaVersion: 1
+id: "1777824870830591"
 uid: "1777824870830591"
 properties:
   фигура: 1
