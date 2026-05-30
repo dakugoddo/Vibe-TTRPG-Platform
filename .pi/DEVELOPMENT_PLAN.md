@@ -99,5 +99,5 @@
 
 1. ✅ Доделать cancel/retry для player uploads — **ГОТОВО**, запушено.
 2. ✅ Доделать mobile layout нижнего `music` player и укрепить локальную деку до world-level persistence — **ГОТОВО**.
-3. [ ] Спроектировать chunked/resumable upload для файлов больше `250 MB`.
+3. ✅ Спроектировать chunked/resumable upload для файлов больше `250 MB` — **ГОТОВО**, запушено.
 4. [ ] Manual QA entity ID migration на копии мира + roles/player identity UI.
