@@ -27,6 +27,7 @@ import {
     deleteEntity,
     importRawMarkdown,
     serializeEntity,
+    migrateEntityIds,
 } from './fileManager.js';
 import { startWatching, stopWatching, addWsClient, getClientCount } from './fileWatcher.js';
 import { renameEntity } from './renameManager.js';
@@ -113,6 +114,54 @@ app.post('/api/world/audio-deck', (req, res) => {
         }
         saveAudioDeck(req.body);
         res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.post('/api/world/migrate/entity-ids', (req, res) => {
+    try {
+        const dryRun = req.body.dryRun !== false; // По умолчанию dryRun = true для безопасности
+        const database = req.body.database || 'general';
+        const player = req.body.player;
+
+        if (database === 'all') {
+            const results = [];
+            
+            // 1. General DB
+            results.push(migrateEntityIds('general', undefined, { dryRun }));
+            
+            // 2. GM DB
+            results.push(migrateEntityIds('gm', undefined, { dryRun }));
+            
+            // 3. Все базы игроков (users/*)
+            const worldPath = getCurrentWorldPath();
+            if (worldPath) {
+                const usersDir = path.join(worldPath, 'users');
+                if (fs.existsSync(usersDir)) {
+                    const players = fs.readdirSync(usersDir).filter(f => {
+                        return fs.statSync(path.join(usersDir, f)).isDirectory() && !f.startsWith('.');
+                    });
+                    for (const p of players) {
+                        results.push(migrateEntityIds('user', p, { dryRun }));
+                    }
+                }
+            }
+            
+            res.json({
+                success: true,
+                dryRun,
+                results
+            });
+            return;
+        }
+
+        const result = migrateEntityIds(database as DatabaseType, player, { dryRun });
+        res.json({
+            success: true,
+            dryRun,
+            result
+        });
     } catch (err) {
         res.status(500).json({ error: (err as Error).message });
     }

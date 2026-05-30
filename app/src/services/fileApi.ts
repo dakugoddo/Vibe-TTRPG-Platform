@@ -551,3 +551,41 @@ async function uploadAssetFileToHostChunks(file: File, options: UploadAssetFileO
         throw err;
     }
 }
+
+export interface EntityIdMigrationResult {
+    database: string;
+    player?: string;
+    dryRun: boolean;
+    scanned: number;
+    changed: number;
+    skipped: number;
+    failed: number;
+    files: Array<{
+        path: string;
+        relativePath: string;
+        id: string;
+        name: string;
+        database: string;
+        player?: string;
+        source: string;
+    }>;
+    warnings: string[];
+}
+
+export interface BulkMigrationResult {
+    success: boolean;
+    dryRun: boolean;
+    results?: EntityIdMigrationResult[];
+    result?: EntityIdMigrationResult;
+}
+
+export async function migrateEntityIds(options: { dryRun?: boolean; database?: string; player?: string } = {}): Promise<BulkMigrationResult> {
+    return apiFetch<BulkMigrationResult>('/api/world/migrate/entity-ids', {
+        method: 'POST',
+        body: JSON.stringify({
+            dryRun: options.dryRun !== false,
+            database: options.database || 'general',
+            player: options.player
+        })
+    });
+}

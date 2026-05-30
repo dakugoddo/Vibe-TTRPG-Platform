@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2 } from 'lucide-react';
+import { Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2, Play, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { yjsStore } from '../../store/yjsStore';
 import { useCanvasDrawStore } from '../../store/canvasDrawStore';
 import { useAudioChannelVolumes } from '../../hooks/useAudioChannelVolumes';
@@ -9,6 +9,7 @@ import { useThemePreset } from '../../hooks/useThemePreset';
 import { DEFAULT_ROLE_DEFINITIONS, getEffectivePermissions, type PermissionKey, type UserRole } from '../../utils/permissions';
 import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, saveCustomThemeColors, themePresets, type CustomThemeColors } from '../../utils/theme';
 import type { AudioChannel } from '../../types';
+import { migrateEntityIds } from '../../services/fileApi';
 
 type SettingsTabId = 'interface' | 'audio' | 'canvas' | 'world' | 'roles';
 
@@ -73,6 +74,27 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const toggleGrid = useCanvasDrawStore((state) => state.toggleGrid);
     const setGridType = useCanvasDrawStore((state) => state.setGridType);
     const setGridSpacing = useCanvasDrawStore((state) => state.setGridSpacing);
+
+    // Состояние миграции стабильных ID
+    const [migrationResult, setMigrationResult] = useState<any | null>(null);
+    const [migrating, setMigrating] = useState(false);
+    const [selectedDb, setSelectedDb] = useState('all');
+
+    const handleRunMigration = async (dryRun: boolean) => {
+        try {
+            setMigrating(true);
+            setMigrationResult(null);
+            const result = await migrateEntityIds({
+                dryRun,
+                database: selectedDb
+            });
+            setMigrationResult(result);
+        } catch (err) {
+            alert(err instanceof Error ? err.message : String(err));
+        } finally {
+            setMigrating(false);
+        }
+    };
 
     if (!isOpen) return null;
 
