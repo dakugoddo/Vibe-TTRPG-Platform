@@ -355,7 +355,17 @@ export async function uploadAssetFile(file: File, options: UploadAssetFileOption
     return uploadAssetFileToHost(file, options);
 }
 
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB chunk
+const CHUNK_THRESHOLD = 20 * 1024 * 1024; // 20 MB threshold
+
 export async function uploadAssetFileToHost(file: File, options: UploadAssetFileOptions = {}): Promise<{ filename: string; url: string }> {
+    if (file.size <= CHUNK_THRESHOLD) {
+        return uploadAssetFileToHostSingle(file, options);
+    }
+    return uploadAssetFileToHostChunks(file, options);
+}
+
+async function uploadAssetFileToHostSingle(file: File, options: UploadAssetFileOptions = {}): Promise<{ filename: string; url: string }> {
     const params = new URLSearchParams({ filename: file.name });
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -418,4 +428,126 @@ export async function uploadAssetFileToHost(file: File, options: UploadAssetFile
         options.signal?.addEventListener('abort', handleAbort, { once: true });
         xhr.send(file);
     });
+}
+
+async function uploadAssetFileToHostChunks(file: File, options: UploadAssetFileOptions = {}): Promise<{ filename: string; url: string }> {
+    const totalSize = file.size;
+    const chunkCount = Math.ceil(totalSize / CHUNK_SIZE);
+    
+    // 1. Инициализируем чанковую сессию на сервере
+    let startData: { uploadId?: string; error?: string } = {};
+    try {
+        startData = await apiFetch<{ uploadId?: string; error?: string }>('/api/assets/upload-chunk/start', {
+            method: 'POST',
+            body: JSON.stringify({ filename: file.name, fileSize: totalSize }),
+            signal: options.signal
+        });
+    } catch (err) {
+        throw new Error(`Failed to start chunked upload: ${(err as Error).message}`);
+    }
+    
+    const uploadId = startData.uploadId;
+    if (!uploadId) {
+        throw new Error(startData.error || 'Server did not return an uploadId');
+    }
+    
+    try {
+        // 2. Отправляем чанки по очереди
+        for (let i = 0; i < chunkCount; i++) {
+            if (options.signal?.aborted) {
+                throw new DOMException('Upload aborted', 'AbortError');
+            }
+            
+            const startByte = i * CHUNK_SIZE;
+            const endByte = Math.min(startByte + CHUNK_SIZE, totalSize);
+            const chunkBlob = file.slice(startByte, endByte);
+            
+            await new Promise<void>((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                const cleanup = () => {
+                    options.signal?.removeEventListener('abort', handleAbort);
+                };
+                
+                const handleAbort = () => {
+                    xhr.abort();
+                    cleanup();
+                    reject(new DOMException('Upload aborted', 'AbortError'));
+                };
+                
+                const params = new URLSearchParams({ uploadId, chunkIndex: i.toString() });
+                xhr.open('POST', `${SERVER_URL}/api/assets/upload-chunk?${params}`);
+                xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+                
+                xhr.upload.onprogress = (event) => {
+                    const loadedInChunk = event.loaded;
+                    const overallDelta = startByte + loadedInChunk;
+                    const overallPercent = Math.max(0, Math.min(99, Math.round((overallDelta / totalSize) * 100)));
+                    options.onProgress?.({ loaded: overallDelta, total: totalSize, percent: overallPercent });
+                };
+                
+                xhr.onload = () => {
+                    cleanup();
+                    if (xhr.status < 200 || xhr.status >= 300) {
+                        let errMsg = `Chunk ${i} upload failed with HTTP ${xhr.status}`;
+                        try {
+                            const resObj = JSON.parse(xhr.responseText || '{}');
+                            if (resObj.error) errMsg = resObj.error;
+                        } catch {}
+                        reject(new Error(errMsg));
+                        return;
+                    }
+                    resolve();
+                };
+                
+                xhr.onerror = () => {
+                    cleanup();
+                    reject(new Error(`Network error during chunk ${i} upload`));
+                };
+                
+                xhr.onabort = () => {
+                    cleanup();
+                    reject(new DOMException('Upload aborted', 'AbortError'));
+                };
+                
+                if (options.signal?.aborted) {
+                    handleAbort();
+                    return;
+                }
+                
+                options.signal?.addEventListener('abort', handleAbort, { once: true });
+                xhr.send(chunkBlob);
+            });
+        }
+        
+        // 3. Отправляем запрос на сборку файла
+        if (options.signal?.aborted) {
+            throw new DOMException('Upload aborted', 'AbortError');
+        }
+        
+        const assembleData = await apiFetch<{ success?: boolean; filename?: string; url?: string; error?: string }>('/api/assets/upload-chunk/assemble', {
+            method: 'POST',
+            body: JSON.stringify({ uploadId }),
+            signal: options.signal
+        });
+        
+        if (!assembleData.filename) {
+            throw new Error(assembleData.error || 'Server failed to assemble asset chunks');
+        }
+        
+        options.onProgress?.({ loaded: totalSize, total: totalSize, percent: 100 });
+        return {
+            filename: assembleData.filename,
+            url: assembleData.url || getAssetUrl(assembleData.filename)
+        };
+        
+    } catch (err) {
+        // В случае любой ошибки/отмены отправляем запрос очистки
+        try {
+            await apiFetch('/api/assets/upload-chunk/cancel', {
+                method: 'POST',
+                body: JSON.stringify({ uploadId })
+            }).catch(() => {});
+        } catch {}
+        throw err;
+    }
 }

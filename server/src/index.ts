@@ -19,6 +19,7 @@ const require = createRequire(import.meta.url);
 const { setupWSConnection } = require('y-websocket/bin/utils');
 
 import { createWorld, openWorld, getCurrentWorldPath, getCurrentWorldName, getAssetsPath, saveWorldIndex, getDbPath, loadAudioDeck, saveAudioDeck } from './worldManager.js';
+import { resolveAssetPath } from './assetManager.js';
 import {
     listEntities,
     readEntity,
@@ -312,6 +313,260 @@ app.post('/api/assets/upload', (req, res) => {
         fs.writeFileSync(filePath, buffer);
 
         res.json({ success: true, filename: finalFilename, url: `/api/assets/${finalFilename}` });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.get('/api/assets/file', (req, res) => {
+    try {
+        const assetsDir = getAssetsPath();
+        const requestedPath = req.query.path as string;
+        if (!requestedPath) {
+            res.status(400).json({ error: 'path query parameter is required' });
+            return;
+        }
+        const filePath = resolveAssetPath(assetsDir, requestedPath);
+        if (!filePath) {
+            res.status(403).json({ error: 'Access denied or invalid path' });
+            return;
+        }
+        if (!fs.existsSync(filePath)) {
+            res.status(404).json({ error: 'File not found' });
+            return;
+        }
+        res.sendFile(filePath);
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+// Middleware для бинарных потоков
+const rawOctetMiddleware = express.raw({ type: 'application/octet-stream', limit: '300mb' });
+
+app.post('/api/assets/upload-binary', rawOctetMiddleware, (req, res) => {
+    try {
+        const filename = req.query.filename as string;
+        if (!filename) {
+            res.status(400).json({ error: 'filename query parameter is required' });
+            return;
+        }
+        const assetsDir = getAssetsPath();
+        if (!fs.existsSync(assetsDir)) {
+            fs.mkdirSync(assetsDir, { recursive: true });
+        }
+
+        // Обеспечим уникальное имя в папке назначения
+        const folder = req.query.folder as string || '';
+        let targetDir = assetsDir;
+        if (folder) {
+            // Поддержка папок
+            const resolvedFolder = resolveAssetPath(assetsDir, folder);
+            if (resolvedFolder) {
+                targetDir = resolvedFolder;
+                if (!fs.existsSync(targetDir)) {
+                    fs.mkdirSync(targetDir, { recursive: true });
+                }
+            }
+        }
+
+        let finalFilename = filename;
+        let counter = 1;
+        while (fs.existsSync(path.join(targetDir, finalFilename))) {
+            const ext = path.extname(filename);
+            const base = path.basename(filename, ext);
+            finalFilename = `${base}_${counter}${ext}`;
+            counter++;
+        }
+
+        const buffer = req.body as Buffer;
+        if (!buffer || buffer.length === 0) {
+            res.status(400).json({ error: 'Empty file body' });
+            return;
+        }
+
+        const targetPath = path.join(targetDir, finalFilename);
+        fs.writeFileSync(targetPath, buffer);
+
+        // Формируем относительный путь ассета (для сохранения на канвас или сущности)
+        const relativeAssetPath = path.relative(assetsDir, targetPath).replace(/\\/g, '/');
+
+        res.json({
+            success: true,
+            filename: finalFilename,
+            path: relativeAssetPath,
+            url: `/api/assets/file?path=${encodeURIComponent(relativeAssetPath)}`
+        });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+// Временный каталог для чанков
+function getChunksTempDir(uploadId: string): string {
+    const assetsDir = getAssetsPath();
+    return path.join(assetsDir, '.chunks', uploadId);
+}
+
+// 1. Инициализация сессии загрузки чанков
+app.post('/api/assets/upload-chunk/start', (req, res) => {
+    try {
+        const { filename, fileSize } = req.body;
+        if (!filename) {
+            res.status(400).json({ error: 'filename is required in body' });
+            return;
+        }
+        
+        // Генерируем уникальный uploadId
+        const uploadId = `upload_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        const tempDir = getChunksTempDir(uploadId);
+        fs.mkdirSync(tempDir, { recursive: true });
+
+        // Записываем метаданные во временный файл
+        fs.writeFileSync(path.join(tempDir, 'metadata.json'), JSON.stringify({
+            filename,
+            fileSize,
+            createdAt: Date.now()
+        }));
+
+        res.json({ uploadId, success: true });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+// 2. Загрузка чанка
+app.post('/api/assets/upload-chunk', rawOctetMiddleware, (req, res) => {
+    try {
+        const uploadId = req.query.uploadId as string;
+        const chunkIndexStr = req.query.chunkIndex as string;
+
+        if (!uploadId || !chunkIndexStr) {
+            res.status(400).json({ error: 'uploadId and chunkIndex parameters are required' });
+            return;
+        }
+
+        const chunkIndex = parseInt(chunkIndexStr, 10);
+        const tempDir = getChunksTempDir(uploadId);
+
+        if (!fs.existsSync(tempDir)) {
+            res.status(404).json({ error: 'Upload session not found or expired' });
+            return;
+        }
+
+        const buffer = req.body as Buffer;
+        if (!buffer || buffer.length === 0) {
+            res.status(400).json({ error: 'Chunk buffer is empty' });
+            return;
+        }
+
+        const chunkPath = path.join(tempDir, `chunk_${chunkIndex}`);
+        fs.writeFileSync(chunkPath, buffer);
+
+        res.json({ success: true, chunkIndex });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+// 3. Сборка файла из чанков
+app.post('/api/assets/upload-chunk/assemble', (req, res) => {
+    try {
+        const { uploadId } = req.body;
+        if (!uploadId) {
+            res.status(400).json({ error: 'uploadId is required in body' });
+            return;
+        }
+
+        const tempDir = getChunksTempDir(uploadId);
+        if (!fs.existsSync(tempDir)) {
+            res.status(404).json({ error: 'Upload session not found' });
+            return;
+        }
+
+        // Читаем метаданные
+        const metadataPath = path.join(tempDir, 'metadata.json');
+        if (!fs.existsSync(metadataPath)) {
+            res.status(400).json({ error: 'Metadata file is missing in upload session' });
+            return;
+        }
+        const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+        const filename = metadata.filename;
+
+        const assetsDir = getAssetsPath();
+        if (!fs.existsSync(assetsDir)) {
+            fs.mkdirSync(assetsDir, { recursive: true });
+        }
+
+        // Ищем чанки в папке
+        const files = fs.readdirSync(tempDir);
+        const chunkFiles = files
+            .filter(f => f.startsWith('chunk_'))
+            .sort((a, b) => {
+                const idxA = parseInt(a.split('_')[1], 10);
+                const idxB = parseInt(b.split('_')[1], 10);
+                return idxA - idxB;
+            });
+
+        if (chunkFiles.length === 0) {
+            res.status(400).json({ error: 'No chunks found to assemble' });
+            return;
+        }
+
+        // Обеспечим уникальное имя
+        let finalFilename = filename;
+        let counter = 1;
+        while (fs.existsSync(path.join(assetsDir, finalFilename))) {
+            const ext = path.extname(filename);
+            const base = path.basename(filename, ext);
+            finalFilename = `${base}_${counter}${ext}`;
+            counter++;
+        }
+
+        const targetPath = path.join(assetsDir, finalFilename);
+        const writeStream = fs.createWriteStream(targetPath);
+
+        // Последовательно склеиваем чанки
+        for (const chunkFile of chunkFiles) {
+            const chunkPath = path.join(tempDir, chunkFile);
+            const chunkBuffer = fs.readFileSync(chunkPath);
+            writeStream.write(chunkBuffer);
+        }
+        writeStream.end();
+
+        // Удаляем временную папку
+        fs.rmSync(tempDir, { recursive: true, force: true });
+
+        // Если итоговая директория .chunks осталась пустой — вычистим её
+        const chunksParent = path.join(assetsDir, '.chunks');
+        if (fs.existsSync(chunksParent) && fs.readdirSync(chunksParent).length === 0) {
+            fs.rmdirSync(chunksParent);
+        }
+
+        res.json({
+            success: true,
+            filename: finalFilename,
+            path: finalFilename,
+            url: `/api/assets/file?path=${encodeURIComponent(finalFilename)}`
+        });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+// 4. Отмена сессии и удаление временных файлов
+app.post('/api/assets/upload-chunk/cancel', (req, res) => {
+    try {
+        const { uploadId } = req.body;
+        if (!uploadId) {
+            res.status(400).json({ error: 'uploadId is required' });
+            return;
+        }
+        const tempDir = getChunksTempDir(uploadId);
+        if (fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        }
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: (err as Error).message });
     }
