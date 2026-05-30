@@ -28,8 +28,8 @@
 - [x] Убрать дублирующий player opt-in в пульте и останавливать уже играющий звук при отключении session audio игроком.
 - [x] Добавить host drag/drop аудио в `AudioDesk`: upload в `assets/`, progress notification и cue в активный канал.
 - [x] Добавить базовый `ambience` multi-loop для нескольких одновременных локальных лупов.
-- [ ] Довести mobile layout нижнего плеера.
-- [ ] Сохранить локальную деку/кнопки достаточно надёжно до world-level persistence.
+- [x] Довести mobile layout нижнего плеера.
+- [x] Сохранить локальную деку/кнопки достаточно надёжно до world-level persistence: `gm/audio_deck.json`.
 - [ ] Спроектировать track artwork/cover metadata для аудио без новой тяжёлой зависимости.
 
 Принятое решение: аудио развивается как отдельный отключаемый local-first модуль с нижним доком и отдельным пультом/микшером. Core = локальные файлы; YouTube не входит в core; SoundCloud и YouTube идут только как future source extensions. См. `.pi/docs/gm-audio-desk.md` и `.pi/docs/audio-source-extensions.md`.
@@ -97,6 +97,7 @@
 
 ## Следующий Безопасный Срез
 
-1. Доделать cancel/retry для player uploads.
-2. Доделать mobile layout нижнего `music` player и укрепить локальную деку до world-level persistence.
-3. Спроектировать chunked/resumable upload для файлов больше `250 MB`.
+1. ✅ Доделать cancel/retry для player uploads — **ГОТОВО**, запушено.
+2. ✅ Доделать mobile layout нижнего `music` player и укрепить локальную деку до world-level persistence — **ГОТОВО**.
+3. [ ] Спроектировать chunked/resumable upload для файлов больше `250 MB`.
+4. [ ] Manual QA entity ID migration на копии мира + roles/player identity UI.
