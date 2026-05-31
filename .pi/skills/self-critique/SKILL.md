@@ -120,6 +120,9 @@ description: Post-implementation reflection and edge-case analysis for Vibe TTRP
 ### Что можно улучшить
 - [идея 1] — [в следующем слайсе / потом]
 
+### Regression note
+- Если исправлялся баг от предыдущей AI-правки: [какой контракт нарушили] → [какой `.pi/docs`, `.pi/rules` или skill обновлён]
+
 ### Протестировано
 - ✅ Happy path
 - ✅ Edge case 1
