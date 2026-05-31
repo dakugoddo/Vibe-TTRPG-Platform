@@ -120,10 +120,10 @@ export function SkillsBlock({ entity }: SkillsBlockProps) {
                         return (
                             <div
                                 key={key}
-                                className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-transparent hover:bg-white/10 hover:border-white/10 transition-all group"
+                                className="group flex items-center justify-between rounded-[var(--vibe-radius-sm)] border border-transparent bg-[var(--vibe-surface-input)] p-2 transition-all hover:border-[var(--vibe-border-subtle)] hover:bg-[var(--vibe-surface-hover)]"
                             >
                                 {/* Skill name */}
-                                <span className="text-xs text-white/70 font-medium min-w-[120px] group-hover:text-white/90 transition-colors">
+                                <span className="min-w-[120px] text-xs font-medium text-[var(--vibe-text-muted)] transition-colors group-hover:text-[var(--vibe-text-primary)]">
                                     {name}
                                 </span>
 
@@ -136,7 +136,7 @@ export function SkillsBlock({ entity }: SkillsBlockProps) {
                                                 handleUpdateSkillRank(key, rank - 1);
                                             }}
                                             disabled={rank <= RANK_MIN}
-                                            className="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                            className="rounded p-0.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
                                         >
                                             <Minus size={12} />
                                         </button>
@@ -144,9 +144,9 @@ export function SkillsBlock({ entity }: SkillsBlockProps) {
 
                                     <span className={clsx(
                                         "w-7 text-center text-sm font-bold font-mono tabular-nums",
-                                        rank > 0 ? "text-emerald-400" :
-                                        rank < 0 ? "text-red-400/70" :
-                                        "text-white/40"
+                                        rank > 0 ? "text-[var(--vibe-success)]" :
+                                        rank < 0 ? "text-[var(--vibe-danger)]" :
+                                        "text-[var(--vibe-text-faint)]"
                                     )}>
                                         {rank >= 0 ? `+${rank}` : rank}
                                     </span>
@@ -158,7 +158,7 @@ export function SkillsBlock({ entity }: SkillsBlockProps) {
                                                 handleUpdateSkillRank(key, rank + 1);
                                             }}
                                             disabled={rank >= RANK_MAX}
-                                            className="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                            className="rounded p-0.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
                                         >
                                             <Plus size={12} />
                                         </button>
@@ -177,10 +177,10 @@ export function SkillsBlock({ entity }: SkillsBlockProps) {
                                         : 'Ранг должен быть > 0 для броска'
                                     }
                                     className={clsx(
-                                        'ml-2 p-1.5 rounded-lg transition-all flex items-center gap-1',
+                                        'ml-2 flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border p-1.5 transition-all',
                                         canRoll
-                                            ? 'bg-violet-500/20 text-violet-300 hover:bg-violet-500/40 hover:text-violet-100 border border-violet-500/30 hover:border-violet-400/50 shadow-sm hover:shadow-md'
-                                            : 'bg-white/5 text-white/20 border border-transparent cursor-not-allowed'
+                                            ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] shadow-sm hover:border-[var(--vibe-accent)] hover:bg-[var(--vibe-surface-hover)] hover:shadow-md'
+                                            : 'cursor-not-allowed border-transparent bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)]'
                                     )}
                                 >
                                     <Dices size={14} />

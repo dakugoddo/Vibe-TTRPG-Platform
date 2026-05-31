@@ -67,11 +67,11 @@ const StatRow = ({
         : 0;
 
     return (
-        <div className="flex flex-col items-center justify-between p-3 rounded-xl bg-white/5 border border-transparent hover:bg-white/10 hover:border-white/10 transition-all group relative shadow-sm">
+        <div className="group relative flex flex-col items-center justify-between rounded-[var(--vibe-radius-md)] border border-transparent bg-[var(--vibe-surface-input)] p-3 shadow-sm transition-all hover:border-[var(--vibe-border-subtle)] hover:bg-[var(--vibe-surface-hover)]">
             <div className="flex items-center gap-1 mb-2">
-                {Icon && <Icon size={12} className="text-white/30 group-hover:text-white/60 transition-colors" />}
+                {Icon && <Icon size={12} className="text-[var(--vibe-text-faint)] transition-colors group-hover:text-[var(--vibe-text-muted)]" />}
                 <span
-                    className="text-[10px] text-white/40 uppercase tracking-widest font-bold cursor-pointer hover:text-white transition-colors"
+                    className="cursor-pointer text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)] transition-colors hover:text-[var(--vibe-text-primary)]"
                     onClick={() => handleOpenNote(label)}
                 >
                     {label}
@@ -80,12 +80,12 @@ const StatRow = ({
             <Popover
                 placement="left"
                 content={
-                    <div className="p-3 bg-[#151c2b]/70 backdrop-blur-3xl border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col gap-3">
-                        <span className="text-xs text-white/50 uppercase tracking-widest font-bold border-b border-white/10 pb-2">Редак.: {label}</span>
+                    <div className={`flex flex-col gap-3 rounded-[var(--vibe-radius-md)] p-3 ${glass.popover}`}>
+                        <span className="border-b border-[var(--vibe-border-subtle)] pb-2 text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">Редак.: {label}</span>
 
                         <div className="flex gap-4">
                             <div className="flex flex-col gap-1 w-16">
-                                <label className="text-[10px] text-white/50 whitespace-nowrap">{baseLabel || 'База'}</label>
+                                <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">{baseLabel || 'База'}</label>
                                 <input
                                     type="number"
                                     value={stat.base}
@@ -96,7 +96,7 @@ const StatRow = ({
                             </div>
 
                             <div className="flex flex-col gap-1 w-16">
-                                <label className="text-[10px] text-white/50 whitespace-nowrap">{adhocLabel || 'Доп.'}</label>
+                                <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">{adhocLabel || 'Доп.'}</label>
                                 <input
                                     type="number"
                                     value={adhoc}
@@ -112,9 +112,9 @@ const StatRow = ({
                 <StatTooltip stat={stat}>
                     <div className={clsx(
                         "text-xl font-bold cursor-pointer transition-colors p-1",
-                        stat.total > stat.base ? "text-green-400 group-hover:text-green-300" :
-                            stat.total < stat.base ? "text-red-400 group-hover:text-red-300" :
-                                "text-white/90 group-hover:text-white"
+                        stat.total > stat.base ? "text-[var(--vibe-success)] group-hover:brightness-125" :
+                            stat.total < stat.base ? "text-[var(--vibe-danger)] group-hover:brightness-125" :
+                                "text-[var(--vibe-text-primary)]"
                     )}>
                         {stat.total}
                     </div>
@@ -251,7 +251,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
             {/* WOUNDS BLOCK */}
             <div className={`${glass.blockBg} overflow-hidden relative group/wounds`}>
                 {currentWounds >= limitStat.total * 1.5 && (
-                    <div className="absolute inset-0 bg-red-900/10 pointer-events-none animate-pulse"></div>
+                    <div className="pointer-events-none absolute inset-0 animate-pulse bg-[color-mix(in_srgb,var(--vibe-danger)_10%,transparent)]"></div>
                 )}
                 
                 <div className="relative z-10 flex flex-col gap-3">
@@ -259,7 +259,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                         <div className="flex flex-col">
                             <div className="flex items-center gap-2">
                                 <h4
-                                    className="text-[10px] text-white/40 font-bold uppercase tracking-widest cursor-pointer hover:text-white transition-colors"
+                                    className="cursor-pointer text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)] transition-colors hover:text-[var(--vibe-text-primary)]"
                                     onClick={() => handleOpenNote('Раны')}
                                 >
                                     Состояние Здоровья
@@ -267,11 +267,11 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                 <Popover
                                     placement="bottom"
                                     content={
-                                        <div className="p-3 bg-[#151c2b]/70 backdrop-blur-3xl border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col gap-3">
-                                            <span className="text-xs text-white/50 uppercase tracking-widest font-bold border-b border-white/10 pb-2">Предел ран</span>
+                                        <div className={`flex flex-col gap-3 rounded-[var(--vibe-radius-md)] p-3 ${glass.popover}`}>
+                                            <span className="border-b border-[var(--vibe-border-subtle)] pb-2 text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">Предел ран</span>
                                             <div className="flex gap-4">
                                                 <div className="flex flex-col gap-1 w-16">
-                                                    <label className="text-[10px] text-white/50 whitespace-nowrap">База</label>
+                                                    <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">База</label>
                                                     <input
                                                         type="number"
                                                         value={limitStat.base}
@@ -281,7 +281,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                                     />
                                                 </div>
                                                 <div className="flex flex-col gap-1 w-16">
-                                                    <label className="text-[10px] text-white/50 whitespace-nowrap">Доп.</label>
+                                                    <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">Доп.</label>
                                                     <input
                                                         type="number"
                                                         value={woundsAdhoc}
@@ -295,24 +295,24 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                     }
                                 >
                                     <StatTooltip stat={limitStat}>
-                                        <span className="text-[10px] text-white/30 cursor-pointer hover:text-white/60 transition-colors">
-                                            Предел: <span className="text-white font-bold">{limitStat.total}</span>
+                                        <span className="cursor-pointer text-[10px] text-[var(--vibe-text-faint)] transition-colors hover:text-[var(--vibe-text-muted)]">
+                                            Предел: <span className="font-bold text-[var(--vibe-text-primary)]">{limitStat.total}</span>
                                         </span>
                                     </StatTooltip>
                                 </Popover>
                             </div>
-                            <div className="text-white/90 font-bold text-sm">
+                            <div className="text-sm font-bold text-[var(--vibe-text-primary)]">
                                 {currentWounds >= limitStat.total ? 'ШОК / КРИТИЧЕСКИ РАНЕН' : 'ЗДОРОВ / ЛЕГКИЕ РАНЫ'}
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3">
                             {/* Interactive wound controls */}
-                            <div className="flex items-center gap-1 bg-black/30 rounded-lg px-1.5 py-1 border border-white/5 shadow-inner backdrop-blur-sm">
+                            <div className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-1 shadow-[var(--vibe-shadow-block)]">
                                 <button
                                     onClick={() => handleChangeWounds(-5)}
                                     disabled={!canEditAttributes || currentWounds <= 0}
-                                    className="p-1 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                    className="rounded p-1 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
                                     title="−5 ран"
                                 >
                                     <Minus size={10} />
@@ -321,7 +321,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                 <button
                                     onClick={() => handleChangeWounds(-1)}
                                     disabled={!canEditAttributes || currentWounds <= 0}
-                                    className="p-1 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                    className="rounded p-1 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
                                     title="−1 рана"
                                 >
                                     <Minus size={14} />
@@ -351,7 +351,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                         className={clsx(
                                             glass.input,
                                             "h-8 w-12 px-1 py-0 text-center text-lg font-bold tabular-nums",
-                                            currentWounds >= limitStat.total ? "text-red-300" : "text-green-300"
+                                            currentWounds >= limitStat.total ? "text-[var(--vibe-danger)]" : "text-[var(--vibe-success)]"
                                         )}
                                         title="Enter — сохранить, Esc — отменить"
                                     />
@@ -360,8 +360,8 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                         type="button"
                                         disabled={!canEditAttributes}
                                         className={clsx(
-                                            "h-8 w-12 text-center font-bold text-xl tabular-nums select-none transition-colors rounded-md hover:bg-white/10 hover:brightness-125",
-                                            currentWounds >= limitStat.total ? "text-red-400" : "text-green-400"
+                                            "h-8 w-12 select-none rounded-[var(--vibe-radius-sm)] text-center text-xl font-bold tabular-nums transition-colors hover:bg-[var(--vibe-surface-hover)] hover:brightness-125",
+                                            currentWounds >= limitStat.total ? "text-[var(--vibe-danger)]" : "text-[var(--vibe-success)]"
                                         )}
                                         title="Нажать — ввести вручную"
                                         onClick={startWoundsEdit}
@@ -373,7 +373,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                 <button
                                     onClick={() => handleChangeWounds(1)}
                                     disabled={!canEditAttributes || currentWounds >= maxWounds}
-                                    className="p-1 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                    className="rounded p-1 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
                                     title="+1 рана"
                                 >
                                     <Plus size={14} />
@@ -381,7 +381,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                 <button
                                     onClick={() => handleChangeWounds(5)}
                                     disabled={!canEditAttributes || currentWounds >= maxWounds}
-                                    className="p-1 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                    className="rounded p-1 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
                                     title="+5 ран"
                                 >
                                     <Plus size={10} />
@@ -389,27 +389,29 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                 </button>
                             </div>
 
-                            <span className="text-white/30 text-xs">/</span>
-                            <span className="text-white/60 text-xs w-4">{maxWounds}</span>
+                            <span className="text-xs text-[var(--vibe-text-faint)]">/</span>
+                            <span className="w-4 text-xs text-[var(--vibe-text-muted)]">{maxWounds}</span>
                         </div>
                     </div>
 
             {/* Horizontal Progress Bar — clickable */}
             <div
-                className="h-3 w-full bg-[#1a1c29] rounded-full overflow-hidden border border-white/5 relative p-[1px] shadow-inner cursor-pointer group/bar"
+                className="group/bar relative h-3 w-full cursor-pointer overflow-hidden rounded-full border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-[1px] shadow-[var(--vibe-shadow-block)]"
                 onClick={() => { if (canEditAttributes) handleChangeWounds(1); }}
                 onContextMenu={(e) => { e.preventDefault(); if (canEditAttributes) handleChangeWounds(-1); }}
                 title="ЛКМ: +1 рана | ПКМ: −1 рана"
             >
                 <div
                     className={clsx("absolute top-0 left-0 bottom-0 rounded-full transition-all duration-300",
-                        currentWounds >= limitStat.total ? "bg-red-500/80 shadow-[0_0_10px_rgba(239,68,68,0.5)]" : "bg-green-500/80 shadow-[0_0_10px_rgba(74,222,128,0.5)]"
+                        currentWounds >= limitStat.total
+                            ? "bg-[var(--vibe-danger)] shadow-[0_0_10px_color-mix(in_srgb,var(--vibe-danger)_45%,transparent)]"
+                            : "bg-[var(--vibe-success)] shadow-[0_0_10px_color-mix(in_srgb,var(--vibe-success)_45%,transparent)]"
                     )}
                     style={{ width: `${Math.min(100, Math.max(0, (currentWounds / Math.max(1, maxWounds)) * 100))}%` }}
                 />
                 {/* Hover hint */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/bar:opacity-100 transition-opacity">
-                    <span className="text-[9px] text-white/60 font-bold drop-shadow-lg">ЛКМ +1 / ПКМ −1</span>
+                    <span className="text-[9px] font-bold text-[var(--vibe-text-muted)] drop-shadow-lg">ЛКМ +1 / ПКМ −1</span>
                 </div>
             </div>
                 </div>
@@ -419,7 +421,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                 {/* ATTRIBUTES BLOCK */}
                 <div className={`${glass.blockBg} col-span-2 lg:col-span-1`}>
                     <h4
-                        className={glass.blockHeader + " cursor-pointer hover:text-white"}
+                        className={glass.blockHeader + " cursor-pointer hover:text-[var(--vibe-text-primary)]"}
                         onClick={() => handleOpenNote('Атрибуты')}
                     >
                         Атрибуты
@@ -439,12 +441,12 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                     <div className={`${glass.blockBg} flex-1`}>
                         <div className="flex items-center justify-between mb-4">
                             <h4
-                                className={glass.blockHeader + " mb-0 cursor-pointer hover:text-white"}
+                                className={glass.blockHeader + " mb-0 cursor-pointer hover:text-[var(--vibe-text-primary)]"}
                                 onClick={() => handleOpenNote('Мощь')}
                             >
                                 Мощь
                             </h4>
-                            <div className="px-3 py-1 bg-white/10 rounded font-bold font-mono text-sm shadow-inner text-white/90">
+                            <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-3 py-1 font-mono text-sm font-bold text-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-block)]">
                                 {activePowerTotal}
                             </div>
                         </div>
@@ -455,23 +457,23 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                             <StatRow entityId={entity.id} path={['power', 'aura']} label="Аура" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
                         </div>
 
-                        <div className="pt-3 border-t border-white/10">
-                            <label className="text-[10px] text-white/40 uppercase font-bold tracking-wider mb-2 block">Активированные источники</label>
-                            <div className="flex bg-black/30 p-1 rounded-xl border border-white/5 gap-1 shadow-inner backdrop-blur-md">
+                        <div className="border-t border-[var(--vibe-border-subtle)] pt-3">
+                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Активированные источники</label>
+                            <div className={`${glass.tabBar} flex gap-1 rounded-[var(--vibe-radius-md)] p-1`}>
                                 <button
                                     onClick={() => togglePower('astral')}
                                     disabled={!canEditAttributes}
-                                    className={clsx("flex-1 text-xs py-1.5 rounded-lg transition-all duration-300 font-medium", activePowers.includes('astral') ? "bg-white/15 text-white shadow-md border border-white/10 backdrop-blur-xl" : "text-white/40 hover:text-white/80 hover:bg-white/5 border border-transparent")}
+                                    className={clsx("flex-1 rounded-[var(--vibe-radius-sm)] border py-1.5 text-xs font-medium transition-all duration-300", activePowers.includes('astral') ? glass.tabActive : glass.tabIdle)}
                                 >Астрал</button>
                                 <button
                                     onClick={() => togglePower('ether')}
                                     disabled={!canEditAttributes}
-                                    className={clsx("flex-1 text-xs py-1.5 rounded-lg transition-all duration-300 font-medium", activePowers.includes('ether') ? "bg-white/15 text-white shadow-md border border-white/10 backdrop-blur-xl" : "text-white/40 hover:text-white/80 hover:bg-white/5 border border-transparent")}
+                                    className={clsx("flex-1 rounded-[var(--vibe-radius-sm)] border py-1.5 text-xs font-medium transition-all duration-300", activePowers.includes('ether') ? glass.tabActive : glass.tabIdle)}
                                 >Эфир</button>
                                 <button
                                     onClick={() => togglePower('aura')}
                                     disabled={!canEditAttributes}
-                                    className={clsx("flex-1 text-xs py-1.5 rounded-lg transition-all duration-300 font-medium", activePowers.includes('aura') ? "bg-white/15 text-white shadow-md border border-white/10 backdrop-blur-xl" : "text-white/40 hover:text-white/80 hover:bg-white/5 border border-transparent")}
+                                    className={clsx("flex-1 rounded-[var(--vibe-radius-sm)] border py-1.5 text-xs font-medium transition-all duration-300", activePowers.includes('aura') ? glass.tabActive : glass.tabIdle)}
                                 >Аура</button>
                             </div>
                         </div>
@@ -480,26 +482,26 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                     {/* DEFENSE BLOCK */}
                     <div className={`${glass.blockBg}`}>
                         <h4
-                            className={glass.blockHeader + " cursor-pointer hover:text-white"}
+                            className={glass.blockHeader + " cursor-pointer hover:text-[var(--vibe-text-primary)]"}
                             onClick={() => handleOpenNote('Защита')}
                         >
                             Защита
                         </h4>
                         <div className="grid grid-cols-2 gap-2">
                             {/* Custom Evasion Row to use the overridden stat */}
-                            <div className="flex flex-col items-center justify-between p-3 rounded-xl bg-white/5 border border-transparent hover:bg-white/10 hover:border-white/10 transition-all group relative shadow-sm">
-                                <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2 cursor-pointer hover:text-white transition-colors" onClick={() => handleOpenNote('Уклонение')}>
+                            <div className="group relative flex flex-col items-center justify-between rounded-[var(--vibe-radius-md)] border border-transparent bg-[var(--vibe-surface-input)] p-3 shadow-sm transition-all hover:border-[var(--vibe-border-subtle)] hover:bg-[var(--vibe-surface-hover)]">
+                                <div className="mb-2 cursor-pointer text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)] transition-colors hover:text-[var(--vibe-text-primary)]" onClick={() => handleOpenNote('Уклонение')}>
                                     Уклонение
                                 </div>
                                 <Popover
                                     placement="left"
                                     content={
-                                        <div className="p-3 bg-[#151c2b]/70 backdrop-blur-3xl border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col gap-3">
-                                            <span className="text-xs text-white/50 uppercase tracking-widest font-bold border-b border-white/10 pb-2">Редак.: Уклонение</span>
+                                        <div className={`flex flex-col gap-3 rounded-[var(--vibe-radius-md)] p-3 ${glass.popover}`}>
+                                            <span className="border-b border-[var(--vibe-border-subtle)] pb-2 text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">Редак.: Уклонение</span>
 
                                             <div className="flex gap-4">
                                                 <div className="flex flex-col gap-1 w-16">
-                                                    <label className="text-[10px] text-white/50 whitespace-nowrap">База</label>
+                                                    <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">База</label>
                                                     <input
                                                         type="number"
                                                         value={baseEvasionStat.base}
@@ -510,7 +512,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                                 </div>
 
                                                 <div className="flex flex-col gap-1 w-16">
-                                                    <label className="text-[10px] text-white/50 whitespace-nowrap">Доп.</label>
+                                                    <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">Доп.</label>
                                                     <input
                                                         type="number"
                                                         value={properties.defense?.evasion?.adhoc || 0}
@@ -524,7 +526,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                     }
                                 >
                                     <StatTooltip stat={evasionFullStat}>
-                                        <div className="text-xl font-bold cursor-pointer transition-colors p-1 text-white/90 group-hover:text-white">
+                                        <div className="cursor-pointer p-1 text-xl font-bold text-[var(--vibe-text-primary)] transition-colors">
                                             {evasionFullStat.total}
                                         </div>
                                     </StatTooltip>
@@ -548,7 +550,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                     {canEditAttributes && (
                         <>
                             <button
-                                className="flex items-center gap-1 px-2 py-1 bg-white/5 border border-white/10 border-dashed rounded-md text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-wider"
+                                className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                                 onClick={() => setIsTagPickerOpen(true)}
                             >
                                 <Plus size={12} /> Добавить
@@ -587,8 +589,8 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                         if (tagEntity && tagEntity.parentId !== 'folder_tags_statuses') return null; // Only show statuses here
 
                         return (
-                            <div key={tagId} className="group/tag flex items-center bg-[#2e3145] border border-white/5 rounded-lg overflow-hidden transition-colors hover:border-white/30 shadow-md">
-                                <EntityLink entityId={tagId} underline={false} className="px-2 py-1 text-white/80 font-medium whitespace-nowrap hover:text-white text-xs" />
+                            <div key={tagId} className="group/tag flex items-center overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] shadow-[var(--vibe-shadow-block)] transition-colors hover:border-[var(--vibe-border-strong)]">
+                                <EntityLink entityId={tagId} underline={false} className="whitespace-nowrap px-2 py-1 text-xs font-medium text-[var(--vibe-text-muted)] hover:text-[var(--vibe-text-primary)]" />
                                 {canEditAttributes && (
                                     <button
                                         onClick={() => {
@@ -604,7 +606,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                                 );
                                             }
                                         }}
-                                        className="px-2 py-1 text-white/30 hover:bg-red-900/40 hover:text-red-400 transition-colors border-l border-white/10 group-hover/tag:border-white/20"
+                                        className="border-l border-[var(--vibe-border-subtle)] px-2 py-1 text-[var(--vibe-text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)] group-hover/tag:border-[var(--vibe-border-strong)]"
                                         title="Убрать"
                                     >
                                         <Trash2 size={12} />
@@ -612,7 +614,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                 )}
                             </div>
                         )
-                    }) : <span className="text-gray-500 text-xs italic">Нет активных статусов</span>}
+                    }) : <span className="text-xs italic text-[var(--vibe-text-faint)]">Нет активных статусов</span>}
                 </div>
             </div>
 

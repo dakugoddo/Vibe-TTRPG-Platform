@@ -22,7 +22,8 @@
 - [x] После решений владельца идти foundation-first: theme tokens -> app shell/drawers -> i18n manager -> entity sheets -> asset/audio/settings polish.
 - [x] Срез theme tokens: `theme.ts` управляет semantic variables для surface/border/shadow/blur/radius, а SettingsWindow показывает visual theme presets.
 - [x] Первый entity UI-срез: EntityWindow frame/header/actions/relations/context menu, CharacterSheet notes и MarkdownRenderer переведены на semantic tokens.
-- [ ] Следующий entity UI-срез: ObjectSheet, InventoryBlock, Attribute/Skills/Abilities/Resources blocks и TagPicker surfaces на тот же semantic contract.
+- [x] Core entity block-pass: `AttributeBlock`, `SkillsBlock`, `AbilitiesBlock`, `ResourcesBlock` и `StatTooltip` переведены на semantic tokens.
+- [ ] Следующий entity UI-срез: ObjectSheet, InventoryBlock, CompetenciesBlock, TagPicker/EntityImage surfaces на тот же semantic contract.
 - [ ] После block-pass проектировать компактный character card view для canvas.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
@@ -97,7 +98,8 @@
 - [x] Поддерживать тему через variables/tokens, чтобы будущие custom themes не требовали переписывать компоненты: первый `theme.ts` token foundation и shell pass внесены.
 - [ ] Не делать случайную декоративность; интерфейс должен быть рабочим GM/player cockpit.
 - [x] Довести EntityWindow frame/context menu и MarkdownRenderer до первого semantic token слоя.
-- [ ] Довести оставшиеся старые hardcoded surfaces в entity blocks, AssetBrowser, SettingsWindow и AudioDesk до semantic tokens.
+- [x] Довести core entity blocks (`Attribute/Skills/Abilities/Resources/StatTooltip`) до semantic tokens.
+- [ ] Довести оставшиеся старые hardcoded surfaces в ObjectSheet, InventoryBlock, CompetenciesBlock, TagPicker, EntityImageBlock, AssetBrowser, SettingsWindow и AudioDesk до semantic tokens.
 
 ## 7. Platform Future
 
@@ -121,5 +123,6 @@
 3. ✅ Спроектировать chunked/resumable upload для файлов больше `250 MB` — **ГОТОВО**, запушено.
 4. ✅ Поднять UI redesign gate, внести решения владельца и первый semantic theme foundation — **ГОТОВО**.
 5. ✅ EntityWindow/Markdown/notes surfaces на semantic tokens — **ГОТОВО**.
-6. [ ] Следующий UI-срез: entity blocks (ObjectSheet, InventoryBlock, Attribute/Skills/Abilities/Resources) на semantic tokens.
-7. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.
+6. ✅ Core entity blocks (Attribute/Skills/Abilities/Resources/StatTooltip) на semantic tokens — **ГОТОВО**.
+7. [ ] Следующий UI-срез: ObjectSheet, InventoryBlock, CompetenciesBlock, TagPicker/EntityImage surfaces на semantic tokens.
+8. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.

@@ -485,22 +485,22 @@ Settings становится центром:
 - [x] Поднять UI redesign в `.pi/DEVELOPMENT_PLAN.md`.
 - [x] Создать этот master plan.
 - [x] Создать preview-макет.
-- [ ] Получить ответы владельца на вопросы.
+- [x] Получить ответы владельца на вопросы.
 
 ### Slice 1: Theme token foundation
 
-- Пересобрать `utils/theme.ts` вокруг semantic tokens.
-- Сохранить совместимость `glass.*`, чтобы не переписывать всё за раз.
-- Добавить theme registry.
-- Добавить density registry.
-- Focused tests для theme normalization.
+- [x] Пересобрать `utils/theme.ts` вокруг semantic tokens.
+- [x] Сохранить совместимость `glass.*`, чтобы не переписывать всё за раз.
+- [x] Добавить theme registry.
+- [ ] Добавить density registry.
+- [x] Focused tests для theme normalization.
 
 ### Slice 2: Settings UI
 
-- Interface tab: theme preset, density, language.
-- Preview swatches.
-- Persist local choice.
-- Не делать world-level theme persistence без решения.
+- [ ] Interface tab: theme preset, density, language.
+- [x] Preview swatches для theme presets.
+- [x] Persist local theme choice.
+- [ ] World-level theme persistence: разрешено владельцем как направление, но нужен отдельный schema/pass.
 
 ### Slice 3: i18n cleanup
 
@@ -510,12 +510,12 @@ Settings становится центром:
 
 ### Slice 4: Entity kit
 
-- Новый `EntityHeader`.
-- Новый `EntitySection`.
-- Новый `StatTile`.
-- Новый `ResourceTrack`.
-- Новый `ActionPill`.
-- Сначала Character/Object/Ability/Attack, затем Note/Tag/Canvas.
+- [ ] Новый `EntityHeader`.
+- [ ] Новый `EntitySection`.
+- [x] Первый `StatTile`-подход через tokenized `AttributeBlock`/`StatTooltip`.
+- [x] Первый `ResourceTrack`-подход через tokenized `ResourcesBlock`.
+- [x] Первый `ActionPill`-подход через tokenized `AbilitiesBlock`.
+- [ ] Сначала Character/Object/Ability/Attack, затем Note/Tag/Canvas.
 
 ### Slice 5: Workbench polish
 

@@ -45,13 +45,14 @@ description: Complete UI architecture reference for Vibe TTRPG Platform. Use whe
 
 ### 1.2 Entity UI migration status
 
-После первого `FEAT-UI-002` entity pass уже переведены на semantic tokens:
+После первых `FEAT-UI-002` entity passes уже переведены на semantic tokens:
 
 - `EntityWindow`: frame/header/actions/relations/context menu/generic description/debug surfaces.
 - `CharacterSheet`: notes tab textarea/read surface.
 - `MarkdownRenderer`: headings, blockquote, code/pre, tables, stats/inventory custom markdown blocks.
+- `AttributeBlock`, `SkillsBlock`, `AbilitiesBlock`, `ResourcesBlock`, `StatTooltip`: core stat/resource/ability surfaces, popovers, counters and status colors use `--vibe-*` semantic tokens.
 
-Оставшиеся старые слои, которые нельзя считать финальным UI: `ObjectSheet`, `InventoryBlock`, `AttributeBlock`, `SkillsBlock`, `CompetenciesBlock`, `AbilitiesBlock`, `ResourcesBlock`, `TagPickerPopup`, `EntityImageBlock` и `AudioDesk/AssetBrowser` polish.
+Оставшиеся старые слои, которые нельзя считать финальным UI: `ObjectSheet`, `InventoryBlock`, `CompetenciesBlock`, `TagPickerPopup`, `EntityImageBlock`, `SettingsWindow` polish и `AudioDesk/AssetBrowser` polish.
 
 ---
 

@@ -74,7 +74,7 @@ export function ResourcesBlock({ entity }: ResourcesBlockProps) {
                     {canEditResources && (
                         <button
                             onClick={handleAddResource}
-                            className="flex items-center gap-1 px-2 py-1 bg-emerald-500/15 border border-emerald-500/30 rounded-lg text-emerald-300 hover:text-emerald-100 hover:bg-emerald-500/30 hover:border-emerald-400/50 transition-all text-[10px] font-bold uppercase tracking-wider"
+                            className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-success)_34%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_14%,transparent)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-success)] transition-all hover:border-[color-mix(in_srgb,var(--vibe-success)_52%,transparent)] hover:bg-[color-mix(in_srgb,var(--vibe-success)_24%,transparent)]"
                         >
                             <Plus size={12} /> Добавить
                         </button>
@@ -82,7 +82,7 @@ export function ResourcesBlock({ entity }: ResourcesBlockProps) {
                 </div>
 
                 {entries.length === 0 ? (
-                    <div className="text-center text-white/30 text-xs py-8 italic border border-dashed border-white/10 rounded-xl">
+                    <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] py-8 text-center text-xs italic text-[var(--vibe-text-faint)]">
                         {canEditResources ? 'Нет ресурсов. Добавьте запас, заряд, фокус или другой счетчик.' : 'Ресурсы пока не добавлены.'}
                     </div>
                 ) : (
@@ -96,17 +96,17 @@ export function ResourcesBlock({ entity }: ResourcesBlockProps) {
                             return (
                                 <div
                                     key={id}
-                                    className="p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all"
+                                    className="rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]"
                                 >
                                     <div className="flex items-start gap-3">
                                         <label className="flex-1 min-w-0">
-                                            <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">Название</span>
+                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Название</span>
                                             <input
                                                 type="text"
                                                 value={label}
                                                 readOnly={!canEditResources}
                                                 onChange={(e) => handleUpdateResource(id, { label: e.target.value })}
-                                                className="w-full bg-black/25 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/80 outline-none focus:border-emerald-400/50 read-only:text-white/40 read-only:cursor-default"
+                                                className={`${glass.input} w-full text-xs read-only:cursor-default read-only:text-[var(--vibe-text-faint)]`}
                                             />
                                         </label>
 
@@ -114,37 +114,37 @@ export function ResourcesBlock({ entity }: ResourcesBlockProps) {
                                             <button
                                                 onClick={() => handleUpdateResource(id, { current: current - 1 })}
                                                 disabled={!canEditResources || current <= 0}
-                                                className="mb-px p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                                className="mb-px rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
                                                 title="-1"
                                             >
                                                 <Minus size={13} />
                                             </button>
                                             <label className="w-16">
-                                                <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">Текущее</span>
+                                                <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Текущее</span>
                                                 <input
                                                     type="number"
                                                     min={0}
                                                     value={current}
                                                     readOnly={!canEditResources}
                                                     onChange={(e) => handleUpdateResource(id, { current: Number(e.target.value) || 0 })}
-                                                    className="w-full bg-black/25 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/80 text-center outline-none focus:border-emerald-400/50 read-only:text-white/40 read-only:cursor-default"
+                                                    className={`${glass.input} w-full text-center text-xs read-only:cursor-default read-only:text-[var(--vibe-text-faint)]`}
                                                 />
                                             </label>
                                             <label className="w-16">
-                                                <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">Макс.</span>
+                                                <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Макс.</span>
                                                 <input
                                                     type="number"
                                                     min={0}
                                                     value={max}
                                                     readOnly={!canEditResources}
                                                     onChange={(e) => handleUpdateResource(id, { max: Number(e.target.value) || 0 })}
-                                                    className="w-full bg-black/25 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/80 text-center outline-none focus:border-emerald-400/50 read-only:text-white/40 read-only:cursor-default"
+                                                    className={`${glass.input} w-full text-center text-xs read-only:cursor-default read-only:text-[var(--vibe-text-faint)]`}
                                                 />
                                             </label>
                                             <button
                                                 onClick={() => handleUpdateResource(id, { current: current + 1 })}
                                                 disabled={!canEditResources || (max > 0 && current >= max)}
-                                                className="mb-px p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                                className="mb-px rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
                                                 title="+1"
                                             >
                                                 <Plus size={13} />
@@ -152,7 +152,7 @@ export function ResourcesBlock({ entity }: ResourcesBlockProps) {
                                             {canEditResources && (
                                                 <button
                                                     onClick={() => handleDeleteResource(id)}
-                                                    className="mb-px p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/20 transition-all"
+                                                    className="mb-px rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)]"
                                                     title="Удалить ресурс"
                                                 >
                                                     <Trash2 size={13} />
@@ -161,11 +161,17 @@ export function ResourcesBlock({ entity }: ResourcesBlockProps) {
                                         </div>
                                     </div>
 
-                                    <div className="h-2 w-full bg-black/30 rounded-full overflow-hidden border border-white/5 mt-3 shadow-inner">
+                                    <div className="mt-3 h-2 w-full overflow-hidden rounded-full border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] shadow-[var(--vibe-shadow-block)]">
                                         <div
                                             className={clsx(
                                                 'h-full rounded-full transition-all duration-200',
-                                                max === 0 ? 'bg-white/15' : ratio <= 25 ? 'bg-red-400/80' : ratio <= 60 ? 'bg-amber-400/80' : 'bg-emerald-400/80'
+                                                max === 0
+                                                    ? 'bg-[color-mix(in_srgb,var(--vibe-text-faint)_35%,transparent)]'
+                                                    : ratio <= 25
+                                                        ? 'bg-[var(--vibe-danger)]'
+                                                        : ratio <= 60
+                                                            ? 'bg-[var(--vibe-warning)]'
+                                                            : 'bg-[var(--vibe-success)]'
                                             )}
                                             style={{ width: max > 0 ? `${ratio}%` : '0%' }}
                                         />

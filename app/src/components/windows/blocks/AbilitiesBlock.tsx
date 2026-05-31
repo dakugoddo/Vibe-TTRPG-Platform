@@ -200,7 +200,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                     {canEditParent && (
                         <button
                             onClick={handleAddAbility}
-                            className="flex items-center gap-1 px-2 py-1 bg-cyan-500/15 border border-cyan-500/30 rounded-lg text-cyan-300 hover:text-cyan-100 hover:bg-cyan-500/30 hover:border-cyan-400/50 transition-all text-[10px] font-bold uppercase tracking-wider"
+                            className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-accent)] transition-all hover:bg-[var(--vibe-surface-hover)]"
                         >
                             <Plus size={12} /> Добавить
                         </button>
@@ -208,7 +208,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                 </div>
 
                 {abilities.length === 0 ? (
-                    <div className="text-center text-white/30 text-xs py-8 italic border border-dashed border-white/10 rounded-xl">
+                    <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] py-8 text-center text-xs italic text-[var(--vibe-text-faint)]">
                         {canEditParent ? 'Нет способностей. Нажмите «Добавить» чтобы создать первую.' : 'Способности пока не добавлены.'}
                     </div>
                 ) : (
@@ -222,22 +222,22 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                             return (
                                 <div
                                     key={ability.id}
-                                    className="p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all group"
+                                    className="group rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]"
                                 >
                                     <div className="flex items-start gap-3">
-                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold font-mono flex-shrink-0 border bg-cyan-500/15 text-cyan-200 border-cyan-500/30">
+                                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] font-mono text-sm font-bold text-[var(--vibe-accent)]">
                                             {costBase}
                                         </div>
 
                                         <div className="flex-1 min-w-0">
                                             <button
                                                 onClick={() => openWindow(ability.id, Math.random() * 200 + 100, Math.random() * 200 + 100)}
-                                                className="block text-left text-sm font-medium text-white/85 truncate hover:text-white transition-colors"
+                                                className="block truncate text-left text-sm font-medium text-[var(--vibe-text-primary)] transition-colors hover:text-[var(--vibe-accent)]"
                                             >
                                                 {ability.name}
                                             </button>
                                             {ability.description && (
-                                                <div className="text-[10px] text-white/30 truncate mt-0.5">
+                                                <div className="mt-0.5 truncate text-[10px] text-[var(--vibe-text-faint)]">
                                                     {ability.description.substring(0, 80)}
                                                 </div>
                                             )}
@@ -251,10 +251,10 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                                             disabled={!canRoll}
                                             title={canRoll ? `Бросить ${formula}` : 'Укажите формулу броска'}
                                             className={clsx(
-                                                'p-1.5 rounded-lg transition-all flex-shrink-0',
+                                                'flex-shrink-0 rounded-[var(--vibe-radius-sm)] border p-1.5 transition-all',
                                                 canRoll
-                                                    ? 'bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/40 hover:text-cyan-100 border border-cyan-500/30'
-                                                    : 'bg-white/5 text-white/20 border border-transparent cursor-not-allowed'
+                                                    ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] hover:bg-[var(--vibe-surface-hover)]'
+                                                    : 'cursor-not-allowed border-transparent bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)]'
                                             )}
                                         >
                                             <Dices size={14} />
@@ -265,7 +265,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                                                 e.stopPropagation();
                                                 openWindow(ability.id, Math.random() * 200 + 100, Math.random() * 200 + 100);
                                             }}
-                                            className="p-1.5 rounded-lg text-white/25 hover:text-white/75 hover:bg-white/10 transition-all flex-shrink-0"
+                                            className="flex-shrink-0 rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                                             title="Открыть окно"
                                         >
                                             <ExternalLink size={14} />
@@ -277,7 +277,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                                                     e.stopPropagation();
                                                     handleDelete(ability.id, ability.name);
                                                 }}
-                                                className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/20 transition-all flex-shrink-0"
+                                                className="flex-shrink-0 rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)]"
                                                 title="Удалить"
                                             >
                                                 <Trash2 size={14} />
@@ -287,7 +287,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
 
                                     <div className="grid grid-cols-2 gap-2 mt-3">
                                         <label className="min-w-0">
-                                            <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">Стоимость</span>
+                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Стоимость</span>
                                             <input
                                                 type="number"
                                                 value={costBase}
@@ -296,40 +296,40 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                                                 onChange={(e) => {
                                                     updateAbilityProperty(ability, 'cost', setAbilityCostBase(ability, Number(e.target.value) || 0));
                                                 }}
-                                                className="w-full bg-black/25 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/80 outline-none focus:border-cyan-400/50 read-only:text-white/40 read-only:cursor-default"
+                                                className={`${glass.input} w-full text-xs read-only:cursor-default read-only:text-[var(--vibe-text-faint)]`}
                                             />
                                         </label>
                                         <label className="min-w-0">
-                                            <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">Формула</span>
+                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Формула</span>
                                             <input
                                                 type="text"
                                                 value={formula}
                                                 readOnly={!canEditAbility}
                                                 onChange={(e) => updateAbilityProperty(ability, 'diceFormula', e.target.value)}
                                                 placeholder="2d6+1"
-                                                className="w-full bg-black/25 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/80 outline-none focus:border-cyan-400/50 read-only:text-white/40 read-only:cursor-default"
+                                                className={`${glass.input} w-full text-xs read-only:cursor-default read-only:text-[var(--vibe-text-faint)]`}
                                             />
                                         </label>
                                         <label className="min-w-0">
-                                            <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">Дистанция</span>
+                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Дистанция</span>
                                             <input
                                                 type="text"
                                                 value={stringifyProperty(ability.properties?.range)}
                                                 readOnly={!canEditAbility}
                                                 onChange={(e) => updateAbilityProperty(ability, 'range', e.target.value)}
                                                 placeholder="ближняя"
-                                                className="w-full bg-black/25 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/80 outline-none focus:border-cyan-400/50 read-only:text-white/40 read-only:cursor-default"
+                                                className={`${glass.input} w-full text-xs read-only:cursor-default read-only:text-[var(--vibe-text-faint)]`}
                                             />
                                         </label>
                                         <label className="min-w-0">
-                                            <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">Область</span>
+                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Область</span>
                                             <input
                                                 type="text"
                                                 value={stringifyProperty(ability.properties?.area)}
                                                 readOnly={!canEditAbility}
                                                 onChange={(e) => updateAbilityProperty(ability, 'area', e.target.value)}
                                                 placeholder="цель"
-                                                className="w-full bg-black/25 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/80 outline-none focus:border-cyan-400/50 read-only:text-white/40 read-only:cursor-default"
+                                                className={`${glass.input} w-full text-xs read-only:cursor-default read-only:text-[var(--vibe-text-faint)]`}
                                             />
                                         </label>
                                     </div>
