@@ -371,6 +371,8 @@
 2. Убедись, что в `assets/` есть хотя бы два audio-файла, либо добавь небольшие audio-файлы через upload.
 2.1. Если вкладка `Файлы` или `AudioDesk` пустые при наличии файлов на диске, проверь `GET /api/assets/index` на Host.
    - Ожидаемый результат: endpoint возвращает рекурсивный список `assets/` с `image`/`audio` типами, а `/api/assets/file?path=...` отдаёт выбранный файл со статусом `200`.
+2.2. Открой preview image/video и запусти audio cue из `AudioDesk`.
+   - Ожидаемый результат: клиентские URLs ведут на `http://<host>:3001/api/assets/file?path=...`, preview грузятся, а audio не пытается играть через Vite origin или legacy `/api/assets/<file>`.
 3. Проверь карточки аудиофайлов.
    - Ожидаемый результат: видны тип, размер, путь и длительность, но нет кнопок play/queue/playlist/mixer. Эти controls должны жить в отдельном аудио-модуле.
 4. Удали временный audio asset через bulk delete.

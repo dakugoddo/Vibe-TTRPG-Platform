@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vibe TTRPG UI Redesign Preview</title>
+  <style>
+    :root {
+      --bg: #0b0f12;
+      --canvas: #111416;
+      --panel: rgba(21, 25, 28, 0.88);
+      --panel-2: rgba(31, 36, 39, 0.9);
+      --panel-3: rgba(13, 16, 18, 0.82);
+      --border: rgba(232, 226, 209, 0.13);
+      --border-strong: rgba(232, 226, 209, 0.24);
+      --text: #ede7d5;
+      --muted: rgba(237, 231, 213, 0.54);
+      --faint: rgba(237, 231, 213, 0.28);
+      --teal: #3fd2b5;
+      --amber: #d6a34a;
+      --red: #d95f5f;
+      --blue: #6fa8dc;
+      --green: #80c46f;
+      --note: #d8c89c;
+      --radius: 8px;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.44);
+      font-family: "Segoe UI", "Noto Sans", system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; overflow: hidden; }
+    button, input, select { font: inherit; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 280px 1fr 340px;
+      grid-template-rows: 52px 1fr 86px;
+      height: 100vh;
+      background:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
+        radial-gradient(circle at 40% 20%, rgba(63,210,181,0.07), transparent 28%),
+        var(--canvas);
+      background-size: 40px 40px, 40px 40px, auto;
+    }
+
+    .topbar {
+      grid-column: 1 / 4;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(9, 11, 12, 0.82);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 240px; }
+    .sigil {
+      width: 30px; height: 30px; border: 1px solid rgba(214,163,74,0.45);
+      border-radius: 7px; display: grid; place-items: center; color: var(--amber);
+      background: rgba(214,163,74,0.08); font-weight: 900;
+    }
+    .brand h1 { margin: 0; font-size: 13px; letter-spacing: 0; }
+    .brand small { display: block; color: var(--faint); font-size: 10px; margin-top: 1px; }
+
+    .toolbar, .quick-actions, .tabs, .theme-strip, .audio-controls {
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .icon-btn {
+      width: 34px; height: 34px; border-radius: 7px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: rgba(255,255,255,0.045);
+      display: grid; place-items: center;
+    }
+    .icon-btn.active { color: var(--teal); border-color: rgba(63,210,181,0.42); background: rgba(63,210,181,0.12); }
+    .icon-btn.warn { color: var(--amber); border-color: rgba(214,163,74,0.35); }
+
+    .drawer, .right, .dock, .floating, .sheet, .settings {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(20px);
+    }
+
+    .drawer {
+      grid-column: 1;
+      grid-row: 2 / 4;
+      border-left: 0;
+      border-top: 0;
+      border-bottom: 0;
+      padding: 12px;
+      overflow: hidden;
+    }
+
+    .right {
+      grid-column: 3;
+      grid-row: 2 / 4;
+      border-right: 0;
+      border-top: 0;
+      border-bottom: 0;
+      padding: 12px;
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .panel-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 800; }
+    .panel-title strong { display: block; font-size: 15px; color: var(--text); letter-spacing: 0; text-transform: none; margin-top: 2px; }
+    .field {
+      width: 100%; height: 34px; border-radius: 7px; border: 1px solid var(--border);
+      background: rgba(0,0,0,0.22); color: var(--text); padding: 0 10px;
+      outline: none;
+    }
+
+    .entity-list { margin-top: 10px; display: grid; gap: 6px; }
+    .entity-row {
+      display: grid;
+      grid-template-columns: 8px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      min-height: 34px;
+      padding: 7px 8px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      background: rgba(255,255,255,0.035);
+    }
+    .entity-row.active { border-color: rgba(63,210,181,0.35); background: rgba(63,210,181,0.08); }
+    .dot { width: 8px; height: 8px; border-radius: 99px; background: var(--teal); }
+    .dot.obj { background: var(--amber); }
+    .dot.note { background: var(--note); }
+    .dot.tag { background: var(--red); }
+    .entity-row b { display: block; font-size: 12px; }
+    .entity-row span { display: block; color: var(--faint); font-size: 10px; margin-top: 1px; }
+    .badge {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px 6px;
+      color: var(--muted);
+      font-size: 10px;
+      background: rgba(0,0,0,0.18);
+    }
+
+    .canvas {
+      grid-column: 2;
+      grid-row: 2;
+      position: relative;
+      overflow: hidden;
+    }
+    .map-label {
+      position: absolute; left: 18px; top: 16px;
+      color: var(--faint); font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em;
+    }
+    .mini-toolbar {
+      position: absolute; left: 50%; top: 16px; transform: translateX(-50%);
+      display: flex; gap: 6px; padding: 6px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: rgba(10,12,13,0.78);
+      backdrop-filter: blur(18px);
+    }
+    .token {
+      position: absolute; width: 72px; height: 72px; border-radius: 50%;
+      border: 3px solid rgba(63,210,181,0.75);
+      background: linear-gradient(145deg, rgba(63,210,181,0.18), rgba(214,163,74,0.13));
+      display: grid; place-items: center; font-weight: 900; box-shadow: 0 16px 36px rgba(0,0,0,0.34);
+    }
+    .token.one { left: 34%; top: 34%; }
+    .token.two { left: 57%; top: 48%; border-color: rgba(217,95,95,0.75); }
+    .note-pin {
+      position: absolute; left: 45%; top: 22%; width: 160px;
+      padding: 10px; border-radius: 7px; border: 1px solid rgba(216,200,156,0.35);
+      background: rgba(216,200,156,0.12); color: rgba(237,231,213,0.78);
+      font-size: 12px; line-height: 1.35;
+    }
+
+    .floating {
+      position: absolute;
+      left: 90px;
+      top: 76px;
+      width: 500px;
+      height: 610px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .window-head {
+      height: 42px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 12px; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+    }
+    .window-head b { font-size: 14px; }
+    .window-head span { color: var(--faint); font-size: 11px; margin-left: 8px; }
+    .sheet { border: 0; box-shadow: none; background: transparent; padding: 12px; height: calc(100% - 42px); overflow: hidden; }
+
+    .hero {
+      display: grid; grid-template-columns: 118px 1fr; gap: 12px; margin-bottom: 10px;
+    }
+    .portrait {
+      height: 136px; border-radius: 9px; border: 1px solid rgba(214,163,74,0.28);
+      background: linear-gradient(160deg, rgba(214,163,74,0.18), rgba(63,210,181,0.10)), rgba(0,0,0,0.22);
+      display: grid; place-items: center; color: var(--amber); font-size: 42px; font-weight: 900;
+    }
+    .vitals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .tile {
+      min-height: 54px; padding: 8px; border-radius: 7px; border: 1px solid var(--border);
+      background: rgba(0,0,0,0.22);
+    }
+    .tile label { display: block; color: var(--faint); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .tile strong { display: block; margin-top: 4px; font-size: 22px; line-height: 1; }
+    .tile.hp strong { color: var(--green); }
+    .tile.danger strong { color: var(--red); }
+
+    .tabs { margin: 6px 0 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .tab { border: 1px solid transparent; border-radius: 7px; color: var(--muted); background: transparent; padding: 6px 8px; font-size: 11px; font-weight: 800; }
+    .tab.active { color: var(--text); background: rgba(255,255,255,0.07); border-color: var(--border); }
+
+    .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .section {
+      border: 1px solid var(--border); border-radius: 8px; background: rgba(0,0,0,0.18); overflow: hidden;
+    }
+    .section h3 {
+      margin: 0; padding: 8px 9px; border-bottom: 1px solid var(--border);
+      color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .stat-row, .attack-row {
+      display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center;
+      padding: 7px 9px; border-bottom: 1px solid rgba(255,255,255,0.045); font-size: 12px;
+    }
+    .stat-row:last-child, .attack-row:last-child { border-bottom: 0; }
+    .mono { font-family: "Cascadia Mono", Consolas, monospace; color: var(--teal); }
+    .roll { color: var(--amber); font-weight: 900; }
+
+    .right .asset-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+    .asset {
+      min-height: 92px; border: 1px solid var(--border); border-radius: 8px;
+      background: rgba(0,0,0,0.2); padding: 8px; display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .asset .kind { font-size: 9px; color: var(--faint); text-transform: uppercase; letter-spacing: 0.08em; }
+    .asset b { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .dock {
+      grid-column: 2;
+      grid-row: 3;
+      margin: 0 12px 12px;
+      border-radius: 10px;
+      display: grid;
+      grid-template-columns: 1fr auto 260px;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+    }
+    .track b { display: block; font-size: 13px; }
+    .track span { color: var(--faint); font-size: 11px; }
+    .progress { height: 6px; border-radius: 99px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .progress i { display: block; height: 100%; width: 38%; background: linear-gradient(90deg, var(--teal), var(--amber)); }
+
+    .settings {
+      position: absolute;
+      right: 372px;
+      top: 76px;
+      width: 320px;
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .settings h2 { margin: 0 0 8px; font-size: 15px; }
+    .theme-strip { margin: 10px 0; }
+    .swatch { width: 42px; height: 28px; border-radius: 7px; border: 1px solid var(--border); }
+    .swatch.a { background: linear-gradient(135deg, #0b0f12, #3fd2b5); }
+    .swatch.b { background: linear-gradient(135deg, #16120d, #d6a34a); }
+    .swatch.c { background: linear-gradient(135deg, #111416, #d95f5f); }
+    .setting-row { display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.06); }
+    .setting-row span { color: var(--muted); font-size: 12px; }
+    .select {
+      height: 28px; border-radius: 7px; border: 1px solid var(--border); color: var(--text);
+      background: rgba(0,0,0,0.26); padding: 0 8px;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="sigil">V</div>
+        <div>
+          <h1>Vibe TTRPG Platform</h1>
+          <small>Arcane Control Desk preview</small>
+        </div>
+      </div>
+      <nav class="toolbar" aria-label="Canvas tools">
+        <button class="icon-btn active" title="Выбор">⌖</button>
+        <button class="icon-btn" title="Рука">✥</button>
+        <button class="icon-btn" title="Перо">✎</button>
+        <button class="icon-btn" title="Линия">╱</button>
+        <button class="icon-btn" title="Фигура">▢</button>
+        <button class="icon-btn warn" title="Туман">◐</button>
+      </nav>
+      <div class="quick-actions">
+        <button class="icon-btn" title="Уведомления">!</button>
+        <button class="icon-btn active" title="Настройки">⚙</button>
+      </div>
+    </header>
+
+    <aside class="drawer">
+      <div class="panel-head">
+        <div class="panel-title">Хранилище<strong>База мира</strong></div>
+        <button class="icon-btn active" title="Создать">＋</button>
+      </div>
+      <input class="field" placeholder="Поиск сущностей..." />
+      <div class="entity-list">
+        <div class="entity-row active"><i class="dot"></i><div><b>Торин Железнобокий</b><span>character / игрок</span></div><em class="badge">12</em></div>
+        <div class="entity-row"><i class="dot obj"></i><div><b>Экскалибур</b><span>object / оружие</span></div><em class="badge">3</em></div>
+        <div class="entity-row"><i class="dot"></i><div><b>Кошка</b><span>character / NPC</span></div><em class="badge">8</em></div>
+        <div class="entity-row"><i class="dot note"></i><div><b>Правила фракций</b><span>note / wiki</span></div><em class="badge">md</em></div>
+        <div class="entity-row"><i class="dot tag"></i><div><b>Ослабление</b><span>tag / статус</span></div><em class="badge">P</em></div>
+      </div>
+    </aside>
+
+    <section class="canvas">
+      <div class="map-label">Root canvas / тестовая сцена</div>
+      <div class="mini-toolbar">
+        <button class="icon-btn active">1</button>
+        <button class="icon-btn">2</button>
+        <button class="icon-btn">3</button>
+        <button class="icon-btn warn">GM</button>
+      </div>
+      <div class="note-pin">[[Фракции]] готовят засаду. Проверить туман и видимость игроков.</div>
+      <div class="token one">T</div>
+      <div class="token two">K</div>
+
+      <article class="floating">
+        <div class="window-head">
+          <div><b>Торин Железнобокий</b><span>character · Player</span></div>
+          <div class="quick-actions"><button class="icon-btn">▣</button><button class="icon-btn">×</button></div>
+        </div>
+        <div class="sheet">
+          <div class="hero">
+            <div class="portrait">T</div>
+            <div class="vitals">
+              <div class="tile hp"><label>HP</label><strong>37/44</strong></div>
+              <div class="tile"><label>AC</label><strong>16</strong></div>
+              <div class="tile"><label>Иниц.</label><strong>+3</strong></div>
+              <div class="tile"><label>Скор.</label><strong>30</strong></div>
+              <div class="tile danger"><label>Статус</label><strong>2</strong></div>
+              <div class="tile"><label>Ресурс</label><strong>4</strong></div>
+            </div>
+          </div>
+          <div class="tabs">
+            <button class="tab active">Статы</button>
+            <button class="tab">Навыки</button>
+            <button class="tab">Атаки</button>
+            <button class="tab">Инвентарь</button>
+            <button class="tab">Заметки</button>
+          </div>
+          <div class="section-grid">
+            <section class="section">
+              <h3>Характеристики</h3>
+              <div class="stat-row"><span>Сила</span><b class="mono">18</b><b class="roll">+4</b></div>
+              <div class="stat-row"><span>Ловкость</span><b class="mono">14</b><b class="roll">+2</b></div>
+              <div class="stat-row"><span>Телосложение</span><b class="mono">16</b><b class="roll">+3</b></div>
+              <div class="stat-row"><span>Мудрость</span><b class="mono">12</b><b class="roll">+1</b></div>
+            </section>
+            <section class="section">
+              <h3>Быстрые атаки</h3>
+              <div class="attack-row"><span>Разрез</span><b class="mono">1d20+6</b><b class="roll">2d6+4</b></div>
+              <div class="attack-row"><span>Протыкание</span><b class="mono">1d20+5</b><b class="roll">1d8+3</b></div>
+              <div class="attack-row"><span>Щит</span><b class="mono">реакц.</b><b class="roll">+2 AC</b></div>
+            </section>
+            <section class="section">
+              <h3>Статусы</h3>
+              <div class="stat-row"><span>Ослабление</span><b class="mono">2 раунда</b><b class="roll">-2</b></div>
+              <div class="stat-row"><span>Аура</span><b class="mono">вкл</b><b class="roll">+1</b></div>
+            </section>
+            <section class="section">
+              <h3>Инвентарь</h3>
+              <div class="stat-row"><span>Экскалибур</span><b class="mono">экип.</b><b class="roll">3.2</b></div>
+              <div class="stat-row"><span>Зелье лечения</span><b class="mono">x2</b><b class="roll">ред.</b></div>
+            </section>
+          </div>
+        </div>
+      </article>
+
+      <aside class="settings">
+        <h2>Интерфейс</h2>
+        <div class="panel-title">Тема как данные</div>
+        <div class="theme-strip">
+          <div class="swatch a"></div>
+          <div class="swatch b"></div>
+          <div class="swatch c"></div>
+        </div>
+        <div class="setting-row"><span>Тема</span><select class="select"><option>Arcane Desk</option></select></div>
+        <div class="setting-row"><span>Плотность</span><select class="select"><option>Balanced</option><option>Compact</option></select></div>
+        <div class="setting-row"><span>Язык</span><select class="select"><option>Русский</option><option>English</option></select></div>
+        <div class="setting-row"><span>Редактор переводов</span><em class="badge">future</em></div>
+      </aside>
+    </section>
+
+    <aside class="right">
+      <div class="panel-head">
+        <div class="panel-title">Файлы<strong>Assets</strong></div>
+        <button class="icon-btn active" title="Загрузить">⇧</button>
+      </div>
+      <input class="field" placeholder="Поиск файлов..." />
+      <div class="asset-grid">
+        <div class="asset"><span class="kind">image</span><b>90mb_1.png</b><span class="badge">preview</span></div>
+        <div class="asset"><span class="kind">audio</span><b>C418 - Flake.mp3</b><span class="badge">03:42</span></div>
+        <div class="asset"><span class="kind">gif</span><b>giphy.gif</b><span class="badge">anim</span></div>
+        <div class="asset"><span class="kind">video</span><b>scene.webm</b><span class="badge">media</span></div>
+      </div>
+    </aside>
+
+    <footer class="dock">
+      <div class="track">
+        <b>C418 - Flake</b>
+        <span>Музыка · локальный asset · игроки opt-in</span>
+      </div>
+      <div class="audio-controls">
+        <button class="icon-btn active">▶</button>
+        <button class="icon-btn">■</button>
+        <button class="icon-btn warn">GM</button>
+      </div>
+      <div class="progress"><i></i></div>
+    </footer>
+  </main>
+</body>
+</html>

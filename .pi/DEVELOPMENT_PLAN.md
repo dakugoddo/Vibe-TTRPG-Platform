@@ -13,7 +13,16 @@
 - [x] Крупные изменения проходят Architecture/Product gate: sync, permissions, модули, внешние API, упаковка, 3D, файловый формат.
 - [x] Core остаётся local-first: `.md` + YAML frontmatter на диске хоста.
 
-## 1. Audio Module: Local-First Core
+## 1. UI Redesign Gate: ближайший приоритет
+
+- [x] `FEAT-UI-002`: поднять полный UI redesign/theme/i18n/entity-sheet pass в ближайший приоритет перед новой крупной разработкой.
+- [x] Создать большой decision-док с анализом, идеями, рисками и вопросами владельцу: `.pi/docs/ui-redesign-master-plan.md`.
+- [x] Дать способ увидеть направление интерфейса до внедрения: статический preview-макет `.pi/prototypes/ui-redesign-preview.html`.
+- [ ] Утвердить визуальное направление: плотность, характер темы, уровень декоративности, требования к entity sheets.
+- [ ] После решений владельца идти foundation-first: theme tokens -> i18n manager -> app shell/drawers -> entity sheets -> asset/audio/settings polish.
+- [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
+
+## 2. Audio Module: Local-First Core
 
 - [x] Вынести audio UI из RightDrawer.
 - [x] Вернуть `Файлы` к роли asset library, а не плеера.
@@ -34,7 +43,7 @@
 
 Принятое решение: аудио развивается как отдельный отключаемый local-first модуль с нижним доком и отдельным пультом/микшером. Core = локальные файлы; YouTube не входит в core; SoundCloud и YouTube идут только как future source extensions. См. `.pi/docs/gm-audio-desk.md` и `.pi/docs/audio-source-extensions.md`.
 
-## 2. Notifications And Large Uploads
+## 3. Notifications And Large Uploads
 
 - [x] `FEAT-NOTIFICATIONS-001`: pure notification model/store foundation.
 - [x] Добавить notification center + toast stack.
@@ -53,8 +62,10 @@
 
 См. `.pi/docs/notification-system.md`.
 
-## 3. Canvas And Assets
+## 4. Canvas And Assets
 
+- [x] `BUG-ASSETS-006`: нормализовать asset URLs через `/api/assets/file?path=...`, чтобы preview файлов, canvas assets и AudioDesk не расходились по разным routes/origins.
+- [x] `BUG-CANVAS-007`: защитить fog texture от zero-size render, который мог давать `drawImage` InvalidStateError при старте canvas.
 - [x] `BUG-ASSETS-005`: восстановить `/api/assets/index`, чтобы тестовый мир снова показывал файлы во вкладке `Файлы` и в интерфейсе плеера.
 - [x] `BUG-CANVAS-006`: GIF на canvas рендерится через DOM overlay поверх Konva, потому что layer redraw не оживил `giphy.gif`; ручная проверка ещё нужна.
 - [x] GIF canvas render больше не грузит тот же `.gif` одновременно через `use-image` и DOM overlay; animated sources идут сразу в DOM `<img>`.
@@ -67,22 +78,22 @@
 - [ ] `FEAT-PDF-001`: design-doc и первый viewer slice для PDF assets/canvas placement.
 - [ ] Проверить manual QA для lasso, line drag/snap, undo/redo, card aspect ratio, drop routing.
 
-## 4. Entity, Roles, Search
+## 5. Entity, Roles, Search
 
 - [ ] Manual QA entity ID migration на копии мира.
 - [x] Добавить foundation role/player identity: `players/<playerId>.json`, claim по имени, legacy `users/*`, выдача базовой роли через UI ГМа.
 - [ ] Довести role/player identity: переименование, конфликт имён online/offline, миграция `_playerOwner` на `playerId`, явная session обратная связь.
 - [ ] Довести entity visibility/access guards для private player-owned entities и canvas `i`.
 - [ ] Полировать full-text search UX и saved searches.
-- [ ] Реализовать `FEAT-I18N-002`: Удобный перевод приложения и менеджер пользовательских локализаций.
+- [ ] Реализовать `FEAT-I18N-002` внутри нового `FEAT-UI-002` pass: удобный перевод приложения и менеджер пользовательских локализаций.
 
-## 5. UI Design System
+## 6. UI Design System
 
-- [ ] Отдельно обсудить большой UI redesign: темы, palette tokens, entity window layout, скроллы, плотность интерфейса.
+- [x] Отдельно обсудить большой UI redesign: темы, palette tokens, entity window layout, скроллы, плотность интерфейса.
 - [ ] Не делать случайную декоративность; интерфейс должен быть рабочим GM/player cockpit.
 - [ ] Поддерживать тему через variables/tokens, чтобы будущие custom themes не требовали переписывать компоненты.
 
-## 6. Platform Future
+## 7. Platform Future
 
 - [ ] Не начинать Tauri/Rust/Steam/3D миграцию без отдельного решения.
 - [ ] Держать код platform-neutral.

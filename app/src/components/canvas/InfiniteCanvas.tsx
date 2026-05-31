@@ -1844,17 +1844,18 @@ function FogOfWarLayer({
 
   // Persistent offscreen canvas (reused, not recreated)
   const fogCanvas = SHARED_FOG_CANVAS;
+  const safeStageScale = Number.isFinite(stageScale) && stageScale > 0 ? stageScale : 1;
 
   // ── Calculate world area ──
   // Viewport in world coords
-  const viewWorldW = stageWidth / stageScale;
-  const viewWorldH = stageHeight / stageScale;
+  const viewWorldW = stageWidth / safeStageScale;
+  const viewWorldH = stageHeight / safeStageScale;
   // Texture covers PAD_FACTOR × viewport
   const worldW = viewWorldW * FOG_PAD_FACTOR;
   const worldH = viewWorldH * FOG_PAD_FACTOR;
   // Center on current viewport
-  const viewCxWorld = (-stageX + stageWidth / 2) / stageScale;
-  const viewCyWorld = (-stageY + stageHeight / 2) / stageScale;
+  const viewCxWorld = (-stageX + stageWidth / 2) / safeStageScale;
+  const viewCyWorld = (-stageY + stageHeight / 2) / safeStageScale;
   const worldLeft = viewCxWorld - worldW / 2;
   const worldTop = viewCyWorld - worldH / 2;
 
@@ -1862,12 +1863,20 @@ function FogOfWarLayer({
   // Maintain roughly 1:1 screen-to-texture pixel ratio, capped
   const texW = Math.min(Math.round(stageWidth * FOG_PAD_FACTOR * 0.8), FOG_MAX_TEX);
   const texH = Math.min(Math.round(stageHeight * FOG_PAD_FACTOR * 0.8), FOG_MAX_TEX);
+  const hasDrawableFogTexture = Boolean(
+    shouldShow
+    && fogCanvas
+    && stageWidth > 0
+    && stageHeight > 0
+    && worldW > 0
+    && worldH > 0
+    && texW > 0
+    && texH > 0
+  );
 
   // ── Draw fog onto offscreen canvas (useLayoutEffect for synchronous update before paint) ──
   useLayoutEffect(() => {
-    if (!shouldShow || !fogCanvas) return;
-    // Guard against zero dimensions (stage not yet initialized)
-    if (texW <= 0 || texH <= 0) return;
+    if (!hasDrawableFogTexture || !fogCanvas) return;
     const canvas = fogCanvas;
     if (canvas.width !== texW || canvas.height !== texH) {
       canvas.width = texW;
@@ -1909,9 +1918,9 @@ function FogOfWarLayer({
       }
     }
     fogLayerRef.current?.batchDraw();
-  }, [shouldShow, fogReveals, worldLeft, worldTop, worldW, worldH, texW, texH, fogCanvas]);
+  }, [hasDrawableFogTexture, fogReveals, worldLeft, worldTop, worldW, worldH, texW, texH, fogCanvas]);
 
-  if (!shouldShow || !fogCanvas) return null;
+  if (!hasDrawableFogTexture || !fogCanvas) return null;
 
   return (
     <Layer ref={fogLayerRef} listening={false} opacity={isGM ? FOG_GM_OPACITY : 1}>

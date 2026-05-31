@@ -11,7 +11,7 @@
 import type { Entity, PlayerProfile, UserRole } from '../types';
 import type { AudioDeckState } from '../utils/audioDeckModel';
 
-const SERVER_URL = 'http://localhost:3001';
+const LOCAL_FILE_SERVER_URL = 'http://localhost:3001';
 
 export type DatabaseType = 'general' | 'user' | 'gm';
 
@@ -46,7 +46,7 @@ async function shouldCallFileApi(): Promise<boolean> {
     // Cache server availability check
     if (_serverAvailable === null) {
         try {
-            const res = await fetch(`${SERVER_URL}/api/world/status`, {
+            const res = await fetch(`${getFileServerUrl()}/api/world/status`, {
                 signal: AbortSignal.timeout(2000),
             });
             _serverAvailable = res.ok;
@@ -81,7 +81,7 @@ async function apiFetchFrom<T>(baseUrl: string, path: string, options?: RequestI
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-    return apiFetchFrom(SERVER_URL, path, options);
+    return apiFetchFrom(getFileServerUrl(), path, options);
 }
 
 // ─── World Management ───
@@ -230,8 +230,46 @@ export async function importMarkdown(content: string, filename: string, db: Data
 
 // ─── Assets ───
 
-export function getAssetUrl(filename: string): string {
-    return `${SERVER_URL}/api/assets/${encodeURIComponent(filename)}`;
+export function getFileServerUrl(): string {
+    if (typeof window === 'undefined') return LOCAL_FILE_SERVER_URL;
+
+    const savedHost = window.localStorage.getItem('vibe_server_ip')?.trim();
+    const host = savedHost || window.location.hostname || 'localhost';
+    return `http://${host}:3001`;
+}
+
+function normalizeAssetPath(assetPath: string): string {
+    return assetPath.replace(/\\/g, '/').split('/').filter(Boolean).join('/');
+}
+
+export function getAssetUrl(assetPathOrUrl: string): string {
+    const raw = assetPathOrUrl.trim();
+    if (!raw) return '';
+    if (/^(data:|blob:)/i.test(raw)) return raw;
+
+    const serverUrl = getFileServerUrl();
+
+    if (/^https?:\/\//i.test(raw)) {
+        try {
+            const parsed = new URL(raw);
+            const server = new URL(serverUrl);
+            const isFileServerAsset = parsed.host === server.host || parsed.port === server.port;
+            if (isFileServerAsset && parsed.pathname.startsWith('/api/assets/') && parsed.pathname !== '/api/assets/file') {
+                return getAssetUrl(decodeURIComponent(parsed.pathname.replace(/^\/api\/assets\//, '')));
+            }
+        } catch {
+            // Keep external or malformed URLs unchanged.
+        }
+        return raw;
+    }
+
+    if (raw.startsWith('/api/assets/file')) return `${serverUrl}${raw}`;
+    if (raw.startsWith('/api/assets/')) {
+        return getAssetUrl(decodeURIComponent(raw.replace(/^\/api\/assets\//, '')));
+    }
+
+    const assetPath = normalizeAssetPath(raw);
+    return `${serverUrl}/api/assets/file?path=${encodeURIComponent(assetPath)}`;
 }
 
 // ─── WebSocket: File change notifications ───
@@ -323,7 +361,16 @@ export interface UploadAssetFileOptions {
 
 export async function listAssetRecords(): Promise<AssetRecord[]> {
     if (!(await shouldCallFileApi())) return [];
-    return apiFetch('/api/assets/index');
+    const records = await apiFetch<AssetRecord[]>('/api/assets/index');
+    return records.map((record) => {
+        const assetPath = record.path || record.relativePath || record.name;
+        return {
+            ...record,
+            path: assetPath,
+            relativePath: record.relativePath || assetPath,
+            url: getAssetUrl(record.url || assetPath),
+        };
+    });
 }
 
 export async function deleteAssetFile(assetPath: string): Promise<void> {
@@ -376,7 +423,7 @@ export async function uploadAsset(filename: string, base64: string): Promise<{ f
     }
     return {
         filename: data.filename,
-        url: data.url || getAssetUrl(data.filename),
+        url: getAssetUrl(data.url || data.filename),
     };
 }
 
@@ -410,7 +457,7 @@ async function uploadAssetFileToHostSingle(file: File, options: UploadAssetFileO
             reject(new DOMException('Upload aborted', 'AbortError'));
         };
 
-        xhr.open('POST', `${SERVER_URL}/api/assets/upload-binary?${params}`);
+        xhr.open('POST', `${getFileServerUrl()}/api/assets/upload-binary?${params}`);
         xhr.setRequestHeader('Content-Type', 'application/octet-stream');
 
         xhr.upload.onprogress = (event) => {
@@ -422,7 +469,7 @@ async function uploadAssetFileToHostSingle(file: File, options: UploadAssetFileO
 
         xhr.onload = () => {
             cleanup();
-            let data: { success?: boolean; filename?: string; url?: string; error?: string } = {};
+            let data: { success?: boolean; filename?: string; path?: string; url?: string; error?: string } = {};
             try {
                 data = JSON.parse(xhr.responseText || '{}');
             } catch {
@@ -439,7 +486,7 @@ async function uploadAssetFileToHostSingle(file: File, options: UploadAssetFileO
             options.onProgress?.({ loaded: file.size, total: file.size, percent: 100 });
             resolve({
                 filename: data.filename,
-                url: data.url || getAssetUrl(data.filename),
+                url: getAssetUrl(data.url || data.path || data.filename),
             });
         };
 
@@ -507,7 +554,7 @@ async function uploadAssetFileToHostChunks(file: File, options: UploadAssetFileO
                 };
                 
                 const params = new URLSearchParams({ uploadId, chunkIndex: i.toString() });
-                xhr.open('POST', `${SERVER_URL}/api/assets/upload-chunk?${params}`);
+                xhr.open('POST', `${getFileServerUrl()}/api/assets/upload-chunk?${params}`);
                 xhr.setRequestHeader('Content-Type', 'application/octet-stream');
                 
                 xhr.upload.onprogress = (event) => {
@@ -571,7 +618,7 @@ async function uploadAssetFileToHostChunks(file: File, options: UploadAssetFileO
         options.onProgress?.({ loaded: totalSize, total: totalSize, percent: 100 });
         return {
             filename: assembleData.filename,
-            url: assembleData.url || getAssetUrl(assembleData.filename)
+            url: getAssetUrl(assembleData.url || assembleData.filename)
         };
         
     } catch (err) {

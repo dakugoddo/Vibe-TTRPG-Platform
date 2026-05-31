@@ -31,6 +31,7 @@ MVP:
 - сортировка `Имя/Новые/Размер/Тип`;
 - тип, размер и modified timestamp на сервере;
 - preview для изображений;
+- preview/audio URLs нормализуются на клиенте через `getAssetUrl(...)` в стабильный host-aware route `http://<host>:3001/api/assets/file?path=...`; legacy `/api/assets/<file>` остаётся только совместимостью, а не основным путём.
 - `Показать в проводнике` через host-only `/api/assets/show-in-explorer`;
 - удаление asset-файла через guarded `DELETE /api/assets/file` с UI-confirm и предупреждением о битых ссылках;
 - upload control для небольших файлов с обновлением индекса после загрузки;
