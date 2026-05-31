@@ -1,6 +1,6 @@
 # Vibe TTRPG Platform: current development plan
 
-> Дата обновления: 2026-05-29
+> Дата обновления: 2026-05-31
 > Назначение: короткий рабочий чеклист. Детальные очереди живут в `.pi/BUG_BACKLOG.md` и `.pi/FEATURE_BACKLOG.md`.
 
 ## Правила Вектора
@@ -55,6 +55,7 @@
 
 ## 3. Canvas And Assets
 
+- [x] `BUG-ASSETS-005`: восстановить `/api/assets/index`, чтобы тестовый мир снова показывал файлы во вкладке `Файлы` и в интерфейсе плеера.
 - [x] `BUG-CANVAS-006`: GIF на canvas рендерится через DOM overlay поверх Konva, потому что layer redraw не оживил `giphy.gif`; ручная проверка ещё нужна.
 - [x] GIF canvas render больше не грузит тот же `.gif` одновременно через `use-image` и DOM overlay; animated sources идут сразу в DOM `<img>`.
 - [x] Asset Browser стал менее жадным к аудио: duration metadata грузится только при открытом аудио-фильтре, а не при любом просмотре файлов.

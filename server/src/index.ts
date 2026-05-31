@@ -13,13 +13,15 @@ import cors from 'cors';
 import path from 'node:path';
 import fs from 'node:fs';
 import { createServer } from 'node:http';
+import { spawn } from 'node:child_process';
 import { WebSocketServer } from 'ws';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { setupWSConnection } = require('y-websocket/bin/utils');
 
 import { createWorld, openWorld, getCurrentWorldPath, getCurrentWorldName, getAssetsPath, saveWorldIndex, getDbPath, loadAudioDeck, saveAudioDeck } from './worldManager.js';
-import { resolveAssetPath } from './assetManager.js';
+import { listAssetRecords, resolveAssetPath } from './assetManager.js';
+import { buildExplorerRevealArgs } from './explorer.js';
 import { claimPlayerProfile, listPlayerProfiles, updatePlayerProfileRole } from './playerProfiles.js';
 import {
     listEntities,
@@ -391,6 +393,15 @@ app.get('/api/assets', (req, res) => {
     }
 });
 
+app.get('/api/assets/index', (_req, res) => {
+    try {
+        const assetsDir = getAssetsPath();
+        res.json(listAssetRecords(assetsDir));
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
 app.post('/api/assets/upload', (req, res) => {
     try {
         const { filename, base64 } = req.body;
@@ -441,6 +452,67 @@ app.get('/api/assets/file', (req, res) => {
             return;
         }
         res.sendFile(filePath);
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.delete('/api/assets/file', (req, res) => {
+    try {
+        const assetsDir = getAssetsPath();
+        const requestedPath = req.query.path as string;
+        if (!requestedPath) {
+            res.status(400).json({ error: 'path query parameter is required' });
+            return;
+        }
+        const filePath = resolveAssetPath(assetsDir, requestedPath);
+        if (!filePath) {
+            res.status(403).json({ error: 'Access denied or invalid path' });
+            return;
+        }
+        if (!fs.existsSync(filePath)) {
+            res.status(404).json({ error: 'File not found' });
+            return;
+        }
+        if (!fs.statSync(filePath).isFile()) {
+            res.status(400).json({ error: 'Only files can be deleted through this endpoint' });
+            return;
+        }
+
+        fs.rmSync(filePath, { force: true });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.post('/api/assets/show-in-explorer', (req, res) => {
+    try {
+        const assetsDir = getAssetsPath();
+        const requestedPath = typeof req.body.path === 'string' ? req.body.path : '';
+        if (!requestedPath) {
+            res.status(400).json({ error: 'path is required' });
+            return;
+        }
+        const filePath = resolveAssetPath(assetsDir, requestedPath);
+        if (!filePath) {
+            res.status(403).json({ error: 'Access denied or invalid path' });
+            return;
+        }
+        if (!fs.existsSync(filePath)) {
+            res.status(404).json({ error: 'File not found' });
+            return;
+        }
+        if (process.platform !== 'win32') {
+            res.status(400).json({ error: 'Show in Explorer is available only on Windows hosts' });
+            return;
+        }
+
+        spawn('explorer.exe', buildExplorerRevealArgs(filePath), {
+            detached: true,
+            stdio: 'ignore',
+        }).unref();
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: (err as Error).message });
     }
