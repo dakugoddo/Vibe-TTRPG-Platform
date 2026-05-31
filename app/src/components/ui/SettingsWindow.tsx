@@ -142,15 +142,15 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
 
     return (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
-            <div className="flex h-[min(720px,calc(100vh-32px))] w-[min(860px,calc(100vw-32px))] overflow-hidden rounded-2xl border border-white/10 bg-[#101722]/95 shadow-[0_28px_80px_rgba(0,0,0,0.75)]">
-                <aside className="flex w-48 flex-col border-r border-white/10 bg-white/[0.03] p-3">
+            <div className="flex h-[min(720px,calc(100vh-32px))] w-[min(900px,calc(100vw-32px))] overflow-hidden rounded-[var(--vibe-radius-lg)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-window)] text-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-window)] backdrop-blur-[var(--vibe-backdrop-blur)]">
+                <aside className="flex w-52 flex-col border-r border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] p-3">
                     <div className="mb-4 flex items-center gap-2 px-2 py-1.5">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-300/20 bg-cyan-300/10 text-cyan-100">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)]">
                             <Settings size={16} />
                         </div>
                         <div className="min-w-0">
-                            <div className="truncate text-xs font-bold uppercase tracking-widest text-white/80">Настройки</div>
-                            <div className="truncate text-[10px] text-white/35">{isGM ? 'GM' : 'Player'}</div>
+                            <div className="truncate text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-primary)]">Настройки</div>
+                            <div className="truncate text-[10px] text-[var(--vibe-text-faint)]">{isGM ? 'GM' : 'Player'}</div>
                         </div>
                     </div>
 
@@ -165,13 +165,13 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex h-9 items-center gap-2 rounded-lg border px-2.5 text-left text-xs font-bold uppercase tracking-wider transition-colors ${
                                         selected
-                                            ? 'border-cyan-200/30 bg-cyan-300/15 text-cyan-50'
-                                            : 'border-transparent text-white/45 hover:border-white/10 hover:bg-white/5 hover:text-white/75'
+                                            ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)]'
+                                            : 'border-transparent text-[var(--vibe-text-faint)] hover:border-[var(--vibe-border-subtle)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                                     }`}
                                 >
                                     <Icon size={14} />
                                     {tab.label}
-                                    {tab.gmOnly && <span className="ml-auto rounded bg-amber-300/10 px-1.5 py-0.5 text-[8px] text-amber-100/70">GM</span>}
+                                    {tab.gmOnly && <span className="ml-auto rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-0.5 text-[8px] text-[var(--vibe-warning)]">GM</span>}
                                 </button>
                             );
                         })}
@@ -179,15 +179,15 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                 </aside>
 
                 <main className="flex min-w-0 flex-1 flex-col">
-                    <header className="flex h-14 items-center justify-between border-b border-white/10 px-5">
+                    <header className="flex h-14 items-center justify-between border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)] px-5">
                         <div>
-                            <div className="text-sm font-bold text-white/90">{tabs.find((tab) => tab.id === safeActiveTab)?.label}</div>
-                            <div className="text-[10px] uppercase tracking-widest text-white/35">{roomName}</div>
+                            <div className="text-sm font-bold text-[var(--vibe-text-primary)]">{tabs.find((tab) => tab.id === safeActiveTab)?.label}</div>
+                            <div className="text-[10px] uppercase tracking-widest text-[var(--vibe-text-faint)]">{roomName}</div>
                         </div>
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/45 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
+                            className="flex h-8 w-8 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                             title="Закрыть"
                         >
                             <X size={16} />
@@ -197,23 +197,29 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                     <div className="min-h-0 flex-1 overflow-y-auto p-5 custom-scrollbar">
                         {safeActiveTab === 'interface' && (
                             <section className="space-y-3">
-                                <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-                                    <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/45">
+                                <div className="rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] p-4 shadow-[var(--vibe-shadow-block)]">
+                                    <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
                                         <Monitor size={14} />
                                         Локальный интерфейс
                                     </div>
-                                    <div className="mb-3 rounded-lg border border-white/10 bg-black/20 p-3">
-                                        <div className="mb-3 text-xs font-bold text-white/75">Theme preset</div>
-                                        <div className="grid gap-2 sm:grid-cols-3">
+                                    <div className="mb-3 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3">
+                                        <div className="mb-3 flex items-end justify-between gap-3">
+                                            <div>
+                                                <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Визуальная тема</div>
+                                                <div className="mt-1 text-[10px] text-[var(--vibe-text-faint)]">Меняет не только цвет, а характер рабочего стола.</div>
+                                            </div>
+                                            <span className="rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">balanced default</span>
+                                        </div>
+                                        <div className="grid gap-2 sm:grid-cols-2">
                                             {themePresets.map((preset) => (
                                                 <button
                                                     key={preset.id}
                                                     type="button"
                                                     onClick={() => setThemeId(preset.id)}
-                                                    className={`rounded-lg border p-3 text-left transition-colors ${
+                                                    className={`rounded-[var(--vibe-radius-md)] border p-3 text-left transition-colors ${
                                                         themeId === preset.id
-                                                            ? 'border-cyan-200/35 bg-cyan-300/15 text-white'
-                                                            : 'border-white/10 bg-white/[0.03] text-white/60 hover:border-white/20 hover:bg-white/[0.06] hover:text-white/85'
+                                                            ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)]'
+                                                            : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                                                     }`}
                                                 >
                                                     <div className="mb-2 flex gap-1">
@@ -225,47 +231,54 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                             />
                                                         ))}
                                                     </div>
-                                                    <div className="text-[11px] font-bold uppercase tracking-wider">{preset.label}</div>
-                                                    <div className="mt-1 text-[10px] leading-snug text-white/40">{preset.description}</div>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wider">{preset.label}</div>
+                                                        <span className="rounded border border-[var(--vibe-border-subtle)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{preset.effectLevel}</span>
+                                                    </div>
+                                                    <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-accent)]">{preset.tone}</div>
+                                                    <div className="mt-1 text-[10px] leading-snug text-[var(--vibe-text-faint)]">{preset.description}</div>
                                                 </button>
                                             ))}
                                         </div>
-                                        <div className="mt-3 rounded-lg border border-cyan-200/15 bg-cyan-300/5 p-3">
+                                        <div className="mt-3 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] p-3">
                                             <div className="mb-2 flex items-center justify-between gap-2">
-                                                <div className="text-xs font-bold text-white/75">Custom palette</div>
+                                                <div>
+                                                    <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Custom palette</div>
+                                                    <div className="mt-0.5 text-[10px] text-[var(--vibe-text-faint)]">Временный редактор базовых цветов; полноценные темы мира будут отдельным срезом.</div>
+                                                </div>
                                                 <button
                                                     type="button"
                                                     onClick={resetCustomTheme}
-                                                    className="rounded-md border border-white/10 bg-black/20 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-white/45 transition-colors hover:border-white/25 hover:text-white/75"
+                                                    className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] transition-colors hover:border-[var(--vibe-border-strong)] hover:text-[var(--vibe-text-primary)]"
                                                 >
                                                     Reset
                                                 </button>
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                                                 {CUSTOM_THEME_COLOR_FIELDS.map((field) => (
-                                                    <label key={field.key} className="flex min-w-0 items-center gap-2 rounded-md border border-white/10 bg-black/20 px-2 py-1.5">
-                                                        <span className="w-12 flex-shrink-0 text-[9px] font-bold uppercase tracking-wider text-white/40">{field.label}</span>
+                                                    <label key={field.key} className="flex min-w-0 items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5">
+                                                        <span className="w-12 flex-shrink-0 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{field.label}</span>
                                                         <input
                                                             type="color"
                                                             value={customThemeColors[field.key]}
                                                             onChange={(event) => updateCustomThemeColor(field.key, event.target.value)}
-                                                            className="h-6 w-8 flex-shrink-0 cursor-pointer rounded border border-white/10 bg-transparent p-0"
+                                                            className="h-6 w-8 flex-shrink-0 cursor-pointer rounded border border-[var(--vibe-border-subtle)] bg-transparent p-0"
                                                             title={field.label}
                                                         />
-                                                        <span className="min-w-0 truncate font-mono text-[9px] text-white/35">{customThemeColors[field.key]}</span>
+                                                        <span className="min-w-0 truncate font-mono text-[9px] text-[var(--vibe-text-faint)]">{customThemeColors[field.key]}</span>
                                                     </label>
                                                 ))}
                                             </div>
                                         </div>
                                     </div>
                                     <div className="grid gap-3 sm:grid-cols-2">
-                                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                                            <div className="text-xs font-bold text-white/75">Тема</div>
-                                            <div className="mt-1 text-[11px] text-white/40">Текущая тёмная схема</div>
+                                        <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3">
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Тема</div>
+                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">Визуальный preset + semantic tokens</div>
                                         </div>
-                                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                                            <div className="text-xs font-bold text-white/75">Доступ</div>
-                                            <div className="mt-1 text-[11px] text-white/40">{isGM ? 'Полный GM-контроль' : 'Личные настройки игрока'}</div>
+                                        <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3">
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Доступ</div>
+                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">{isGM ? 'Полный GM-контроль' : 'Личные настройки игрока'}</div>
                                         </div>
                                     </div>
                                 </div>

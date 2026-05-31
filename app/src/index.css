@@ -1,12 +1,32 @@
 @import "tailwindcss";
 
 :root {
-  --vibe-app-bg: linear-gradient(135deg, #061e2e 0%, #043330 50%, #091524 100%);
-  --vibe-body-bg: #061e2e;
+  --vibe-app-bg: radial-gradient(circle at 20% 12%, rgba(85, 159, 255, 0.28), transparent 34%), radial-gradient(circle at 82% 18%, rgba(255, 143, 165, 0.22), transparent 32%), linear-gradient(135deg, #080d13 0%, #101722 48%, #182132 100%);
+  --vibe-body-bg: #080d13;
   --vibe-text-primary: #f8fafc;
-  --vibe-accent: #67e8f9;
-  --vibe-accent-soft: rgba(103, 232, 249, 0.16);
-  --vibe-scrollbar-thumb: rgba(75, 85, 99, 0.55);
+  --vibe-text-muted: #bdc7d3;
+  --vibe-text-faint: rgba(248, 250, 252, 0.42);
+  --vibe-accent: #559fff;
+  --vibe-accent-2: #ff8fa5;
+  --vibe-accent-3: #fcd34d;
+  --vibe-accent-soft: rgba(85, 159, 255, 0.16);
+  --vibe-danger: #fb7185;
+  --vibe-success: #4ade80;
+  --vibe-warning: #fcd34d;
+  --vibe-surface-window: rgba(18, 22, 30, 0.62);
+  --vibe-surface-header: rgba(255, 255, 255, 0.055);
+  --vibe-surface-block: rgba(9, 13, 19, 0.68);
+  --vibe-surface-input: rgba(0, 0, 0, 0.28);
+  --vibe-surface-hover: rgba(255, 255, 255, 0.08);
+  --vibe-border-subtle: rgba(255, 255, 255, 0.13);
+  --vibe-border-strong: rgba(255, 255, 255, 0.24);
+  --vibe-scrollbar-thumb: rgba(148, 163, 184, 0.56);
+  --vibe-radius-sm: 8px;
+  --vibe-radius-md: 12px;
+  --vibe-radius-lg: 18px;
+  --vibe-shadow-window: 0 30px 70px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --vibe-shadow-block: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.24);
+  --vibe-backdrop-blur: 34px;
 }
 
 body {

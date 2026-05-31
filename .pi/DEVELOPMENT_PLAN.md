@@ -18,8 +18,9 @@
 - [x] `FEAT-UI-002`: поднять полный UI redesign/theme/i18n/entity-sheet pass в ближайший приоритет перед новой крупной разработкой.
 - [x] Создать большой decision-док с анализом, идеями, рисками и вопросами владельцу: `.pi/docs/ui-redesign-master-plan.md`.
 - [x] Дать способ увидеть направление интерфейса до внедрения: статический preview-макет `.pi/prototypes/ui-redesign-preview.html`.
-- [ ] Утвердить визуальное направление: плотность, характер темы, уровень декоративности, требования к entity sheets.
+- [x] Утвердить визуальное направление: темы как полноценные визуальные столы/workspaces, `balanced` density, без отдельной светлой темы на старте, оба вида списков (table/card), Obsidian-like notes workspace.
 - [ ] После решений владельца идти foundation-first: theme tokens -> i18n manager -> app shell/drawers -> entity sheets -> asset/audio/settings polish.
+- [ ] Срез theme tokens: `theme.ts` должен управлять semantic variables для surface/border/shadow/blur/radius, а SettingsWindow должен показывать visual theme presets.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
 ## 2. Audio Module: Local-First Core

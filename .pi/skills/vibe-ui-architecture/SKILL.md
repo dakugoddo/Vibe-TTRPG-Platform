@@ -13,7 +13,7 @@ description: Complete UI architecture reference for Vibe TTRPG Platform. Use whe
 
 ## 1. ГЛОБАЛЬНАЯ ТЕМА (Самый важный файл)
 
-**`app/src/utils/theme.ts`** — экспортирует объект `glass` со всеми Tailwind-классами:
+**`app/src/utils/theme.ts`** — источник theme presets, CSS variables и объекта `glass` со всеми Tailwind-классами. После `FEAT-UI-002` темы считаются не просто палитрами, а визуальными столами/workspaces.
 
 | Ключ | Назначение | Где используется |
 |------|-----------|-----------------|
@@ -26,7 +26,16 @@ description: Complete UI architecture reference for Vibe TTRPG Platform. Use whe
 | `glass.blockHeader` | Заголовок блока (uppercase, tracking) | Все блоки |
 | `glass.input` | Поля ввода | Везде |
 
-**Правило**: При смене всей темы — меняй ТОЛЬКО этот файл. 80% приложения обновится автоматически.
+### 1.1 Theme token contract
+
+`theme.ts` задаёт built-in presets: `universalGlass`, `woodenTable`, `arcaneControl`, `rgbGameDesk`, `lowLoad`. Каждый preset обязан отдавать semantic CSS variables:
+
+- global: `--vibe-app-bg`, `--vibe-body-bg`, `--vibe-text-primary`, `--vibe-text-muted`, `--vibe-text-faint`;
+- accents: `--vibe-accent`, `--vibe-accent-2`, `--vibe-accent-3`, `--vibe-danger`, `--vibe-success`, `--vibe-warning`;
+- surfaces: `--vibe-surface-window`, `--vibe-surface-header`, `--vibe-surface-block`, `--vibe-surface-input`, `--vibe-surface-hover`;
+- structure: `--vibe-border-subtle`, `--vibe-border-strong`, `--vibe-radius-sm/md/lg`, `--vibe-shadow-window`, `--vibe-shadow-block`, `--vibe-backdrop-blur`.
+
+**Правило**: новые UI-компоненты должны использовать `glass.*` или эти semantic variables. Не добавляй новую тему через россыпь hardcoded `bg-[#...]` в компонентах. Если компоненту нужен новый визуальный смысл, сначала добавь semantic token в `theme.ts`, затем используй его в JSX/CSS.
 
 ---
 
