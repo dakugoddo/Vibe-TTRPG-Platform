@@ -4,6 +4,7 @@ import { listPlayers } from '../../services/fileApi';
 import { getIsHost } from '../../services/fileApi';
 import { yjsStore } from '../../store/yjsStore';
 import { EntityDatabase } from './EntityDatabase';
+import { glass } from '../../utils/theme';
 
 interface LeftDrawerProps {
     isOpen: boolean;
@@ -52,41 +53,41 @@ export function LeftDrawer({ isOpen, onClose }: LeftDrawerProps) {
 
     return (
         <div
-            className={`fixed top-0 left-0 bottom-0 w-[400px] border-r z-40 transition-transform duration-300 transform shadow-[20px_0_50px_rgba(0,0,0,0.5)] pointer-events-auto flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'} bg-[#151c2b]/60 backdrop-blur-3xl border-white/10`}
+            className={`fixed bottom-0 left-0 top-0 z-40 flex w-[400px] transform flex-col border-r pointer-events-auto transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'} ${glass.panel}`}
         >
-            <div className="p-5 border-b border-white/10 flex justify-between items-center gap-4 bg-white/[0.06]">
+            <div className={`flex items-center justify-between gap-4 p-5 ${glass.panelHeader}`}>
                 <div className="min-w-0 flex items-center gap-3">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/25 text-amber-200/80 shadow-inner">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] shadow-[var(--vibe-shadow-block)]">
                         <Users size={18} />
                     </div>
                     <div className="min-w-0">
-                        <h2 className="truncate text-base font-bold text-white tracking-wide uppercase">{drawerTitle}</h2>
-                        <p className="truncate text-xs text-white/45">{drawerSubtitle}</p>
+                        <h2 className="truncate text-base font-bold uppercase tracking-wide text-[var(--vibe-text-primary)]">{drawerTitle}</h2>
+                        <p className="truncate text-xs text-[var(--vibe-text-faint)]">{drawerSubtitle}</p>
                     </div>
                 </div>
-                <button onClick={onClose} className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors" title="Свернуть панель">
+                <button onClick={onClose} className="rounded-[var(--vibe-radius-sm)] bg-[var(--vibe-surface-input)] p-2 text-[var(--vibe-text-faint)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]" title="Свернуть панель">
                     <X size={18} />
                 </button>
             </div>
 
             {/* Player selector for GM */}
             {isGM && (
-                <div className="flex gap-1.5 border-b border-white/10 bg-[#0a0e17]/60 shadow-[inset_0_2px_10px_rgba(0,0,0,0.3)] p-2 text-xs overflow-x-auto no-scrollbar">
+                <div className={`flex gap-1.5 overflow-x-auto border-b border-[var(--vibe-border-subtle)] p-2 text-xs no-scrollbar ${glass.tabBar}`}>
                     <button
                         onClick={() => handleSelectPlayer(null)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all ${!selectedPlayer ? 'bg-white/15 border border-white/20 text-white shadow-md' : 'text-white/50 hover:text-white hover:bg-white/5 border border-transparent'}`}
+                        className={`inline-flex items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border px-3 py-1.5 font-bold whitespace-nowrap transition-all ${!selectedPlayer ? glass.tabActive : glass.tabIdle}`}
                     >
                         <User size={12} className="flex-shrink-0" />
                         Мои предметы
                     </button>
                     {loadingPlayers ? (
-                        <span className="px-3 py-1.5 text-white/30 italic">Загрузка...</span>
+                        <span className="px-3 py-1.5 italic text-[var(--vibe-text-faint)]">Загрузка...</span>
                     ) : (
                         players.map(playerName => (
                             <button
                                 key={playerName}
                                 onClick={() => handleSelectPlayer(playerName)}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all ${selectedPlayer === playerName ? 'bg-amber-400/15 border border-amber-300/30 text-amber-100 shadow-md' : 'text-white/50 hover:text-white hover:bg-white/5 border border-transparent'}`}
+                                className={`inline-flex items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border px-3 py-1.5 font-bold whitespace-nowrap transition-all ${selectedPlayer === playerName ? glass.tabActive : glass.tabIdle}`}
                             >
                                 <User size={12} className="flex-shrink-0" />
                                 {playerName}
@@ -94,13 +95,13 @@ export function LeftDrawer({ isOpen, onClose }: LeftDrawerProps) {
                         ))
                     )}
                     {!loadingPlayers && players.length === 0 && (
-                        <span className="px-3 py-1.5 text-white/30 italic">Нет других игроков</span>
+                        <span className="px-3 py-1.5 italic text-[var(--vibe-text-faint)]">Нет других игроков</span>
                     )}
                 </div>
             )}
 
             <div className="flex-1 overflow-hidden p-2 flex flex-col">
-                <div className="flex-1 rounded-xl border border-white/10 shadow-inner min-h-0 flex flex-col overflow-hidden bg-white/5">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] shadow-[var(--vibe-shadow-block)]">
                     <EntityDatabase
                         baseParentId={null}
                         headerTitle={drawerTitle}

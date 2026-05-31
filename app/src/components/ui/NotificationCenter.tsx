@@ -3,6 +3,7 @@ import { AlertTriangle, Bell, CheckCircle2, Clock3, FileWarning, Info, Loader2, 
 import { useNotificationStore } from '../../store/notificationStore';
 import { yjsStore } from '../../store/yjsStore';
 import { SESSION_NOTIFICATION_ACTION_APPROVE, SESSION_NOTIFICATION_ACTION_REJECT } from '../../utils/sessionNotificationModel';
+import { glass } from '../../utils/theme';
 import type { AppNotification, NotificationKind } from '../../utils/notificationModel';
 
 function getNotificationTone(kind: NotificationKind, status: AppNotification['status']): string {
@@ -18,7 +19,7 @@ function getNotificationTone(kind: NotificationKind, status: AppNotification['st
     if (kind === 'progress' || status === 'pending') {
         return 'border-cyan-200/25 bg-cyan-300/10 text-cyan-100';
     }
-    return 'border-white/12 bg-white/[0.06] text-white/75';
+    return 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] text-[var(--vibe-text-muted)]';
 }
 
 function NotificationIcon({
@@ -88,33 +89,33 @@ function NotificationRow({ notification, compact = false }: { notification: AppN
     return (
         <div className={`group rounded-xl border ${tone} ${compact ? 'p-2.5' : 'p-3'} shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]`}>
             <div className="flex items-start gap-2.5">
-                <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-current/20 bg-black/20">
+                <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-current/20 bg-[var(--vibe-surface-input)]">
                     <NotificationIcon kind={notification.kind} status={notification.status} />
                 </div>
                 <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                            <div className="truncate text-xs font-black text-white/90" title={notification.title}>
+                            <div className="truncate text-xs font-black text-[var(--vibe-text-primary)]" title={notification.title}>
                                 {notification.title}
                             </div>
                             {notification.message && (
-                                <div className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-white/45">
+                                <div className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-[var(--vibe-text-muted)]">
                                     {notification.message}
                                 </div>
                             )}
                         </div>
-                        <span className="flex-shrink-0 font-mono text-[9px] text-white/30">
+                        <span className="flex-shrink-0 font-mono text-[9px] text-[var(--vibe-text-faint)]">
                             {formatNotificationTime(notification.updatedAt ?? notification.createdAt)}
                         </span>
                     </div>
 
                     {typeof notification.progress === 'number' && (
                         <div className="mt-2">
-                            <div className="mb-1 flex justify-between text-[9px] font-bold uppercase tracking-wider text-white/35">
+                            <div className="mb-1 flex justify-between text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
                                 <span>{notification.status === 'done' ? 'Готово' : 'Загрузка'}</span>
                                 <span>{notification.progress}%</span>
                             </div>
-                            <div className="h-1.5 overflow-hidden rounded-full bg-black/35">
+                            <div className="h-1.5 overflow-hidden rounded-full bg-[var(--vibe-surface-input)]">
                                 <div
                                     className="h-full rounded-full bg-current transition-[width] duration-200"
                                     style={{ width: `${notification.progress}%` }}
@@ -135,7 +136,7 @@ function NotificationRow({ notification, compact = false }: { notification: AppN
                                             ? 'border-red-200/25 bg-red-400/10 text-red-100 hover:bg-red-400/20'
                                             : action.tone === 'primary'
                                                 ? 'border-emerald-200/25 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/20'
-                                                : 'border-white/10 bg-black/20 text-white/55 hover:bg-white/10 hover:text-white'
+                                                : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                                     }`}
                                 >
                                     {action.label}
@@ -147,7 +148,7 @@ function NotificationRow({ notification, compact = false }: { notification: AppN
                 <button
                     type="button"
                     onClick={() => dismissNotification(notification.id)}
-                    className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-white/25 opacity-0 transition-all hover:bg-black/25 hover:text-white/70 group-hover:opacity-100"
+                    className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-text-faint)] opacity-0 transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] group-hover:opacity-100"
                     title="Скрыть"
                 >
                     <X size={13} />
@@ -187,29 +188,29 @@ export function NotificationCenter() {
                     onClick={() => setIsOpen((current) => !current)}
                     className={`relative flex h-11 w-11 items-center justify-center rounded-xl border backdrop-blur-2xl transition-colors ${
                         pendingCount > 0
-                            ? 'border-cyan-200/30 bg-cyan-300/12 text-cyan-50 shadow-[0_0_30px_rgba(34,211,238,0.12)]'
-                            : 'border-white/10 bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/75'
+                            ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] shadow-[var(--vibe-shadow-block)]'
+                            : `${glass.iconButton}`
                     }`}
                     title="Уведомления"
                 >
                     <Bell size={18} />
                     {pendingCount > 0 && (
-                        <span className="absolute -right-1.5 -top-1.5 min-w-5 rounded-full border border-black/40 bg-cyan-300 px-1 text-center font-mono text-[10px] font-black text-slate-950">
+                        <span className="absolute -right-1.5 -top-1.5 min-w-5 rounded-full border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent)] px-1 text-center font-mono text-[10px] font-black text-[var(--vibe-body-bg)]">
                             {pendingCount > 9 ? '9+' : pendingCount}
                         </span>
                     )}
                 </button>
 
                 {isOpen && (
-                    <div className="absolute right-0 top-14 w-[min(390px,calc(100vw-32px))] overflow-hidden rounded-2xl border border-white/12 bg-[#0c1320]/95 shadow-[0_24px_80px_rgba(0,0,0,0.62)] backdrop-blur-2xl">
-                        <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-white/[0.06] px-3 py-2.5">
+                    <div className={`absolute right-0 top-14 w-[min(390px,calc(100vw-32px))] overflow-hidden rounded-[var(--vibe-radius-lg)] ${glass.panel}`}>
+                        <div className={`flex items-center justify-between gap-3 px-3 py-2.5 ${glass.panelHeader}`}>
                             <div className="flex items-center gap-2">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-200/20 bg-cyan-300/10 text-cyan-100">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)]">
                                     <Bell size={15} />
                                 </div>
                                 <div>
-                                    <div className="text-xs font-black uppercase tracking-wider text-white/85">Уведомления</div>
-                                    <div className="text-[10px] font-semibold uppercase tracking-wider text-white/35">
+                                    <div className="text-xs font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Уведомления</div>
+                                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
                                         {notifications.length} записей
                                     </div>
                                 </div>
@@ -217,7 +218,7 @@ export function NotificationCenter() {
                             <button
                                 type="button"
                                 onClick={clearCompleted}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/20 text-white/35 transition-colors hover:bg-white/10 hover:text-white/75"
+                                className={`flex h-8 w-8 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`}
                                 title="Очистить завершённые"
                             >
                                 <Trash2 size={14} />
@@ -226,7 +227,7 @@ export function NotificationCenter() {
 
                         <div className="max-h-[min(520px,calc(100vh-140px))] space-y-2 overflow-y-auto p-3 custom-scrollbar">
                             {notifications.length === 0 ? (
-                                <div className="rounded-xl border border-dashed border-white/10 bg-black/20 p-5 text-center text-xs italic text-white/35">
+                                <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-5 text-center text-xs italic text-[var(--vibe-text-faint)]">
                                     Пока тихо
                                 </div>
                             ) : (
@@ -248,7 +249,7 @@ export function NotificationCenter() {
             )}
 
             {activeNotifications.some((notification) => notification.status === 'pending') && !isOpen && (
-                <div className="hidden h-11 items-center gap-2 rounded-xl border border-cyan-200/20 bg-[#0c1320]/70 px-3 text-[10px] font-bold uppercase tracking-wider text-cyan-100/70 shadow-[0_18px_52px_rgba(0,0,0,0.35)] backdrop-blur-2xl md:flex">
+                <div className={`hidden h-11 items-center gap-2 rounded-[var(--vibe-radius-md)] px-3 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-accent)] md:flex ${glass.panel}`}>
                     <Clock3 size={13} />
                     есть активные процессы
                 </div>

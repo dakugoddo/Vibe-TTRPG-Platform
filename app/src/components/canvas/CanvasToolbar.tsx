@@ -25,6 +25,7 @@ import { getEntityCanvasTokenDefaults, getEntityCanvasTokenImageSource } from '.
 import { fitEntityArtSizeToImage } from '../../utils/entityTokenSizing';
 import { getAssetUrl } from '../../services/fileApi';
 import { yjsStore } from '../../store/yjsStore';
+import { glass } from '../../utils/theme';
 import type { Entity } from '../../types';
 import React from 'react';
 
@@ -520,6 +521,20 @@ export function CanvasToolbar() {
 
 
 
+  const toolbarButtonClass = `flex h-10 w-10 items-center justify-center rounded-[var(--vibe-radius-md)] transition-all ${glass.iconButton}`;
+  const toolbarButtonDisabledClass = 'cursor-not-allowed opacity-30 text-[var(--vibe-text-faint)]';
+  const toolbarButtonEnabledClass = 'cursor-pointer';
+  const toolButtonBaseClass = 'relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--vibe-radius-sm)] border transition-all duration-150';
+  const toolButtonActiveClass = glass.tabActive;
+  const toolButtonIdleClass = glass.tabIdle;
+  const toolbarDividerClass = 'mx-0.5 h-6 w-px bg-[var(--vibe-border-subtle)]';
+  const popoverClass = `z-[99] rounded-[var(--vibe-radius-md)] p-2 ${glass.popover}`;
+  const toolbarPanelClass = `rounded-[var(--vibe-radius-md)] p-1 ${glass.tabBar}`;
+  const menuHeadingClass = 'mb-2 px-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]';
+  const menuItemClass = 'cursor-pointer truncate rounded-[var(--vibe-radius-sm)] px-2 py-1.5 text-[var(--vibe-text-muted)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
+  const miniActionButtonClass = 'flex items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-text-muted)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
+  const styleControlTextClass = 'text-[var(--vibe-text-muted)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
+
   return (
     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex flex-col items-center gap-2">
       {/* ─── Main bar ─── */}
@@ -528,10 +543,10 @@ export function CanvasToolbar() {
         <button
           onClick={goBack}
           disabled={canvasHistory.length === 0}
-          className={`bg-black/20 backdrop-blur-2xl border border-white/10 w-10 h-10 rounded-xl flex justify-center items-center shadow-xl transition-all
+          className={`${toolbarButtonClass}
             ${canvasHistory.length === 0
-              ? 'opacity-30 cursor-not-allowed text-white/30'
-              : 'text-white/70 hover:text-white hover:border-white/30 hover:bg-white/10 cursor-pointer'
+              ? toolbarButtonDisabledClass
+              : toolbarButtonEnabledClass
             }`}
           title="Назад"
         >
@@ -543,10 +558,10 @@ export function CanvasToolbar() {
         <button
           onClick={undoCanvas}
           disabled={!canEditActiveCanvas || !canUndo}
-          className={`bg-black/20 backdrop-blur-2xl border border-white/10 w-10 h-10 rounded-xl flex justify-center items-center shadow-xl transition-all
+          className={`${toolbarButtonClass}
             ${!canEditActiveCanvas || !canUndo
-              ? 'opacity-30 cursor-not-allowed text-white/30'
-              : 'text-white/70 hover:text-white hover:border-white/30 hover:bg-white/10 cursor-pointer'
+              ? toolbarButtonDisabledClass
+              : toolbarButtonEnabledClass
             }`}
           title="Отменить (Ctrl+Z)"
         >
@@ -556,28 +571,28 @@ export function CanvasToolbar() {
         <button
           onClick={redoCanvas}
           disabled={!canEditActiveCanvas || !canRedo}
-          className={`bg-black/20 backdrop-blur-2xl border border-white/10 w-10 h-10 rounded-xl flex justify-center items-center shadow-xl transition-all
+          className={`${toolbarButtonClass}
             ${!canEditActiveCanvas || !canRedo
-              ? 'opacity-30 cursor-not-allowed text-white/30'
-              : 'text-white/70 hover:text-white hover:border-white/30 hover:bg-white/10 cursor-pointer'
+              ? toolbarButtonDisabledClass
+              : toolbarButtonEnabledClass
             }`}
           title="Повторить (Ctrl+Shift+Z / Ctrl+Y)"
         >
           <Redo2 size={18} strokeWidth={2} />
         </button>
 
-        <div className="w-px h-6 bg-white/10 mx-0.5" />
+        <div className={toolbarDividerClass} />
 
         {/* Drawing Tools */}
-        <div className="bg-black/20 backdrop-blur-2xl border border-white/10 rounded-xl shadow-xl p-1 flex gap-0.5">
+        <div className={`${toolbarPanelClass} flex gap-0.5`}>
           {visibleTools.map((tool) => (
             <button
               key={tool.id}
               onClick={() => setTool(tool.id)}
-              className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer
+              className={`${toolButtonBaseClass}
                 ${activeTool === tool.id
-                  ? 'bg-white/20 text-white shadow-md'
-                  : 'text-white/50 hover:text-white hover:bg-white/10'
+                  ? toolButtonActiveClass
+                  : toolButtonIdleClass
                 }`}
               title={`${tool.label} (${tool.shortcut})`}
             >
@@ -591,8 +606,7 @@ export function CanvasToolbar() {
         <div className="relative">
           <button
             onClick={() => setExtraOpen(!extraOpen)}
-            className={`bg-black/20 backdrop-blur-2xl border border-white/10 w-10 h-10 rounded-xl flex justify-center items-center shadow-xl transition-all text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 cursor-pointer text-lg
-              ${extraOpen ? 'bg-white/10 text-white border-white/20' : ''}`}
+            className={`${toolbarButtonClass} cursor-pointer text-lg ${extraOpen ? glass.iconButtonActive : ''}`}
             title="Ещё инструменты"
           >
             ⋯
@@ -600,7 +614,7 @@ export function CanvasToolbar() {
           {extraOpen && (
             <>
               <div className="fixed inset-0 z-[98]" onClick={() => setExtraOpen(false)} />
-              <div className="absolute top-full left-0 mt-3 bg-black/60 backdrop-blur-3xl border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] p-1.5 z-[99]">
+              <div className={`absolute left-0 top-full mt-3 ${popoverClass}`}>
                 {EXTRA_TOOLS.map(tool => (
                   <button
                     key={tool.id}
@@ -608,17 +622,17 @@ export function CanvasToolbar() {
                       setTool(tool.id as CanvasTool);
                       setExtraOpen(false);
                     }}
-                    className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm transition-all cursor-pointer
+                    className={`flex w-full cursor-pointer items-center gap-2.5 rounded-[var(--vibe-radius-sm)] border px-3 py-2 text-sm transition-all
                       ${activeTool === tool.id
-                        ? 'bg-white/15 text-white'
-                        : 'text-white/60 hover:bg-white/10 hover:text-white'
+                        ? toolButtonActiveClass
+                        : toolButtonIdleClass
                       }`}
                     title={tool.shortcut ? `${tool.label} (${tool.shortcut})` : tool.label}
                   >
                     {tool.icon}
                     <span className="whitespace-nowrap">{tool.label}</span>
                     {tool.shortcut && (
-                      <span className="text-[10px] text-white/30 ml-auto">{tool.shortcut}</span>
+                      <span className="ml-auto text-[10px] text-[var(--vibe-text-faint)]">{tool.shortcut}</span>
                     )}
                   </button>
                 ))}
@@ -632,10 +646,10 @@ export function CanvasToolbar() {
         <div className="relative">
           <button
             onClick={() => setGridOpen(!gridOpen)}
-            className={`bg-black/20 backdrop-blur-2xl border w-10 h-10 rounded-xl flex justify-center items-center shadow-xl transition-all cursor-pointer
+            className={`${toolbarButtonClass} cursor-pointer
               ${gridEnabled
-                ? 'border-white/20 text-white bg-white/10'
-                : 'border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                ? glass.iconButtonActive
+                : ''
               }`}
             title={`Сетка (${gridType === 'square' ? 'квадраты' : 'гексы'}, ${gridSpacing}px)`}
           >
@@ -649,31 +663,31 @@ export function CanvasToolbar() {
           {gridOpen && (
             <>
               <div className="fixed inset-0 z-[98]" onClick={() => setGridOpen(false)} />
-              <div className="absolute top-full left-0 mt-3 w-56 bg-black/60 backdrop-blur-3xl border border-white/10 rounded-xl shadow-[0_15px_40px_rgba(0,0,0,0.6)] overflow-hidden p-3 z-[99]">
+              <div className={`absolute left-0 top-full mt-3 w-56 overflow-hidden ${popoverClass}`}>
                 {/* Grid On/Off */}
                 <label className="flex items-center justify-between mb-3 cursor-pointer">
-                  <span className="text-xs text-white/70">Показать сетку</span>
+                  <span className="text-xs text-[var(--vibe-text-muted)]">Показать сетку</span>
                   <button
                     onClick={toggleGrid}
-                    className={`w-9 h-5 rounded-full transition-colors relative ${gridEnabled ? 'bg-indigo-500' : 'bg-white/15'}`}
+                    className={`relative h-5 w-9 rounded-full transition-colors ${gridEnabled ? 'bg-[var(--vibe-accent)]' : 'bg-[var(--vibe-surface-hover)]'}`}
                   >
-                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${gridEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                    <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-[var(--vibe-text-primary)] transition-transform ${gridEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
                   </button>
                 </label>
 
                 {/* Grid Type */}
                 <div className="mb-3">
-                  <span className="text-[9px] text-white/30 uppercase font-bold tracking-widest mb-1.5 block">Тип сетки</span>
+                  <span className="mb-1.5 block text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">Тип сетки</span>
                   <div className="flex gap-1">
                     <button
                       onClick={() => setGridType('square')}
-                      className={`flex-1 px-2 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${gridType === 'square' ? 'bg-white/15 text-white' : 'text-white/40 hover:bg-white/10 hover:text-white/70'}`}
+                      className={`flex-1 cursor-pointer rounded-[var(--vibe-radius-sm)] border px-2 py-1.5 text-xs transition-all ${gridType === 'square' ? toolButtonActiveClass : toolButtonIdleClass}`}
                     >
                       ◻ Квадраты
                     </button>
                     <button
                       onClick={() => setGridType('hex')}
-                      className={`flex-1 px-2 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${gridType === 'hex' ? 'bg-white/15 text-white' : 'text-white/40 hover:bg-white/10 hover:text-white/70'}`}
+                      className={`flex-1 cursor-pointer rounded-[var(--vibe-radius-sm)] border px-2 py-1.5 text-xs transition-all ${gridType === 'hex' ? toolButtonActiveClass : toolButtonIdleClass}`}
                     >
                       ⬡ Гексы
                     </button>
@@ -682,13 +696,13 @@ export function CanvasToolbar() {
 
                 {/* Grid Spacing */}
                 <div>
-                  <span className="text-[9px] text-white/30 uppercase font-bold tracking-widest mb-1.5 block">Шаг сетки (px)</span>
+                  <span className="mb-1.5 block text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">Шаг сетки (px)</span>
                   <div className="flex gap-1 flex-wrap">
                     {[25, 50, 75, 100].map((s) => (
                       <button
                         key={s}
                         onClick={() => setGridSpacing(s)}
-                        className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${gridSpacing === s ? 'bg-white/15 text-white' : 'text-white/40 hover:bg-white/10 hover:text-white/70'}`}
+                        className={`cursor-pointer rounded-[var(--vibe-radius-sm)] border px-3 py-1.5 text-xs transition-all ${gridSpacing === s ? toolButtonActiveClass : toolButtonIdleClass}`}
                       >
                         {s}
                       </button>
@@ -709,12 +723,12 @@ export function CanvasToolbar() {
               // Auto-enable GM fog visibility when entering edit mode
               if (nextFog && !gmFogVisible) toggleGmFog();
             }}
-            className={`bg-black/20 backdrop-blur-2xl border w-10 h-10 rounded-xl flex justify-center items-center shadow-xl transition-all cursor-pointer
+            className={`${toolbarButtonClass} cursor-pointer
               ${fogEditMode
-                ? 'border-purple-400/60 text-purple-300 bg-purple-500/20 shadow-[0_0_15px_rgba(139,92,246,0.3)]'
+                ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)]'
                 : gmFogVisible
-                  ? 'border-purple-500/40 text-purple-300 bg-purple-500/10'
-                  : 'border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10'
+                  ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-surface-hover)] text-[var(--vibe-accent)]'
+                  : ''
               }`}
             title={fogEditMode ? 'Закрыть режим тумана' : 'Туман Войны'}
           >
@@ -733,14 +747,13 @@ export function CanvasToolbar() {
           </button>
         )}
 
-        <div className="w-px h-6 bg-white/10 mx-0.5" />
+        <div className={toolbarDividerClass} />
 
         {/* Active Elements Button */}
         <div className="relative">
           <button
             onClick={() => setElementsOpen(!elementsOpen)}
-            className={`bg-black/20 backdrop-blur-2xl border border-white/10 w-10 h-10 rounded-xl flex justify-center items-center shadow-xl transition-all text-white/70 hover:text-white hover:border-white/30 hover:bg-white/10 cursor-pointer
-              ${elementsOpen ? 'bg-white/10 text-white border-white/20' : ''}`}
+            className={`${toolbarButtonClass} cursor-pointer ${elementsOpen ? glass.iconButtonActive : ''}`}
             title={`${t('hud.activeElements')} (${elementCount})`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -749,7 +762,7 @@ export function CanvasToolbar() {
               <line x1="15" y1="6" x2="15" y2="21" />
             </svg>
             {elementCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-white/20 backdrop-blur-sm text-[9px] text-white font-bold rounded-full flex items-center justify-center border border-white/20">
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[9px] font-bold text-[var(--vibe-text-primary)] backdrop-blur-sm">
                 {elementCount}
               </span>
             )}
@@ -759,7 +772,7 @@ export function CanvasToolbar() {
           {elementsOpen && (
             <>
               <div className="fixed inset-0 z-[98]" onClick={() => setElementsOpen(false)} />
-              <div className="absolute top-full right-0 mt-3 w-72 bg-black/60 backdrop-blur-3xl border border-white/10 rounded-xl shadow-[0_15px_40px_rgba(0,0,0,0.6)] overflow-hidden p-2 z-[99] max-h-[60vh] overflow-y-auto">
+              <div className={`absolute right-0 top-full mt-3 max-h-[60vh] w-72 overflow-y-auto overflow-x-hidden ${popoverClass}`}>
                 {(() => {
                   if (elements.length === 0) return null;
 
@@ -774,9 +787,9 @@ export function CanvasToolbar() {
 
                   return (
                     <>
-                      <h4 className="text-[10px] uppercase font-bold text-white/40 mb-2 px-2 tracking-widest flex items-center justify-between">
+                      <h4 className={`${menuHeadingClass} flex items-center justify-between`}>
                         <span>Рисунки</span>
-                        <span className="text-[9px] text-white/20 font-normal">{elements.length}</span>
+                        <span className="text-[9px] font-normal text-[var(--vibe-text-faint)]">{elements.length}</span>
                       </h4>
                       {elements.map((el: DrawElement) => {
                         const bounds = getElementBounds(el);
@@ -794,48 +807,48 @@ export function CanvasToolbar() {
                               useCanvasDrawStore.getState().selectElement(el.id);
                               if (useCanvasDrawStore.getState().activeTool !== 'select') setTool('select');
                             }}
-                            className={`text-xs hover:bg-white/10 px-2 py-1.5 rounded cursor-pointer truncate transition-colors flex items-center gap-2
-                              ${isSelected ? 'bg-white/10 text-white' : 'text-white/60'}`}
+                            className={`flex items-center gap-2 text-xs ${menuItemClass}
+                              ${isSelected ? 'bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)]' : ''}`}
                           >
                             <span className="text-sm">{typeIcons[el.type] || '•'}</span>
                             <span>{displayName}</span>
                             {el.type === 'text' && el.text && (
-                              <span className="text-white/30 ml-1 truncate max-w-[120px]">"{el.text.slice(0, 20)}"</span>
+                              <span className="ml-1 max-w-[120px] truncate text-[var(--vibe-text-faint)]">"{el.text.slice(0, 20)}"</span>
                             )}
                             {el.description && (
-                              <span className="text-white/20 ml-1 truncate max-w-[80px] text-[10px]">📝 {el.description.slice(0, 12)}…</span>
+                              <span className="ml-1 max-w-[80px] truncate text-[10px] text-[var(--vibe-text-faint)]">📝 {el.description.slice(0, 12)}…</span>
                             )}
                           </div>
                         );
                       })}
-                      <div className="border-t border-white/5 my-2" />
+                      <div className="my-2 border-t border-[var(--vibe-border-subtle)]" />
                     </>
                   );
                 })()}
 
-                <h4 className="text-[10px] uppercase font-bold text-white/40 mb-2 px-2 tracking-widest">{t('hud.pinnedWindows')}</h4>
-                {pinnedWindows.length === 0 ? <p className="text-xs text-white/30 px-2 italic mb-2">{t('hud.none')}</p> : (
+                <h4 className={menuHeadingClass}>{t('hud.pinnedWindows')}</h4>
+                {pinnedWindows.length === 0 ? <p className="mb-2 px-2 text-xs italic text-[var(--vibe-text-faint)]">{t('hud.none')}</p> : (
                   pinnedWindows.map(w => {
                     const e = getEntitiesSnapshot()[w.entityId];
                     return (
-                      <div key={w.id} onClick={() => centerOn(w.x, w.y)} className="text-sm text-white/80 hover:bg-white/10 px-2 py-1.5 rounded cursor-pointer truncate transition-colors">
+                      <div key={w.id} onClick={() => centerOn(w.x, w.y)} className={`text-sm ${menuItemClass}`}>
                         📌 {e?.name || t('hud.unknown')}
                       </div>
                     );
                   })
                 )}
-                <h4 className="text-[10px] uppercase font-bold text-white/40 mb-2 px-2 mt-3 tracking-widest">Токены и Сущности</h4>
-                {tokensOnCurrent.length === 0 ? <p className="text-xs text-white/30 px-2 italic">{t('hud.none')}</p> : (
+                <h4 className={`${menuHeadingClass} mt-3`}>Токены и Сущности</h4>
+                {tokensOnCurrent.length === 0 ? <p className="px-2 text-xs italic text-[var(--vibe-text-faint)]">{t('hud.none')}</p> : (
                   tokensOnCurrent.map(tok => (
-                    <div key={tok.id} onClick={() => centerOn(tok.properties.x || 0, tok.properties.y || 0)} className="text-sm text-blue-300 hover:bg-white/10 px-2 py-1.5 rounded cursor-pointer truncate transition-colors">
+                    <div key={tok.id} onClick={() => centerOn(tok.properties.x || 0, tok.properties.y || 0)} className={`text-sm text-[var(--vibe-accent)] ${menuItemClass}`}>
                       ♟ {tok.name}
                     </div>
                   ))
                 )}
-                <h4 className="text-[10px] uppercase font-bold text-white/40 mb-2 px-2 mt-3 tracking-widest">{t('hud.portalsHere')}</h4>
-                {portalsOnCurrent.length === 0 ? <p className="text-xs text-white/30 px-2 italic">{t('hud.none')}</p> : (
+                <h4 className={`${menuHeadingClass} mt-3`}>{t('hud.portalsHere')}</h4>
+                {portalsOnCurrent.length === 0 ? <p className="px-2 text-xs italic text-[var(--vibe-text-faint)]">{t('hud.none')}</p> : (
                   portalsOnCurrent.map(p => (
-                    <div key={p.id} onClick={() => centerOn(p.properties.x || 0, p.properties.y || 0)} className="text-sm text-white/60 hover:bg-white/10 px-2 py-1.5 rounded cursor-pointer truncate transition-colors">
+                    <div key={p.id} onClick={() => centerOn(p.properties.x || 0, p.properties.y || 0)} className={`text-sm ${menuItemClass}`}>
                       🌀 {p.name}
                     </div>
                   ))
@@ -857,7 +870,7 @@ export function CanvasToolbar() {
             // Also update Konva Stage directly
             window.__vibeSetStageCamera?.(scale, offsetX, offsetY);
           }}
-          className="bg-black/20 backdrop-blur-2xl border border-white/10 w-10 h-10 rounded-xl flex justify-center items-center text-white/70 hover:text-white shadow-xl hover:border-white/30 hover:bg-white/10 transition-all cursor-pointer"
+          className={`${toolbarButtonClass} cursor-pointer`}
           title="Рецентр"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -869,14 +882,14 @@ export function CanvasToolbar() {
 
       {/* ─── Fog Tools Panel (GM only, shown when fog edit mode is active) ─── */}
       {fogEditMode && isGM && canEditActiveCanvas && (
-        <div className="flex items-center gap-1.5 bg-black/30 backdrop-blur-2xl border border-purple-500/30 rounded-xl shadow-[0_10px_30px_rgba(139,92,246,0.15)] p-1">
+        <div className={`${toolbarPanelClass} flex items-center gap-1.5 border-[var(--vibe-border-strong)]`}>
           {/* Reveal Brush */}
           <button
             onClick={() => setFogTool('revealBrush')}
-            className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer
+            className={`relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--vibe-radius-sm)] transition-all duration-150
               ${fogTool === 'revealBrush'
-                ? 'bg-emerald-500/30 text-emerald-300 shadow-md'
-                : 'text-white/50 hover:text-white hover:bg-white/10'
+                ? 'bg-[color-mix(in_srgb,var(--vibe-success)_24%,transparent)] text-[var(--vibe-success)] shadow-sm'
+                : styleControlTextClass
               }`}
             title="Просвет: Кисть"
           >
@@ -886,25 +899,25 @@ export function CanvasToolbar() {
           {/* Reveal Rect */}
           <button
             onClick={() => setFogTool('revealRect')}
-            className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer
+            className={`relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--vibe-radius-sm)] transition-all duration-150
               ${fogTool === 'revealRect'
-                ? 'bg-emerald-500/30 text-emerald-300 shadow-md'
-                : 'text-white/50 hover:text-white hover:bg-white/10'
+                ? 'bg-[color-mix(in_srgb,var(--vibe-success)_24%,transparent)] text-[var(--vibe-success)] shadow-sm'
+                : styleControlTextClass
               }`}
             title="Просвет: Область"
           >
             <span className="text-base">◻️</span>
           </button>
 
-          <div className="w-px h-4 bg-white/10" />
+          <div className="h-4 w-px bg-[var(--vibe-border-subtle)]" />
 
           {/* Cover Brush */}
           <button
             onClick={() => setFogTool('coverBrush')}
-            className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer
+            className={`relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--vibe-radius-sm)] transition-all duration-150
               ${fogTool === 'coverBrush'
-                ? 'bg-purple-500/30 text-purple-300 shadow-md'
-                : 'text-white/50 hover:text-white hover:bg-white/10'
+                ? 'bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] shadow-sm'
+                : styleControlTextClass
               }`}
             title="Скрыть: Кисть"
           >
@@ -914,22 +927,22 @@ export function CanvasToolbar() {
           {/* Cover Rect */}
           <button
             onClick={() => setFogTool('coverRect')}
-            className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer
+            className={`relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--vibe-radius-sm)] transition-all duration-150
               ${fogTool === 'coverRect'
-                ? 'bg-purple-500/30 text-purple-300 shadow-md'
-                : 'text-white/50 hover:text-white hover:bg-white/10'
+                ? 'bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] shadow-sm'
+                : styleControlTextClass
               }`}
             title="Скрыть: Область"
           >
             <span className="text-base">◻️</span>
           </button>
 
-          <div className="w-px h-6 bg-white/10" />
+          <div className="h-6 w-px bg-[var(--vibe-border-subtle)]" />
 
           {/* Cover All */}
           <button
             onClick={() => clearAllFog()}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer text-white/50 hover:text-white hover:bg-white/10"
+            className={`h-9 w-9 cursor-pointer ${miniActionButtonClass}`}
             title="Покрыть всё туманом"
           >
             <span className="text-sm">⬛</span>
@@ -946,19 +959,19 @@ export function CanvasToolbar() {
                 onConfirm: () => revealAll(),
               });
             }}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-warning)] transition-all hover:bg-[color-mix(in_srgb,var(--vibe-warning)_14%,transparent)]"
             title="Очистить туман с канваса"
           >
             <span className="text-sm">🔓</span>
           </button>
 
-          <div className="w-px h-6 bg-white/10" />
+          <div className="h-6 w-px bg-[var(--vibe-border-subtle)]" />
 
           {/* GM visibility toggle */}
           <button
             onClick={toggleGmFog}
-            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer
-              ${gmFogVisible ? 'text-purple-300 bg-purple-500/20' : 'text-white/30 hover:text-white/60 hover:bg-white/10'}`}
+            className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--vibe-radius-sm)] transition-all
+              ${gmFogVisible ? 'bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)]' : styleControlTextClass}`}
             title={gmFogVisible ? 'Скрыть туман ГМа' : 'Показать туман ГМа'}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -971,7 +984,7 @@ export function CanvasToolbar() {
 
       {/* Current fog tool label */}
       {fogEditMode && isGM && canEditActiveCanvas && (
-        <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest bg-black/20 backdrop-blur-md rounded-lg px-3 py-1 border border-white/5 select-none">
+        <div className="select-none rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-window)] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)] backdrop-blur-[var(--vibe-backdrop-blur)]">
           {fogTool === 'revealBrush' ? '🟢 Просвет: Кисть' :
            fogTool === 'revealRect' ? '🟢 Просвет: Область' :
            fogTool === 'coverBrush' ? '🟣 Скрыть: Кисть' :
@@ -982,7 +995,7 @@ export function CanvasToolbar() {
 
       {/* ─── Style Panel ─── */}
       {showStylePanel && (
-        <div className="bg-black/20 backdrop-blur-2xl border border-white/10 rounded-xl shadow-xl px-4 py-3">
+        <div className={`rounded-[var(--vibe-radius-md)] px-4 py-3 ${glass.popover}`}>
           
           <div className="flex items-start gap-5">
             

@@ -25,6 +25,12 @@ description: Complete UI architecture reference for Vibe TTRPG Platform. Use whe
 | `glass.blockBg` | Фон блоков (inset shadow) | Все блоки в `blocks/` |
 | `glass.blockHeader` | Заголовок блока (uppercase, tracking) | Все блоки |
 | `glass.input` | Поля ввода | Везде |
+| `glass.panel` | Общая shell-панель: drawers, docks, HUD, notification center | App shell |
+| `glass.panelHeader` | Header shell-панели с semantic border/header surface | Drawers, docks, notification center |
+| `glass.iconButton` | Иконка-кнопка без жёстких `black/white` цветов | Canvas toolbar, drawer buttons, settings/actions |
+| `glass.iconButtonActive` | Активное состояние icon/tool button | Toolbar, tabs, toggles |
+| `glass.tabBar` / `glass.tabActive` / `glass.tabIdle` | Общий tab/segmented control contract | Sheet tabs, CanvasToolbar |
+| `glass.popover` | Popover/dropdown shell на theme tokens | Tool menus, pickers |
 
 ### 1.1 Theme token contract
 

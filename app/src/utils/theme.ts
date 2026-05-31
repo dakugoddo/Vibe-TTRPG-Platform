@@ -381,12 +381,20 @@ export function applyThemePreset(id: ThemePresetId): void {
 export const glass = {
     bg: 'vibe-app-bg',
     window: 'bg-[var(--vibe-surface-window)] backdrop-blur-[var(--vibe-backdrop-blur)] border border-[var(--vibe-border-subtle)] shadow-[var(--vibe-shadow-window)] rounded-[var(--vibe-radius-lg)] text-[var(--vibe-text-primary)]',
+    panel: 'bg-[var(--vibe-surface-window)] backdrop-blur-[var(--vibe-backdrop-blur)] border border-[var(--vibe-border-subtle)] shadow-[var(--vibe-shadow-window)] text-[var(--vibe-text-primary)]',
     header: 'bg-[var(--vibe-surface-header)] border-b border-[var(--vibe-border-subtle)] p-4 rounded-t-[var(--vibe-radius-lg)]',
+    panelHeader: 'bg-[var(--vibe-surface-header)] border-b border-[var(--vibe-border-subtle)]',
     titleText: 'text-[var(--vibe-text-primary)] font-semibold tracking-wide',
     content: 'p-5 flex flex-col gap-4',
     blockBg: 'bg-[var(--vibe-surface-block)] border border-[var(--vibe-border-subtle)] rounded-[var(--vibe-radius-md)] p-4 shadow-[var(--vibe-shadow-block)]',
     blockHeader: 'text-[10px] text-[var(--vibe-text-faint)] font-bold uppercase tracking-widest mb-4 flex justify-between items-center',
     input: 'bg-[var(--vibe-surface-input)] border border-[var(--vibe-border-subtle)] rounded-[var(--vibe-radius-sm)] px-3 py-1.5 text-[var(--vibe-text-primary)] outline-none focus:bg-[var(--vibe-surface-hover)] focus:border-[var(--vibe-border-strong)] transition-all font-sans hover:bg-[var(--vibe-surface-hover)]',
+    iconButton: 'bg-[var(--vibe-surface-window)] backdrop-blur-[var(--vibe-backdrop-blur)] border border-[var(--vibe-border-subtle)] shadow-[var(--vibe-shadow-block)] text-[var(--vibe-text-muted)] hover:text-[var(--vibe-text-primary)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] transition-colors',
+    iconButtonActive: 'bg-[var(--vibe-accent-soft)] border-[var(--vibe-border-strong)] text-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-block)]',
+    tabBar: 'bg-[var(--vibe-surface-input)] border border-[var(--vibe-border-subtle)] shadow-[var(--vibe-shadow-block)]',
+    tabActive: 'bg-[var(--vibe-accent-soft)] border-[var(--vibe-border-strong)] text-[var(--vibe-text-primary)] shadow-sm',
+    tabIdle: 'border-transparent text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]',
+    popover: 'bg-[var(--vibe-surface-window)] backdrop-blur-[var(--vibe-backdrop-blur)] border border-[var(--vibe-border-subtle)] shadow-[var(--vibe-shadow-window)] text-[var(--vibe-text-primary)]',
 };
 
 export const glassDark = glass;

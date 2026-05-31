@@ -38,6 +38,15 @@
 
 Новые reference prototypes от владельца лежат в `.pi/prototypes/`. Главный ориентир: `Universal Glass Workspace.html`; остальные темы использовать как стилевые референсы, а не как готовый сайт.
 
+## 1.2 Implementation note 2026-05-31
+
+Первый безопасный срез после решений владельца не фиксирует финальный внешний вид сущностей и не вводит новый формат тем в мире. Он делает foundation:
+
+1. `theme.ts` хранит built-in visual workspace presets и semantic CSS variables для фона, текста, акцентов, surface, border, radius, shadow и blur.
+2. `SettingsWindow -> Интерфейс` показывает не просто палитры, а visual theme presets: Universal Glass, Wooden Tabletop, Arcane Control, RGB Game Desk и Low Load.
+3. App shell уже начал читать semantic tokens: `App`, `HudBar`, `LeftDrawer`, `RightDrawer`, `SheetTabs`, `CanvasToolbar`, `AudioControlDock`, `NotificationCenter`.
+4. Следующий обязательный UI-срез: EntityWindow/entity sheets, Markdown/notes surfaces и AssetBrowser/AudioDesk/Settings polish. Без этого темы будут работать частично, а оформление сущностей останется старым.
+
 ## 2. Mini-PRD
 
 ### Для кого

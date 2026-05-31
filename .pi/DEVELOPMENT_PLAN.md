@@ -19,8 +19,9 @@
 - [x] Создать большой decision-док с анализом, идеями, рисками и вопросами владельцу: `.pi/docs/ui-redesign-master-plan.md`.
 - [x] Дать способ увидеть направление интерфейса до внедрения: статический preview-макет `.pi/prototypes/ui-redesign-preview.html`.
 - [x] Утвердить визуальное направление: темы как полноценные визуальные столы/workspaces, `balanced` density, без отдельной светлой темы на старте, оба вида списков (table/card), Obsidian-like notes workspace.
-- [ ] После решений владельца идти foundation-first: theme tokens -> i18n manager -> app shell/drawers -> entity sheets -> asset/audio/settings polish.
-- [ ] Срез theme tokens: `theme.ts` должен управлять semantic variables для surface/border/shadow/blur/radius, а SettingsWindow должен показывать visual theme presets.
+- [x] После решений владельца идти foundation-first: theme tokens -> app shell/drawers -> i18n manager -> entity sheets -> asset/audio/settings polish.
+- [x] Срез theme tokens: `theme.ts` управляет semantic variables для surface/border/shadow/blur/radius, а SettingsWindow показывает visual theme presets.
+- [ ] Следующий UI-срез: перевести EntityWindow/entity sheets и Markdown/notes surfaces на тот же semantic contract, затем проектировать компактный character card view для canvas.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
 ## 2. Audio Module: Local-First Core
@@ -91,8 +92,9 @@
 ## 6. UI Design System
 
 - [x] Отдельно обсудить большой UI redesign: темы, palette tokens, entity window layout, скроллы, плотность интерфейса.
+- [x] Поддерживать тему через variables/tokens, чтобы будущие custom themes не требовали переписывать компоненты: первый `theme.ts` token foundation и shell pass внесены.
 - [ ] Не делать случайную декоративность; интерфейс должен быть рабочим GM/player cockpit.
-- [ ] Поддерживать тему через variables/tokens, чтобы будущие custom themes не требовали переписывать компоненты.
+- [ ] Довести оставшиеся старые hardcoded surfaces в EntityWindow, sheets, AssetBrowser, MarkdownRenderer, SettingsWindow и AudioDesk до semantic tokens.
 
 ## 7. Platform Future
 
@@ -114,4 +116,6 @@
 1. ✅ Доделать cancel/retry для player uploads — **ГОТОВО**, запушено.
 2. ✅ Доделать mobile layout нижнего `music` player и укрепить локальную деку до world-level persistence — **ГОТОВО**.
 3. ✅ Спроектировать chunked/resumable upload для файлов больше `250 MB` — **ГОТОВО**, запушено.
-4. [ ] Manual QA entity ID migration на копии мира + следующий roles/player identity slice: owner migration design и canvas visibility guards.
+4. ✅ Поднять UI redesign gate, внести решения владельца и первый semantic theme foundation — **ГОТОВО**.
+5. [ ] Следующий UI-срез: EntityWindow/entity sheets + Markdown/notes surfaces на semantic tokens, затем компактная canvas-карточка персонажа.
+6. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.

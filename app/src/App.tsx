@@ -26,6 +26,7 @@ import { NotificationCenter } from './components/ui/NotificationCenter';
 import { SessionNotificationBridge } from './components/ui/SessionNotificationBridge';
 import { SettingsWindow } from './components/ui/SettingsWindow';
 import { generateEntityId } from './utils/entityId';
+import { glass } from './utils/theme';
 import type { UserRole } from './types';
 
 function App() {
@@ -217,14 +218,14 @@ function App() {
       <div className="ui-layer absolute top-6 left-6 w-[60px] z-30 max-h-[calc(100vh-48px)] flex flex-col pointer-events-none gap-4">
         <button
           onClick={() => setInventoryOpen(!inventoryOpen)}
-          className="pointer-events-auto w-14 h-14 bg-white/5 backdrop-blur-xl rounded-2xl shadow-xl border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors text-white/50 hover:text-white"
+          className={`pointer-events-auto flex h-14 w-14 items-center justify-center rounded-[var(--vibe-radius-lg)] ${glass.iconButton}`}
           title="Личный Инвентарь"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
         </button>
         <button
           onClick={() => setSettingsOpen(true)}
-          className="pointer-events-auto w-14 h-14 bg-white/5 backdrop-blur-xl rounded-2xl shadow-xl border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors text-white/50 hover:text-white"
+          className={`pointer-events-auto flex h-14 w-14 items-center justify-center rounded-[var(--vibe-radius-lg)] ${glass.iconButton}`}
           title="Настройки"
         >
           <SettingsIcon size={22} />

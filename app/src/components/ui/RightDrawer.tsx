@@ -3,6 +3,7 @@ import { Archive, Database, MessageSquare } from 'lucide-react';
 import { AssetBrowser } from './AssetBrowser';
 import { ChatPanel } from './ChatPanel';
 import { EntityDatabase } from './EntityDatabase';
+import { glass } from '../../utils/theme';
 
 interface RightDrawerProps {
     isOpen: boolean;
@@ -48,27 +49,27 @@ export function RightDrawer({ isOpen, onClose }: RightDrawerProps) {
 
     return (
         <div
-            className={`fixed top-0 right-0 bottom-0 w-[400px] border-l z-40 transition-transform duration-300 transform shadow-[-20px_0_50px_rgba(0,0,0,0.5)] pointer-events-auto flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'} bg-[#151c2b]/60 backdrop-blur-3xl border-white/10`}
+            className={`fixed bottom-0 right-0 top-0 z-40 flex w-[400px] transform flex-col border-l pointer-events-auto transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full'} ${glass.panel}`}
         >
-            <div className="p-5 border-b border-white/10 flex justify-between items-center gap-4 bg-white/[0.06]">
+            <div className={`flex items-center justify-between gap-4 p-5 ${glass.panelHeader}`}>
                 <div className="min-w-0 flex items-center gap-3">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/25 text-amber-200/80 shadow-inner">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] shadow-[var(--vibe-shadow-block)]">
                         <ActiveIcon size={18} />
                     </div>
                     <div className="min-w-0">
-                        <h2 className="truncate text-base font-bold text-white tracking-wide uppercase">{activeTab.title}</h2>
-                        <p className="truncate text-xs text-white/45">{activeTab.subtitle}</p>
+                        <h2 className="truncate text-base font-bold uppercase tracking-wide text-[var(--vibe-text-primary)]">{activeTab.title}</h2>
+                        <p className="truncate text-xs text-[var(--vibe-text-faint)]">{activeTab.subtitle}</p>
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={onClose} className="p-2 bg-white/5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors" title="Свернуть панель">
+                    <button onClick={onClose} className="rounded-[var(--vibe-radius-sm)] bg-[var(--vibe-surface-input)] p-2 text-[var(--vibe-text-faint)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]" title="Свернуть панель">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                     </button>
                 </div>
             </div>
 
             {/* Hub Tabs */}
-            <div className="flex border-b border-white/10 bg-[#0a0e17]/60 shadow-[inset_0_2px_10px_rgba(0,0,0,0.3)] select-none">
+            <div className={`flex select-none border-b border-[var(--vibe-border-subtle)] ${glass.tabBar}`}>
                 {RIGHT_TABS.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = rightTab === tab.id;
@@ -77,7 +78,7 @@ export function RightDrawer({ isOpen, onClose }: RightDrawerProps) {
                         <button
                             key={tab.id}
                             onClick={() => setRightTab(tab.id)}
-                            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 flex justify-center items-center gap-2 ${isActive ? 'text-white border-white bg-white/10' : 'text-white/40 border-transparent hover:text-white/80 hover:bg-white/5'}`}
+                            className={`flex flex-1 items-center justify-center gap-2 border-b-2 py-3 text-xs font-bold uppercase tracking-wider transition-all ${isActive ? 'border-[var(--vibe-accent)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)]' : 'border-transparent text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'}`}
                         >
                             <Icon size={14} />
                             {tab.label}
