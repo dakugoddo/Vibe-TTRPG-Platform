@@ -146,9 +146,9 @@ function RelationPill({ entity }: { entity: Entity }) {
         <EntityLink
             entityId={entity.id}
             underline={false}
-            className="min-w-0 max-w-full px-2.5 py-1.5 rounded-md border border-white/10 bg-black/20 text-white/75 hover:text-white hover:border-white/25 hover:bg-white/10 text-xs"
+            className="min-w-0 max-w-full rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2.5 py-1.5 text-xs text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
         >
-            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${group?.dot || 'bg-white/40'}`} />
+            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${group?.dot || 'bg-[var(--vibe-text-faint)]'}`} />
             <span className="truncate">{entity.name}</span>
         </EntityLink>
     );
@@ -190,7 +190,7 @@ function EntityRelationsBlock({ entity }: { entity: Entity }) {
         <div className={`${glass.blockBg} mt-1`}>
             <h3 className={glass.blockHeader}>
                 <div className="flex items-center gap-2">
-                    <Link2 size={12} className="text-white/40" />
+                    <Link2 size={12} className="text-[var(--vibe-text-faint)]" />
                     Links
                 </div>
             </h3>
@@ -202,17 +202,17 @@ function EntityRelationsBlock({ entity }: { entity: Entity }) {
 
                     return (
                         <div key={section.id} className="grid gap-1.5">
-                            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-white/35 font-bold">
-                                <Icon size={11} className="text-white/35" />
+                            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-[var(--vibe-text-faint)] font-bold">
+                                <Icon size={11} className="text-[var(--vibe-text-faint)]" />
                                 <span>{section.label}</span>
-                                <span className="text-white/20">({section.entities.length})</span>
+                                <span className="text-[var(--vibe-text-faint)]">({section.entities.length})</span>
                             </div>
                             <div className="flex flex-wrap gap-1.5 min-w-0">
                                 {visibleLinks.map(relatedEntity => (
                                     <RelationPill key={`${section.id}-${relatedEntity.id}`} entity={relatedEntity} />
                                 ))}
                                 {hiddenCount > 0 && (
-                                    <span className="px-2.5 py-1.5 rounded-md border border-white/5 bg-black/10 text-white/35 text-xs">
+                                    <span className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2.5 py-1.5 text-xs text-[var(--vibe-text-faint)]">
                                         +{hiddenCount}
                                     </span>
                                 )}
@@ -386,13 +386,13 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                     data-canvas-drop-blocker="true"
                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                    className={`w-16 h-16 bg-white/10 border-2 border-white/20 shadow-xl shadow-black/40 flex flex-col items-center justify-center cursor-pointer hover:bg-white/20 backdrop-blur-3xl transition-colors tooltip-trigger relative group ${isPinned ? 'rounded-full' : 'rounded-3xl'}`}
+                    className={`tooltip-trigger relative flex h-16 w-16 cursor-pointer flex-col items-center justify-center border-2 border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-window)] shadow-[var(--vibe-shadow-block)] backdrop-blur-[var(--vibe-backdrop-blur)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] group ${isPinned ? 'rounded-full' : 'rounded-[var(--vibe-radius-lg)]'}`}
                 >
-                    <CircleDot size={20} className="text-white mb-1" />
-                    <span className="text-[10px] text-white font-bold truncate w-14 text-center px-1">
+                    <CircleDot size={20} className="mb-1 text-[var(--vibe-text-primary)]" />
+                    <span className="w-14 truncate px-1 text-center text-[10px] font-bold text-[var(--vibe-text-primary)]">
                         {entity.name}
                     </span>
-                    <div className="absolute top-1/2 left-full ml-2 -translate-y-1/2 bg-black/80 backdrop-blur-md border border-white/20 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg text-white/90">
+                    <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-window)] px-2 py-1 text-xs text-[var(--vibe-text-primary)] opacity-0 shadow-[var(--vibe-shadow-block)] backdrop-blur-[var(--vibe-backdrop-blur)] transition-opacity group-hover:opacity-100">
                         {entity.name}
                     </div>
                 </div>
@@ -404,8 +404,8 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     const group = EntityGroups.find(g => g.type === entity.type);
 
     const frameClass = `w-full h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${glass.window} ${
-        focusedWindowId === id ? '!border-white/30 !shadow-[0_0_40px_rgba(255,255,255,0.05)]' : ''
-    } ${isPinned ? 'ring-2 ring-yellow-500/50 outline outline-2 outline-yellow-500/20' : ''}`;
+        focusedWindowId === id ? '!border-[var(--vibe-border-strong)]' : ''
+    } ${isPinned ? 'ring-2 ring-[color-mix(in_srgb,var(--vibe-warning)_45%,transparent)] outline outline-2 outline-[color-mix(in_srgb,var(--vibe-warning)_22%,transparent)]' : ''}`;
     const quickCreateActions = canEditCurrentEntity ? getWindowQuickCreateActions(entity) : [];
     const contextMenuWidth = 220;
     const contextMenuHeight = 230 + quickCreateActions.length * 36;
@@ -415,6 +415,13 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
         { id: 'description', label: 'Описание', icon: FileText },
         { id: 'canvas', label: 'Настройки', icon: Box },
     ];
+    const headerBorderClass = focusedWindowId === id ? 'border-[var(--vibe-border-strong)]' : 'border-[var(--vibe-border-subtle)]';
+    const iconActionClass = 'rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-muted)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
+    const editToggleClass = (isActive: boolean) => `grid h-8 w-8 place-items-center rounded-[var(--vibe-radius-sm)] border transition-colors ${
+        isActive ? glass.tabActive : glass.tabIdle
+    }`;
+    const contextMenuItemClass = 'group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[var(--vibe-text-muted)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
+    const contextMenuIconClass = 'text-[var(--vibe-text-faint)] transition-colors group-hover:text-[var(--vibe-text-primary)]';
 
     return (
         <Rnd
@@ -438,15 +445,15 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                 className={frameClass}
             >
                 {/* Header toolbar */}
-                <div className={`draggable-header flex items-center justify-between cursor-move select-none relative group ${glass.header} transition-colors p-3 py-2 border-b-2 ${focusedWindowId === id ? 'border-white/30' : 'border-white/5'}`}
+                <div className={`draggable-header flex items-center justify-between cursor-move select-none relative group ${glass.header} transition-colors p-3 py-2 border-b-2 ${headerBorderClass}`}
                     onContextMenu={handleContextMenu}
                 >
                     <div className="flex items-center gap-3 max-w-[60%] overflow-hidden group/title" onClick={handleTitleClick}>
                         {entity.icon_url ? (
-                            <img src={entity.icon_url} alt="" className="w-5 h-5 rounded object-cover border border-white/20 select-none pointer-events-none" />
+                            <img src={entity.icon_url} alt="" className="w-5 h-5 rounded object-cover border border-[var(--vibe-border-subtle)] select-none pointer-events-none" />
                         ) : (
-                            <span className={`w-2.5 h-2.5 rounded flex-shrink-0 relative ${group?.dot || 'bg-white/40'}`}>
-                                {isPinned && <span className="absolute -inset-1 rounded bg-yellow-400/30 animate-pulse"></span>}
+                            <span className={`w-2.5 h-2.5 rounded flex-shrink-0 relative ${group?.dot || 'bg-[var(--vibe-text-faint)]'}`}>
+                                {isPinned && <span className="absolute -inset-1 animate-pulse rounded bg-[color-mix(in_srgb,var(--vibe-warning)_28%,transparent)]"></span>}
                             </span>
                         )}
                         {isEditingName ? (
@@ -457,14 +464,14 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                 onChange={(e) => setTempName(e.target.value)}
                                 onBlur={handleRenameSubmit}
                                 onKeyDown={handleKeyDown}
-                                className={glass.input + " w-full font-bold text-sm px-1 py-0.5 border-white/30"}
+                                className={`${glass.input} w-full px-1 py-0.5 text-sm font-bold`}
                                 onClick={(e) => e.stopPropagation()}
                             />
                         ) : (
-                            <span className={`${glass.titleText} truncate group-hover/title:text-white transition-colors cursor-pointer`}>{entity.name}</span>
+                            <span className={`${glass.titleText} truncate transition-colors cursor-pointer group-hover/title:text-[var(--vibe-text-primary)]`}>{entity.name}</span>
                         )}
                         {!isEditingName && (
-                            <span className={`text-[10px] font-mono bg-black/30 px-1.5 py-0.5 rounded ml-1 flex-shrink-0 border border-white/5 uppercase tracking-wider ${group?.text || 'text-white/40'}`}>
+                            <span className={`ml-1 flex-shrink-0 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider ${group?.text || 'text-[var(--vibe-text-faint)]'}`}>
                                 {entity.type}
                             </span>
                         )}
@@ -514,29 +521,29 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                     });
                                 }
                             }}
-                            className={`p-1.5 rounded transition-all hover:bg-white/10 ${isPinned ? 'text-yellow-400 bg-yellow-400/20' : 'text-white/50'}`}
+                            className={`${iconActionClass} ${isPinned ? 'bg-[color-mix(in_srgb,var(--vibe-warning)_18%,transparent)] text-[var(--vibe-warning)]' : ''}`}
                             title={isPinned ? 'Открепить от канваса' : 'Закрепить на канвасе'}
                         >
                             {isPinned ? <Pin size={14} /> : <PinOff size={14} />}
                         </button>
-                        <div className="w-px h-4 bg-white/20 mx-1"></div>
+                        <div className="mx-1 h-4 w-px bg-[var(--vibe-border-subtle)]"></div>
                         <button
                             onClick={(e) => { e.stopPropagation(); handleModeChange('icon'); }}
-                            className="p-1.5 object-cover text-white/50 hover:text-white hover:bg-white/10 rounded transition-colors group-hover:opacity-100"
+                            className={iconActionClass}
                             title="Свернуть в иконку"
                         >
                             <CircleDot size={14} />
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); handleModeChange(isFullMode ? 'compact' : 'full'); }}
-                            className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            className={iconActionClass}
                             title={isFullMode ? 'Обычный режим' : 'Технический режим: свойства, скрытые теги и System ID'}
                         >
                             {isFullMode ? <Minimize2 size={14} /> : <Bug size={14} />}
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); closeWindow(id); }}
-                            className="p-1.5 text-white/50 hover:text-red-400 hover:bg-red-500/20 rounded transition-colors ml-1"
+                            className="ml-1 rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)]"
                             title="Закрыть окно"
                         >
                             <X size={14} />
@@ -567,7 +574,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                             endSlot={genericTab === 'description' && canEditCurrentEntity ? (
                                                 <button
                                                     onClick={() => setIsEditingDescription(!isEditingDescription)}
-                                                    className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${isEditingDescription ? 'bg-white/20 text-white shadow-sm' : 'text-white/45 hover:bg-white/10 hover:text-white'}`}
+                                                    className={editToggleClass(isEditingDescription)}
                                                     title={isEditingDescription ? 'Завершить редактирование' : 'Редактировать описание'}
                                                 >
                                                     {isEditingDescription ? <Check size={14} /> : <Edit2 size={14} />}
@@ -585,7 +592,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                                 {!supportsCanvasTokenSettings && canEditCurrentEntity && (
                                                     <button
                                                         onClick={() => setIsEditingDescription(!isEditingDescription)}
-                                                        className={`p-1.5 rounded-lg transition-colors ${isEditingDescription ? 'bg-white/20 text-white shadow-sm' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
+                                                        className={`rounded-[var(--vibe-radius-sm)] border p-1.5 transition-colors ${isEditingDescription ? glass.tabActive : glass.tabIdle}`}
                                                     >
                                                         {isEditingDescription ? <Check size={12} /> : <Edit2 size={12} />}
                                                     </button>
@@ -605,10 +612,10 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                                     autoFocus
                                                 />
                                             ) : (
-                                                <div className="text-sm leading-relaxed whitespace-pre-wrap text-white/80 flex-1 h-full min-h-[100px]" onDoubleClick={() => { if (canEditCurrentEntity) setIsEditingDescription(true); }}>
+                                                <div className="text-sm leading-relaxed whitespace-pre-wrap text-[var(--vibe-text-muted)] flex-1 h-full min-h-[100px]" onDoubleClick={() => { if (canEditCurrentEntity) setIsEditingDescription(true); }}>
                                                     {entity.description
                                                         ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
-                                                        : <span className="text-white/30 italic cursor-pointer">{canEditCurrentEntity ? 'No description provided. Double click to edit.' : 'No description provided.'}</span>}
+                                                        : <span className="cursor-pointer italic text-[var(--vibe-text-faint)]">{canEditCurrentEntity ? 'No description provided. Double click to edit.' : 'No description provided.'}</span>}
                                                 </div>
                                             )}
                                         </div>
@@ -637,14 +644,14 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                             {isFullMode && (
                                 <div className="space-y-4 animate-in fade-in duration-200 mt-6 slide-in-from-bottom-2">
                                     <div>
-                                        <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                        <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
                                             Properties
-                                            <div className="flex-1 h-px bg-white/10"></div>
+                                            <div className="h-px flex-1 bg-[var(--vibe-border-subtle)]"></div>
                                         </h3>
-                                        <div className="bg-black/30 p-3 rounded-xl font-mono text-xs text-green-400 border border-white/5 shadow-inner overflow-x-auto custom-scrollbar">
+                                        <div className="overflow-x-auto rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 font-mono text-xs text-[var(--vibe-success)] shadow-[var(--vibe-shadow-block)] custom-scrollbar">
                                             {Object.keys(entity.properties || {}).length > 0
                                                 ? JSON.stringify(entity.properties, null, 2)
-                                                : <span className="text-white/30">{"{}"} // No properties recorded</span>}
+                                                : <span className="text-[var(--vibe-text-faint)]">{"{}"} // No properties recorded</span>}
                                         </div>
                                     </div>
 
@@ -654,18 +661,18 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
 
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
-                                            <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider flex items-center gap-2">
-                                                <Tag size={12} className="text-white/50" />
+                                            <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                                <Tag size={12} className="text-[var(--vibe-text-faint)]" />
                                                 TAGS (Скрытые теги)
                                             </h3>
-                                            <div className="flex-1 h-px bg-white/10 ml-2"></div>
+                                            <div className="ml-2 h-px flex-1 bg-[var(--vibe-border-subtle)]"></div>
                                         </div>
                                         <div className="flex flex-wrap gap-2 text-xs">
                                             {entity.tags && entity.tags.length > 0 ? entity.tags.map(tagId => {
                                                 const tagEntity = getEntitiesSnapshot()[tagId];
                                                 return (
-                                                    <div key={tagId} className="group/tag flex items-center bg-white/5 border border-white/10 rounded-lg overflow-hidden transition-colors hover:border-white/30 backdrop-blur-sm">
-                                                        <EntityLink entityId={tagId} underline={false} className="px-2 py-1 text-white/80 font-medium whitespace-nowrap hover:text-white hover:bg-white/5">
+                                                    <div key={tagId} className="group/tag flex items-center overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] transition-colors hover:border-[var(--vibe-border-strong)]">
+                                                        <EntityLink entityId={tagId} underline={false} className="whitespace-nowrap px-2 py-1 font-medium text-[var(--vibe-text-muted)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]">
                                                             #{tagEntity ? tagEntity.name : 'Unknown Tag'}
                                                         </EntityLink>
                                                         {canEditCurrentEntity && (
@@ -674,7 +681,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                                                     const newTags = entity.tags.filter(id => id !== tagId);
                                                                     yjsStore.updateEntity(entity.id, { tags: newTags });
                                                                 }}
-                                                                className="px-1.5 py-1 text-white/40 hover:bg-red-500/20 hover:text-red-400 transition-colors border-l border-white/10 group-hover/tag:border-white/30"
+                                                                className="border-l border-[var(--vibe-border-subtle)] px-1.5 py-1 text-[var(--vibe-text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)] group-hover/tag:border-[var(--vibe-border-strong)]"
                                                                 title="Remove Tag"
                                                             >
                                                                 <Trash2 size={10} />
@@ -682,13 +689,13 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                                         )}
                                                     </div>
                                                 )
-                                            }) : <span className="text-white/30 text-xs italic py-1">Нет тегов</span>}
+                                            }) : <span className="py-1 text-xs italic text-[var(--vibe-text-faint)]">Нет тегов</span>}
 
                                             {/* Add tag button */}
                                             {canEditCurrentEntity && (
                                                 <>
                                                     <button
-                                                        className="flex items-center gap-1 px-2 py-1 bg-black/20 border border-white/10 border-dashed rounded-lg text-white/40 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all backdrop-blur-sm"
+                                                        className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[var(--vibe-text-faint)] transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                                                         onClick={() => setIsTagPickerOpen(true)}
                                                     >
                                                         <Plus size={10} /> Добавить
@@ -711,9 +718,9 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                         </div>
                                     </div>
 
-                                    <div className="text-xs text-white/30 pt-4 mt-auto border-t border-white/10 flex justify-between items-center">
+                                    <div className="mt-auto flex items-center justify-between border-t border-[var(--vibe-border-subtle)] pt-4 text-xs text-[var(--vibe-text-faint)]">
                                         <span>System ID:</span>
-                                        <span className="font-mono text-[10px] bg-black/30 px-2 py-1 rounded-md truncate max-w-[200px] border border-white/5 shadow-inner select-all">{entity.id}</span>
+                                        <span className="max-w-[200px] select-all truncate rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 font-mono text-[10px] shadow-[var(--vibe-shadow-block)]">{entity.id}</span>
                                     </div>
                                 </div>
                             )}
@@ -730,14 +737,14 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                         onContextMenu={(e) => { e.preventDefault(); setContextMenuState(null); }}
                     />
                     <div
-                        className="fixed rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 py-1.5 min-w-[200px] overflow-hidden backdrop-blur-3xl animate-in fade-in zoom-in-95 duration-100 bg-[#151c2b]/70"
+                        className={`fixed min-w-[200px] overflow-hidden rounded-[var(--vibe-radius-md)] py-1.5 animate-in fade-in zoom-in-95 duration-100 ${glass.popover}`}
                         style={{
                             left: contextMenuState.x + contextMenuWidth > window.innerWidth ? contextMenuState.x - contextMenuWidth : contextMenuState.x,
                             top: contextMenuState.y + contextMenuHeight > window.innerHeight ? contextMenuState.y - contextMenuHeight : contextMenuState.y,
                             zIndex: 99999,
                         }}
                     >
-                        <div className="px-3 py-1.5 text-[9px] font-bold text-white/30 uppercase tracking-widest border-b border-white/5 mb-1 select-none pointer-events-none">
+                        <div className="pointer-events-none mb-1 select-none border-b border-[var(--vibe-border-subtle)] px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
                             Контекстное меню
                         </div>
                         <button
@@ -748,31 +755,31 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                 setIsEditingName(true);
                                 setContextMenuState(null);
                             }}
-                            className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+                            className={contextMenuItemClass}
                         >
-                            <Edit2 size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Переименовать
+                            <Edit2 size={14} className={contextMenuIconClass} /> Переименовать
                         </button>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleDuplicateEntity();
                             }}
-                            className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+                            className={contextMenuItemClass}
                         >
-                            <Copy size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Дублировать
+                            <Copy size={14} className={contextMenuIconClass} /> Дублировать
                         </button>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleCopyWikiLink();
                             }}
-                            className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+                            className={contextMenuItemClass}
                         >
-                            <Link2 size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Копировать [[ссылку]]
+                            <Link2 size={14} className={contextMenuIconClass} /> Копировать [[ссылку]]
                         </button>
                         {quickCreateActions.length > 0 && (
                             <>
-                                <div className="border-t border-white/5 my-1 mx-2" />
+                                <div className="mx-2 my-1 border-t border-[var(--vibe-border-subtle)]" />
                                 {quickCreateActions.map(action => {
                                     const ActionIcon = action.icon;
                                     return (
@@ -782,15 +789,15 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                                 e.stopPropagation();
                                                 handleCreateChildEntity(action.type);
                                             }}
-                                            className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+                                            className={contextMenuItemClass}
                                         >
-                                            <ActionIcon size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {action.label}
+                                            <ActionIcon size={14} className={contextMenuIconClass} /> {action.label}
                                         </button>
                                     );
                                 })}
                             </>
                         )}
-                        <div className="border-t border-white/5 my-1 mx-2" />
+                        <div className="mx-2 my-1 border-t border-[var(--vibe-border-subtle)]" />
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -807,9 +814,9 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                     }
                                 });
                             }}
-                            className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center gap-2 group"
+                            className="group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[var(--vibe-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)]"
                         >
-                            <Trash2 size={14} className="text-red-500/50 group-hover:text-red-400 transition-colors" /> Удалить сущность
+                            <Trash2 size={14} className="text-[var(--vibe-danger)] opacity-70 transition-opacity group-hover:opacity-100" /> Удалить сущность
                         </button>
                     </div>
                 </>,

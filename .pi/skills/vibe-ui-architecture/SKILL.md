@@ -43,6 +43,16 @@ description: Complete UI architecture reference for Vibe TTRPG Platform. Use whe
 
 **Правило**: новые UI-компоненты должны использовать `glass.*` или эти semantic variables. Не добавляй новую тему через россыпь hardcoded `bg-[#...]` в компонентах. Если компоненту нужен новый визуальный смысл, сначала добавь semantic token в `theme.ts`, затем используй его в JSX/CSS.
 
+### 1.2 Entity UI migration status
+
+После первого `FEAT-UI-002` entity pass уже переведены на semantic tokens:
+
+- `EntityWindow`: frame/header/actions/relations/context menu/generic description/debug surfaces.
+- `CharacterSheet`: notes tab textarea/read surface.
+- `MarkdownRenderer`: headings, blockquote, code/pre, tables, stats/inventory custom markdown blocks.
+
+Оставшиеся старые слои, которые нельзя считать финальным UI: `ObjectSheet`, `InventoryBlock`, `AttributeBlock`, `SkillsBlock`, `CompetenciesBlock`, `AbilitiesBlock`, `ResourcesBlock`, `TagPickerPopup`, `EntityImageBlock` и `AudioDesk/AssetBrowser` polish.
+
 ---
 
 ## 2. ФАЙЛОВАЯ СТРУКТУРА UI

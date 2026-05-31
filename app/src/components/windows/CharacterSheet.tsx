@@ -14,6 +14,7 @@ import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { SheetTabs, type SheetTab } from '../ui/SheetTabs';
 import { WikiLinkTextarea } from '../ui/WikiLinkTextarea';
 import { Activity, Backpack, BookOpen, Box, Brain, Check, Dices, Edit2, Gauge, Sparkles } from 'lucide-react';
+import { glass } from '../../utils/theme';
 
 interface CharacterSheetProps {
     entityId: string;
@@ -68,7 +69,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                 endSlot={activeTab === 'notes' && canEditCharacter ? (
                     <button
                         onClick={() => setIsEditingNotes(!isEditingNotes)}
-                        className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${isEditingNotes ? 'bg-white/20 text-white shadow-sm' : 'text-white/45 hover:bg-white/10 hover:text-white'}`}
+                        className={`grid h-8 w-8 place-items-center rounded-[var(--vibe-radius-sm)] border transition-colors ${isEditingNotes ? glass.tabActive : glass.tabIdle}`}
                         title={isEditingNotes ? 'Завершить редактирование' : 'Редактировать заметки'}
                     >
                         {isEditingNotes ? <Check size={14} /> : <Edit2 size={14} />}
@@ -110,14 +111,14 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                                 onValueChange={handleUpdateDescription}
                                 excludeEntityId={entity.id}
                                 placeholder="Character backstory and notes..."
-                                className="flex-1 w-full bg-black/30 border border-white/10 rounded-lg p-3 text-sm text-white/90 resize-none outline-none focus:ring-1 focus:ring-white/60 custom-scrollbar font-sans backdrop-blur-md"
+                                className={`${glass.input} flex-1 w-full resize-none p-3 text-sm custom-scrollbar font-sans`}
                                 autoFocus
                             />
                         ) : (
-                            <div className="flex-1 bg-black/20 rounded-lg border border-transparent p-3 backdrop-blur-md text-white/80" onDoubleClick={() => { if (canEditCharacter) setIsEditingNotes(true); }}>
+                            <div className={`${glass.blockBg} flex-1 text-[var(--vibe-text-muted)]`} onDoubleClick={() => { if (canEditCharacter) setIsEditingNotes(true); }}>
                                 {entity.description
                                     ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
-                                    : <span className="text-white/30 italic cursor-pointer">{canEditCharacter ? 'No notes provided. Double click to text.' : 'No notes provided.'}</span>}
+                                    : <span className="cursor-pointer italic text-[var(--vibe-text-faint)]">{canEditCharacter ? 'No notes provided. Double click to text.' : 'No notes provided.'}</span>}
                             </div>
                         )}
                     </div>
@@ -130,7 +131,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
 
             {
                 !isFullMode && activeTab !== 'notes' && activeTab !== 'skills' && activeTab !== 'competencies' && activeTab !== 'abilities' && activeTab !== 'resources' && activeTab !== 'canvas' && (
-                    <div className="mt-4 pt-3 border-t border-white/10 text-[10px] text-white/40 text-center italic">
+                    <div className="mt-4 border-t border-[var(--vibe-border-subtle)] pt-3 text-center text-[10px] italic text-[var(--vibe-text-faint)]">
                         Expand window to see more details.
                     </div>
                 )

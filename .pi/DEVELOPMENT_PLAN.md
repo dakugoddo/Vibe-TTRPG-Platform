@@ -21,7 +21,9 @@
 - [x] Утвердить визуальное направление: темы как полноценные визуальные столы/workspaces, `balanced` density, без отдельной светлой темы на старте, оба вида списков (table/card), Obsidian-like notes workspace.
 - [x] После решений владельца идти foundation-first: theme tokens -> app shell/drawers -> i18n manager -> entity sheets -> asset/audio/settings polish.
 - [x] Срез theme tokens: `theme.ts` управляет semantic variables для surface/border/shadow/blur/radius, а SettingsWindow показывает visual theme presets.
-- [ ] Следующий UI-срез: перевести EntityWindow/entity sheets и Markdown/notes surfaces на тот же semantic contract, затем проектировать компактный character card view для canvas.
+- [x] Первый entity UI-срез: EntityWindow frame/header/actions/relations/context menu, CharacterSheet notes и MarkdownRenderer переведены на semantic tokens.
+- [ ] Следующий entity UI-срез: ObjectSheet, InventoryBlock, Attribute/Skills/Abilities/Resources blocks и TagPicker surfaces на тот же semantic contract.
+- [ ] После block-pass проектировать компактный character card view для canvas.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
 ## 2. Audio Module: Local-First Core
@@ -94,7 +96,8 @@
 - [x] Отдельно обсудить большой UI redesign: темы, palette tokens, entity window layout, скроллы, плотность интерфейса.
 - [x] Поддерживать тему через variables/tokens, чтобы будущие custom themes не требовали переписывать компоненты: первый `theme.ts` token foundation и shell pass внесены.
 - [ ] Не делать случайную декоративность; интерфейс должен быть рабочим GM/player cockpit.
-- [ ] Довести оставшиеся старые hardcoded surfaces в EntityWindow, sheets, AssetBrowser, MarkdownRenderer, SettingsWindow и AudioDesk до semantic tokens.
+- [x] Довести EntityWindow frame/context menu и MarkdownRenderer до первого semantic token слоя.
+- [ ] Довести оставшиеся старые hardcoded surfaces в entity blocks, AssetBrowser, SettingsWindow и AudioDesk до semantic tokens.
 
 ## 7. Platform Future
 
@@ -117,5 +120,6 @@
 2. ✅ Доделать mobile layout нижнего `music` player и укрепить локальную деку до world-level persistence — **ГОТОВО**.
 3. ✅ Спроектировать chunked/resumable upload для файлов больше `250 MB` — **ГОТОВО**, запушено.
 4. ✅ Поднять UI redesign gate, внести решения владельца и первый semantic theme foundation — **ГОТОВО**.
-5. [ ] Следующий UI-срез: EntityWindow/entity sheets + Markdown/notes surfaces на semantic tokens, затем компактная canvas-карточка персонажа.
-6. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.
+5. ✅ EntityWindow/Markdown/notes surfaces на semantic tokens — **ГОТОВО**.
+6. [ ] Следующий UI-срез: entity blocks (ObjectSheet, InventoryBlock, Attribute/Skills/Abilities/Resources) на semantic tokens.
+7. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.

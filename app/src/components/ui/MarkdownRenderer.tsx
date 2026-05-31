@@ -137,7 +137,7 @@ function readStat(entity: Entity, path: string[]): number | null {
 function MarkdownStatsBlock({ entity, config }: { entity?: Entity; config: string }) {
     if (!entity) {
         return (
-            <div className={`${glass.blockBg} text-xs text-white/40`}>
+            <div className={`${glass.blockBg} text-xs text-[var(--vibe-text-faint)]`}>
                 Блок stats доступен внутри окна сущности.
             </div>
         );
@@ -155,10 +155,10 @@ function MarkdownStatsBlock({ entity, config }: { entity?: Entity; config: strin
             </div>
 
             {(woundsCurrent !== null || woundsLimit !== null) && (
-                <div className="mb-3 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-white/80">
-                    <span className="text-white/40 uppercase tracking-wider font-bold mr-2">Раны</span>
+                <div className="mb-3 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_26%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] px-3 py-2 text-xs text-[var(--vibe-text-muted)]">
+                    <span className="mr-2 font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Раны</span>
                     <span className="font-mono font-bold">{woundsCurrent ?? 0}</span>
-                    {woundsLimit !== null && <span className="text-white/40"> / {woundsLimit * 2}</span>}
+                    {woundsLimit !== null && <span className="text-[var(--vibe-text-faint)]"> / {woundsLimit * 2}</span>}
                 </div>
             )}
 
@@ -166,9 +166,9 @@ function MarkdownStatsBlock({ entity, config }: { entity?: Entity; config: strin
                 {rows.map(row => {
                     const value = readStat(entity, row.path);
                     return (
-                        <div key={`${row.label}:${row.path.join('.')}`} className="rounded-lg bg-white/5 border border-white/5 px-3 py-2">
-                            <div className="text-[10px] uppercase tracking-wider text-white/35 truncate">{row.label}</div>
-                            <div className="text-lg font-bold text-white font-mono">{value ?? '-'}</div>
+                        <div key={`${row.label}:${row.path.join('.')}`} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-3 py-2">
+                            <div className="truncate text-[10px] uppercase tracking-wider text-[var(--vibe-text-faint)]">{row.label}</div>
+                            <div className="font-mono text-lg font-bold text-[var(--vibe-text-primary)]">{value ?? '-'}</div>
                         </div>
                     );
                 })}
@@ -180,7 +180,7 @@ function MarkdownStatsBlock({ entity, config }: { entity?: Entity; config: strin
 function MarkdownInventoryBlock({ entity, childrenEntities }: { entity?: Entity; childrenEntities: Entity[] }) {
     if (!entity) {
         return (
-            <div className={`${glass.blockBg} text-xs text-white/40`}>
+            <div className={`${glass.blockBg} text-xs text-[var(--vibe-text-faint)]`}>
                 Блок inventory доступен внутри окна сущности.
             </div>
         );
@@ -205,13 +205,13 @@ function MarkdownInventoryBlock({ entity, childrenEntities }: { entity?: Entity;
             <div className={`${glass.blockHeader} mb-3`}>
                 <Package size={14} className="mr-2" />
                 Инвентарь: {entity.name}
-                <span className="ml-auto text-white/35 font-mono normal-case tracking-normal">
+                <span className="ml-auto font-mono normal-case tracking-normal text-[var(--vibe-text-faint)]">
                     {inventory.length} / вес {totalWeight.toFixed(1)}
                 </span>
             </div>
 
             {inventory.length === 0 ? (
-                <div className="text-xs text-white/35 italic">Инвентарь пуст.</div>
+                <div className="text-xs italic text-[var(--vibe-text-faint)]">Инвентарь пуст.</div>
             ) : (
                 <div className="space-y-2">
                     {INVENTORY_CATEGORY_ORDER.map(category => {
@@ -219,19 +219,19 @@ function MarkdownInventoryBlock({ entity, childrenEntities }: { entity?: Entity;
                         if (items.length === 0) return null;
 
                         return (
-                            <div key={category} className="rounded-lg border border-white/5 bg-black/20 overflow-hidden">
-                                <div className="px-3 py-1.5 bg-white/5 text-[10px] uppercase tracking-wider text-white/40 font-bold">
+                            <div key={category} className="overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)]">
+                                <div className="bg-[var(--vibe-surface-header)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
                                     {category} ({items.length})
                                 </div>
-                                <div className="divide-y divide-white/5">
+                                <div className="divide-y divide-[var(--vibe-border-subtle)]">
                                     {items.map(item => {
                                         const quantity = coerceStatValue(item.properties?.количество ?? item.properties?.quantity) ?? 1;
                                         const equipped = Boolean(item.properties?.equipped);
                                         return (
                                             <div key={item.id} className="flex items-center gap-2 px-3 py-2 text-xs">
-                                                <EntityLink entityId={item.id} underline={false} className="text-white/80 hover:text-white font-medium truncate" />
+                                                <EntityLink entityId={item.id} underline={false} className="truncate font-medium text-[var(--vibe-text-muted)] hover:text-[var(--vibe-text-primary)]" />
                                                 {equipped && <span className="rounded bg-green-500/20 border border-green-500/30 px-1.5 py-0.5 text-[9px] text-green-300 uppercase">экип.</span>}
-                                                <span className="ml-auto font-mono text-white/45">x{quantity}</span>
+                                                <span className="ml-auto font-mono text-[var(--vibe-text-faint)]">x{quantity}</span>
                                             </div>
                                         );
                                     })}
@@ -247,7 +247,7 @@ function MarkdownInventoryBlock({ entity, childrenEntities }: { entity?: Entity;
 
 function HiddenGmBlock() {
     return (
-        <div className="my-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200/70 flex items-center gap-2">
+        <div className="my-3 flex items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-warning)_26%,transparent)] bg-[color-mix(in_srgb,var(--vibe-warning)_12%,transparent)] px-3 py-2 text-xs text-[var(--vibe-warning)]">
             <Lock size={13} />
             Скрытый блок ГМа
         </div>
@@ -302,18 +302,18 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, ent
             }
 
             return (
-                <a {...props} href={href} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                <a {...props} href={href} target="_blank" rel="noopener noreferrer" className="text-[var(--vibe-accent)] hover:underline">
                     {children}
                 </a>
             );
         },
-        h1: ({ children }) => <h1 className="text-xl font-bold text-white mb-4 mt-6 pb-2 border-b border-gray-800">{children}</h1>,
-        h2: ({ children }) => <h2 className="text-lg font-bold text-gray-200 mb-3 mt-5">{children}</h2>,
-        h3: ({ children }) => <h3 className="text-base font-bold text-gray-300 mb-2 mt-4">{children}</h3>,
+        h1: ({ children }) => <h1 className="mb-4 mt-6 border-b border-[var(--vibe-border-subtle)] pb-2 text-xl font-bold text-[var(--vibe-text-primary)]">{children}</h1>,
+        h2: ({ children }) => <h2 className="mb-3 mt-5 text-lg font-bold text-[var(--vibe-text-primary)]">{children}</h2>,
+        h3: ({ children }) => <h3 className="mb-2 mt-4 text-base font-bold text-[var(--vibe-text-muted)]">{children}</h3>,
         p: ({ children }) => <p className="mb-3 leading-relaxed">{children}</p>,
-        ul: ({ children }) => <ul className="list-disc list-inside mb-4 space-y-1 text-gray-300 marker:text-white/60">{children}</ul>,
-        ol: ({ children }) => <ol className="list-decimal list-inside mb-4 space-y-1 text-gray-300">{children}</ol>,
-        blockquote: ({ children }) => <blockquote className="border-l-4 border-white/20 pl-4 py-1 italic bg-white/10 text-gray-400 mb-4 rounded-r">{children}</blockquote>,
+        ul: ({ children }) => <ul className="mb-4 list-inside list-disc space-y-1 text-[var(--vibe-text-muted)] marker:text-[var(--vibe-text-faint)]">{children}</ul>,
+        ol: ({ children }) => <ol className="mb-4 list-inside list-decimal space-y-1 text-[var(--vibe-text-muted)]">{children}</ol>,
+        blockquote: ({ children }) => <blockquote className="mb-4 rounded-r border-l-4 border-[var(--vibe-border-strong)] bg-[var(--vibe-surface-input)] py-1 pl-4 italic text-[var(--vibe-text-muted)]">{children}</blockquote>,
         code: ({ className, children, ...props }) => {
             const language = /language-([\w-]+)/.exec(className ?? '')?.[1];
             const blockContent = String(children).replace(/\n$/, '');
@@ -329,8 +329,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, ent
             if (allowCustomBlocks && language === 'gm-only') {
                 if (!isGm) return <HiddenGmBlock />;
                 return (
-                    <div className="my-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3">
-                        <div className="mb-2 flex items-center gap-2 text-[10px] uppercase tracking-wider text-amber-200/60 font-bold">
+                    <div className="my-3 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-warning)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-warning)_12%,transparent)] p-3">
+                        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-warning)]">
                             <Lock size={12} />
                             Только для ГМа
                         </div>
@@ -341,29 +341,29 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, ent
 
             if (!className) {
                 return (
-                    <code className="bg-black/30 text-white/70 px-1.5 py-0.5 rounded text-xs font-mono border border-white/5 shadow-inner" {...props}>
+                    <code className="rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-0.5 font-mono text-xs text-[var(--vibe-text-muted)] shadow-[var(--vibe-shadow-block)]" {...props}>
                         {children}
                     </code>
                 );
             }
 
             return (
-                <pre className="bg-[#0a0c10]/80 p-3 rounded-md border border-white/10 shadow-inner overflow-x-auto mb-4 custom-scrollbar backdrop-blur-sm">
-                    <code className="text-xs text-green-400 font-mono" {...props}>
+                <pre className="mb-4 overflow-x-auto rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 shadow-[var(--vibe-shadow-block)] custom-scrollbar">
+                    <code className="font-mono text-xs text-[var(--vibe-success)]" {...props}>
                         {children}
                     </code>
                 </pre>
             );
         },
-        table: ({ children }) => <div className="overflow-x-auto mb-4"><table className="w-full text-left border-collapse">{children}</table></div>,
-        thead: ({ children }) => <thead className="bg-black/30 text-emerald-200/50 border-b border-white/10">{children}</thead>,
+        table: ({ children }) => <div className="mb-4 overflow-x-auto"><table className="w-full border-collapse text-left">{children}</table></div>,
+        thead: ({ children }) => <thead className="border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)]">{children}</thead>,
         th: ({ children }) => <th className="p-2 font-semibold text-xs uppercase tracking-wider">{children}</th>,
-        td: ({ children }) => <td className="p-2 border-b border-gray-800/50 text-gray-300">{children}</td>,
-        hr: () => <hr className="border-gray-800 my-6" />,
+        td: ({ children }) => <td className="border-b border-[var(--vibe-border-subtle)] p-2 text-[var(--vibe-text-muted)]">{children}</td>,
+        hr: () => <hr className="my-6 border-[var(--vibe-border-subtle)]" />,
     }), [allowCustomBlocks, childrenEntities, entity, entityId, isGm]);
 
     return (
-        <div className="markdown-body text-gray-300 leading-relaxed text-sm">
+        <div className="markdown-body text-sm leading-relaxed text-[var(--vibe-text-muted)]">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                 {processedContent}
             </ReactMarkdown>
