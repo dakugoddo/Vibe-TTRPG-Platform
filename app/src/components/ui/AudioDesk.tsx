@@ -172,7 +172,7 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
             }
             try {
                 const data = await getAudioDeck();
-                if (data && (data.cues?.length > 0 || data.playlists?.length > 0 || data.scenes?.length > 0)) {
+                if (data && ((data.cues?.length ?? 0) > 0 || (data.playlists?.length ?? 0) > 0 || (data.scenes?.length ?? 0) > 0)) {
                     setDeckState(normalizeAudioDeckState(data));
                 }
             } catch (err) {

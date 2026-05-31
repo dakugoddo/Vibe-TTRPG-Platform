@@ -9,7 +9,7 @@
 |------|-------|-----------------|
 | App shell | `app/src/App.tsx`, `app/src/main.tsx`, `app/src/i18n.ts` | старт приложения, глобальная компоновка, локализация |
 | Side drawers | `app/src/components/ui/LeftDrawer.tsx`, `app/src/components/ui/RightDrawer.tsx` | открытие боковых панелей, header pattern, GM player selector, tabs базы/файлов/чата |
-| Settings shell | `app/src/components/ui/SettingsWindow.tsx`, `app/src/App.tsx`, `app/src/utils/permissions.ts` | окно настроек, player-safe tabs, GM-only world/roles tabs, read-only role policy matrix |
+| Settings shell | `app/src/components/ui/SettingsWindow.tsx`, `app/src/App.tsx`, `app/src/utils/permissions.ts`, `.pi/docs/player-identity-roles.md` | окно настроек, player-safe tabs, GM-only world/roles tabs, role policy matrix, player profile role assignment |
 | Theme runtime | `app/src/utils/theme.ts`, `app/src/hooks/useThemePreset.ts`, `app/src/index.css`, `app/src/components/ui/SettingsWindow.tsx` | built-in presets, local custom palette, CSS variables, localStorage-backed theme choice |
 | Module registry | `app/src/utils/appModules.ts`, `.pi/docs/module-architecture.md` | pure internal module definitions, default enablement, core-lock normalization for future optional modules |
 | Audio session bridge | `app/src/components/ui/AudioSessionBridge.tsx`, `app/src/hooks/useAudioSessionEnabled.ts` | player opt-in, приём Yjs audio commands, fade-aware локальное воспроизведение SFX/tracks |
@@ -70,6 +70,7 @@
 | Entity drag/drop routing contract | `.pi/docs/entity-drop-router.md`, `app/src/utils/entityDropRouter.ts`, `app/src/utils/entityDropRouter.test.ts`, `app/src/utils/entityDragPayload.ts`, `app/src/utils/entityTreeMutations.ts`, `app/src/components/ui/EntityDatabase.tsx`, `app/src/components/windows/EntityWindow.tsx`, `app/src/components/canvas/InfiniteCanvas.tsx`, `app/src/components/windows/blocks/InventoryBlock.tsx`, `app/src/components/windows/blocks/AbilitiesBlock.tsx`, `app/src/components/windows/blocks/CompetenciesBlock.tsx`, `app/src/components/windows/blocks/ObjectSheet.tsx`, `app/src/components/windows/blocks/StatusBlock.tsx` |
 | Entity title-driven filenames | `.pi/docs/entity-title-filenames.md`, `server/src/entityTitleFilename.ts`, `server/src/entityTitleFilename.test.ts`, `server/src/entityTitleRename.ts`, `server/src/entityTitleRename.test.ts`, `server/src/fileManager.ts`, `server/src/index.ts`, `app/src/services/fileApi.ts`, `app/src/services/fileSyncService.ts` |
 | Entity visibility and canvas access | `.pi/docs/entity-visibility-permissions.md`, `app/src/utils/permissions.ts`, `app/src/components/canvas/InfiniteCanvas.tsx`, `app/src/components/windows/blocks/EntityCanvasTokenSettings.tsx` |
+| Player identity and roles | `.pi/docs/player-identity-roles.md`, `server/src/playerProfiles.ts`, `server/src/index.ts`, `app/src/services/fileApi.ts`, `app/src/components/ui/LoginScreen.tsx`, `app/src/components/ui/SettingsWindow.tsx`, `app/src/store/yjsStore.ts` |
 
 ## Character and mechanics blocks
 
@@ -108,6 +109,7 @@ Pure helpers:
 | `server/src/worldManager.ts` | create/open worlds and world metadata |
 | `server/src/fileManager.ts` | CRUD `.md` entities, folder routing, serialization bridge, minimal entity-id migration utility |
 | `server/src/assetManager.ts` | recursive `assets/` index, stable path-based asset IDs, MIME/type detection, safe asset path resolution |
+| `server/src/playerProfiles.ts` | player profile claim/list/update helpers for `players/<playerId>.json` and legacy `users/*` compatibility |
 | `server/src/fileWatcher.ts` | chokidar external edit watcher |
 | `server/src/renameManager.ts` | cascade rename and wiki-link updates |
 | `server/src/shared/types.ts` | server-side shared Entity types |
@@ -144,6 +146,7 @@ npx tsx src\assetManager.test.ts
 npx tsx src\entityId.test.ts
 npx tsx src\entityTitleFilename.test.ts
 npx tsx src\entityTitleRename.test.ts
+npx tsx src\playerProfiles.test.ts
 ```
 
 Full frontend checks:

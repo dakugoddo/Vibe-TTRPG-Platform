@@ -1,5 +1,6 @@
 export type EntityType = 'character' | 'object' | 'ability' | 'competency' | 'tag' | 'canvas' | 'note' | 'portal' | 'folder' | 'attack';
 export type DatabaseType = 'general' | 'user' | 'gm';
+export type UserRole = 'gm' | 'player' | 'trusted-player' | 'spectator';
 
 export interface Entity {
     id: string;
@@ -31,6 +32,17 @@ export interface ChatMessage {
     text: string;
     timestamp: number;
     isSystem?: boolean; // Для бросков кубиков и уведомлений
+}
+
+export interface PlayerProfile {
+    playerId: string;
+    displayName: string;
+    assignedRole: UserRole;
+    storageRoot: string;
+    createdAt: string;
+    updatedAt: string;
+    lastSeenAt?: string;
+    legacy?: boolean;
 }
 
 export type AudioChannel = 'music' | 'ambience' | 'sfx' | 'voice';

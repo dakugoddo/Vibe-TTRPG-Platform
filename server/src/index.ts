@@ -20,6 +20,7 @@ const { setupWSConnection } = require('y-websocket/bin/utils');
 
 import { createWorld, openWorld, getCurrentWorldPath, getCurrentWorldName, getAssetsPath, saveWorldIndex, getDbPath, loadAudioDeck, saveAudioDeck } from './worldManager.js';
 import { resolveAssetPath } from './assetManager.js';
+import { claimPlayerProfile, listPlayerProfiles, updatePlayerProfileRole } from './playerProfiles.js';
 import {
     listEntities,
     readEntity,
@@ -31,7 +32,7 @@ import {
 } from './fileManager.js';
 import { startWatching, stopWatching, addWsClient, getClientCount } from './fileWatcher.js';
 import { renameEntity } from './renameManager.js';
-import type { Entity, DatabaseType } from './shared/types.js';
+import type { Entity, DatabaseType, UserRole } from './shared/types.js';
 
 const PORT = 3001;
 const app = express();
@@ -187,6 +188,61 @@ app.get('/api/players', (_req, res) => {
         res.json(players);
     } catch (err) {
         res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.get('/api/player-profiles', (_req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        res.json(listPlayerProfiles(worldPath));
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.post('/api/player-profiles/claim', (req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+
+        const displayName = typeof req.body.displayName === 'string' ? req.body.displayName : '';
+        if (!displayName.trim()) {
+            res.status(400).json({ error: 'displayName is required' });
+            return;
+        }
+
+        const requestedPlayerId = typeof req.body.requestedPlayerId === 'string' ? req.body.requestedPlayerId : undefined;
+        res.json(claimPlayerProfile(worldPath, displayName, { requestedPlayerId }));
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.patch('/api/player-profiles/:playerId', (req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+
+        const assignedRole = req.body.assignedRole as UserRole | undefined;
+        if (!assignedRole) {
+            res.status(400).json({ error: 'assignedRole is required' });
+            return;
+        }
+
+        res.json(updatePlayerProfileRole(worldPath, req.params.playerId, assignedRole));
+    } catch (err) {
+        const message = (err as Error).message;
+        res.status(message.includes('not found') ? 404 : 400).json({ error: message });
     }
 });
 

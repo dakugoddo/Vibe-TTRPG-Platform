@@ -8,6 +8,7 @@
 export type EntityType = 'character' | 'object' | 'ability' | 'competency' | 'tag' | 'canvas' | 'note' | 'portal' | 'folder' | 'attack';
 
 export type DatabaseType = 'general' | 'user' | 'gm';
+export type UserRole = 'gm' | 'player' | 'trusted-player' | 'spectator';
 
 export interface Entity {
     id: string;
@@ -30,6 +31,17 @@ export interface WorldMeta {
     path: string;
     createdAt: string;
     version: string;
+}
+
+export interface PlayerProfile {
+    playerId: string;
+    displayName: string;
+    assignedRole: UserRole;
+    storageRoot: string;
+    createdAt: string;
+    updatedAt: string;
+    lastSeenAt?: string;
+    legacy?: boolean;
 }
 
 export interface FileChangeEvent {

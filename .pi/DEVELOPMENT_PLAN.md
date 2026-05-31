@@ -69,7 +69,8 @@
 ## 4. Entity, Roles, Search
 
 - [ ] Manual QA entity ID migration на копии мира.
-- [ ] Довести role/player identity: новый/старый игрок по имени, player config на сервере ГМа, выдача ролей через UI.
+- [x] Добавить foundation role/player identity: `players/<playerId>.json`, claim по имени, legacy `users/*`, выдача базовой роли через UI ГМа.
+- [ ] Довести role/player identity: переименование, конфликт имён online/offline, миграция `_playerOwner` на `playerId`, явная session обратная связь.
 - [ ] Довести entity visibility/access guards для private player-owned entities и canvas `i`.
 - [ ] Полировать full-text search UX и saved searches.
 - [ ] Реализовать `FEAT-I18N-002`: Удобный перевод приложения и менеджер пользовательских локализаций.
@@ -100,4 +101,4 @@
 1. ✅ Доделать cancel/retry для player uploads — **ГОТОВО**, запушено.
 2. ✅ Доделать mobile layout нижнего `music` player и укрепить локальную деку до world-level persistence — **ГОТОВО**.
 3. ✅ Спроектировать chunked/resumable upload для файлов больше `250 MB` — **ГОТОВО**, запушено.
-4. [ ] Manual QA entity ID migration на копии мира + roles/player identity UI.
+4. [ ] Manual QA entity ID migration на копии мира + следующий roles/player identity slice: owner migration design и canvas visibility guards.

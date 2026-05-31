@@ -90,7 +90,10 @@
 - [x] Описать role schema в `app/src/utils/permissions.ts`.
 - [x] Добавить базовую неснимаемую роль `Base Player`.
 - [x] UI для GM: read-only матрица эффективных прав по ролям в `SettingsWindow`.
+- [x] Добавить player profile role assignment UI для `Player/Trusted Player/Spectator` поверх server-side profiles.
 - [ ] Добавить editable role matrix, world persistence и явный GM override для обхода базовых запретов.
+
+См. `.pi/docs/player-identity-roles.md` для текущего профиля игрока и role assignment foundation.
 
 ## Acceptance criteria
 

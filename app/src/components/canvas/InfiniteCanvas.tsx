@@ -48,6 +48,14 @@ interface CanvasImageTarget {
   screenY: number;
 }
 
+type CanvasImageUploadHandler = (
+  file: File,
+  target: CanvasImageTarget,
+  centerOnPoint?: boolean,
+  sessionNotificationId?: string,
+  existingNotificationId?: string,
+) => Promise<void>;
+
 interface EntityDropChoiceTarget {
   entityId: string;
   canvasPoint: { x: number; y: number };
@@ -1967,6 +1975,7 @@ export function InfiniteCanvas() {
   const registerRetryCallback = useNotificationStore((state) => state.registerRetryCallback);
   const unregisterRetryCallback = useNotificationStore((state) => state.unregisterRetryCallback);
   const pendingCanvasImageUploadsRef = useRef<Map<string, { file: File; target: CanvasImageTarget; centerOnPoint: boolean }>>(new Map());
+  const uploadAndInsertCanvasImageRef = useRef<CanvasImageUploadHandler | null>(null);
   const uploadProgressThrottleRef = useRef<Map<string, { percent: number; updatedAt: number }>>(new Map());
   
   // ─── Grid settings ───
@@ -2363,7 +2372,7 @@ export function InfiniteCanvas() {
       }
 
       registerRetryCallback(notificationId, () => {
-        void uploadAndInsertCanvasImage(file, target, centerOnPoint, sessionNotificationId, notificationId);
+        void uploadAndInsertCanvasImageRef.current?.(file, target, centerOnPoint, sessionNotificationId, notificationId);
       });
 
       if (sessionNotificationId) {
@@ -2387,6 +2396,10 @@ export function InfiniteCanvas() {
     unregisterRetryCallback,
     insertImageElement,
   ]);
+
+  useEffect(() => {
+    uploadAndInsertCanvasImageRef.current = uploadAndInsertCanvasImage;
+  }, [uploadAndInsertCanvasImage]);
 
   const insertFileImageAtPoint = useCallback((file: File, target: CanvasImageTarget, centerOnPoint = false) => {
     if (!getIsHost() && file.size > LARGE_ASSET_UPLOAD_APPROVAL_BYTES) {

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { setIsHost, resetServerCache } from '../../services/fileApi';
+import { claimPlayerProfile, setIsHost, resetServerCache } from '../../services/fileApi';
 import { loadWorld, onSyncProgress, onSyncStatus } from '../../services/fileSyncService';
 import { StyleDemo } from '../ui-demo/StyleDemo';
 import { glass } from '../../utils/theme';
+import type { UserRole } from '../../types';
 
 interface LoginScreenProps {
-    onJoin: (roomName: string, playerName?: string) => void;
+    onJoin: (roomName: string, playerName?: string, playerId?: string, role?: UserRole) => void;
 }
 
 type Step = 'main' | 'host' | 'join' | 'loading';
@@ -142,6 +143,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
             }
 
             const roomName = data.worldName.toLowerCase().replace(/\s+/g, '-');
+            const profile = await claimPlayerProfile(host, displayName, localStorage.getItem('vibe_player_id') || undefined);
 
             // Optionally update the lastRoom in saved servers
             if (serverIdToUpdate) {
@@ -149,9 +151,9 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
             }
 
             localStorage.setItem('vibe_server_ip', ip.trim());
-                const displayName = playerName.trim() || 'Игрок';
-                localStorage.setItem('vibe_player_name', displayName);
-                onJoin(roomName, displayName);
+            localStorage.setItem('vibe_player_name', profile.displayName);
+            localStorage.setItem('vibe_player_id', profile.playerId);
+            onJoin(roomName, profile.displayName, profile.playerId, profile.assignedRole);
         } catch {
             setError(`Ошибка подключения к ${ip || 'Localhost'}. Сервер выключен, Хамачи не работает, или заблокирован Брандмауэром Windows.`);
             setStep('join');

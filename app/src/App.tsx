@@ -26,6 +26,7 @@ import { NotificationCenter } from './components/ui/NotificationCenter';
 import { SessionNotificationBridge } from './components/ui/SessionNotificationBridge';
 import { SettingsWindow } from './components/ui/SettingsWindow';
 import { generateEntityId } from './utils/entityId';
+import type { UserRole } from './types';
 
 function App() {
   useThemePreset();
@@ -49,11 +50,11 @@ function App() {
     }
   }, [isDraggingGlobal]);
 
-  const handleJoin = (room: string, playerName?: string) => {
+  const handleJoin = (room: string, playerName?: string, playerId?: string, role?: UserRole) => {
     setRoomName(room);
     if (playerName) {
       setPlayerName(playerName);
-      yjsStore.setLocalPlayerName(playerName);
+      yjsStore.setLocalPlayerName(playerName, { playerId, role });
     }
     yjsStore.joinRoom(room);
     initEntityStoreObserver();

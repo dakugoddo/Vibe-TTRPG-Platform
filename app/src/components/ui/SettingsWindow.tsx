@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2, Play, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2, Loader2, Users } from 'lucide-react';
 import { yjsStore } from '../../store/yjsStore';
 import { useCanvasDrawStore } from '../../store/canvasDrawStore';
 import { useAudioChannelVolumes } from '../../hooks/useAudioChannelVolumes';
@@ -8,8 +8,8 @@ import { useAppModuleEnabled } from '../../hooks/useAppModuleEnablement';
 import { useThemePreset } from '../../hooks/useThemePreset';
 import { DEFAULT_ROLE_DEFINITIONS, getEffectivePermissions, type PermissionKey, type UserRole } from '../../utils/permissions';
 import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, saveCustomThemeColors, themePresets, type CustomThemeColors } from '../../utils/theme';
-import type { AudioChannel } from '../../types';
-import { migrateEntityIds } from '../../services/fileApi';
+import type { AudioChannel, PlayerProfile } from '../../types';
+import { listPlayerProfiles, updatePlayerProfileRole } from '../../services/fileApi';
 
 type SettingsTabId = 'interface' | 'audio' | 'canvas' | 'world' | 'roles';
 
@@ -33,6 +33,12 @@ const ROLE_PERMISSION_LABELS: Array<{ key: PermissionKey; label: string }> = [
     { key: 'editOwnUser', label: 'Правит своё' },
     { key: 'viewGm', label: 'Видит GM' },
     { key: 'broadcastAudio', label: 'Звук' },
+];
+
+const ASSIGNABLE_PLAYER_ROLES: Array<{ id: Exclude<UserRole, 'gm'>; label: string }> = [
+    { id: 'player', label: 'Player' },
+    { id: 'trusted-player', label: 'Trusted Player' },
+    { id: 'spectator', label: 'Spectator' },
 ];
 
 const CUSTOM_THEME_COLOR_FIELDS: Array<{ key: keyof CustomThemeColors; label: string }> = [
@@ -75,24 +81,48 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const setGridType = useCanvasDrawStore((state) => state.setGridType);
     const setGridSpacing = useCanvasDrawStore((state) => state.setGridSpacing);
 
-    // Состояние миграции стабильных ID
-    const [migrationResult, setMigrationResult] = useState<any | null>(null);
-    const [migrating, setMigrating] = useState(false);
-    const [selectedDb, setSelectedDb] = useState('all');
+    const [playerProfiles, setPlayerProfiles] = useState<PlayerProfile[]>([]);
+    const [loadingPlayerProfiles, setLoadingPlayerProfiles] = useState(false);
+    const [updatingPlayerId, setUpdatingPlayerId] = useState<string | null>(null);
+    const [playerProfileError, setPlayerProfileError] = useState('');
 
-    const handleRunMigration = async (dryRun: boolean) => {
+    useEffect(() => {
+        if (!isOpen || !isGM || activeTab !== 'roles') return;
+
+        let cancelled = false;
+        const loadProfiles = async () => {
+            setLoadingPlayerProfiles(true);
+            setPlayerProfileError('');
+            try {
+                const profiles = await listPlayerProfiles();
+                if (!cancelled) setPlayerProfiles(profiles);
+            } catch (err) {
+                if (!cancelled) setPlayerProfileError(err instanceof Error ? err.message : String(err));
+            } finally {
+                if (!cancelled) setLoadingPlayerProfiles(false);
+            }
+        };
+
+        void loadProfiles();
+        return () => {
+            cancelled = true;
+        };
+    }, [activeTab, isGM, isOpen]);
+
+    const handleUpdatePlayerRole = async (profile: PlayerProfile, role: Exclude<UserRole, 'gm'>) => {
+        if (profile.legacy) return;
         try {
-            setMigrating(true);
-            setMigrationResult(null);
-            const result = await migrateEntityIds({
-                dryRun,
-                database: selectedDb
-            });
-            setMigrationResult(result);
+            setUpdatingPlayerId(profile.playerId);
+            setPlayerProfileError('');
+            const updatedProfile = await updatePlayerProfileRole(profile.playerId, role);
+            yjsStore.setPlayerRole(updatedProfile.playerId, updatedProfile.assignedRole);
+            setPlayerProfiles((profiles) => profiles.map((item) => (
+                item.playerId === updatedProfile.playerId ? updatedProfile : item
+            )));
         } catch (err) {
-            alert(err instanceof Error ? err.message : String(err));
+            setPlayerProfileError(err instanceof Error ? err.message : String(err));
         } finally {
-            setMigrating(false);
+            setUpdatingPlayerId(null);
         }
     };
 
@@ -420,6 +450,75 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                             </div>
                                             );
                                         })}
+                                    </div>
+                                </div>
+
+                                <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                                    <div className="mb-3 flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/45">
+                                            <Users size={14} />
+                                            Игроки
+                                        </div>
+                                        {loadingPlayerProfiles && <Loader2 size={14} className="animate-spin text-white/35" />}
+                                    </div>
+
+                                    {playerProfileError && (
+                                        <div className="mb-3 rounded-lg border border-red-300/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-100/75">
+                                            {playerProfileError}
+                                        </div>
+                                    )}
+
+                                    <div className="grid gap-2">
+                                        {playerProfiles.map((profile) => {
+                                            const roleValue = profile.assignedRole === 'gm' ? 'player' : profile.assignedRole;
+                                            const isUpdating = updatingPlayerId === profile.playerId;
+                                            return (
+                                                <div key={profile.playerId} className="flex flex-col gap-3 rounded-lg border border-white/10 bg-black/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+                                                    <div className="min-w-0">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className="truncate text-xs font-bold text-white/75">{profile.displayName}</span>
+                                                            {profile.legacy && (
+                                                                <span className="rounded border border-amber-200/20 bg-amber-300/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-amber-100/70">
+                                                                    legacy
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="mt-1 truncate font-mono text-[10px] text-white/35">
+                                                            {profile.playerId} · users/{profile.storageRoot}
+                                                        </div>
+                                                        {profile.legacy && (
+                                                            <div className="mt-1 text-[10px] text-white/35">
+                                                                Профиль появится после входа игрока с этим именем.
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        {isUpdating && <Loader2 size={14} className="animate-spin text-cyan-100/60" />}
+                                                        <select
+                                                            value={roleValue}
+                                                            disabled={profile.legacy || isUpdating}
+                                                            onChange={(event) => {
+                                                                void handleUpdatePlayerRole(profile, event.target.value as Exclude<UserRole, 'gm'>);
+                                                            }}
+                                                            className="h-9 rounded-lg border border-white/10 bg-[#111827] px-2 text-xs font-bold text-white/75 outline-none transition-colors hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-45"
+                                                        >
+                                                            {ASSIGNABLE_PLAYER_ROLES.map((role) => (
+                                                                <option key={role.id} value={role.id}>
+                                                                    {role.label}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+
+                                        {!loadingPlayerProfiles && playerProfiles.length === 0 && (
+                                            <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-[11px] text-white/40">
+                                                Профилей пока нет. Они создаются при подключении игрока к открытому миру.
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </section>

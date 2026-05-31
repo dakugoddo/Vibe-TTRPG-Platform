@@ -19,6 +19,7 @@ export class YjsStore {
     sessionNotificationsMap: Y.Map<SessionNotificationEvent>;
     /** Stores user roles: Map<peerId, UserRole> */
     rolesMap: Y.Map<UserRole>;
+    private rolesObserver: ((event: Y.YMapEvent<UserRole>) => void) | null = null;
 
     /** Fast lookup: lowercase name → entity id */
     private nameCache: Map<string, string> = new Map();
@@ -66,6 +67,7 @@ export class YjsStore {
                 this.ensureEntitySchemaVersions();
                 this.pruneSessionNotifications();
                 this.rebuildNameCache();
+                this.applyAssignedRole();
                 this.announcePlayerInfo();
             }
         });
@@ -75,9 +77,11 @@ export class YjsStore {
                 this.ensureEntitySchemaVersions();
                 this.pruneSessionNotifications();
                 this.rebuildNameCache();
+                this.applyAssignedRole();
                 this.announcePlayerInfo();
             });
         }
+        this.setupRoleObserver();
     }
 
     /** Announce player info via awareness for other clients to see */
@@ -91,22 +95,49 @@ export class YjsStore {
         }
     }
 
-    /** Set the local player's display name and generate a persistent ID */
-    setLocalPlayerName(name: string) {
-        this.localPlayerName = name.trim() || 'Игрок';
-        // Generate a persistent player ID if not set
-        if (!this.localPlayerId) {
-            const saved = localStorage.getItem('vibe_player_id');
-            if (saved) {
-                this.localPlayerId = saved;
-            } else {
-                this.localPlayerId = 'player_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
-                localStorage.setItem('vibe_player_id', this.localPlayerId);
-            }
+    private setupRoleObserver() {
+        if (this.rolesObserver) {
+            this.rolesMap.unobserve(this.rolesObserver);
         }
-        // Set role based on host status
-        this.localRole = getIsHost() ? 'gm' : 'player';
+
+        this.rolesObserver = (event) => {
+            if (!this.localPlayerId || !event.keysChanged.has(this.localPlayerId)) return;
+            this.applyAssignedRole();
+            this.announcePlayerInfo();
+        };
+        this.rolesMap.observe(this.rolesObserver);
+    }
+
+    private applyAssignedRole(fallbackRole?: UserRole): void {
+        if (getIsHost()) {
+            this.localRole = 'gm';
+            return;
+        }
+        this.localRole = this.rolesMap.get(this.localPlayerId) ?? fallbackRole ?? 'player';
+    }
+
+    /** Set the local player's display name and stable profile identity. */
+    setLocalPlayerName(name: string, options: { playerId?: string; role?: UserRole } = {}) {
+        this.localPlayerName = name.trim() || 'Игрок';
+        if (options.playerId) {
+            this.localPlayerId = options.playerId;
+            localStorage.setItem('vibe_player_id', options.playerId);
+        } else {
+            const saved = localStorage.getItem('vibe_player_id');
+            this.localPlayerId = saved || 'player_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+            localStorage.setItem('vibe_player_id', this.localPlayerId);
+        }
+        this.applyAssignedRole(options.role);
         this.announcePlayerInfo();
+    }
+
+    setPlayerRole(playerId: string, role: UserRole): boolean {
+        if (this.localRole !== 'gm' || role === 'gm') {
+            console.warn('Blocked role assignment: insufficient permissions or unsupported role');
+            return false;
+        }
+        this.rolesMap.set(playerId, role);
+        return true;
     }
 
     /** Check if current user can modify a given entity */
@@ -213,6 +244,10 @@ export class YjsStore {
         if (this.persistence) {
             this.persistence.destroy();
             this.persistence = null;
+        }
+        if (this.rolesObserver) {
+            this.rolesMap.unobserve(this.rolesObserver);
+            this.rolesObserver = null;
         }
     }
 

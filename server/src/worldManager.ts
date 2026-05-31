@@ -12,6 +12,7 @@ import type { WorldMeta } from './shared/types.js';
 const WORLD_STRUCTURE = {
     general: ['characters', 'objects', 'abilities', 'competencies', 'tags/hidden', 'tags/statuses', 'tags/properties', 'notes', 'canvases'],
     users: [],
+    players: [],
     gm: [],
     assets: [],
 } as const;

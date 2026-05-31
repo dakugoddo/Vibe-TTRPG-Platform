@@ -1,7 +1,7 @@
 # Entity Visibility And Canvas Access
 
 > Дата: 2026-05-24  
-> Статус: draft для `FEAT-ENTITY-PERMISSIONS-001` и `FEAT-ROLES-PLAYERS-001`  
+> Статус: draft для `FEAT-ENTITY-PERMISSIONS-001`; player identity foundation внесён в `.pi/docs/player-identity-roles.md`
 > Модель: доверенная настольная privacy model с корректным UI-скрытием, без обещания криптографической секретности в общем Y.Doc.
 
 ## Зачем это нужно
@@ -71,7 +71,7 @@ interface CanvasEntityAccess {
 
 - новое имя создаёт player profile на сервере GM;
 - старое имя восстанавливает player profile;
-- profile хранит `playerId`, display name, assigned roles, user storage root;
+- profile хранит `playerId`, display name, assigned role, user storage root;
 - имя должно быть уникальным среди известных player profiles.
 
 Это требует отдельного server-side storage:
@@ -85,6 +85,13 @@ world/
 ```
 
 Для обратной совместимости текущий `_playerOwner` не мигрируется автоматически, пока не будет отдельного migration step.
+
+Foundation 2026-05-31:
+
+- `players/<playerId>.json` и claim/list/update API добавлены;
+- `users/*` legacy-папки видны как profiles до первого входа игрока с этим именем;
+- `SettingsWindow -> Роли` умеет назначать `Player`, `Trusted Player`, `Spectator`;
+- `_playerOwner` по-прежнему совместим с именем игрока и не мигрируется автоматически.
 
 ## Роли
 
@@ -112,4 +119,3 @@ world/
 - Показывать ли игрокам placeholder вместо скрытой карточки, или полностью скрывать placement.
 - Должен ли GM при drop выбирать режим доступа сразу, или менять его позже в настройках сущности.
 - Нужно ли разрешить владельцу персонажа публично открыть описание своего персонажа одним toggle на карточке.
-

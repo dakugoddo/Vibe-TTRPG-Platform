@@ -8,7 +8,8 @@
  * unnecessary requests to a server that may not even be running.
  */
 
-import type { Entity } from '../types';
+import type { Entity, PlayerProfile, UserRole } from '../types';
+import type { AudioDeckState } from '../utils/audioDeckModel';
 
 const SERVER_URL = 'http://localhost:3001';
 
@@ -65,8 +66,8 @@ export function resetServerCache(): void {
 
 // ─── Helper ───
 
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-    const res = await fetch(`${SERVER_URL}${path}`, {
+async function apiFetchFrom<T>(baseUrl: string, path: string, options?: RequestInit): Promise<T> {
+    const res = await fetch(`${baseUrl}${path}`, {
         headers: { 'Content-Type': 'application/json' },
         ...options,
     });
@@ -77,6 +78,10 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     }
 
     return res.json();
+}
+
+async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+    return apiFetchFrom(SERVER_URL, path, options);
 }
 
 // ─── World Management ───
@@ -103,12 +108,12 @@ export async function openWorld(worldPath: string): Promise<WorldMeta> {
     });
 }
 
-export async function getAudioDeck(): Promise<any> {
+export async function getAudioDeck(): Promise<Partial<AudioDeckState> | null> {
     if (!(await shouldCallFileApi())) return null;
     return apiFetch('/api/world/audio-deck');
 }
 
-export async function saveAudioDeck(data: any): Promise<void> {
+export async function saveAudioDeck(data: AudioDeckState): Promise<void> {
     if (!(await shouldCallFileApi())) return;
     return apiFetch('/api/world/audio-deck', {
         method: 'POST',
@@ -125,6 +130,33 @@ export async function listPlayers(): Promise<string[]> {
     } catch {
         return [];
     }
+}
+
+export async function listPlayerProfiles(): Promise<PlayerProfile[]> {
+    if (!(await shouldCallFileApi())) return [];
+    try {
+        return await apiFetch('/api/player-profiles');
+    } catch {
+        return [];
+    }
+}
+
+export async function claimPlayerProfile(serverHost: string, displayName: string, requestedPlayerId?: string): Promise<PlayerProfile> {
+    const host = serverHost.trim() || window.location.hostname;
+    return apiFetchFrom<PlayerProfile>(`http://${host}:3001`, '/api/player-profiles/claim', {
+        method: 'POST',
+        body: JSON.stringify({ displayName, requestedPlayerId }),
+    });
+}
+
+export async function updatePlayerProfileRole(playerId: string, assignedRole: UserRole): Promise<PlayerProfile> {
+    if (!(await shouldCallFileApi())) {
+        throw new Error('File API is available only for the host');
+    }
+    return apiFetch(`/api/player-profiles/${encodeURIComponent(playerId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ assignedRole }),
+    });
 }
 
 // ─── Entity CRUD ───
@@ -321,7 +353,7 @@ export async function showEntityInExplorer(db: DatabaseType, id: string, player?
     return true;
 }
 
-export async function renameEntityFileToTitle(db: DatabaseType, id: string, title: string, player?: string, options?: { dryRun?: boolean }): Promise<any> {
+export async function renameEntityFileToTitle(db: DatabaseType, id: string, title: string, player?: string, options?: { dryRun?: boolean }): Promise<unknown | null> {
     if (!(await shouldCallFileApi())) return null;
     const params = new URLSearchParams({ db });
     if (player) params.append('player', player);
@@ -492,7 +524,9 @@ async function uploadAssetFileToHostChunks(file: File, options: UploadAssetFileO
                         try {
                             const resObj = JSON.parse(xhr.responseText || '{}');
                             if (resObj.error) errMsg = resObj.error;
-                        } catch {}
+                        } catch {
+                            // Keep the HTTP fallback message when the response is not JSON.
+                        }
                         reject(new Error(errMsg));
                         return;
                     }
@@ -542,12 +576,10 @@ async function uploadAssetFileToHostChunks(file: File, options: UploadAssetFileO
         
     } catch (err) {
         // В случае любой ошибки/отмены отправляем запрос очистки
-        try {
-            await apiFetch('/api/assets/upload-chunk/cancel', {
-                method: 'POST',
-                body: JSON.stringify({ uploadId })
-            }).catch(() => {});
-        } catch {}
+        await apiFetch('/api/assets/upload-chunk/cancel', {
+            method: 'POST',
+            body: JSON.stringify({ uploadId })
+        }).catch(() => undefined);
         throw err;
     }
 }
