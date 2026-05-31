@@ -190,7 +190,7 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                     {canEditParent && (
                         <button
                             onClick={handleAddCompetency}
-                            className="flex items-center gap-1 px-2 py-1 bg-violet-500/15 border border-violet-500/30 rounded-lg text-violet-300 hover:text-violet-100 hover:bg-violet-500/30 hover:border-violet-400/50 transition-all text-[10px] font-bold uppercase tracking-wider"
+                            className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-accent)] transition-all hover:bg-[var(--vibe-surface-hover)]"
                         >
                             <Plus size={12} /> Добавить
                         </button>
@@ -198,7 +198,7 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                 </div>
 
                 {competencies.length === 0 ? (
-                    <div className="text-center text-white/30 text-xs py-8 italic border border-dashed border-white/10 rounded-xl">
+                    <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] py-8 text-center text-xs italic text-[var(--vibe-text-faint)]">
                         {canEditParent ? 'Нет компетенций. Нажмите «Добавить» чтобы создать первую.' : 'Компетенции пока не добавлены.'}
                     </div>
                 ) : (
@@ -211,13 +211,14 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                             return (
                                 <div
                                     key={comp.id}
-                                    className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all group"
+                                    className="group flex items-center gap-3 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]"
                                 >
                                     {/* Rank badge */}
                                     <div className={clsx(
-                                        "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold font-mono flex-shrink-0 border",
-                                        rank > 0 ? "bg-violet-500/20 text-violet-200 border-violet-500/30" :
-                                        "bg-white/5 text-white/30 border-white/10"
+                                        "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-md)] border font-mono text-sm font-bold",
+                                        rank > 0
+                                            ? "border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)]"
+                                            : "border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] text-[var(--vibe-text-faint)]"
                                     )}>
                                         +{rank}
                                     </div>
@@ -225,13 +226,13 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                                     {/* Name + description */}
                                     <div className="flex-1 min-w-0">
                                         <div
-                                            className="text-sm font-medium text-white/80 truncate cursor-pointer hover:text-white transition-colors"
+                                            className="truncate text-sm font-medium text-[var(--vibe-text-muted)] transition-colors hover:text-[var(--vibe-accent)] cursor-pointer"
                                             onClick={() => openWindow(comp.id, Math.random() * 200 + 100, Math.random() * 200 + 100)}
                                         >
                                             {comp.name}
                                         </div>
                                         {comp.description && (
-                                            <div className="text-[10px] text-white/30 truncate mt-0.5">
+                                            <div className="mt-0.5 truncate text-[10px] text-[var(--vibe-text-faint)]">
                                                 {comp.description.substring(0, 60)}
                                             </div>
                                         )}
@@ -246,7 +247,7 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                                                     handleUpdateRank(comp.id, rank - 1);
                                                 }}
                                                 disabled={rank <= RANK_MIN}
-                                                className="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                                className="rounded p-0.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
                                             >
                                                 <Minus size={12} />
                                             </button>
@@ -256,7 +257,7 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                                                     handleUpdateRank(comp.id, rank + 1);
                                                 }}
                                                 disabled={rank >= RANK_MAX}
-                                                className="p-0.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                                                className="rounded p-0.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
                                             >
                                                 <Plus size={12} />
                                             </button>
@@ -272,10 +273,10 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                                         disabled={!canRoll}
                                         title={canRoll ? `Бросить ${rank}d6` : 'Ранг должен быть > 0'}
                                         className={clsx(
-                                            'p-1.5 rounded-lg transition-all flex-shrink-0',
+                                            'flex-shrink-0 rounded-[var(--vibe-radius-sm)] border p-1.5 transition-all',
                                             canRoll
-                                                ? 'bg-violet-500/20 text-violet-300 hover:bg-violet-500/40 hover:text-violet-100 border border-violet-500/30'
-                                                : 'bg-white/5 text-white/20 border border-transparent cursor-not-allowed'
+                                                ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] hover:bg-[var(--vibe-surface-hover)]'
+                                                : 'cursor-not-allowed border-transparent bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)]'
                                         )}
                                     >
                                         <Dices size={14} />
@@ -287,7 +288,7 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                                             e.stopPropagation();
                                             openWindow(comp.id, Math.random() * 200 + 100, Math.random() * 200 + 100);
                                         }}
-                                        className="p-1.5 rounded-lg text-white/20 hover:text-white/70 hover:bg-white/10 transition-all flex-shrink-0"
+                                        className="flex-shrink-0 rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                                         title="Открыть окно"
                                     >
                                         <ExternalLink size={14} />
@@ -300,7 +301,7 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                                                 e.stopPropagation();
                                                 handleDelete(comp.id, comp.name);
                                             }}
-                                            className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/20 transition-all flex-shrink-0"
+                                            className="flex-shrink-0 rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)]"
                                             title="Удалить"
                                         >
                                             <Trash2 size={14} />

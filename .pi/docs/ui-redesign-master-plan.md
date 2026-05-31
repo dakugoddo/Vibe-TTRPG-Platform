@@ -512,10 +512,11 @@ Settings становится центром:
 
 - [ ] Новый `EntityHeader`.
 - [ ] Новый `EntitySection`.
-- [x] Первый `StatTile`-подход через tokenized `AttributeBlock`/`StatTooltip`.
+- [x] Первый `StatTile`-подход через tokenized `AttributeBlock`/`StatTooltip`/`CompetenciesBlock`.
 - [x] Первый `ResourceTrack`-подход через tokenized `ResourcesBlock`.
 - [x] Первый `ActionPill`-подход через tokenized `AbilitiesBlock`.
 - [ ] Сначала Character/Object/Ability/Attack, затем Note/Tag/Canvas.
+- [x] Tokenized support surfaces: `TagPickerPopup` и `EntityImageBlock`.
 
 ### Slice 5: Workbench polish
 

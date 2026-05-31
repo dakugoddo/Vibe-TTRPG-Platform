@@ -50,9 +50,10 @@ description: Complete UI architecture reference for Vibe TTRPG Platform. Use whe
 - `EntityWindow`: frame/header/actions/relations/context menu/generic description/debug surfaces.
 - `CharacterSheet`: notes tab textarea/read surface.
 - `MarkdownRenderer`: headings, blockquote, code/pre, tables, stats/inventory custom markdown blocks.
-- `AttributeBlock`, `SkillsBlock`, `AbilitiesBlock`, `ResourcesBlock`, `StatTooltip`: core stat/resource/ability surfaces, popovers, counters and status colors use `--vibe-*` semantic tokens.
+- `AttributeBlock`, `SkillsBlock`, `CompetenciesBlock`, `AbilitiesBlock`, `ResourcesBlock`, `StatTooltip`: core stat/resource/ability surfaces, popovers, counters and status colors use `--vibe-*` semantic tokens.
+- `TagPickerPopup`, `EntityImageBlock`: picker modal, tag creation, image placeholder, overlay editor and upload/error states use `glass.*` and semantic tokens.
 
-Оставшиеся старые слои, которые нельзя считать финальным UI: `ObjectSheet`, `InventoryBlock`, `CompetenciesBlock`, `TagPickerPopup`, `EntityImageBlock`, `SettingsWindow` polish и `AudioDesk/AssetBrowser` polish.
+Оставшиеся старые слои, которые нельзя считать финальным UI: `ObjectSheet`, `InventoryBlock`, `AttackSheet`, `SettingsWindow` polish и `AudioDesk/AssetBrowser` polish.
 
 ---
 

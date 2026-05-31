@@ -137,11 +137,11 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
     }
 
     return (
-        <div className={`relative mb-4 flex-shrink-0 group overflow-hidden ${glass.blockBg} border border-white/5 shadow-md flex flex-col justify-center items-center ${isWide ? 'h-40 w-full rounded-xl mx-auto' : 'h-48 w-48 rounded-2xl mx-auto'}`}>
+        <div className={`group relative mb-4 flex flex-shrink-0 flex-col items-center justify-center overflow-hidden ${glass.blockBg} border border-[var(--vibe-border-subtle)] shadow-[var(--vibe-shadow-block)] ${isWide ? 'mx-auto h-40 w-full rounded-[var(--vibe-radius-md)]' : 'mx-auto h-48 w-48 rounded-[var(--vibe-radius-lg)]'}`}>
             
             {entity.icon_url ? (
                 imageError ? (
-                    <div className="flex flex-col items-center justify-center text-red-400 opacity-60">
+                    <div className="flex flex-col items-center justify-center text-[var(--vibe-danger)] opacity-80">
                         <AlertTriangle size={32} className="mb-2" />
                         <span className="text-xs font-bold text-center px-4">Ссылка недействительна или изображение удалено</span>
                     </div>
@@ -154,7 +154,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                     />
                 )
             ) : (
-                <div className="flex flex-col items-center justify-center text-white/20">
+                <div className="flex flex-col items-center justify-center text-[var(--vibe-text-faint)]">
                     <Icon size={isWide ? 64 : 48} strokeWidth={1.5} />
                     <span className="text-[10px] mt-2 font-bold tracking-widest uppercase opacity-50">НЕТ ФОТО</span>
                 </div>
@@ -162,23 +162,23 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
 
             {/* Hover overlay for editing */}
             {canEditImage && (
-            <div className={`absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center transition-all duration-300 ${isEditing ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'}`}>
+            <div className={`absolute inset-0 flex flex-col items-center justify-center bg-[color-mix(in_srgb,var(--vibe-body-bg)_70%,transparent)] backdrop-blur-sm transition-all duration-300 ${isEditing ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100'}`}>
                 
                 {!isEditing ? (
                     <button 
                         onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
-                        className="px-4 py-2 bg-black/50 hover:bg-white/20 text-white rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.5)] font-bold text-xs backdrop-blur-md transition-all border border-white/20 hover:border-white/50"
+                        className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-surface-input)] px-4 py-2 text-xs font-bold text-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-block)] backdrop-blur-[var(--vibe-backdrop-blur)] transition-all hover:bg-[var(--vibe-surface-hover)]"
                     >
                         Изменить фото
                     </button>
                 ) : (
-                    <div className="w-full h-full p-4 flex flex-col gap-2 relative bg-black/40" onClick={e => e.stopPropagation()}>
+                    <div className="relative flex h-full w-full flex-col gap-2 bg-[var(--vibe-surface-block)] p-4" onClick={e => e.stopPropagation()}>
                         {/* Close button */}
-                        <button onClick={() => setIsEditing(false)} className="absolute top-2 right-2 text-white/50 hover:text-white bg-black/50 rounded-full p-1" title="Отмена">
+                        <button onClick={() => setIsEditing(false)} className={`${glass.iconButton} absolute right-2 top-2 rounded-full p-1`} title="Отмена">
                             <X size={14} />
                         </button>
 
-                        <div className="text-xs font-bold text-white/70 mb-1 uppercase tracking-wider text-center pt-2">Настройки изображения</div>
+                        <div className="mb-1 pt-2 text-center text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">Настройки изображения</div>
 
                         <div className="flex flex-col gap-2 w-full max-w-sm mx-auto overflow-y-auto custom-scrollbar">
                             {/* URL/Filename input */}
@@ -195,7 +195,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                             {/* Dropdown for existing files */}
                             {isHost && availableImages.length > 0 && (
                                 <select 
-                                    className={`${glass.input} w-full text-xs py-1.5 px-2 text-white/70 bg-black/50 cursor-pointer`}
+                                    className={`${glass.input} w-full cursor-pointer px-2 py-1.5 text-xs`}
                                     onChange={(e) => setTempUrl(e.target.value)}
                                     value=""
                                 >
@@ -209,14 +209,14 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                             <div className="flex gap-2 mt-1">
                                 <button 
                                     onClick={handleSave}
-                                    className="flex-1 py-1.5 bg-white/20 text-white rounded-md text-xs font-bold border border-white/20 hover:bg-white/30 transition-colors shadow-sm"
+                                    className="flex-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] py-1.5 text-xs font-bold text-[var(--vibe-accent)] shadow-sm transition-colors hover:bg-[var(--vibe-surface-hover)]"
                                 >
                                     Сохранить ссылку
                                 </button>
                                 {entity.icon_url && (
                                     <button 
                                         onClick={handleRemove}
-                                        className="py-1.5 px-3 bg-red-500/20 text-red-500 hover:text-red-400 hover:bg-red-500/30 rounded-md text-xs font-bold border border-red-500/20 transition-colors"
+                                        className="rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_14%,transparent)] px-3 py-1.5 text-xs font-bold text-[var(--vibe-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_24%,transparent)]"
                                         title="Удалить привязку к фото (файл останется)"
                                     >
                                         Удалить
@@ -225,7 +225,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                             </div>
 
                             {isHost && (
-                                <div className="mt-2 border-t border-white/10 pt-3 relative">
+                                <div className="relative mt-2 border-t border-[var(--vibe-border-subtle)] pt-3">
                                     <input 
                                         type="file" 
                                         ref={fileInputRef} 
@@ -236,13 +236,13 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                                     <button 
                                         onClick={() => fileInputRef.current?.click()}
                                         disabled={isUploading}
-                                        className={`w-full py-1.5 text-white rounded-md text-xs font-bold border border-white/20 transition-colors flex items-center justify-center gap-2 ${isUploading ? 'bg-white/10 opacity-50' : 'bg-black/50 hover:bg-white/20'}`}
+                                        className={`flex w-full items-center justify-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] py-1.5 text-xs font-bold text-[var(--vibe-text-primary)] transition-colors ${isUploading ? 'bg-[var(--vibe-surface-input)] opacity-50' : 'bg-[var(--vibe-surface-input)] hover:bg-[var(--vibe-surface-hover)]'}`}
                                     >
                                         <Upload size={14} />
                                         {isUploading ? 'Загрузка...' : 'Загрузить новое фото'}
                                     </button>
                                     {uploadError && (
-                                        <div className="mt-2 rounded-md border border-red-500/20 bg-red-500/10 px-2 py-1.5 text-[10px] font-semibold text-red-200">
+                                        <div className="mt-2 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] px-2 py-1.5 text-[10px] font-semibold text-[var(--vibe-danger)]">
                                             {uploadError}
                                         </div>
                                     )}
