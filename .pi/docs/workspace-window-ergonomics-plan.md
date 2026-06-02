@@ -75,15 +75,16 @@ UI:
 - `app/src/utils/windowLayout.ts` содержит pure layout math для `left/right/corners/center/wideCenter/grid/cascade`.
 - `app/src/store/windowStore.ts` получил `tileWindow`, `arrangeVisibleWindowsGrid`, `cascadeVisibleWindows`.
 - `app/src/components/windows/EntityWindow.tsx` получил icon-only layout menu для unpinned окон.
+- Layout menu умеет сохранить/восстановить quick local snapshot экранных окон через `saveCurrentWindowLayoutSnapshot` / `restoreWindowLayoutSnapshot`.
 - Pinned windows пока не участвуют в auto-layout, чтобы не ломать canvas-space координаты.
 - Срез не меняет `.md`, `WindowState` формат и world-shared storage.
 
-### Срез 2: workspace snapshots
+### Срез 2: named workspace snapshots
 
-Добавить локальные snapshots:
+Quick local snapshot уже есть в первом срезе. Следующий слой - named snapshots:
 
-- "Сохранить текущую раскладку";
-- "Восстановить раскладку";
+- "Сохранить текущую раскладку" с именем;
+- "Восстановить раскладку" из списка;
 - "Сбросить раскладку".
 
 Хранение:
@@ -137,6 +138,7 @@ UI:
 
 - Открыть 4 сущности, разложить grid 2x2, перезапустить клиент и проверить localStorage restore.
 - В header unpinned окна открыть layout menu и проверить left/right/corner/center/wide center.
+- Сохранить quick local snapshot, поменять раскладку и восстановить snapshot; pinned окна не должны исчезать.
 - Открыть заметку + персонажа рядом: текст не должен растягиваться уродливо на широкий viewport.
 - Проверить маленький viewport: layout menu не должен создавать окна шире экрана.
 - Проверить pinned окно: layout action не должен ломать canvas scale/offset.

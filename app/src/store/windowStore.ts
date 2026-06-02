@@ -333,3 +333,49 @@ export function clearWindowLayout(): void {
         _saveTimer = null;
     }
 }
+
+function getWindowSnapshotStorageKey(): string {
+    return `${WINDOW_STORAGE_PREFIX}${_currentRoom ?? 'local'}-screen-snapshot`;
+}
+
+export function saveCurrentWindowLayoutSnapshot(): boolean {
+    const { windows, highestZIndex } = useWindowStore.getState();
+    const screenWindows = Object.fromEntries(
+        Object.entries(windows).filter(([, win]) => !win.isPinned)
+    );
+
+    try {
+        localStorage.setItem(getWindowSnapshotStorageKey(), JSON.stringify({
+            windows: screenWindows,
+            highestZIndex,
+            savedAt: new Date().toISOString(),
+        }));
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+export function restoreWindowLayoutSnapshot(): boolean {
+    try {
+        const data = localStorage.getItem(getWindowSnapshotStorageKey());
+        if (!data) return false;
+        const parsed = JSON.parse(data);
+        if (!parsed?.windows || typeof parsed.windows !== 'object') return false;
+
+        const current = useWindowStore.getState();
+        const pinnedWindows = Object.fromEntries(
+            Object.entries(current.windows).filter(([, win]) => win.isPinned)
+        );
+        useWindowStore.setState({
+            windows: {
+                ...pinnedWindows,
+                ...parsed.windows,
+            },
+            highestZIndex: Math.max(current.highestZIndex, parsed.highestZIndex || 10),
+        });
+        return true;
+    } catch {
+        return false;
+    }
+}

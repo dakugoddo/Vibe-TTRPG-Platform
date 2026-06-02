@@ -1,7 +1,7 @@
 import { Rnd } from 'react-rnd';
-import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network, Copy, Box, FileText, Lightbulb, Sword, Wand2, LayoutGrid, PanelLeft, PanelRight, Crosshair, Layers } from 'lucide-react';
+import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network, Copy, Box, FileText, Lightbulb, Sword, Wand2, LayoutGrid, PanelLeft, PanelRight, Crosshair, Layers, Save, RotateCcw } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useWindowStore } from '../../store/windowStore';
+import { restoreWindowLayoutSnapshot, saveCurrentWindowLayoutSnapshot, useWindowStore } from '../../store/windowStore';
 import type { WindowState, WindowMode } from '../../store/windowStore';
 import type { Entity, EntityType } from '../../types';
 import { useEntity, useEntities, getEntitiesSnapshot } from '../../hooks/useEntities';
@@ -423,7 +423,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     const contextMenuWidth = 220;
     const contextMenuHeight = 230 + quickCreateActions.length * 36;
     const layoutMenuWidth = 220;
-    const layoutMenuHeight = 380;
+    const layoutMenuHeight = 460;
     const supportsCanvasTokenSettings = entity.type !== 'canvas' && entity.type !== 'folder';
     const usesSpecialTabbedSheet = entity.type === 'character' || entity.type === 'object' || entity.type === 'ability' || entity.type === 'attack';
     const genericTabs: SheetTab<GenericEntityTab>[] = [
@@ -448,6 +448,8 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
         { id: 'wide-center', label: 'Широкий центр', icon: Crosshair, run: () => tileWindow(id, 'wideCenter') },
         { id: 'grid', label: 'Разложить все окна сеткой', icon: LayoutGrid, run: arrangeVisibleWindowsGrid },
         { id: 'cascade', label: 'Каскадом', icon: Layers, run: cascadeVisibleWindows },
+        { id: 'save-snapshot', label: 'Сохранить раскладку', icon: Save, run: saveCurrentWindowLayoutSnapshot },
+        { id: 'restore-snapshot', label: 'Восстановить раскладку', icon: RotateCcw, run: restoreWindowLayoutSnapshot },
     ];
 
     return (

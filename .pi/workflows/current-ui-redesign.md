@@ -33,7 +33,7 @@
 - `Фишка` и `Карточка` теперь открывают единый DOM compact overlay через кнопку `i`; вкладки добавляются туда, а не в legacy inline Konva overlay.
 - Compact character card tabbed content внесён: `Статы`, `Действия`, `Ресурсы`, `Заметки`. Helper отдаёт первые атаки/способности с формулами, nested attack parent name и inventory preview.
 - Compact character card roll actions внесены: `AttackSheet`, `AbilitiesBlock` и canvas compact card используют общий `entityActionRoll` service поверх Roll Engine facade.
-- Workspace/window ergonomics design gate и первый local-only code slice внесены: `.pi/docs/workspace-window-ergonomics-plan.md`, `windowLayout.ts`, `tileWindow`, `arrangeVisibleWindowsGrid`, `cascadeVisibleWindows`, layout menu в `EntityWindow`.
+- Workspace/window ergonomics design gate и первый local-only code slice внесены: `.pi/docs/workspace-window-ergonomics-plan.md`, `windowLayout.ts`, `tileWindow`, `arrangeVisibleWindowsGrid`, `cascadeVisibleWindows`, quick screen snapshot, layout menu в `EntityWindow`.
 - Документация обновлена в `.pi/docs/ui-redesign-master-plan.md`, `.pi/DEVELOPMENT_PLAN.md`, `.pi/FEATURE_BACKLOG.md` и `.pi/skills/vibe-ui-architecture/SKILL.md`.
 - Последние token-pass изменения проверены командами `npm.cmd exec tsc -- --noEmit`, `npm.cmd run lint`, `npm.cmd run build`, `tsx src/utils/theme.test.ts`, но могут оставаться незакоммиченными из-за git/sandbox approval limit.
 
@@ -49,7 +49,7 @@
 
 ## Следующий безопасный срез
 
-1. Продолжить workspace после product gate: local workspace snapshots или browser popout foundation.
+1. Продолжить workspace после product gate: named/local workspace snapshots, GM-shared layouts или browser popout foundation.
 2. Добавить entity-level defaults/настройки полей compact card только после короткого product gate, потому что это затронет UX сущностей и сохранение preference.
 3. Custom world locales/editor продолжать только после отдельного формата и server endpoint design.
 
