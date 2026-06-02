@@ -4,12 +4,11 @@ import { yjsStore } from '../../../store/yjsStore';
 import { useEntitiesByParent, getEntitiesSnapshot } from '../../../hooks/useEntities';
 import { useWindowStore } from '../../../store/windowStore';
 import { useUIStore } from '../../../store/uiStore';
-import { rollEngine } from '../../../services/rollEngine';
+import { rollEntityActionToChat } from '../../../services/entityActionRoll';
 import { Dices, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { glass } from '../../../utils/theme';
 import { getAbilityCostBase, getAbilityFormula, setAbilityCostBase } from '../../../utils/abilityModel';
 import { generateEntityId } from '../../../utils/entityId';
-import { createEntityRollVariableResolver } from '../../../utils/rollVariables';
 import { getEntityDropActions } from '../../../utils/entityDropRouter';
 import { readEntityDragIds } from '../../../utils/entityDragPayload';
 import { applyOwnerToEntityTree, getEntityOwnerId, moveEntityTreeToParent } from '../../../utils/entityTreeMutations';
@@ -40,21 +39,6 @@ function updateAbilityProperty(ability: Entity, key: string, value: unknown) {
             [key]: value,
         },
     });
-}
-
-function sendAbilityRollToChat(ability: Entity, parentEntity?: Entity) {
-    const formula = getAbilityFormula(ability);
-    if (!formula) return;
-
-    const result = rollEngine.rollExpression(formula, {
-        resolveVariable: createEntityRollVariableResolver(ability, parentEntity ? [parentEntity] : []),
-    });
-    if (result.error) {
-        yjsStore.sendMessage(`Ошибка броска ${ability.name}: ${result.error}`, 'Система', true);
-        return;
-    }
-
-    yjsStore.sendMessage(rollEngine.formatRollMessage(`${ability.name}: ${formula}`, result), 'Система', true);
 }
 
 export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
@@ -246,7 +230,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                sendAbilityRollToChat(ability, entity);
+                                                rollEntityActionToChat(ability, 'ability', [entity]);
                                             }}
                                             disabled={!canRoll}
                                             title={canRoll ? `Бросить ${formula}` : 'Укажите формулу броска'}

@@ -1,5 +1,5 @@
 import type { Entity } from '../types';
-import { getAbilityFormula } from './abilityModel';
+import { getEntityActionRollFormula } from './entityActionRollModel';
 import { normalizeResources } from './resourceModel';
 
 export interface CharacterCompactMetric {
@@ -103,11 +103,6 @@ function readNestedRecord(record: Record<string, unknown>, key: string): Record<
     return isRecord(record[key]) ? record[key] : {};
 }
 
-function readAttackFormula(attack: Entity): string {
-    const properties = attack.properties ?? {};
-    return stringifyProperty(properties.diceFormula ?? properties.dice);
-}
-
 function readInventoryCategory(item: Entity): string {
     const properties = item.properties ?? {};
     return (
@@ -192,14 +187,14 @@ export function buildCharacterCompactSummary(character: Entity, allEntities: rea
             id: attack.id,
             kind: 'attack' as const,
             name: attack.name?.trim() || 'Атака',
-            formula: readAttackFormula(attack),
+            formula: getEntityActionRollFormula(attack, 'attack'),
             parentName: attack.parentId && attack.parentId !== character.id ? entityById.get(attack.parentId)?.name : undefined,
         })),
         ...abilities.map((ability) => ({
             id: ability.id,
             kind: 'ability' as const,
             name: ability.name?.trim() || 'Способность',
-            formula: getAbilityFormula(ability),
+            formula: getEntityActionRollFormula(ability, 'ability'),
         })),
     ].slice(0, 8);
 

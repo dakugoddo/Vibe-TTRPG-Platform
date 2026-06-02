@@ -31,7 +31,8 @@
 - [x] Первый compact character card slice: `character` token info overlay показывает быстрые метрики, wounds/resources bars и счётчики атак/способностей/вещей без изменения canvas data format.
 - [x] Единый compact overlay: `Фишка` и `Карточка` используют один DOM overlay через кнопку `i`, чтобы будущие tabs не дублировались в Konva.
 - [x] Tabbed compact character card content (`Статы`, `Действия`, `Ресурсы`, `Заметки`) в unified overlay: быстрые метрики, actions list, resources/inventory и notes без изменения canvas data format.
-- [ ] Следующий compact card UI-срез: roll/action buttons только через существующий Roll Engine facade, без параллельной системы бросков.
+- [x] Compact card roll/action buttons: вкладка `Действия` бросает атаки/способности через общий `entityActionRoll` service и существующий Roll Engine facade.
+- [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей только после короткого product gate.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
 ## 2. Audio Module: Local-First Core
@@ -142,5 +143,6 @@
 12. [x] Первый compact character card slice: helper + token info overlay summary для персонажей.
 13. [x] Унифицировать `i` overlay для `Фишка` и `Карточка`.
 14. [x] Tabbed compact character card content (`Статы`, `Действия`, `Ресурсы`, `Заметки`) в unified overlay.
-15. [ ] Следующий compact card UI-срез: roll/action buttons через Roll Engine facade.
-16. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.
+15. [x] Compact card roll/action buttons через Roll Engine facade.
+16. [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей после короткого product gate.
+17. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.

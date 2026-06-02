@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { yjsStore } from '../../../store/yjsStore';
 import { useEntities } from '../../../hooks/useEntities';
 import { useWindowStore } from '../../../store/windowStore';
-import { rollEngine } from '../../../services/rollEngine';
+import { rollEntityActionToChat } from '../../../services/entityActionRoll';
 import type { Entity } from '../../../types';
 import { Box, Check, Dices, Edit2, FileText, Plus, SlidersHorizontal, Trash2, Tag } from 'lucide-react';
 import { EntityLink } from '../../ui/EntityLink';
@@ -11,7 +11,7 @@ import { SheetTabs, type SheetTab } from '../../ui/SheetTabs';
 import { TagPickerPopup } from './TagPickerPopup';
 import { WikiLinkTextarea } from '../../ui/WikiLinkTextarea';
 import { glass } from '../../../utils/theme';
-import { createEntityRollVariableResolver } from '../../../utils/rollVariables';
+import { getAttackFormula } from '../../../utils/entityActionRollModel';
 import { EntityCanvasTokenSettings } from './EntityCanvasTokenSettings';
 
 interface AttackSheetProps {
@@ -34,33 +34,6 @@ function getEntityOwnerId(entity: Entity): string | undefined {
 
 function canEditEntity(entity: Entity): boolean {
     return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
-}
-
-function stringifyProperty(value: unknown): string {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'string') return value;
-    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-    return '';
-}
-
-function getAttackFormula(entity: Entity): string {
-    return stringifyProperty(entity.properties?.diceFormula ?? entity.properties?.dice).trim();
-}
-
-function sendAttackRollToChat(entity: Entity, relatedEntities: Entity[] = []) {
-    const formula = getAttackFormula(entity);
-    if (!formula) return;
-
-    const result = rollEngine.rollExpression(formula, {
-        plainNumberAsD6Pool: true,
-        resolveVariable: createEntityRollVariableResolver(entity, relatedEntities),
-    });
-    if (result.error) {
-        yjsStore.sendMessage(`Ошибка броска ${entity.name}: ${result.error}`, 'Система', true);
-        return;
-    }
-
-    yjsStore.sendMessage(rollEngine.formatRollMessage(`${entity.name}: ${formula}`, result), 'Система', true);
 }
 
 export function AttackSheet({ entity }: AttackSheetProps) {
@@ -212,7 +185,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                             />
                             <button
                                 type="button"
-                                onClick={() => sendAttackRollToChat(entity, parentEntity ? [parentEntity] : [])}
+                                onClick={() => rollEntityActionToChat(entity, 'attack', parentEntity ? [parentEntity] : [])}
                                 disabled={!canRoll}
                                 className={`grid h-8 w-8 place-items-center rounded-[var(--vibe-radius-sm)] border transition-all ${canRoll ? 'border-[color-mix(in_srgb,var(--vibe-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] text-[var(--vibe-danger)] hover:bg-[color-mix(in_srgb,var(--vibe-danger)_28%,transparent)]' : 'cursor-not-allowed border-transparent bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)]'}`}
                                 title={canRoll ? `Бросить ${rollFormula}` : 'Укажите формулу броска'}

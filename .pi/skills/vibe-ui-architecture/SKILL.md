@@ -57,7 +57,7 @@ description: Complete UI architecture reference for Vibe TTRPG Platform. Use whe
 - `SettingsWindow`: settings frame, interface/audio/canvas/world/roles panels, language switch, role badges, toggles, range/input controls and error states use semantic tokens.
 - `AssetBrowser`: host/player file surfaces, toolbar, migrate warning, filters/sort, selection bar, empty/error states and asset cards use semantic tokens.
 - `AudioDesk`: player mixer, GM audio desk, channel tabs, broadcast/fade controls, cues, audio list, empty/error states and danger/success actions use semantic tokens.
-- `Compact character card`: `app/src/utils/characterCardSummary.ts` owns character summary data, and `InfiniteCanvas.tsx` owns the unified DOM overlay tabs (`Статы`, `Действия`, `Ресурсы`, `Заметки`) for both `Фишка` and `Карточка`. Do not add a parallel Konva-only card flow.
+- `Compact character card`: `app/src/utils/characterCardSummary.ts` owns character summary data, `app/src/utils/entityActionRollModel.ts` + `app/src/services/entityActionRoll.ts` own roll formulas/chat dispatch, and `InfiniteCanvas.tsx` owns the unified DOM overlay tabs (`Статы`, `Действия`, `Ресурсы`, `Заметки`) for both `Фишка` and `Карточка`. Do not add a parallel Konva-only card flow or local dice logic in canvas.
 
 После этого token-pass старые hardcoded surfaces нужно искать точечно через `rg "white/|black/|#[0-9a-fA-F]{6}|bg-black|text-white|border-white"` перед каждым UI-срезом, а не считать какой-то один файл главным долгом.
 

@@ -41,10 +41,18 @@
   - `Заметки`: plain-text описание сущности.
 - Roll/action buttons должны добавляться следующим срезом только через существующий Roll Engine facade, а не через новую локальную dice-логику в `InfiniteCanvas`.
 
+## Третий срез
+
+Третий срез подключает action buttons без новой dice-системы:
+
+- Добавлен pure helper `app/src/utils/entityActionRollModel.ts`, который читает формулы атак и способностей единообразно.
+- Добавлен service `app/src/services/entityActionRoll.ts`, который отправляет бросок в чат через существующий `rollEngine` и `createEntityRollVariableResolver`.
+- `AttackSheet`, `AbilitiesBlock` и compact card вкладка `Действия` используют один service для roll-to-chat.
+- Вложенная атака из оружия получает related entities: оружие и персонажа, чтобы переменные могли резолвиться не только из самой атаки.
+
 ## Будущие срезы
 
 - Позволить entity-level defaults выбирать, какие поля показывать на compact card.
-- Подключить roll/action buttons через существующий Roll Engine facade.
 - Проверить permissions: player не должен видеть GM/private fields через compact card.
 
 ## QA
@@ -53,6 +61,7 @@
 - Нажать `i`: summary должен появиться рядом с token и не выходить за экран.
 - У персонажа без ресурсов/атак overlay остаётся аккуратным и показывает описание.
 - На вкладке `Действия` вложенная атака оружия отображается с названием оружия, а способность показывает нормализованную формулу без `/r`/`!roll`.
+- Кнопка кубика на вкладке `Действия` отправляет бросок в чат; пустая формула оставляет кнопку disabled.
 - На вкладке `Ресурсы` вещи показывают категорию и badge `надето`, если предмет экипирован.
 - У скрытой/private entity overlay не раскрывает данные.
 - Double-click/open button продолжает открывать исходную entity.

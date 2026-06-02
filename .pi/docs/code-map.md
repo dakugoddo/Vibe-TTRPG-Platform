@@ -47,7 +47,7 @@
 | Canvas line routing/editing helpers | `app/src/utils/canvasLineRouting.ts`, `app/src/types/canvasTypes.ts`, `app/src/components/canvas/CanvasToolbar.tsx`, `app/src/components/canvas/InfiniteCanvas.tsx` |
 | Canvas visual style presets | `app/src/utils/canvasVisualStyle.ts`, `app/src/types/canvasTypes.ts`, `app/src/components/canvas/CanvasToolbar.tsx`, `app/src/components/canvas/InfiniteCanvas.tsx` |
 | Canvas linked entity tokens/cards | `app/src/types/canvasTypes.ts`, `app/src/components/canvas/InfiniteCanvas.tsx`, `app/src/components/canvas/CanvasToolbar.tsx`, `app/src/utils/canvasEntityTokenFrame.ts`, `app/src/utils/entityCanvasDefaults.ts`, `app/src/components/windows/blocks/EntityCanvasTokenSettings.tsx`, `.pi/docs/canvas-entity-tokens.md` |
-| Compact character card on canvas | `app/src/utils/characterCardSummary.ts`, `app/src/components/canvas/InfiniteCanvas.tsx`, `.pi/docs/compact-character-card-canvas.md` | compact summary и вкладки `Статы/Действия/Ресурсы/Заметки` для `character` linked token/card info overlay: метрики, ресурсы, атаки, способности, вещи |
+| Compact character card on canvas | `app/src/utils/characterCardSummary.ts`, `app/src/utils/entityActionRollModel.ts`, `app/src/services/entityActionRoll.ts`, `app/src/components/canvas/InfiniteCanvas.tsx`, `.pi/docs/compact-character-card-canvas.md` | compact summary, вкладки `Статы/Действия/Ресурсы/Заметки` и roll/action buttons для `character` linked token/card info overlay |
 | Canvas persistence filter/cleanup | `app/src/utils/canvasPersistence.ts` |
 | Persistent draw/fog sync | `app/src/store/canvasSyncStore.ts` |
 
