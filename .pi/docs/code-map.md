@@ -48,6 +48,7 @@
 | Canvas visual style presets | `app/src/utils/canvasVisualStyle.ts`, `app/src/types/canvasTypes.ts`, `app/src/components/canvas/CanvasToolbar.tsx`, `app/src/components/canvas/InfiniteCanvas.tsx` |
 | Canvas linked entity tokens/cards | `app/src/types/canvasTypes.ts`, `app/src/components/canvas/InfiniteCanvas.tsx`, `app/src/components/canvas/CanvasToolbar.tsx`, `app/src/utils/canvasEntityTokenFrame.ts`, `app/src/utils/entityCanvasDefaults.ts`, `app/src/components/windows/blocks/EntityCanvasTokenSettings.tsx`, `.pi/docs/canvas-entity-tokens.md` |
 | Compact character card on canvas | `app/src/utils/characterCardSummary.ts`, `app/src/utils/entityActionRollModel.ts`, `app/src/services/entityActionRoll.ts`, `app/src/components/canvas/InfiniteCanvas.tsx`, `.pi/docs/compact-character-card-canvas.md` | compact summary, вкладки `Статы/Действия/Ресурсы/Заметки` и roll/action buttons для `character` linked token/card info overlay |
+| Workspace/window ergonomics | `app/src/utils/windowLayout.ts`, `app/src/store/windowStore.ts`, `app/src/components/windows/WindowManager.tsx`, `app/src/components/windows/EntityWindow.tsx`, `.pi/docs/workspace-window-ergonomics-plan.md` | screen/canvas window layers, local layout actions, future workspace snapshots and multi-monitor design gate |
 | Canvas persistence filter/cleanup | `app/src/utils/canvasPersistence.ts` |
 | Persistent draw/fog sync | `app/src/store/canvasSyncStore.ts` |
 

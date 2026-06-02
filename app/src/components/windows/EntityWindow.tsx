@@ -1,5 +1,5 @@
 import { Rnd } from 'react-rnd';
-import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network, Copy, Box, FileText, Lightbulb, Sword, Wand2 } from 'lucide-react';
+import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network, Copy, Box, FileText, Lightbulb, Sword, Wand2, LayoutGrid, PanelLeft, PanelRight, Crosshair, Layers } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useWindowStore } from '../../store/windowStore';
 import type { WindowState, WindowMode } from '../../store/windowStore';
@@ -232,9 +232,21 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     const [tempName, setTempName] = useState('');
     const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
     const [genericTab, setGenericTab] = useState<GenericEntityTab>('description');
+    const [layoutMenuState, setLayoutMenuState] = useState<ContextMenuState | null>(null);
 
     const entity = useEntity(entityId);
-    const { focusWindow, closeWindow, updateWindow, setMode, togglePin, focusedWindowId, openWindow } = useWindowStore();
+    const {
+        focusWindow,
+        closeWindow,
+        updateWindow,
+        setMode,
+        togglePin,
+        tileWindow,
+        arrangeVisibleWindowsGrid,
+        cascadeVisibleWindows,
+        focusedWindowId,
+        openWindow,
+    } = useWindowStore();
     const stageScale = useCanvasStore(s => s.scale);
     const stageOffset = useCanvasStore(s => s.offset);
     const activeCanvasId = useCanvasStore(s => s.activeCanvasId);
@@ -265,6 +277,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
 
     const handleContextMenu = (e: React.MouseEvent) => {
         e.preventDefault();
+        setLayoutMenuState(null);
         if (!canEditCurrentEntity) {
             handleCopyWikiLink();
             return;
@@ -409,6 +422,8 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     const quickCreateActions = canEditCurrentEntity ? getWindowQuickCreateActions(entity) : [];
     const contextMenuWidth = 220;
     const contextMenuHeight = 230 + quickCreateActions.length * 36;
+    const layoutMenuWidth = 220;
+    const layoutMenuHeight = 380;
     const supportsCanvasTokenSettings = entity.type !== 'canvas' && entity.type !== 'folder';
     const usesSpecialTabbedSheet = entity.type === 'character' || entity.type === 'object' || entity.type === 'ability' || entity.type === 'attack';
     const genericTabs: SheetTab<GenericEntityTab>[] = [
@@ -422,6 +437,18 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     }`;
     const contextMenuItemClass = 'group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[var(--vibe-text-muted)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
     const contextMenuIconClass = 'text-[var(--vibe-text-faint)] transition-colors group-hover:text-[var(--vibe-text-primary)]';
+    const layoutMenuActions: Array<{ id: string; label: string; icon: LucideIcon; run: () => void }> = [
+        { id: 'left', label: 'Левая половина', icon: PanelLeft, run: () => tileWindow(id, 'left') },
+        { id: 'right', label: 'Правая половина', icon: PanelRight, run: () => tileWindow(id, 'right') },
+        { id: 'top-left', label: 'Верхний левый угол', icon: LayoutGrid, run: () => tileWindow(id, 'topLeft') },
+        { id: 'top-right', label: 'Верхний правый угол', icon: LayoutGrid, run: () => tileWindow(id, 'topRight') },
+        { id: 'bottom-left', label: 'Нижний левый угол', icon: LayoutGrid, run: () => tileWindow(id, 'bottomLeft') },
+        { id: 'bottom-right', label: 'Нижний правый угол', icon: LayoutGrid, run: () => tileWindow(id, 'bottomRight') },
+        { id: 'center', label: 'Центр', icon: Crosshair, run: () => tileWindow(id, 'center') },
+        { id: 'wide-center', label: 'Широкий центр', icon: Crosshair, run: () => tileWindow(id, 'wideCenter') },
+        { id: 'grid', label: 'Разложить все окна сеткой', icon: LayoutGrid, run: arrangeVisibleWindowsGrid },
+        { id: 'cascade', label: 'Каскадом', icon: Layers, run: cascadeVisibleWindows },
+    ];
 
     return (
         <Rnd
@@ -480,6 +507,19 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                     {/* Custom context menu rendered via portal at end of file */}
 
                     <div className="flex items-center gap-0.5">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (isPinned) return;
+                                setContextMenuState(null);
+                                setLayoutMenuState({ x: e.clientX, y: e.clientY });
+                            }}
+                            disabled={isPinned}
+                            className={`${iconActionClass} ${isPinned ? 'cursor-not-allowed opacity-45' : ''}`}
+                            title={isPinned ? 'Раскладка доступна для экранных окон' : 'Раскладка окна'}
+                        >
+                            <LayoutGrid size={14} />
+                        </button>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -729,6 +769,45 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                     </div>
                 </div>
             </div>
+            {layoutMenuState && ReactDOM.createPortal(
+                <>
+                    <div
+                        className="fixed inset-0 z-[99998]"
+                        onClick={(e) => { e.stopPropagation(); setLayoutMenuState(null); }}
+                        onContextMenu={(e) => { e.preventDefault(); setLayoutMenuState(null); }}
+                    />
+                    <div
+                        className={`fixed min-w-[220px] overflow-hidden rounded-[var(--vibe-radius-md)] py-1.5 animate-in fade-in zoom-in-95 duration-100 ${glass.popover}`}
+                        style={{
+                            left: layoutMenuState.x + layoutMenuWidth > window.innerWidth ? layoutMenuState.x - layoutMenuWidth : layoutMenuState.x,
+                            top: layoutMenuState.y + layoutMenuHeight > window.innerHeight ? layoutMenuState.y - layoutMenuHeight : layoutMenuState.y,
+                            zIndex: 99999,
+                        }}
+                    >
+                        <div className="pointer-events-none mb-1 select-none border-b border-[var(--vibe-border-subtle)] px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
+                            Раскладка окна
+                        </div>
+                        {layoutMenuActions.map((action) => {
+                            const ActionIcon = action.icon;
+                            return (
+                                <button
+                                    key={action.id}
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        action.run();
+                                        setLayoutMenuState(null);
+                                    }}
+                                    className={contextMenuItemClass}
+                                >
+                                    <ActionIcon size={14} className={contextMenuIconClass} /> {action.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </>,
+                document.body
+            )}
             {contextMenuState && canEditCurrentEntity && ReactDOM.createPortal(
                 <>
                     <div 

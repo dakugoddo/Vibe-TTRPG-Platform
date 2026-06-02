@@ -32,6 +32,8 @@
 - [x] Единый compact overlay: `Фишка` и `Карточка` используют один DOM overlay через кнопку `i`, чтобы будущие tabs не дублировались в Konva.
 - [x] Tabbed compact character card content (`Статы`, `Действия`, `Ресурсы`, `Заметки`) в unified overlay: быстрые метрики, actions list, resources/inventory и notes без изменения canvas data format.
 - [x] Compact card roll/action buttons: вкладка `Действия` бросает атаки/способности через общий `entityActionRoll` service и существующий Roll Engine facade.
+- [x] `FEAT-WORKSPACE-001`: создать design gate для Obsidian-like workspace/window ergonomics: `.pi/docs/workspace-window-ergonomics-plan.md`.
+- [x] Первый workspace code slice: local-only layout actions для unpinned окон (`left/right/corners/grid/center`) без world-shared workspace format.
 - [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей только после короткого product gate.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
@@ -144,5 +146,7 @@
 13. [x] Унифицировать `i` overlay для `Фишка` и `Карточка`.
 14. [x] Tabbed compact character card content (`Статы`, `Действия`, `Ресурсы`, `Заметки`) в unified overlay.
 15. [x] Compact card roll/action buttons через Roll Engine facade.
-16. [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей после короткого product gate.
-17. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.
+16. [x] `FEAT-WORKSPACE-001`: design gate для Obsidian-like window/workspace ergonomics.
+17. [x] Первый workspace code slice: local-only layout actions для unpinned окон.
+18. [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей после короткого product gate.
+19. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.

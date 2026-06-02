@@ -1,5 +1,14 @@
 import { create } from 'zustand';
 import { useCanvasStore } from './canvasStore';
+import {
+    getScreenWindowLayoutBounds,
+    getWindowCascadeLayoutRects,
+    getWindowGridLayoutRects,
+    getWindowLayoutRect,
+    type WindowLayoutPreset,
+} from '../utils/windowLayout';
+
+export type { WindowLayoutPreset } from '../utils/windowLayout';
 
 export type WindowMode = 'full' | 'compact' | 'icon';
 
@@ -26,7 +35,24 @@ interface WindowStoreState {
     focusWindow: (id: string) => void;
     setMode: (id: string, mode: WindowMode) => void;
     togglePin: (id: string, canvasId?: string) => void;
+    tileWindow: (id: string, preset: WindowLayoutPreset) => void;
+    arrangeVisibleWindowsGrid: () => void;
+    cascadeVisibleWindows: () => void;
     hydrateWindow: (windowState: WindowState) => void;
+}
+
+function getCurrentLayoutBounds() {
+    return getScreenWindowLayoutBounds(globalThis.innerWidth ?? 1200, globalThis.innerHeight ?? 800);
+}
+
+function getLayoutTargets(windows: Record<string, WindowState>): WindowState[] {
+    return Object.values(windows)
+        .filter((win) => !win.isPinned)
+        .sort((a, b) => a.zIndex - b.zIndex);
+}
+
+function ensureLayoutMode(win: WindowState): WindowMode {
+    return win.mode === 'icon' ? 'compact' : win.mode;
 }
 
 export const useWindowStore = create<WindowStoreState>((set, get) => ({
@@ -184,6 +210,47 @@ export const useWindowStore = create<WindowStoreState>((set, get) => ({
                 [id]: { ...win, isPinned, canvasId: isPinned ? canvasId : undefined },
             },
         });
+    },
+
+    tileWindow: (id, preset) => {
+        const { windows } = get();
+        const win = windows[id];
+        if (!win || win.isPinned) return;
+
+        const rect = getWindowLayoutRect(preset, getCurrentLayoutBounds());
+        set({
+            windows: {
+                ...windows,
+                [id]: { ...win, ...rect, mode: ensureLayoutMode(win) },
+            },
+            focusedWindowId: id,
+        });
+    },
+
+    arrangeVisibleWindowsGrid: () => {
+        const { windows } = get();
+        const targets = getLayoutTargets(windows);
+        if (targets.length === 0) return;
+
+        const rects = getWindowGridLayoutRects(targets.length, getCurrentLayoutBounds());
+        const nextWindows = { ...windows };
+        targets.forEach((win, index) => {
+            nextWindows[win.id] = { ...win, ...rects[index], mode: ensureLayoutMode(win) };
+        });
+        set({ windows: nextWindows });
+    },
+
+    cascadeVisibleWindows: () => {
+        const { windows } = get();
+        const targets = getLayoutTargets(windows);
+        if (targets.length === 0) return;
+
+        const rects = getWindowCascadeLayoutRects(targets.length, getCurrentLayoutBounds());
+        const nextWindows = { ...windows };
+        targets.forEach((win, index) => {
+            nextWindows[win.id] = { ...win, ...rects[index], mode: ensureLayoutMode(win) };
+        });
+        set({ windows: nextWindows });
     },
 
     hydrateWindow: (windowState) => {
