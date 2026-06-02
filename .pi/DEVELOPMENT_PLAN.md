@@ -29,7 +29,8 @@
 - [x] AudioDesk polish: player mixer, GM desk, channel tabs, broadcast/fade controls, cues, audio list, empty/error states и danger/success actions переведены на semantic tokens.
 - [x] i18n manager/custom locales foundation: language switch в `SettingsWindow -> Интерфейс`, localStorage preference, built-in ru/en bundles и mini-plan custom world locales без записи файлов мира.
 - [x] Первый compact character card slice: `character` token info overlay показывает быстрые метрики, wounds/resources bars и счётчики атак/способностей/вещей без изменения canvas data format.
-- [ ] Следующий UI-срез: tabbed compact character card для режима `Карточка` на canvas.
+- [x] Единый compact overlay: `Фишка` и `Карточка` используют один DOM overlay через кнопку `i`, чтобы будущие tabs не дублировались в Konva.
+- [ ] Следующий UI-срез: tabbed compact character card content (`Stats`, `Actions`, `Resources`, `Notes`) в unified overlay.
 - [ ] После block-pass проектировать компактный character card view для canvas.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
@@ -139,5 +140,6 @@
 10. [x] i18n manager/custom locales foundation: RU/EN switch, localStorage-backed preference, focused localization test и mini-plan для будущих world locales.
 11. [x] Закрепить `.pi/workflows/current-ui-redesign.md` как живой handoff для UI-среза.
 12. [x] Первый compact character card slice: helper + token info overlay summary для персонажей.
-13. [ ] Следующий UI-срез: tabbed compact character card для режима `Карточка` на canvas.
-14. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.
+13. [x] Унифицировать `i` overlay для `Фишка` и `Карточка`.
+14. [ ] Следующий UI-срез: tabbed compact character card content (`Stats`, `Actions`, `Resources`, `Notes`) в unified overlay.
+15. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.

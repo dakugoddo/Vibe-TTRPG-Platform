@@ -25,12 +25,13 @@
   - счётчики атак, способностей и вещей;
   - краткое описание;
   - кнопку открытия полной сущности.
+- `Фишка` и `Карточка` используют один DOM compact overlay, чтобы будущие tabs не дублировались в Konva и HTML.
 - Сохранённые canvas данные остаются совместимыми: это только presentation layer.
 
 ## Будущие срезы
 
 - Добавить compact tabs внутри canvas card: `Stats`, `Actions`, `Resources`, `Notes`.
-- Для режима `Карточка` (`entityTokenMode: 'art'`) сделать не только image-card, но и character-sheet overlay/variant.
+- Добавить tabbed content внутри единого DOM overlay: `Stats`, `Actions`, `Resources`, `Notes`.
 - Позволить entity-level defaults выбирать, какие поля показывать на compact card.
 - Подключить roll/action buttons через существующий Roll Engine facade.
 - Проверить permissions: player не должен видеть GM/private fields через compact card.

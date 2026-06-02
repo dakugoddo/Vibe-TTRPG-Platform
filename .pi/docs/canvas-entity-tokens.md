@@ -31,7 +31,7 @@ Canvas representation хранится в `DrawElement` внутри `canvas.pro
 - Double-click по representation открывает исходную entity, если у пользователя есть доступ.
 - Кнопка `i` на token representation открывает permission-aware info popover с именем, типом и коротким plain-text описанием.
 - Для `character` token info popover дополнительно показывает первый compact sheet summary: быстрые метрики, wounds/resources bars, счётчики атак, способностей и вещей. Summary строится через `app/src/utils/characterCardSummary.ts` и не меняет сохранённый `DrawElement`.
-- Кнопка `i` на карточке открывает описание overlay поверх самой карточки, без отдельного floating popup.
+- Кнопка `i` на карточке использует тот же semantic DOM compact overlay, что и фишка; старый inline Konva overlay считается временным legacy-путём и не должен расширяться новыми вкладками.
 - Info popover для token показывает миниатюру representation image с fallback на первую букву и до 3 тегов сущности; недоступные entity по-прежнему не раскрывают приватные данные.
 - Если entity скрыта для пользователя, UI показывает безопасный placeholder без имени и изображения.
 - Drag/resize работают как у draw elements и сохраняются в canvas state.
@@ -50,7 +50,7 @@ Canvas representation хранится в `DrawElement` внутри `canvas.pro
 - Контекстное меню representation: дополнительные быстрые actions для нескольких selected tokens, если они понадобятся после ручного QA.
 - Entity settings: пользовательские frame assets из asset library.
 - Расширенный hover card: markdown preview, избранные stats, действия GM/player.
-- Compact character card tabs: stats/actions/resources/notes поверх текущего linked representation без отдельного боевого режима окна.
+- Compact character card tabs: stats/actions/resources/notes в едином DOM overlay поверх текущего linked representation без отдельного боевого режима окна.
 - Пользовательские рамки из asset library и сохранённые entity-level defaults для token/card.
 - Мультивыбор и массовая смена representation mode.
 

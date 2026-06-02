@@ -4576,16 +4576,10 @@ export function InfiniteCanvas() {
                 onDblClickText={handleTextDblClick}
                 onOpenLinkedEntity={(entityId, e) => openWindow(entityId, e.evt.clientX, e.evt.clientY)}
                 onShowLinkedEntityInfo={(elementId, e) => {
-                  const targetElement = renderedDrawElements.find((drawElement) => drawElement.id === elementId);
-                  if (targetElement?.type === 'entityToken' && (targetElement.entityTokenMode || 'token') === 'art') {
-                    setEntityTokenInfo(null);
-                    setEntityTokenInfoOverlayId((current) => current === elementId ? null : elementId);
-                    return;
-                  }
                   const nativeEvent = e.evt;
                   const touch = 'changedTouches' in nativeEvent ? nativeEvent.changedTouches[0] : null;
                   setEntityTokenInfoOverlayId(null);
-                  setEntityTokenInfo({
+                  setEntityTokenInfo((current) => current?.elementId === elementId ? null : {
                     elementId,
                     x: 'clientX' in nativeEvent ? nativeEvent.clientX : touch?.clientX ?? window.innerWidth / 2,
                     y: 'clientY' in nativeEvent ? nativeEvent.clientY : touch?.clientY ?? window.innerHeight / 2,
@@ -5103,7 +5097,6 @@ export function InfiniteCanvas() {
         const linkedEntity = element?.linkedEntityId ? yjsStore.entitiesMap.get(element.linkedEntityId) : undefined;
         if (!element || !linkedEntity || !canViewCanvasEntity(linkedEntity)) return null;
         const mode = element.entityTokenMode || 'token';
-        if (mode === 'art') return null;
         const rawImageSource = getEntityCanvasTokenImageSource(linkedEntity, mode);
         const imageSource = resolveCanvasImageSource(rawImageSource);
         const visibleTags = linkedEntity.tags.slice(0, 3);
