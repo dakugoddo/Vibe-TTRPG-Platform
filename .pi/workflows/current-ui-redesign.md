@@ -30,7 +30,8 @@
 - SettingsWindow, AssetBrowser и AudioDesk переведены на semantic tokens.
 - `FEAT-I18N-002` первый срез внесён: `SettingsWindow -> Интерфейс` получил RU/EN switch, i18next инициализируется из localStorage, добавлены `localization.ts`, `useLocalePreference.ts`, focused test и mini-plan `.pi/docs/i18n-custom-locales-foundation.md`.
 - Compact character card первый срез внесён: `characterCardSummary.ts` строит быстрые метрики/resources/action counts, а token info overlay показывает compact summary для `character` без изменения `DrawElement`.
-- `Фишка` и `Карточка` теперь открывают единый DOM compact overlay через кнопку `i`; будущие tabs нужно добавлять туда, а не расширять inline Konva overlay.
+- `Фишка` и `Карточка` теперь открывают единый DOM compact overlay через кнопку `i`; вкладки добавляются туда, а не в legacy inline Konva overlay.
+- Compact character card tabbed content внесён: `Статы`, `Действия`, `Ресурсы`, `Заметки`. Helper отдаёт первые атаки/способности с формулами, nested attack parent name и inventory preview.
 - Документация обновлена в `.pi/docs/ui-redesign-master-plan.md`, `.pi/DEVELOPMENT_PLAN.md`, `.pi/FEATURE_BACKLOG.md` и `.pi/skills/vibe-ui-architecture/SKILL.md`.
 - Последние token-pass изменения проверены командами `npm.cmd exec tsc -- --noEmit`, `npm.cmd run lint`, `npm.cmd run build`, `tsx src/utils/theme.test.ts`, но могут оставаться незакоммиченными из-за git/sandbox approval limit.
 
@@ -46,8 +47,8 @@
 
 ## Следующий безопасный срез
 
-1. Продолжить compact character card: добавить tabbed content (`Stats`, `Actions`, `Resources`, `Notes`) в единый DOM compact overlay.
-2. После этого добавить roll/action buttons только через существующий Roll Engine facade.
+1. Продолжить compact character card: добавить roll/action buttons только через существующий Roll Engine facade.
+2. Добавить entity-level defaults/настройки полей compact card только после короткого product gate, потому что это затронет UX сущностей и сохранение preference.
 3. Custom world locales/editor продолжать только после отдельного формата и server endpoint design.
 
 ## Проверки
@@ -59,6 +60,7 @@ cd app
 npm.cmd exec tsc -- --noEmit
 npm.cmd run lint
 npm.cmd run build
+..\server\node_modules\.bin\tsx.cmd src\utils\characterCardSummary.test.ts
 ```
 
 Если менялся `theme.ts`, дополнительно:

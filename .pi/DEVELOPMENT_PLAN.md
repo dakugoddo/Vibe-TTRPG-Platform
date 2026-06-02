@@ -30,8 +30,8 @@
 - [x] i18n manager/custom locales foundation: language switch в `SettingsWindow -> Интерфейс`, localStorage preference, built-in ru/en bundles и mini-plan custom world locales без записи файлов мира.
 - [x] Первый compact character card slice: `character` token info overlay показывает быстрые метрики, wounds/resources bars и счётчики атак/способностей/вещей без изменения canvas data format.
 - [x] Единый compact overlay: `Фишка` и `Карточка` используют один DOM overlay через кнопку `i`, чтобы будущие tabs не дублировались в Konva.
-- [ ] Следующий UI-срез: tabbed compact character card content (`Stats`, `Actions`, `Resources`, `Notes`) в unified overlay.
-- [ ] После block-pass проектировать компактный character card view для canvas.
+- [x] Tabbed compact character card content (`Статы`, `Действия`, `Ресурсы`, `Заметки`) в unified overlay: быстрые метрики, actions list, resources/inventory и notes без изменения canvas data format.
+- [ ] Следующий compact card UI-срез: roll/action buttons только через существующий Roll Engine facade, без параллельной системы бросков.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
 ## 2. Audio Module: Local-First Core
@@ -141,5 +141,6 @@
 11. [x] Закрепить `.pi/workflows/current-ui-redesign.md` как живой handoff для UI-среза.
 12. [x] Первый compact character card slice: helper + token info overlay summary для персонажей.
 13. [x] Унифицировать `i` overlay для `Фишка` и `Карточка`.
-14. [ ] Следующий UI-срез: tabbed compact character card content (`Stats`, `Actions`, `Resources`, `Notes`) в unified overlay.
-15. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.
+14. [x] Tabbed compact character card content (`Статы`, `Действия`, `Ресурсы`, `Заметки`) в unified overlay.
+15. [ ] Следующий compact card UI-срез: roll/action buttons через Roll Engine facade.
+16. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.

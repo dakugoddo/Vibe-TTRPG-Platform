@@ -1,4 +1,5 @@
 import type { Entity } from '../types';
+import { getAbilityFormula } from './abilityModel';
 import { normalizeResources } from './resourceModel';
 
 export interface CharacterCompactMetric {
@@ -15,9 +16,26 @@ export interface CharacterCompactResource {
     ratio: number;
 }
 
+export interface CharacterCompactAction {
+    id: string;
+    kind: 'attack' | 'ability';
+    name: string;
+    formula: string;
+    parentName?: string;
+}
+
+export interface CharacterCompactInventoryItem {
+    id: string;
+    name: string;
+    category: string;
+    equipped: boolean;
+}
+
 export interface CharacterCompactSummary {
     metrics: CharacterCompactMetric[];
     resources: CharacterCompactResource[];
+    actions: CharacterCompactAction[];
+    inventory: CharacterCompactInventoryItem[];
     inventoryCount: number;
     abilityCount: number;
     attackCount: number;
@@ -64,8 +82,40 @@ function readNumber(value: unknown): number | null {
     return null;
 }
 
+function stringifyProperty(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    return '';
+}
+
+function readBoolean(value: unknown): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value > 0;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        return normalized === 'true' || normalized === 'yes' || normalized === 'equipped' || normalized === 'да';
+    }
+    return false;
+}
+
 function readNestedRecord(record: Record<string, unknown>, key: string): Record<string, unknown> {
     return isRecord(record[key]) ? record[key] : {};
+}
+
+function readAttackFormula(attack: Entity): string {
+    const properties = attack.properties ?? {};
+    return stringifyProperty(properties.diceFormula ?? properties.dice);
+}
+
+function readInventoryCategory(item: Entity): string {
+    const properties = item.properties ?? {};
+    return (
+        stringifyProperty(properties.category)
+        || stringifyProperty(properties.slot)
+        || stringifyProperty(properties.kind)
+        || 'Предмет'
+    );
 }
 
 function readWoundsResource(character: Entity): CharacterCompactResource | null {
@@ -115,6 +165,7 @@ function readMetricCandidates(character: Entity): CharacterCompactMetric[] {
 }
 
 export function buildCharacterCompactSummary(character: Entity, allEntities: readonly Entity[]): CharacterCompactSummary {
+    const entityById = new Map(allEntities.map((entity) => [entity.id, entity]));
     const children = allEntities.filter((entity) => entity.parentId === character.id);
     const inventory = children.filter((entity) => entity.type === 'object');
     const inventoryIds = new Set(inventory.map((entity) => entity.id));
@@ -136,10 +187,36 @@ export function buildCharacterCompactSummary(character: Entity, allEntities: rea
         .slice(0, 2);
 
     const wounds = readWoundsResource(character);
+    const actionSummaries: CharacterCompactAction[] = [
+        ...attacks.map((attack) => ({
+            id: attack.id,
+            kind: 'attack' as const,
+            name: attack.name?.trim() || 'Атака',
+            formula: readAttackFormula(attack),
+            parentName: attack.parentId && attack.parentId !== character.id ? entityById.get(attack.parentId)?.name : undefined,
+        })),
+        ...abilities.map((ability) => ({
+            id: ability.id,
+            kind: 'ability' as const,
+            name: ability.name?.trim() || 'Способность',
+            formula: getAbilityFormula(ability),
+        })),
+    ].slice(0, 8);
+
+    const inventorySummaries = inventory
+        .map((item) => ({
+            id: item.id,
+            name: item.name?.trim() || 'Предмет',
+            category: readInventoryCategory(item),
+            equipped: readBoolean(item.properties?.equipped ?? item.properties?.isEquipped),
+        }))
+        .slice(0, 6);
 
     return {
         metrics: readMetricCandidates(character),
         resources: wounds ? [wounds, ...resourceSummaries].slice(0, 3) : resourceSummaries,
+        actions: actionSummaries,
+        inventory: inventorySummaries,
         inventoryCount: inventory.length,
         abilityCount: abilities.length,
         attackCount: attacks.length,

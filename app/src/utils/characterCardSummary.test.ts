@@ -36,10 +36,10 @@ const character = entity({
     },
 });
 
-const sword = entity({ id: 'sword', type: 'object', parentId: 'hero' });
-const potion = entity({ id: 'potion', type: 'object', parentId: 'hero' });
-const ability = entity({ id: 'blink', type: 'ability', parentId: 'hero' });
-const attack = entity({ id: 'slash', type: 'attack', parentId: 'sword' });
+const sword = entity({ id: 'sword', name: 'Sword', type: 'object', parentId: 'hero', properties: { category: 'weapon', equipped: true } });
+const potion = entity({ id: 'potion', name: 'Potion', type: 'object', parentId: 'hero', properties: { category: 'consumable' } });
+const ability = entity({ id: 'blink', name: 'Blink', type: 'ability', parentId: 'hero', properties: { dice: '!roll 1d8' } });
+const attack = entity({ id: 'slash', name: 'Slash', type: 'attack', parentId: 'sword', properties: { diceFormula: '2d6+3' } });
 const unrelatedAttack = entity({ id: 'hidden', type: 'attack', parentId: 'other' });
 
 const summary = buildCharacterCompactSummary(character, [character, sword, potion, ability, attack, unrelatedAttack]);
@@ -52,6 +52,14 @@ assert.deepEqual(summary.metrics, [
 ]);
 assert.deepEqual(summary.resources[0], { id: 'wounds', label: 'Раны', current: 3, max: 10, ratio: 0.3 });
 assert.deepEqual(summary.resources[1], { id: 'focus', label: 'Фокус', current: 2, max: 5, ratio: 0.4 });
+assert.deepEqual(summary.actions, [
+    { id: 'slash', kind: 'attack', name: 'Slash', formula: '2d6+3', parentName: 'Sword' },
+    { id: 'blink', kind: 'ability', name: 'Blink', formula: '1d8' },
+]);
+assert.deepEqual(summary.inventory, [
+    { id: 'sword', name: 'Sword', category: 'weapon', equipped: true },
+    { id: 'potion', name: 'Potion', category: 'consumable', equipped: false },
+]);
 assert.equal(summary.inventoryCount, 2);
 assert.equal(summary.abilityCount, 1);
 assert.equal(summary.attackCount, 1);

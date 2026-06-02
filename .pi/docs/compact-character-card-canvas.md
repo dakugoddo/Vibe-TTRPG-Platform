@@ -28,10 +28,21 @@
 - `Фишка` и `Карточка` используют один DOM compact overlay, чтобы будущие tabs не дублировались в Konva и HTML.
 - Сохранённые canvas данные остаются совместимыми: это только presentation layer.
 
+## Второй срез
+
+Второй срез добавляет tabbed content в тот же unified DOM overlay, без нового `DrawElement` формата и без отдельного боевого режима окна:
+
+- `characterCardSummary.ts` теперь также отдаёт первые действия (`attack`/`ability`) с формулами бросков и источником вложенной атаки.
+- Summary отдаёт компактный список inventory items с категорией и `equipped` badge.
+- В popover появились вкладки:
+  - `Статы`: быстрые метрики и счётчики атак/способностей/вещей;
+  - `Действия`: атаки и способности с формулой, но пока без roll-кнопки;
+  - `Ресурсы`: wounds/resources bars и первые вещи инвентаря;
+  - `Заметки`: plain-text описание сущности.
+- Roll/action buttons должны добавляться следующим срезом только через существующий Roll Engine facade, а не через новую локальную dice-логику в `InfiniteCanvas`.
+
 ## Будущие срезы
 
-- Добавить compact tabs внутри canvas card: `Stats`, `Actions`, `Resources`, `Notes`.
-- Добавить tabbed content внутри единого DOM overlay: `Stats`, `Actions`, `Resources`, `Notes`.
 - Позволить entity-level defaults выбирать, какие поля показывать на compact card.
 - Подключить roll/action buttons через существующий Roll Engine facade.
 - Проверить permissions: player не должен видеть GM/private fields через compact card.
@@ -41,5 +52,7 @@
 - Перетащить персонажа на canvas как `Фишка`.
 - Нажать `i`: summary должен появиться рядом с token и не выходить за экран.
 - У персонажа без ресурсов/атак overlay остаётся аккуратным и показывает описание.
+- На вкладке `Действия` вложенная атака оружия отображается с названием оружия, а способность показывает нормализованную формулу без `/r`/`!roll`.
+- На вкладке `Ресурсы` вещи показывают категорию и badge `надето`, если предмет экипирован.
 - У скрытой/private entity overlay не раскрывает данные.
 - Double-click/open button продолжает открывать исходную entity.

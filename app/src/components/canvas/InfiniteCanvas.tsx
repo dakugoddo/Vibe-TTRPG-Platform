@@ -41,6 +41,15 @@ const RDP_EPSILON = 3; // Ramer-Douglas-Peucker simplification tolerance
 const OBJECT_SNAP_SCREEN_RADIUS = 18;
 const MAX_CANVAS_IMAGE_UPLOAD_BYTES = 250 * 1024 * 1024;
 
+type CharacterCompactTab = 'stats' | 'actions' | 'resources' | 'notes';
+
+const CHARACTER_COMPACT_TABS: Array<{ id: CharacterCompactTab; label: string }> = [
+  { id: 'stats', label: 'Статы' },
+  { id: 'actions', label: 'Действия' },
+  { id: 'resources', label: 'Ресурсы' },
+  { id: 'notes', label: 'Заметки' },
+];
+
 interface CanvasImageTarget {
   canvasId: string;
   canvasX: number;
@@ -2017,7 +2026,7 @@ export function InfiniteCanvas() {
     y: number;
     elementId: string;
   } | null>(null);
-  const [entityTokenInfoOverlayId, setEntityTokenInfoOverlayId] = useState<string | null>(null);
+  const [entityTokenInfoTab, setEntityTokenInfoTab] = useState<CharacterCompactTab>('stats');
   const [entityTokenMenu, setEntityTokenMenu] = useState<{
     x: number;
     y: number;
@@ -4578,14 +4587,18 @@ export function InfiniteCanvas() {
                 onShowLinkedEntityInfo={(elementId, e) => {
                   const nativeEvent = e.evt;
                   const touch = 'changedTouches' in nativeEvent ? nativeEvent.changedTouches[0] : null;
-                  setEntityTokenInfoOverlayId(null);
-                  setEntityTokenInfo((current) => current?.elementId === elementId ? null : {
+                  if (entityTokenInfo?.elementId === elementId) {
+                    setEntityTokenInfo(null);
+                    return;
+                  }
+                  setEntityTokenInfoTab('stats');
+                  setEntityTokenInfo({
                     elementId,
                     x: 'clientX' in nativeEvent ? nativeEvent.clientX : touch?.clientX ?? window.innerWidth / 2,
                     y: 'clientY' in nativeEvent ? nativeEvent.clientY : touch?.clientY ?? window.innerHeight / 2,
                   });
                 }}
-                isEntityInfoOpen={entityTokenInfoOverlayId === element.id}
+                isEntityInfoOpen={entityTokenInfo?.elementId === element.id}
               />
             </Group>
           ))}
@@ -5104,16 +5117,17 @@ export function InfiniteCanvas() {
         const characterSummary = linkedEntity.type === 'character'
           ? buildCharacterCompactSummary(linkedEntity, Array.from(yjsStore.entitiesMap.values()))
           : null;
-        const cardWidth = characterSummary ? 320 : 280;
-        const cardMaxHeight = characterSummary ? 420 : 240;
-        const left = Math.max(12, Math.min(entityTokenInfo.x + 12, window.innerWidth - cardWidth - 12));
+        const cardWidth = characterSummary ? 340 : 280;
+        const cardMaxHeight = characterSummary ? 460 : 240;
+        const safeCardWidth = Math.max(240, Math.min(cardWidth, window.innerWidth - 24));
+        const left = Math.max(12, Math.min(entityTokenInfo.x + 12, window.innerWidth - safeCardWidth - 12));
         const top = Math.max(12, Math.min(entityTokenInfo.y + 12, window.innerHeight - cardMaxHeight - 12));
         return (
           <>
             <div className="fixed inset-0 z-[9998]" onClick={() => setEntityTokenInfo(null)} />
             <div
-              className="fixed z-[9999] max-h-[min(420px,calc(100vh-24px))] overflow-y-auto rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-window)] p-3 text-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-window)] backdrop-blur-[var(--vibe-backdrop-blur)] custom-scrollbar"
-              style={{ left, top }}
+              className="fixed z-[9999] overflow-y-auto rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-window)] p-3 text-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-window)] backdrop-blur-[var(--vibe-backdrop-blur)] custom-scrollbar"
+              style={{ left, top, width: safeCardWidth, maxHeight: `min(${cardMaxHeight}px, calc(100vh - 24px))` }}
             >
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-start gap-2">
@@ -5147,56 +5161,141 @@ export function InfiniteCanvas() {
                 </button>
               </div>
 
-              {characterSummary && (
+              {characterSummary ? (
                 <div className="mb-2 space-y-2">
-                  {characterSummary.metrics.length > 0 && (
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {characterSummary.metrics.map((metric) => (
-                        <div key={metric.id} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5 text-center">
-                          <div className="text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{metric.label}</div>
-                          <div className="font-mono text-sm font-bold text-[var(--vibe-text-primary)]">{metric.value}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {characterSummary.resources.length > 0 && (
-                    <div className="grid gap-1.5">
-                      {characterSummary.resources.map((resource) => (
-                        <div key={resource.id} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5">
-                          <div className="mb-1 flex items-center justify-between gap-2 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                            <span className="truncate">{resource.label}</span>
-                            <span className="font-mono text-[var(--vibe-text-muted)]">{resource.current}/{resource.max || '∞'}</span>
-                          </div>
-                          <div className="h-1.5 overflow-hidden rounded-full border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)]">
-                            <div
-                              className={`h-full rounded-full ${resource.id === 'wounds' ? 'bg-[var(--vibe-danger)]' : 'bg-[var(--vibe-accent)]'}`}
-                              style={{ width: `${Math.max(4, resource.ratio * 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      ['Атаки', characterSummary.attackCount],
-                      ['Навыки', characterSummary.abilityCount],
-                      ['Вещи', characterSummary.inventoryCount],
-                    ].map(([label, value]) => (
-                      <div key={label} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] px-2 py-1.5 text-center">
-                        <div className="text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{label}</div>
-                        <div className="font-mono text-sm font-bold text-[var(--vibe-accent)]">{value}</div>
-                      </div>
+                  <div className="grid grid-cols-4 gap-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-1">
+                    {CHARACTER_COMPACT_TABS.map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setEntityTokenInfoTab(tab.id)}
+                        className={`h-7 rounded-[var(--vibe-radius-sm)] text-[10px] font-bold uppercase tracking-wider transition-colors ${entityTokenInfoTab === tab.id
+                          ? 'bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)] shadow-[inset_0_0_0_1px_var(--vibe-border-strong)]'
+                          : 'text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
                     ))}
                   </div>
+
+                  {entityTokenInfoTab === 'stats' && (
+                    <div className="space-y-2">
+                      {characterSummary.metrics.length > 0 ? (
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {characterSummary.metrics.map((metric) => (
+                            <div key={metric.id} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5 text-center">
+                              <div className="text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{metric.label}</div>
+                              <div className="font-mono text-sm font-bold text-[var(--vibe-text-primary)]">{metric.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-center text-[11px] text-[var(--vibe-text-faint)]">
+                          Быстрые статы пока не заполнены.
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          ['Атаки', characterSummary.attackCount],
+                          ['Способ.', characterSummary.abilityCount],
+                          ['Вещи', characterSummary.inventoryCount],
+                        ].map(([label, value]) => (
+                          <div key={label} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] px-2 py-1.5 text-center">
+                            <div className="text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{label}</div>
+                            <div className="font-mono text-sm font-bold text-[var(--vibe-accent)]">{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {entityTokenInfoTab === 'actions' && (
+                    <div className="space-y-1.5">
+                      {characterSummary.actions.length > 0 ? characterSummary.actions.map((action) => (
+                        <div key={action.id} className="flex items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5">
+                          <span className={`flex h-6 w-9 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border text-[9px] font-black uppercase tracking-wider ${action.kind === 'attack'
+                            ? 'border-[color-mix(in_srgb,var(--vibe-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_14%,transparent)] text-[var(--vibe-danger)]'
+                            : 'border-[color-mix(in_srgb,var(--vibe-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-accent)_14%,transparent)] text-[var(--vibe-accent)]'
+                          }`}>
+                            {action.kind === 'attack' ? 'АТК' : 'СП'}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-xs font-bold text-[var(--vibe-text-primary)]">{action.name}</div>
+                            <div className="truncate text-[10px] text-[var(--vibe-text-faint)]">{action.parentName || (action.kind === 'attack' ? 'Атака персонажа' : 'Способность')}</div>
+                          </div>
+                          <div className="max-w-[96px] truncate rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-1.5 py-1 font-mono text-[10px] text-[var(--vibe-text-muted)]">
+                            {action.formula || 'без формулы'}
+                          </div>
+                        </div>
+                      )) : (
+                        <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-center text-[11px] text-[var(--vibe-text-faint)]">
+                          Атаки и способности пока не добавлены.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {entityTokenInfoTab === 'resources' && (
+                    <div className="space-y-2">
+                      {characterSummary.resources.length > 0 && (
+                        <div className="grid gap-1.5">
+                          {characterSummary.resources.map((resource) => (
+                            <div key={resource.id} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5">
+                              <div className="mb-1 flex items-center justify-between gap-2 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                <span className="truncate">{resource.label}</span>
+                                <span className="font-mono text-[var(--vibe-text-muted)]">{resource.current}/{resource.max || '∞'}</span>
+                              </div>
+                              <div className="h-1.5 overflow-hidden rounded-full border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)]">
+                                <div
+                                  className={`h-full rounded-full ${resource.id === 'wounds' ? 'bg-[var(--vibe-danger)]' : 'bg-[var(--vibe-accent)]'}`}
+                                  style={{ width: `${Math.max(4, resource.ratio * 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {characterSummary.inventory.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-[9px] font-black uppercase tracking-widest text-[var(--vibe-text-faint)]">Инвентарь</div>
+                          {characterSummary.inventory.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5">
+                              <div className="min-w-0">
+                                <div className="truncate text-xs font-bold text-[var(--vibe-text-primary)]">{item.name}</div>
+                                <div className="truncate text-[10px] text-[var(--vibe-text-faint)]">{item.category}</div>
+                              </div>
+                              {item.equipped && (
+                                <span className="flex-shrink-0 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-success)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_14%,transparent)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-success)]">
+                                  надето
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {characterSummary.resources.length === 0 && characterSummary.inventory.length === 0 && (
+                        <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-center text-[11px] text-[var(--vibe-text-faint)]">
+                          Ресурсы и вещи пока не заполнены.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {entityTokenInfoTab === 'notes' && (
+                    <div className="max-h-32 overflow-y-auto rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 text-[11px] leading-relaxed text-[var(--vibe-text-muted)] custom-scrollbar">
+                      {description || 'Описание пока пустое.'}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="max-h-24 overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 text-[11px] leading-relaxed text-[var(--vibe-text-muted)]">
+                  {description || 'Описание пока пустое.'}
                 </div>
               )}
-
-              <div className="max-h-24 overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 text-[11px] leading-relaxed text-[var(--vibe-text-muted)]">
-                {description || 'Описание пока пустое.'}
-              </div>
               <button
                 type="button"
                 onClick={() => {
