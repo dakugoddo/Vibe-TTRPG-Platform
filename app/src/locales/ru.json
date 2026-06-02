@@ -22,5 +22,20 @@
     "allEntities": "Все сущности на сервере",
     "newEntity": "+ НОВАЯ СУЩНОСТЬ",
     "emptyDirectory": "Пустая база"
+  },
+  "settings": {
+    "interface": {
+      "language": {
+        "title": "Язык и переводы",
+        "localeRu": "Основной язык интерфейса и разработки мира.",
+        "localeEn": "Английский fallback для будущих модов и внешних пакетов.",
+        "appBundlesTitle": "Встроенные переводы",
+        "appBundlesDescription": "Сейчас клиент загружает ru/en из приложения и хранит выбранный язык локально.",
+        "worldLocalesTitle": "Переводы мира",
+        "worldLocalesDescription": "Custom locale files в папке мира спроектированы как следующий local-first слой без записи файлов в этом срезе.",
+        "readyBadge": "готово",
+        "plannedBadge": "план"
+      }
+    }
   }
 }

@@ -18,6 +18,10 @@ interface InventoryBlockProps {
 
 const CATEGORIES = ['оружие', 'броня', 'расходуемое', 'другое'] as const;
 type Category = typeof CATEGORIES[number];
+const attackPanelClass = `${glass.blockBg} border-[color-mix(in_srgb,var(--vibe-danger)_28%,var(--vibe-border-subtle))] shadow-[inset_0_0_20px_color-mix(in_srgb,var(--vibe-danger)_8%,transparent)]`;
+const inventoryCategoryClass = 'overflow-hidden rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] pb-2 shadow-[var(--vibe-shadow-block)]';
+const tableHeadCellClass = 'px-2 py-1.5 font-normal transition-colors hover:text-[var(--vibe-text-primary)]';
+const tableValueCellClass = 'px-2 py-1.5 text-center font-mono text-[10px] text-[var(--vibe-text-muted)]';
 
 type SortConfig = {
     key: string;
@@ -184,26 +188,26 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
     return (
         <div className="flex flex-col gap-4">
             {/* Блок Атак */}
-            <div className={`${glass.blockBg} border border-red-500/20 shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]`}>
-                <h4 className={glass.blockHeader + " text-red-400 border-red-500/20"}>
+            <div className={attackPanelClass}>
+                <h4 className={`${glass.blockHeader} border-[color-mix(in_srgb,var(--vibe-danger)_28%,transparent)] text-[var(--vibe-danger)]`}>
                     Доступные Атаки (Экипированное Оружие)
                 </h4>
                 {availableAttacks.length === 0 ? (
-                    <div className="text-white/30 text-[10px] italic">Нет доступных атак. Экипируйте оружие с атаками.</div>
+                    <div className="text-[10px] italic text-[var(--vibe-text-faint)]">Нет доступных атак. Экипируйте оружие с атаками.</div>
                 ) : (
                     <div className="grid grid-cols-1 gap-2">
                         {availableAttacks.map(atk => (
-                            <div key={atk.id} className="bg-[#1a1c29]/60 backdrop-blur-md border border-red-500/10 hover:border-red-500/30 p-2 rounded-lg flex justify-between items-center transition-colors shadow-sm">
+                            <div key={atk.id} className="flex items-center justify-between rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_18%,var(--vibe-border-subtle))] bg-[var(--vibe-surface-input)] p-2 shadow-sm backdrop-blur-[var(--vibe-backdrop-blur)] transition-colors hover:border-[color-mix(in_srgb,var(--vibe-danger)_36%,var(--vibe-border-strong))] hover:bg-[var(--vibe-surface-hover)]">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-5 h-5 rounded bg-red-500/20 border border-red-500/30 text-red-400 flex items-center justify-center font-bold text-[10px]">⚔️</div>
-                                    <EntityLink entityId={atk.id} className="text-sm font-bold text-white/90 hover:text-white" />
-                                    <span className="text-[10px] text-white/30 ml-2">(от: {allEntities.find(e => e.id === atk.parentId)?.name})</span>
+                                    <div className="flex h-5 w-5 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_16%,transparent)] text-[10px] font-bold text-[var(--vibe-danger)]">⚔️</div>
+                                    <EntityLink entityId={atk.id} className="text-sm font-bold text-[var(--vibe-text-primary)] hover:text-[var(--vibe-danger)]" />
+                                    <span className="ml-2 text-[10px] text-[var(--vibe-text-faint)]">(от: {allEntities.find(e => e.id === atk.parentId)?.name})</span>
                                 </div>
-                                <div className="flex gap-3 text-[10px] font-mono text-white/60">
-                                    <span title="Урон">🗡️ <span className="text-white/90 font-bold">{atk.properties.урон ?? 1}</span></span>
-                                    <span title="Масштаб">📏 <span className="text-white/90 font-bold">{atk.properties.масштаб ?? 1}</span></span>
-                                    <span title="Попадание">🎯 <span className="text-white/90 font-bold">{atk.properties.попадание ?? 1}</span></span>
-                                    <span title="Дистанция" className="text-red-400/80 uppercase">[{atk.properties.дистанция ?? 'ближняя'}]</span>
+                                <div className="flex gap-3 font-mono text-[10px] text-[var(--vibe-text-muted)]">
+                                    <span title="Урон">🗡️ <span className="font-bold text-[var(--vibe-text-primary)]">{atk.properties.урон ?? 1}</span></span>
+                                    <span title="Масштаб">📏 <span className="font-bold text-[var(--vibe-text-primary)]">{atk.properties.масштаб ?? 1}</span></span>
+                                    <span title="Попадание">🎯 <span className="font-bold text-[var(--vibe-text-primary)]">{atk.properties.попадание ?? 1}</span></span>
+                                    <span title="Дистанция" className="uppercase text-[var(--vibe-danger)]">[{atk.properties.дистанция ?? 'ближняя'}]</span>
                                 </div>
                             </div>
                         ))}
@@ -255,7 +259,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
 
                         const SortIcon = ({ colKey }: { colKey: string }) => {
                             if (sortConfig?.key !== colKey) return null;
-                            return sortConfig.direction === 'asc' ? <ChevronUp size={10} className="inline ml-1 text-white/60" /> : <ChevronDown size={10} className="inline ml-1 text-white/60" />;
+                            return sortConfig.direction === 'asc' ? <ChevronUp size={10} className="inline ml-1 text-[var(--vibe-text-muted)]" /> : <ChevronDown size={10} className="inline ml-1 text-[var(--vibe-text-muted)]" />;
                         };
 
                         const isWeaponOrArmor = category === 'оружие' || category === 'броня';
@@ -267,49 +271,49 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                 data-entity-id={entity.id}
                                 data-entity-slot="inventory"
                                 data-entity-accepts="object"
-                                className="border border-white/5 rounded-lg overflow-hidden bg-[#2a2d3d]/40 pb-2 shadow-sm"
+                                className={inventoryCategoryClass}
                                 onDragOver={(e) => { if (canEditInventory) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
                                 onDragEnter={(e) => { if (canEditInventory) e.preventDefault(); }}
                                 onDrop={(e) => handleDrop(e, category)}
                             >
-                                <div className="bg-[#1a1c29] px-3 py-1.5 text-[10px] font-bold text-white/50 uppercase tracking-widest flex justify-between items-center mb-1 border-b border-white/5 shadow-inner">
+                                <div className="mb-1 flex items-center justify-between border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-muted)] shadow-inner">
                                     {category} ({itemsInCategory.length})
                                 </div>
 
                                 {itemsInCategory.length === 0 ? (
-                                    <div className="text-[10px] text-white/30 italic py-3 px-3">
+                                    <div className="px-3 py-3 text-[10px] italic text-[var(--vibe-text-faint)]">
                                         {canEditInventory ? 'Перетащите сюда предметы...' : 'Нет предметов в категории.'}
                                     </div>
                                 ) : (
                                     <div className="overflow-x-auto w-full custom-scrollbar">
                                         <table className="w-full text-left border-collapse min-w-max">
                                             <thead>
-                                                <tr className="border-b border-white/10 text-[9px] text-white/40 uppercase tracking-wider select-none bg-white/5">
+                                                <tr className="select-none border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] text-[9px] uppercase tracking-wider text-[var(--vibe-text-faint)]">
                                                     <th className="font-normal px-2 py-1.5 w-6"></th>
-                                                    <th className="font-normal px-2 py-1.5 cursor-pointer hover:text-white/80 transition-colors" onClick={() => handleSort(category, 'name')}>
+                                                    <th className={`${tableHeadCellClass} cursor-pointer`} onClick={() => handleSort(category, 'name')}>
                                                         Предмет <SortIcon colKey="name" />
                                                     </th>
                                                     {isWeaponOrArmor && (
-                                                        <th className="font-normal px-2 py-1.5 text-center cursor-pointer hover:text-white/80 transition-colors" title="Экипировано" onClick={() => handleSort(category, 'equipped')}>
+                                                        <th className={`${tableHeadCellClass} cursor-pointer text-center`} title="Экипировано" onClick={() => handleSort(category, 'equipped')}>
                                                             Эк. <SortIcon colKey="equipped" />
                                                         </th>
                                                     )}
-                                                    <th className="font-normal px-2 py-1.5 text-center cursor-pointer hover:text-white/80 transition-colors" title="Количество" onClick={() => handleSort(category, 'количество')}>
+                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title="Количество" onClick={() => handleSort(category, 'количество')}>
                                                         Кол-во <SortIcon colKey="количество" />
                                                     </th>
-                                                    <th className="font-normal px-2 py-1.5 text-center cursor-pointer hover:text-white/80 transition-colors" title="Нагрузка (Вес одного)" onClick={() => handleSort(category, 'нагрузка')}>
+                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title="Нагрузка (Вес одного)" onClick={() => handleSort(category, 'нагрузка')}>
                                                         Вес <SortIcon colKey="нагрузка" />
                                                     </th>
-                                                    <th className="font-normal px-2 py-1.5 text-center cursor-pointer hover:text-white/80 transition-colors" title="Фигура" onClick={() => handleSort(category, 'фигура')}>
+                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title="Фигура" onClick={() => handleSort(category, 'фигура')}>
                                                         ФИГ <SortIcon colKey="фигура" />
                                                     </th>
-                                                    <th className="font-normal px-2 py-1.5 text-center cursor-pointer hover:text-white/80 transition-colors" title="Прочность" onClick={() => handleSort(category, 'прочность')}>
+                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title="Прочность" onClick={() => handleSort(category, 'прочность')}>
                                                         ПРОЧ <SortIcon colKey="прочность" />
                                                     </th>
-                                                    <th className="font-normal px-2 py-1.5 text-center cursor-pointer hover:text-white/80 transition-colors" title="Редкость" onClick={() => handleSort(category, 'редкость')}>
+                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title="Редкость" onClick={() => handleSort(category, 'редкость')}>
                                                         РЕД <SortIcon colKey="редкость" />
                                                     </th>
-                                                    <th className="font-normal px-2 py-1.5 text-center cursor-pointer hover:text-white/80 transition-colors text-yellow-500/80" title="Цена (У.Е.)" onClick={() => handleSort(category, 'цена')}>
+                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center text-[var(--vibe-warning)]`} title="Цена (У.Е.)" onClick={() => handleSort(category, 'цена')}>
                                                         Цена <SortIcon colKey="цена" />
                                                     </th>
                                                     <th className="font-normal px-2 py-1.5 text-center w-6"></th>
@@ -324,7 +328,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                     return (
                                                         <tr
                                                             key={item.id}
-                                                            className="border-b border-white/5 hover:bg-white/5 group transition-colors"
+                                                            className="group border-b border-[var(--vibe-border-subtle)] transition-colors hover:bg-[var(--vibe-surface-hover)]"
                                                             draggable={canEditItem}
                                                             onDragStart={(e) => {
                                                                 if (!canEditItem) {
@@ -335,12 +339,12 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                                 e.dataTransfer.effectAllowed = "move";
                                                             }}
                                                         >
-                                                            <td className="px-2 py-1.5 text-white/20 cursor-grab active:cursor-grabbing opacity-30 group-hover:opacity-100 transition-opacity" onDragStart={(e) => e.preventDefault()} draggable={false}>
+                                                            <td className="cursor-grab px-2 py-1.5 text-[var(--vibe-text-faint)] opacity-30 transition-opacity active:cursor-grabbing group-hover:opacity-100" onDragStart={(e) => e.preventDefault()} draggable={false}>
                                                                 {canEditItem && <GripVertical size={12} />}
                                                             </td>
                                                             <td className="px-2 py-1.5">
                                                                 <div draggable={false} onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                                                                    <EntityLink entityId={item.id} className="text-xs font-bold text-white/80 group-hover:text-white truncate max-w-[120px] block transition-colors" underline={false} />
+                                                                    <EntityLink entityId={item.id} className="block max-w-[120px] truncate text-xs font-bold text-[var(--vibe-text-muted)] transition-colors group-hover:text-[var(--vibe-text-primary)]" underline={false} />
                                                                 </div>
                                                             </td>
                                                             {isWeaponOrArmor && (
@@ -349,10 +353,10 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                                         <button
                                                                             onClick={(e) => { e.stopPropagation(); updateItemProperty(item.id, 'equipped', !item.properties.equipped); }}
                                                                             disabled={!canEditItem}
-                                                                            className={`w-8 h-4.5 rounded-full p-0.5 transition-colors duration-300 flex items-center shadow-inner ${item.properties.equipped ? 'bg-green-500 border border-green-400' : 'bg-black/40 border border-white/10 hover:bg-black/60 backdrop-blur-sm'}`}
+                                                                            className={`flex h-4.5 w-8 items-center rounded-full p-0.5 shadow-inner transition-colors duration-300 ${item.properties.equipped ? 'border border-[var(--vibe-success)] bg-[color-mix(in_srgb,var(--vibe-success)_72%,transparent)]' : 'border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] backdrop-blur-sm hover:bg-[var(--vibe-surface-hover)]'}`}
                                                                             title="Экипировать"
                                                                         >
-                                                                            <div className={`w-3.5 h-3.5 bg-white rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.5)] transform transition-transform duration-300 ${item.properties.equipped ? 'translate-x-3.5' : 'translate-x-0'}`}></div>
+                                                                            <div className={`h-3.5 w-3.5 rounded-full bg-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-block)] transition-transform duration-300 ${item.properties.equipped ? 'translate-x-3.5' : 'translate-x-0'}`}></div>
                                                                         </button>
                                                                     </div>
                                                                 </td>
@@ -364,29 +368,29 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                                     value={qty || ''}
                                                                     readOnly={!canEditItem}
                                                                     onChange={(e) => updateItemProperty(item.id, 'количество', Math.max(1, parseInt(e.target.value) || 1))}
-                                                                    className="w-10 text-[11px] font-bold text-center bg-[#1a1c29] text-white rounded-md border border-[#1a1c29] hover:border-white/30 focus:border-white/50 focus:bg-[#2e3145] outline-none transition-colors py-1 cursor-text custom-scrollbar ml-auto mr-auto block shadow-inner"
+                                                                    className={`${glass.input} mx-auto block w-10 cursor-text px-1 py-1 text-center text-[11px] font-bold`}
                                                                 />
                                                             </td>
-                                                            <td className="px-2 py-1.5 text-center text-[10px] text-white/50 font-mono">
+                                                            <td className={tableValueCellClass}>
                                                                 {(qty * weight).toFixed(1)}
                                                             </td>
-                                                            <td className="px-2 py-1.5 text-center text-[10px] text-white/50 font-mono">
+                                                            <td className={tableValueCellClass}>
                                                                 {item.properties.фигура ?? 1}
                                                             </td>
-                                                            <td className="px-2 py-1.5 text-center text-[10px] text-white/50 font-mono">
+                                                            <td className={tableValueCellClass}>
                                                                 {item.properties.прочность ?? 1}
                                                             </td>
-                                                            <td className="px-2 py-1.5 text-center text-[10px] text-white/50 font-mono">
+                                                            <td className={tableValueCellClass}>
                                                                 {item.properties.редкость ?? 0}
                                                             </td>
-                                                            <td className="px-2 py-1.5 text-center text-[10px] text-yellow-500/90 font-mono font-bold">
+                                                            <td className="px-2 py-1.5 text-center font-mono text-[10px] font-bold text-[var(--vibe-warning)]">
                                                                 {item.properties.цена ?? 0}
                                                             </td>
                                                             <td className="px-2 py-1.5 text-center w-6">
                                                                 {canEditItem && (
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id, item.name); }}
-                                                                        className="text-white/20 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all p-1"
+                                                                        className="p-1 text-[var(--vibe-text-faint)] opacity-0 transition-all hover:text-[var(--vibe-danger)] group-hover:opacity-100"
                                                                         title="Удалить предмет"
                                                                     >
                                                                         <Trash2 size={12} />
@@ -405,9 +409,9 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                     })}
                 </div>
 
-                <div className="mt-4 flex justify-between items-center text-xs border-t border-white/10 pt-3">
-                    <span className="text-white/50 font-bold uppercase tracking-wider">Общая Нагрузка:</span>
-                    <span className="text-white font-mono font-bold text-sm bg-[#2e3145] px-2 py-0.5 rounded border border-[#2e3145] shadow-inner">{totalWeight.toFixed(1)}</span>
+                <div className="mt-4 flex items-center justify-between border-t border-[var(--vibe-border-subtle)] pt-3 text-xs">
+                    <span className="font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">Общая Нагрузка:</span>
+                    <span className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-0.5 font-mono text-sm font-bold text-[var(--vibe-text-primary)] shadow-inner">{totalWeight.toFixed(1)}</span>
                 </div>
             </div>
 

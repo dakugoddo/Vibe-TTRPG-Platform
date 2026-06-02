@@ -497,13 +497,14 @@ Settings становится центром:
 
 ### Slice 2: Settings UI
 
-- [ ] Interface tab: theme preset, density, language.
+- [x] Interface tab: theme preset, language.
 - [x] Preview swatches для theme presets.
 - [x] Persist local theme choice.
 - [ ] World-level theme persistence: разрешено владельцем как направление, но нужен отдельный schema/pass.
 
 ### Slice 3: i18n cleanup
 
+- [x] Первый language switch foundation: RU/EN choice in SettingsWindow, localStorage preference, i18next startup locale and mini-plan for custom world locales.
 - Вынести новые строки.
 - Начать с shell/drawers/settings/entity windows.
 - Добавить missing-key audit script или checklist.
@@ -514,9 +515,14 @@ Settings становится центром:
 - [ ] Новый `EntitySection`.
 - [x] Первый `StatTile`-подход через tokenized `AttributeBlock`/`StatTooltip`/`CompetenciesBlock`.
 - [x] Первый `ResourceTrack`-подход через tokenized `ResourcesBlock`.
-- [x] Первый `ActionPill`-подход через tokenized `AbilitiesBlock`.
+- [x] Первый `ActionPill`-подход через tokenized `AbilitiesBlock`/`AttackSheet`.
 - [ ] Сначала Character/Object/Ability/Attack, затем Note/Tag/Canvas.
 - [x] Tokenized support surfaces: `TagPickerPopup` и `EntityImageBlock`.
+- [x] Tokenized Object/Attack entity sheets: parameter cards, roll controls, tag pills and description states.
+- [x] Tokenized Inventory sheet: equipped attack summary, dense sortable table, equip toggles and total weight.
+- [x] Tokenized SettingsWindow: interface/audio/canvas/world/roles controls and role management surfaces.
+- [x] Tokenized AssetBrowser: host/player file states, toolbar, filters/sort, selected batch bar and asset cards.
+- [x] Tokenized AudioDesk: player mixer, GM desk, channel tabs, cues, audio list and audio control states.
 
 ### Slice 5: Workbench polish
 

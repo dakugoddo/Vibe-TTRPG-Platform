@@ -10,6 +10,7 @@ import { findCanvasInlineImages, replaceInlineCanvasImage } from '../../utils/ca
 import { dataUrlToBase64 } from '../../utils/fileRead';
 import { LARGE_ASSET_UPLOAD_APPROVAL_BYTES, formatNotificationFileSize } from '../../utils/notificationModel';
 import { createLargeUploadApprovalRequest } from '../../utils/sessionNotificationModel';
+import { glass } from '../../utils/theme';
 import type { Entity, SessionNotificationEvent } from '../../types';
 
 type AssetKind = 'all' | 'image' | 'audio' | 'model' | 'video' | 'other';
@@ -34,6 +35,11 @@ const SORT_OPTIONS: Array<{ id: AssetSort; label: string }> = [
 ];
 
 const MAX_BINARY_UPLOAD_BYTES = 250 * 1024 * 1024;
+const assetPanelClass = 'rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] p-4 shadow-[var(--vibe-shadow-block)]';
+const assetToolbarButtonClass = 'flex h-8 w-8 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:opacity-40';
+const assetDangerButtonClass = 'border-[color-mix(in_srgb,var(--vibe-danger)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] text-[var(--vibe-danger)] hover:bg-[color-mix(in_srgb,var(--vibe-danger)_20%,transparent)]';
+const assetSuccessPanelClass = 'border-[color-mix(in_srgb,var(--vibe-success)_24%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_10%,transparent)]';
+const assetWarningPanelClass = 'border-[color-mix(in_srgb,var(--vibe-warning)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-warning)_12%,transparent)]';
 
 function getAssetKind(filename: string): AssetItem['kind'] {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
@@ -626,13 +632,13 @@ export function AssetBrowser() {
 
     if (!isHost) {
         return (
-            <div className="flex h-full min-h-0 flex-col bg-black/20 p-4 text-white/60">
-                <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm leading-relaxed">
-                    <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/45">
+            <div className="flex h-full min-h-0 flex-col bg-[var(--vibe-surface-block)] p-4 text-[var(--vibe-text-muted)]">
+                <div className={`${assetPanelClass} text-sm leading-relaxed`}>
+                    <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
                         <FolderOpen size={14} />
                         Файлы мира
                     </div>
-                    <p className="mb-4 text-white/55">
+                    <p className="mb-4 text-[var(--vibe-text-muted)]">
                         Браузер файлов доступен на стороне Host/ГМа, потому что source of truth лежит на диске хоста. Звук вынесен в отдельный модуль и не управляется из вкладки файлов.
                     </p>
                     <input
@@ -646,12 +652,12 @@ export function AssetBrowser() {
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
-                        className="inline-flex items-center gap-2 rounded-lg border border-cyan-200/20 bg-cyan-300/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan-100 transition-colors hover:bg-cyan-300/15 disabled:opacity-40"
+                        className="inline-flex items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] px-3 py-2 text-[10px] font-black uppercase tracking-wider text-[var(--vibe-accent)] transition-colors hover:bg-[var(--vibe-surface-hover)] disabled:opacity-40"
                     >
                         <Upload size={14} />
                         Загрузить / запросить
                     </button>
-                    <div className="mt-2 text-[10px] leading-snug text-white/35">
+                    <div className="mt-2 text-[10px] leading-snug text-[var(--vibe-text-faint)]">
                         До 50 MB файл загружается сразу. Больше 50 MB отправляется заявка ГМу, а передача начинается после одобрения.
                     </div>
                 </div>
@@ -660,12 +666,12 @@ export function AssetBrowser() {
     }
 
     return (
-        <div className="flex h-full min-h-0 flex-col bg-black/20">
-            <div className="border-b border-white/10 bg-white/5 p-3">
+        <div className="flex h-full min-h-0 flex-col bg-[var(--vibe-surface-block)]">
+            <div className="border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)] p-3">
                 <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-white/45">Файлы мира</div>
-                        <div className="text-xs text-white/35">assets/ сейчас, аудио и 3D позже</div>
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">Файлы мира</div>
+                        <div className="text-xs text-[var(--vibe-text-faint)]">assets/ сейчас, аудио и 3D позже</div>
                     </div>
                     <div className="flex items-center gap-2">
                         <input
@@ -679,7 +685,7 @@ export function AssetBrowser() {
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isUploading}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/55 transition-colors hover:border-emerald-300/30 hover:bg-emerald-400/10 hover:text-emerald-100 disabled:opacity-40"
+                            className={`${assetToolbarButtonClass} hover:text-[var(--vibe-success)]`}
                             title="Добавить файлы"
                         >
                             <Upload size={14} />
@@ -688,7 +694,7 @@ export function AssetBrowser() {
                             type="button"
                             onClick={() => void loadAssets()}
                             disabled={isLoading || isUploading}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/55 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white disabled:opacity-40"
+                            className={assetToolbarButtonClass}
                             title="Обновить список"
                         >
                             <RefreshCw size={14} className={isLoading || isUploading ? 'animate-spin' : ''} />
@@ -697,14 +703,14 @@ export function AssetBrowser() {
                 </div>
 
                 {inlineCanvasImages.length > 0 && (
-                    <div className="mb-3 rounded-xl border border-amber-300/20 bg-amber-400/10 p-2.5">
+                    <div className={`mb-3 rounded-[var(--vibe-radius-md)] border p-2.5 ${assetWarningPanelClass}`}>
                         <div className="mb-2 flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-amber-100/80">
+                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-warning)]">
                                     <Wand2 size={13} />
                                     Старые canvas-изображения
                                 </div>
-                                <div className="mt-1 text-[10px] leading-snug text-amber-50/55">
+                                <div className="mt-1 text-[10px] leading-snug text-[var(--vibe-text-muted)]">
                                     {inlineCanvasImages.length} inline-файл(ов), примерно {inlineCanvasImagesSizeKb} KB
                                 </div>
                             </div>
@@ -712,7 +718,7 @@ export function AssetBrowser() {
                                 type="button"
                                 onClick={() => void handleMigrateInlineCanvasImages()}
                                 disabled={isMigratingInlineImages || isUploading}
-                                className="flex h-8 flex-shrink-0 items-center gap-2 rounded-lg border border-amber-200/25 bg-amber-300/10 px-2.5 text-[10px] font-bold uppercase tracking-wider text-amber-100 transition-colors hover:bg-amber-300/15 disabled:opacity-40"
+                                className="flex h-8 flex-shrink-0 items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-warning)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-warning)_12%,transparent)] px-2.5 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-warning)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-warning)_20%,transparent)] disabled:opacity-40"
                                 title="Перенести старые картинки из canvas в assets/"
                             >
                                 <Wand2 size={12} />
@@ -723,12 +729,12 @@ export function AssetBrowser() {
                 )}
 
                 <div className="relative mb-3">
-                    <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/35" />
+                    <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--vibe-text-faint)]" />
                     <input
                         value={query}
                         onChange={(event) => setQuery(event.target.value)}
                         placeholder="Поиск файлов..."
-                        className="h-9 w-full rounded-lg border border-white/10 bg-black/25 pl-9 pr-3 text-xs text-white/80 outline-none transition-colors placeholder:text-white/30 focus:border-white/25 focus:bg-black/35"
+                        className={`${glass.input} h-9 w-full pl-9 pr-3 text-xs`}
                     />
                 </div>
 
@@ -738,19 +744,19 @@ export function AssetBrowser() {
                             key={item.id}
                             type="button"
                             onClick={() => setFilter(item.id)}
-                            className={`rounded-lg px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                            className={`rounded-[var(--vibe-radius-sm)] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
                                 filter === item.id
-                                    ? 'bg-white/20 text-white shadow-md'
-                                    : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/90'
+                                    ? 'bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)] shadow-md'
+                                    : 'bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                             }`}
                         >
-                            {item.label} <span className="text-white/35">{counts[item.id]}</span>
+                            {item.label} <span className="text-[var(--vibe-text-faint)]">{counts[item.id]}</span>
                         </button>
                     ))}
                 </div>
 
                 <div className="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar">
-                    <div className="mr-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/30">
+                    <div className="mr-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
                         <ArrowDownAZ size={12} />
                         Сорт
                     </div>
@@ -759,10 +765,10 @@ export function AssetBrowser() {
                             key={item.id}
                             type="button"
                             onClick={() => setSortBy(item.id)}
-                            className={`rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                            className={`rounded-[var(--vibe-radius-sm)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
                                 sortBy === item.id
-                                    ? 'border border-emerald-300/25 bg-emerald-400/15 text-emerald-100'
-                                    : 'border border-transparent bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/80'
+                                    ? 'border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)]'
+                                    : 'border border-transparent bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                             }`}
                         >
                             {item.label}
@@ -771,12 +777,12 @@ export function AssetBrowser() {
                 </div>
 
                 {selectedAssets.length > 0 && (
-                    <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-emerald-200/15 bg-emerald-300/[0.08] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                    <div className={`mt-3 flex items-center justify-between gap-3 rounded-[var(--vibe-radius-md)] border px-3 py-2 shadow-[var(--vibe-shadow-block)] ${assetSuccessPanelClass}`}>
                         <div className="min-w-0">
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-50/75">
-                                Выбрано <span className="font-mono text-emerald-50">{selectedAssets.length}</span>
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-success)]">
+                                Выбрано <span className="font-mono text-[var(--vibe-success)]">{selectedAssets.length}</span>
                             </div>
-                            <div className="mt-0.5 truncate text-[9px] font-medium text-white/35">
+                            <div className="mt-0.5 truncate text-[9px] font-medium text-[var(--vibe-text-faint)]">
                                 {selectedAssets.slice(0, 3).map(asset => asset.name).join(', ')}
                             </div>
                         </div>
@@ -785,7 +791,7 @@ export function AssetBrowser() {
                                 type="button"
                                 onClick={() => selectedAssets[0] && void handleShowAssetInExplorer(selectedAssets[0])}
                                 disabled={selectedAssets.length !== 1}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/20 text-white/45 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                                className={`${assetToolbarButtonClass} disabled:cursor-not-allowed disabled:opacity-35`}
                                 title="Показать в проводнике"
                             >
                                 <FolderOpen size={14} />
@@ -793,7 +799,7 @@ export function AssetBrowser() {
                             <button
                                 type="button"
                                 onClick={handleDeleteSelectedAssets}
-                                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-red-300/20 bg-red-400/10 px-2.5 text-[10px] font-bold uppercase tracking-wider text-red-100/80 transition-colors hover:border-red-200/35 hover:bg-red-400/20 hover:text-white"
+                                className={`inline-flex h-8 items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border px-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${assetDangerButtonClass}`}
                                 title="Удалить выбранные файлы"
                             >
                                 <Trash2 size={13} />
@@ -802,7 +808,7 @@ export function AssetBrowser() {
                             <button
                                 type="button"
                                 onClick={clearAssetSelection}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/20 text-white/45 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
+                                className={assetToolbarButtonClass}
                                 title="Сбросить выделение"
                             >
                                 <X size={14} />
@@ -814,13 +820,13 @@ export function AssetBrowser() {
 
             <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-8 custom-scrollbar">
                 {error && (
-                    <div className="mb-3 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-200">
+                    <div className="mb-3 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] p-3 text-xs text-[var(--vibe-danger)]">
                         {error}
                     </div>
                 )}
 
                 {visibleItems.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-white/10 bg-black/20 p-5 text-center text-xs italic text-white/35">
+                    <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-5 text-center text-xs italic text-[var(--vibe-text-faint)]">
                         {isLoading || isUploading ? 'Загружаю файлы...' : 'Файлы не найдены'}
                     </div>
                 ) : (
@@ -844,16 +850,16 @@ export function AssetBrowser() {
                                             type: asset.kind,
                                         });
                                     }}
-                                    className={`group overflow-hidden rounded-xl border shadow-inner transition-all ${
+                                    className={`group overflow-hidden rounded-[var(--vibe-radius-md)] border shadow-inner transition-all ${
                                         isSelected
-                                            ? 'border-emerald-200/45 bg-emerald-400/15 shadow-[0_0_0_1px_rgba(110,231,183,0.16),0_14px_34px_rgba(16,185,129,0.10)]'
-                                            : 'border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.07]'
+                                            ? 'border-[color-mix(in_srgb,var(--vibe-success)_45%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_14%,transparent)] shadow-[var(--vibe-shadow-block)]'
+                                            : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]'
                                     } ${
                                         asset.kind === 'image' ? 'cursor-grab active:cursor-grabbing' : ''
                                     }`}
                                     title={asset.kind === 'image' ? 'Перетащить на канвас' : asset.path}
                                 >
-                                    <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-black/25">
+                                    <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--vibe-surface-block)]">
                                         {asset.kind === 'image' ? (
                                             <img src={asset.url} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                                         ) : asset.kind === 'video' ? (
@@ -866,16 +872,16 @@ export function AssetBrowser() {
                                                 onClick={(event) => event.stopPropagation()}
                                             />
                                         ) : (
-                                            <Icon size={34} className="text-white/25" />
+                                            <Icon size={34} className="text-[var(--vibe-text-faint)]" />
                                         )}
-                                        <div className="absolute left-2 top-2 rounded-md border border-white/10 bg-black/45 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white/55 backdrop-blur">
+                                        <div className="absolute left-2 top-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-body-bg)_55%,transparent)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--vibe-text-muted)] backdrop-blur">
                                             {asset.ext || asset.kind}
                                         </div>
                                         <div
                                             className={`absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md border backdrop-blur transition-all ${
                                                 isSelected
-                                                    ? 'border-emerald-200/50 bg-emerald-300/20 text-emerald-50'
-                                                    : 'border-white/10 bg-black/35 text-white/25 opacity-0 group-hover:opacity-45'
+                                                    ? 'border-[color-mix(in_srgb,var(--vibe-success)_50%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_18%,transparent)] text-[var(--vibe-success)]'
+                                                    : 'border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-body-bg)_45%,transparent)] text-[var(--vibe-text-faint)] opacity-0 group-hover:opacity-45'
                                             }`}
                                         >
                                             <CheckSquare size={14} strokeWidth={2.3} />
@@ -883,14 +889,14 @@ export function AssetBrowser() {
                                     </div>
                                     <div className="flex items-center gap-2 p-2">
                                         <div className="min-w-0 flex-1">
-                                            <div className="truncate text-xs font-bold text-white/80" title={asset.path}>{asset.name}</div>
-                                            <div className="text-[10px] uppercase tracking-wider text-white/30">
+                                            <div className="truncate text-xs font-bold text-[var(--vibe-text-primary)]" title={asset.path}>{asset.name}</div>
+                                            <div className="text-[10px] uppercase tracking-wider text-[var(--vibe-text-faint)]">
                                                 {asset.kind}
-                                                {asset.size > 0 && <span className="ml-1 text-white/20">{Math.ceil(asset.size / 1024)} KB</span>}
-                                                {durationLabel && <span className="ml-1 text-emerald-200/35">{durationLabel}</span>}
+                                                {asset.size > 0 && <span className="ml-1 text-[var(--vibe-text-faint)]">{Math.ceil(asset.size / 1024)} KB</span>}
+                                                {durationLabel && <span className="ml-1 text-[var(--vibe-success)]">{durationLabel}</span>}
                                             </div>
                                             {asset.path !== asset.name && (
-                                                <div className="truncate text-[10px] text-white/25" title={asset.path}>
+                                                <div className="truncate text-[10px] text-[var(--vibe-text-faint)]" title={asset.path}>
                                                     {asset.path}
                                                 </div>
                                             )}
@@ -898,7 +904,7 @@ export function AssetBrowser() {
                                         <button
                                             type="button"
                                             onClick={() => void handleShowAssetInExplorer(asset)}
-                                            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/20 text-white/45 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
+                                            className={`${assetToolbarButtonClass} h-7 w-7 flex-shrink-0`}
                                             title="Показать в проводнике"
                                         >
                                             <FolderOpen size={13} />
@@ -906,7 +912,7 @@ export function AssetBrowser() {
                                         <button
                                             type="button"
                                             onClick={() => handleDeleteAsset(asset)}
-                                            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/20 text-red-300/55 transition-colors hover:border-red-300/30 hover:bg-red-500/15 hover:text-red-100"
+                                            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border transition-colors ${assetDangerButtonClass}`}
                                             title="Удалить файл"
                                         >
                                             <Trash2 size={13} />

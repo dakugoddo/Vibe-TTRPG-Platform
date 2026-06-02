@@ -19,6 +19,7 @@ import { findNearestCanvasAnchor, updateBoundLineEndpoints } from '../../utils/c
 import { getEntityCanvasTokenDefaults, getEntityCanvasTokenImageSource, type EntityCanvasTokenDefaults } from '../../utils/entityCanvasDefaults';
 import { fitEntityArtSizeToImage } from '../../utils/entityTokenSizing';
 import { ENTITY_TOKEN_FRAME_OPTIONS, getEntityTokenFrameConfig } from '../../utils/canvasEntityTokenFrame';
+import { buildCharacterCompactSummary } from '../../utils/characterCardSummary';
 import { getCanvasVisualStyleConfig, getJitteredLinePoints, getVisualStyleOffset } from '../../utils/canvasVisualStyle';
 import { findEditableLinePointNear, getLineMode, getLineTension, getRoutedLinePoints, insertLinePointAtClosestSegment, removeLinePointAtIndex } from '../../utils/canvasLineRouting';
 import { getEntityDropActions } from '../../utils/entityDropRouter';
@@ -5107,32 +5108,36 @@ export function InfiniteCanvas() {
         const imageSource = resolveCanvasImageSource(rawImageSource);
         const visibleTags = linkedEntity.tags.slice(0, 3);
         const description = getPlainEntityDescription(linkedEntity);
-        const cardWidth = 280;
-        const left = Math.min(entityTokenInfo.x + 12, window.innerWidth - cardWidth - 12);
-        const top = Math.min(entityTokenInfo.y + 12, window.innerHeight - 190);
+        const characterSummary = linkedEntity.type === 'character'
+          ? buildCharacterCompactSummary(linkedEntity, Array.from(yjsStore.entitiesMap.values()))
+          : null;
+        const cardWidth = characterSummary ? 320 : 280;
+        const cardMaxHeight = characterSummary ? 420 : 240;
+        const left = Math.max(12, Math.min(entityTokenInfo.x + 12, window.innerWidth - cardWidth - 12));
+        const top = Math.max(12, Math.min(entityTokenInfo.y + 12, window.innerHeight - cardMaxHeight - 12));
         return (
           <>
             <div className="fixed inset-0 z-[9998]" onClick={() => setEntityTokenInfo(null)} />
             <div
-              className="fixed z-[9999] w-[280px] rounded-xl border border-white/10 bg-[#101722]/95 p-3 shadow-[0_24px_60px_rgba(0,0,0,0.65)] backdrop-blur-2xl"
+              className="fixed z-[9999] max-h-[min(420px,calc(100vh-24px))] overflow-y-auto rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-window)] p-3 text-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-window)] backdrop-blur-[var(--vibe-backdrop-blur)] custom-scrollbar"
               style={{ left, top }}
             >
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-start gap-2">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/25">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)]">
                     {imageSource ? (
                       <img src={imageSource} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-base font-bold text-white/55">{linkedEntity.name.trim().charAt(0).toUpperCase() || '?'}</span>
+                      <span className="text-base font-bold text-[var(--vibe-text-muted)]">{linkedEntity.name.trim().charAt(0).toUpperCase() || '?'}</span>
                     )}
                   </div>
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-bold text-white/90">{linkedEntity.name}</div>
-                    <div className="mt-0.5 text-[10px] uppercase tracking-widest text-white/35">{linkedEntity.type}</div>
+                    <div className="truncate text-sm font-bold text-[var(--vibe-text-primary)]">{linkedEntity.name}</div>
+                    <div className="mt-0.5 text-[10px] uppercase tracking-widest text-[var(--vibe-text-faint)]">{linkedEntity.type}</div>
                     {visibleTags.length > 0 && (
                       <div className="mt-1 flex min-w-0 flex-wrap gap-1">
                         {visibleTags.map((tag) => (
-                          <span key={tag} className="max-w-[72px] truncate rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                          <span key={tag} className="max-w-[72px] truncate rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
                             {tag}
                           </span>
                         ))}
@@ -5143,12 +5148,60 @@ export function InfiniteCanvas() {
                 <button
                   type="button"
                   onClick={() => setEntityTokenInfo(null)}
-                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/45 transition-colors hover:border-white/25 hover:text-white"
+                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                 >
                   ×
                 </button>
               </div>
-              <div className="max-h-24 overflow-hidden rounded-lg border border-white/10 bg-black/20 p-2 text-[11px] leading-relaxed text-white/55">
+
+              {characterSummary && (
+                <div className="mb-2 space-y-2">
+                  {characterSummary.metrics.length > 0 && (
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {characterSummary.metrics.map((metric) => (
+                        <div key={metric.id} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5 text-center">
+                          <div className="text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{metric.label}</div>
+                          <div className="font-mono text-sm font-bold text-[var(--vibe-text-primary)]">{metric.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {characterSummary.resources.length > 0 && (
+                    <div className="grid gap-1.5">
+                      {characterSummary.resources.map((resource) => (
+                        <div key={resource.id} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5">
+                          <div className="mb-1 flex items-center justify-between gap-2 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                            <span className="truncate">{resource.label}</span>
+                            <span className="font-mono text-[var(--vibe-text-muted)]">{resource.current}/{resource.max || '∞'}</span>
+                          </div>
+                          <div className="h-1.5 overflow-hidden rounded-full border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)]">
+                            <div
+                              className={`h-full rounded-full ${resource.id === 'wounds' ? 'bg-[var(--vibe-danger)]' : 'bg-[var(--vibe-accent)]'}`}
+                              style={{ width: `${Math.max(4, resource.ratio * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      ['Атаки', characterSummary.attackCount],
+                      ['Навыки', characterSummary.abilityCount],
+                      ['Вещи', characterSummary.inventoryCount],
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] px-2 py-1.5 text-center">
+                        <div className="text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{label}</div>
+                        <div className="font-mono text-sm font-bold text-[var(--vibe-accent)]">{value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="max-h-24 overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 text-[11px] leading-relaxed text-[var(--vibe-text-muted)]">
                 {description || 'Описание пока пустое.'}
               </div>
               <button
@@ -5157,7 +5210,7 @@ export function InfiniteCanvas() {
                   openWindow(linkedEntity.id, entityTokenInfo.x, entityTokenInfo.y);
                   setEntityTokenInfo(null);
                 }}
-                className="mt-3 h-8 w-full rounded-lg border border-cyan-200/25 bg-cyan-300/12 text-xs font-bold uppercase tracking-wider text-cyan-50 transition-colors hover:bg-cyan-300/20"
+                className="mt-3 h-8 w-full rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-primary)] transition-colors hover:bg-[var(--vibe-surface-hover)]"
               >
                 Открыть сущность
               </button>

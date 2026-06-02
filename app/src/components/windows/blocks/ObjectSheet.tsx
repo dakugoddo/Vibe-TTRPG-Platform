@@ -28,6 +28,11 @@ interface ObjectSheetProps {
 type ObjectTab = 'stats' | 'attacks' | 'description' | 'canvas';
 
 const CATEGORIES = ['оружие', 'броня', 'расходуемое', 'другое'];
+const statCardClass = 'group flex flex-col items-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 shadow-sm transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]';
+const statLabelClass = 'mb-1 cursor-pointer text-[10px] font-bold uppercase text-[var(--vibe-text-faint)] transition-colors hover:text-[var(--vibe-text-primary)]';
+const statInputClass = 'w-full bg-transparent text-center text-lg font-bold text-[var(--vibe-text-primary)] outline-none transition-colors group-hover:text-[var(--vibe-accent)]';
+const attackPanelClass = `${glass.blockBg} border-[color-mix(in_srgb,var(--vibe-danger)_28%,var(--vibe-border-subtle))] shadow-[inset_0_0_20px_color-mix(in_srgb,var(--vibe-danger)_8%,transparent)]`;
+const tagPillClass = 'group/tag flex items-center overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] shadow-[var(--vibe-shadow-block)] transition-colors hover:border-[var(--vibe-border-strong)]';
 
 function canEditEntity(entity: Entity): boolean {
     return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
@@ -208,7 +213,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                 endSlot={activeTab === 'description' && canEditObject ? (
                     <button
                         onClick={() => setIsEditingDescription(!isEditingDescription)}
-                        className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${isEditingDescription ? 'bg-white/20 text-white shadow-sm' : 'text-white/45 hover:bg-white/10 hover:text-white'}`}
+                        className={`grid h-8 w-8 place-items-center rounded-[var(--vibe-radius-sm)] transition-colors ${isEditingDescription ? glass.iconButtonActive : glass.iconButton}`}
                         title={isEditingDescription ? 'Завершить редактирование' : 'Редактировать описание'}
                     >
                         {isEditingDescription ? <Check size={14} /> : <Edit2 size={14} />}
@@ -226,15 +231,15 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
 
                 <div className="grid grid-cols-3 gap-3">
                     {/* Категория (для инвентаря персонажа) */}
-                    <div className="bg-[#2a2d3d]/40 p-2 rounded-lg border border-[#2a2d3d] flex flex-col justify-center col-span-3 hover:bg-[#2a2d3d] hover:border-white/10 transition-all group shadow-sm">
-                        <span className="text-[10px] text-white/40 uppercase font-bold mb-1">Категория (Тип)</span>
-                        <div className="flex bg-[#1a1c29] shadow-inner rounded p-1 border border-[#1a1c29]">
+                    <div className={`${statCardClass} col-span-3 justify-center`}>
+                        <span className="mb-1 text-[10px] font-bold uppercase text-[var(--vibe-text-faint)]">Категория (Тип)</span>
+                        <div className={`${glass.tabBar} flex rounded-[var(--vibe-radius-sm)] p-1`}>
                             {CATEGORIES.map(cat => (
                                 <button
                                     key={cat}
                                     onClick={() => updateProperty('category', cat)}
                                     disabled={!canEditObject}
-                                    className={`flex-1 text-[10px] py-1 px-1 rounded font-bold uppercase tracking-wider transition-all disabled:cursor-default ${(entity.properties.category || 'другое') === cat ? 'bg-white/20 text-white shadow-md border border-white/10' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}
+                                    className={`flex-1 rounded-[var(--vibe-radius-sm)] px-1 py-1 text-[10px] font-bold uppercase tracking-wider transition-all disabled:cursor-default ${(entity.properties.category || 'другое') === cat ? glass.tabActive : glass.tabIdle}`}
                                 >
                                     {cat}
                                 </button>
@@ -242,9 +247,9 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                         </div>
                     </div>
 
-                    <div className="bg-[#2a2d3d]/40 p-2 rounded-lg border border-[#2a2d3d] flex flex-col items-center group hover:bg-[#2a2d3d] hover:border-white/10 transition-all shadow-sm">
+                    <div className={statCardClass}>
                         <span
-                            className="text-[10px] text-white/40 uppercase font-bold mb-1 cursor-pointer hover:text-white transition-colors"
+                            className={statLabelClass}
                             title="Размер в единицах: 1,2,3,4..."
                             onClick={() => handleOpenNote('Фигура')}
                         >
@@ -255,12 +260,12 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                             value={entity.properties.фигура ?? 1}
                             readOnly={!canEditObject}
                             onChange={(e) => updateProperty('фигура', parseInt(e.target.value) || 0)}
-                            className="bg-transparent text-white font-bold text-lg w-full text-center outline-none group-hover:text-white/60 transition-colors"
+                            className={statInputClass}
                         />
                     </div>
-                    <div className="bg-[#2a2d3d]/40 p-2 rounded-lg border border-[#2a2d3d] flex flex-col items-center group hover:bg-[#2a2d3d] hover:border-white/10 transition-all shadow-sm">
+                    <div className={statCardClass}>
                         <span
-                            className="text-[10px] text-white/40 uppercase font-bold mb-1 cursor-pointer hover:text-white transition-colors"
+                            className={statLabelClass}
                             onClick={() => handleOpenNote('Прочность')}
                         >
                             Прочность
@@ -270,12 +275,12 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                             value={entity.properties.прочность ?? 1}
                             readOnly={!canEditObject}
                             onChange={(e) => updateProperty('прочность', parseInt(e.target.value) || 0)}
-                            className="bg-transparent text-white font-bold text-lg w-full text-center outline-none group-hover:text-white/60 transition-colors"
+                            className={statInputClass}
                         />
                     </div>
-                    <div className="bg-[#2a2d3d]/40 p-2 rounded-lg border border-[#2a2d3d] flex flex-col items-center group hover:bg-[#2a2d3d] hover:border-white/10 transition-all shadow-sm">
+                    <div className={statCardClass}>
                         <span
-                            className="text-[10px] text-white/40 uppercase font-bold mb-1 cursor-pointer hover:text-white transition-colors"
+                            className={statLabelClass}
                             onClick={() => handleOpenNote('Нагрузка')}
                         >
                             Нагрузка (Вес)
@@ -285,12 +290,12 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                             value={entity.properties.нагрузка ?? 1.0}
                             readOnly={!canEditObject}
                             onChange={(e) => updateProperty('нагрузка', parseFloat(e.target.value) || 0)}
-                            className="bg-transparent text-white font-bold text-lg w-full text-center outline-none group-hover:text-white/60 transition-colors"
+                            className={statInputClass}
                         />
                     </div>
-                    <div className="bg-[#2a2d3d]/40 p-2 rounded-lg border border-[#2a2d3d] flex flex-col items-center group hover:bg-[#2a2d3d] hover:border-white/10 transition-all shadow-sm">
+                    <div className={statCardClass}>
                         <span
-                            className="text-[10px] text-white/40 uppercase font-bold mb-1 cursor-pointer hover:text-white transition-colors"
+                            className={statLabelClass}
                             title="Ранг от 0 до 5"
                             onClick={() => handleOpenNote('Редкость')}
                         >
@@ -301,12 +306,12 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                             value={entity.properties.редкость ?? 0}
                             readOnly={!canEditObject}
                             onChange={(e) => updateProperty('редкость', parseInt(e.target.value) || 0)}
-                            className="bg-transparent text-white font-bold text-lg w-full text-center outline-none group-hover:text-white/60 transition-colors"
+                            className={statInputClass}
                         />
                     </div>
-                    <div className="bg-[#2a2d3d]/40 p-2 rounded-lg border border-[rgba(234,179,8,0.2)] flex flex-col items-center col-span-2 group hover:bg-[rgba(234,179,8,0.1)] transition-all shadow-sm">
+                    <div className="group col-span-2 flex flex-col items-center rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-warning)_28%,var(--vibe-border-subtle))] bg-[color-mix(in_srgb,var(--vibe-warning)_8%,var(--vibe-surface-input))] p-2 shadow-sm transition-all hover:bg-[color-mix(in_srgb,var(--vibe-warning)_12%,var(--vibe-surface-hover))]">
                         <span
-                            className="text-[10px] text-yellow-500/80 uppercase font-bold mb-1 cursor-pointer hover:text-yellow-400 transition-colors"
+                            className="mb-1 cursor-pointer text-[10px] font-bold uppercase text-[var(--vibe-warning)] transition-colors hover:brightness-125"
                             onClick={() => handleOpenNote('Цена')}
                         >
                             Цена (У.Е.)
@@ -316,7 +321,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                             value={entity.properties.цена ?? 0}
                             readOnly={!canEditObject}
                             onChange={(e) => updateProperty('цена', parseInt(e.target.value) || 0)}
-                            className="bg-transparent text-yellow-400 font-bold text-xl w-full text-center outline-none group-hover:text-yellow-300 transition-colors"
+                            className="w-full bg-transparent text-center text-xl font-bold text-[var(--vibe-warning)] outline-none transition-colors group-hover:brightness-125"
                             placeholder="0"
                         />
                     </div>
@@ -324,7 +329,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                     </div>
 
                     {/* ПРОПЕРТИЗ БЛОК (Свойства) */}
-                    <div className={`${glass.blockBg} border-white/20 shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]`}>
+                    <div className={glass.blockBg}>
                         <div className="flex items-center justify-between mb-4">
                             <h4 className={glass.blockHeader + " mb-0"}>
                                 <Tag size={14} className="mr-2" />
@@ -334,7 +339,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                     {canEditObject && (
                         <>
                             <button
-                                className="flex items-center gap-1 px-2 py-1 bg-white/5 border border-white/10 border-dashed rounded-md text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-wider"
+                                className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                                 onClick={() => setIsTagPickerOpen(true)}
                             >
                                 <Plus size={12} /> Добавить
@@ -363,15 +368,15 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                                 // But since users might assign general tags, let's show anyway.
 
                                 return (
-                                    <div key={tagId} className="group/tag flex items-center bg-[#2e3145] border border-white/5 rounded-lg overflow-hidden transition-colors hover:border-white/30 shadow-md">
-                                        <EntityLink entityId={tagId} underline={false} className="px-2 py-1 text-white/80 font-medium whitespace-nowrap hover:text-white text-xs" />
+                                    <div key={tagId} className={tagPillClass}>
+                                        <EntityLink entityId={tagId} underline={false} className="whitespace-nowrap px-2 py-1 text-xs font-medium text-[var(--vibe-text-muted)] hover:text-[var(--vibe-text-primary)]" />
                                         {canEditObject && (
                                             <button
                                                 onClick={() => {
                                                     const newTags = entity.tags.filter(id => id !== tagId);
                                                     yjsStore.updateEntity(entity.id, { tags: newTags });
                                                 }}
-                                                className="px-2 py-1 text-white/30 hover:bg-red-900/40 hover:text-red-400 transition-colors border-l border-white/10 group-hover/tag:border-white/20"
+                                                className="border-l border-[var(--vibe-border-subtle)] px-2 py-1 text-[var(--vibe-text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)] group-hover/tag:border-[var(--vibe-border-strong)]"
                                                 title="Убрать"
                                             >
                                                 <Trash2 size={12} />
@@ -379,7 +384,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                                         )}
                                     </div>
                                 )
-                            }) : <span className="text-white/30 text-xs italic">Нет свойств</span>}
+                            }) : <span className="text-xs italic text-[var(--vibe-text-faint)]">Нет свойств</span>}
                         </div>
                     </div>
                 </>
@@ -392,18 +397,18 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                     data-entity-id={entity.id}
                     data-entity-slot="attacks"
                     data-entity-accepts="attack"
-                    className={`${glass.blockBg} border-red-500/20 min-h-[100px] shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]`}
+                    className={`${attackPanelClass} min-h-[100px]`}
                     onDragOver={(e) => { if (canEditObject) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
                     onDrop={handleRootDrop}
                 >
                     <div className="flex items-center justify-between mb-3">
-                        <h3 className={glass.blockHeader + " text-red-400 border-red-500/20 mb-0"}>
+                        <h3 className={`${glass.blockHeader} mb-0 border-[color-mix(in_srgb,var(--vibe-danger)_28%,transparent)] text-[var(--vibe-danger)]`}>
                             Встроенные Атаки
                         </h3>
                         {canEditObject && (
                             <button
                                 onClick={handleCreateAttack}
-                                className="text-[10px] bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 transition-colors px-2 py-1 rounded font-bold uppercase tracking-wider flex items-center gap-1 border border-red-500/30"
+                                className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_16%,transparent)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_26%,transparent)]"
                             >
                                 <Plus size={10} /> Добавить
                             </button>
@@ -412,7 +417,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
 
                 <div className="space-y-2">
                     {attacks.length === 0 ? (
-                        <div className="text-center text-xs text-white/30 py-4 italic pointer-events-none">
+                        <div className="pointer-events-none py-4 text-center text-xs italic text-[var(--vibe-text-faint)]">
                             {canEditObject ? 'Перетащите атаки сюда или создайте новую' : 'Встроенные атаки пока не добавлены'}
                         </div>
                     ) : (
@@ -422,20 +427,20 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                             const canRoll = formula.length > 0;
 
                             return (
-                                <div key={attack.id} className="flex items-center gap-3 bg-[#1a1c29]/60 border border-white/5 p-2 rounded-lg hover:border-red-500/50 hover:bg-[#1a1c29] transition-all shadow-sm group/atk">
+                                <div key={attack.id} className="group/atk flex items-center gap-3 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 shadow-sm transition-all hover:border-[color-mix(in_srgb,var(--vibe-danger)_42%,var(--vibe-border-strong))] hover:bg-[var(--vibe-surface-hover)]">
                                 {canEditAttack && (
-                                    <div className="text-red-500/70 hover:text-red-400 cursor-move" draggable={true} onDragStart={(e) => { e.dataTransfer.setData("application/entity-id", attack.id); e.dataTransfer.effectAllowed = "move"; }}>
+                                    <div className="cursor-move text-[color-mix(in_srgb,var(--vibe-danger)_74%,var(--vibe-text-muted))] hover:text-[var(--vibe-danger)]" draggable={true} onDragStart={(e) => { e.dataTransfer.setData("application/entity-id", attack.id); e.dataTransfer.effectAllowed = "move"; }}>
                                         <GripVertical size={14} />
                                     </div>
                                 )}
                                 <div className="flex-1 overflow-hidden pointer-events-none">
-                                    <EntityLink entityId={attack.id} className="font-bold text-sm text-white/90 hover:text-red-300 truncate block pointer-events-auto transition-colors" underline={false} />
-                                    <div className="text-[10px] text-white/50 font-mono flex flex-wrap gap-x-3 gap-y-1 mt-1">
-                                        <span title="Урон">🗡️ <span className="font-bold text-white/90">{attack.properties.урон ?? 1}</span></span>
-                                        <span title="Масштаб">📏 <span className="font-bold text-white/90">{attack.properties.масштаб ?? 1}</span></span>
-                                        <span title="Попадание">🎯 <span className="font-bold text-white/90">{attack.properties.попадание ?? 1}</span></span>
-                                        <span title="Дистанция" className="text-red-400/80 uppercase">({attack.properties.дистанция ?? 'ближняя'})</span>
-                                        {formula && <span title="Формула броска" className="text-emerald-300/75">🎲 {formula}</span>}
+                                    <EntityLink entityId={attack.id} className="pointer-events-auto block truncate text-sm font-bold text-[var(--vibe-text-primary)] transition-colors hover:text-[var(--vibe-danger)]" underline={false} />
+                                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] text-[var(--vibe-text-muted)]">
+                                        <span title="Урон">🗡️ <span className="font-bold text-[var(--vibe-text-primary)]">{attack.properties.урон ?? 1}</span></span>
+                                        <span title="Масштаб">📏 <span className="font-bold text-[var(--vibe-text-primary)]">{attack.properties.масштаб ?? 1}</span></span>
+                                        <span title="Попадание">🎯 <span className="font-bold text-[var(--vibe-text-primary)]">{attack.properties.попадание ?? 1}</span></span>
+                                        <span title="Дистанция" className="uppercase text-[var(--vibe-danger)]">({attack.properties.дистанция ?? 'ближняя'})</span>
+                                        {formula && <span title="Формула броска" className="text-[var(--vibe-success)]">🎲 {formula}</span>}
                                     </div>
                                 </div>
                                 <button
@@ -444,7 +449,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                                         sendAttackRollToChat(attack, entity);
                                     }}
                                     disabled={!canRoll}
-                                    className={`p-1.5 rounded-lg transition-all flex-shrink-0 ${canRoll ? 'bg-red-500/20 text-red-300 hover:bg-red-500/35 hover:text-red-100 border border-red-500/30' : 'bg-white/5 text-white/20 border border-transparent cursor-not-allowed'}`}
+                                    className={`flex-shrink-0 rounded-[var(--vibe-radius-sm)] border p-1.5 transition-all ${canRoll ? 'border-[color-mix(in_srgb,var(--vibe-danger)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_16%,transparent)] text-[var(--vibe-danger)] hover:bg-[color-mix(in_srgb,var(--vibe-danger)_26%,transparent)]' : 'cursor-not-allowed border-transparent bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)]'}`}
                                     title={canRoll ? `Бросить ${formula}` : 'У атаки нет формулы броска'}
                                 >
                                     <Dices size={14} />
@@ -463,7 +468,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                                                 }
                                             });
                                         }}
-                                        className="p-1.5 object-cover text-white/30 hover:text-red-400 rounded transition-colors opacity-0 group-hover/atk:opacity-100"
+                                        className="rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] opacity-0 transition-colors hover:text-[var(--vibe-danger)] group-hover/atk:opacity-100"
                                         title="Удалить атаку"
                                     >
                                         <Trash2 size={14} />
@@ -493,10 +498,10 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                             autoFocus
                         />
                     ) : (
-                        <div className="min-h-[180px] text-sm leading-relaxed text-white/80" onDoubleClick={() => { if (canEditObject) setIsEditingDescription(true); }}>
+                        <div className="min-h-[180px] text-sm leading-relaxed text-[var(--vibe-text-muted)]" onDoubleClick={() => { if (canEditObject) setIsEditingDescription(true); }}>
                             {entity.description
                                 ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
-                                : <span className="text-white/30 italic cursor-pointer">{canEditObject ? 'Описание пустое. Дважды кликните для редактирования.' : 'Описание пустое.'}</span>}
+                                : <span className="cursor-pointer italic text-[var(--vibe-text-faint)]">{canEditObject ? 'Описание пустое. Дважды кликните для редактирования.' : 'Описание пустое.'}</span>}
                         </div>
                     )}
                 </div>

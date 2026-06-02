@@ -22,5 +22,20 @@
         "allEntities": "All entities in the server",
         "newEntity": "+ NEW ENTITY",
         "emptyDirectory": "Empty Directory"
+    },
+    "settings": {
+        "interface": {
+            "language": {
+                "title": "Language and Translations",
+                "localeRu": "Primary language for the interface and worldbuilding.",
+                "localeEn": "English fallback for future mods and external packs.",
+                "appBundlesTitle": "Built-in translations",
+                "appBundlesDescription": "The client currently loads ru/en from the app and stores the selected language locally.",
+                "worldLocalesTitle": "World translations",
+                "worldLocalesDescription": "Custom locale files in the world folder are planned as the next local-first layer; this slice does not write world files.",
+                "readyBadge": "ready",
+                "plannedBadge": "planned"
+            }
+        }
     }
 }

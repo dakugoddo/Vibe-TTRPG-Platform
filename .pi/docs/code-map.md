@@ -7,10 +7,11 @@
 
 | Зона | Файлы | Когда идти сюда |
 |------|-------|-----------------|
-| App shell | `app/src/App.tsx`, `app/src/main.tsx`, `app/src/i18n.ts` | старт приложения, глобальная компоновка, локализация |
+| App shell | `app/src/App.tsx`, `app/src/main.tsx`, `app/src/i18n.ts` | старт приложения, глобальная компоновка, базовая инициализация i18next |
 | Side drawers | `app/src/components/ui/LeftDrawer.tsx`, `app/src/components/ui/RightDrawer.tsx` | открытие боковых панелей, header pattern, GM player selector, tabs базы/файлов/чата |
 | Settings shell | `app/src/components/ui/SettingsWindow.tsx`, `app/src/App.tsx`, `app/src/utils/permissions.ts`, `.pi/docs/player-identity-roles.md` | окно настроек, player-safe tabs, GM-only world/roles tabs, role policy matrix, player profile role assignment |
 | Theme runtime | `app/src/utils/theme.ts`, `app/src/hooks/useThemePreset.ts`, `app/src/index.css`, `app/src/components/ui/SettingsWindow.tsx` | built-in presets, local custom palette, CSS variables, localStorage-backed theme choice |
+| Localization runtime | `app/src/i18n.ts`, `app/src/utils/localization.ts`, `app/src/hooks/useLocalePreference.ts`, `app/src/locales/ru.json`, `app/src/locales/en.json`, `app/src/components/ui/SettingsWindow.tsx`, `.pi/docs/i18n-custom-locales-foundation.md` | language preference, localStorage-backed locale choice, built-in ru/en bundles, future custom world locale plan |
 | Module registry | `app/src/utils/appModules.ts`, `.pi/docs/module-architecture.md` | pure internal module definitions, default enablement, core-lock normalization for future optional modules |
 | Audio session bridge | `app/src/components/ui/AudioSessionBridge.tsx`, `app/src/hooks/useAudioSessionEnabled.ts` | player opt-in, приём Yjs audio commands, fade-aware локальное воспроизведение SFX/tracks |
 | Audio module shell | `app/src/components/ui/AudioControlDock.tsx`, `app/src/components/ui/AudioDesk.tsx`, `.pi/docs/gm-audio-desk.md` | отдельный нижний аудио-док, temporary mixer popup, local cue buttons, channel stop/all-stop, optional broadcast controls |
@@ -46,6 +47,7 @@
 | Canvas line routing/editing helpers | `app/src/utils/canvasLineRouting.ts`, `app/src/types/canvasTypes.ts`, `app/src/components/canvas/CanvasToolbar.tsx`, `app/src/components/canvas/InfiniteCanvas.tsx` |
 | Canvas visual style presets | `app/src/utils/canvasVisualStyle.ts`, `app/src/types/canvasTypes.ts`, `app/src/components/canvas/CanvasToolbar.tsx`, `app/src/components/canvas/InfiniteCanvas.tsx` |
 | Canvas linked entity tokens/cards | `app/src/types/canvasTypes.ts`, `app/src/components/canvas/InfiniteCanvas.tsx`, `app/src/components/canvas/CanvasToolbar.tsx`, `app/src/utils/canvasEntityTokenFrame.ts`, `app/src/utils/entityCanvasDefaults.ts`, `app/src/components/windows/blocks/EntityCanvasTokenSettings.tsx`, `.pi/docs/canvas-entity-tokens.md` |
+| Compact character card on canvas | `app/src/utils/characterCardSummary.ts`, `app/src/components/canvas/InfiniteCanvas.tsx`, `.pi/docs/compact-character-card-canvas.md` | compact summary для `character` linked token info overlay: метрики, ресурсы, атаки, способности, вещи |
 | Canvas persistence filter/cleanup | `app/src/utils/canvasPersistence.ts` |
 | Persistent draw/fog sync | `app/src/store/canvasSyncStore.ts` |
 

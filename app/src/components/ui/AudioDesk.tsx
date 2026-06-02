@@ -8,6 +8,7 @@ import { normalizeAudioCue, normalizeAudioDeckState, type AudioCue, type AudioCu
 import { yjsStore } from '../../store/yjsStore';
 import { useNotificationStore } from '../../store/notificationStore';
 import { LARGE_ASSET_UPLOAD_APPROVAL_BYTES, formatNotificationFileSize } from '../../utils/notificationModel';
+import { glass } from '../../utils/theme';
 import type { AudioChannel } from '../../types';
 
 type AudioAsset = AssetRecord & {
@@ -20,6 +21,14 @@ const AUDIO_DECK_STORAGE_KEY = 'vibe_audio_deck_state';
 const AUDIO_DECK_BROADCAST_KEY = 'vibe_audio_desk_broadcast';
 const AUDIO_DECK_FADE_KEY = 'vibe_audio_desk_fade_ms';
 const MAX_AUDIO_UPLOAD_BYTES = 250 * 1024 * 1024;
+const audioShellClass = 'flex h-full flex-col bg-[var(--vibe-surface-block)]';
+const audioPanelClass = 'rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 shadow-[var(--vibe-shadow-block)]';
+const audioTitleClass = 'text-[10px] font-black uppercase tracking-wider text-[var(--vibe-text-faint)]';
+const audioIconClass = 'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)]';
+const audioButtonClass = 'flex items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
+const audioDangerButtonClass = 'border-[color-mix(in_srgb,var(--vibe-danger)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] text-[var(--vibe-danger)] hover:bg-[color-mix(in_srgb,var(--vibe-danger)_20%,transparent)]';
+const audioActiveClass = 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)]';
+const audioIdleClass = 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
 
 const CHANNELS: Array<{ id: AudioChannel; label: string; shortLabel: string }> = [
     { id: 'music', label: 'Музыка', shortLabel: 'MUS' },
@@ -573,31 +582,31 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
 
     if (!isHost) {
         return (
-            <div className="flex h-full flex-col bg-[#0d1420]">
-                <div className="border-b border-white/10 p-4">
+            <div className={audioShellClass}>
+                <div className="border-b border-[var(--vibe-border-subtle)] p-4">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-200/15 bg-cyan-300/10 text-cyan-100">
+                        <div className={audioIconClass}>
                             <Headphones size={18} />
                         </div>
                         <div className="min-w-0">
-                            <div className="text-sm font-black uppercase tracking-wider text-white">Звук сессии</div>
-                            <div className="truncate text-[11px] text-white/40">Локальные настройки игрока</div>
+                            <div className="text-sm font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Звук сессии</div>
+                            <div className="truncate text-[11px] text-[var(--vibe-text-faint)]">Локальные настройки игрока</div>
                         </div>
                     </div>
                 </div>
                 <div className="space-y-4 p-4">
                     <label className="hidden">
-                        <span className="text-xs font-bold uppercase tracking-wider text-white/70">Принимать звук</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">Принимать звук</span>
                         <input
                             type="checkbox"
                             checked={sessionAudioEnabled}
                             onChange={(event) => setSessionAudioEnabled(event.target.checked)}
-                            className="h-4 w-4 accent-cyan-300"
+                            className="h-4 w-4 accent-[var(--vibe-accent)]"
                         />
                     </label>
-                    <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-3">
+                    <div className={`${audioPanelClass} space-y-3`}>
                         {CHANNELS.map(channel => (
-                            <label key={channel.id} className="grid grid-cols-[82px_1fr_34px] items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-white/45">
+                            <label key={channel.id} className="grid grid-cols-[82px_1fr_34px] items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
                                 <span>{channel.label}</span>
                                 <input
                                     type="range"
@@ -606,9 +615,9 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                                     step={0.01}
                                     value={channelVolumes[channel.id]}
                                     onChange={(event) => setChannelVolume(channel.id, Number(event.target.value))}
-                                    className="w-full accent-cyan-300"
+                                    className="w-full accent-[var(--vibe-accent)]"
                                 />
-                                <span className="text-right font-mono text-white/55">{Math.round(channelVolumes[channel.id] * 100)}</span>
+                                <span className="text-right font-mono text-[var(--vibe-text-muted)]">{Math.round(channelVolumes[channel.id] * 100)}</span>
                             </label>
                         ))}
                     </div>
@@ -619,21 +628,21 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
 
     return (
         <div
-            className="flex h-full flex-col bg-[#0d1420]"
+            className={audioShellClass}
             onDragOver={(event) => {
                 if (Array.from(event.dataTransfer.items || []).some(item => item.kind === 'file')) event.preventDefault();
             }}
             onDrop={handleAudioDrop}
         >
-            <div className="border-b border-white/10 bg-black/20 p-3">
+            <div className="border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)] p-3">
                 <div className="mb-3 flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-2">
-                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-emerald-200/15 bg-emerald-300/10 text-emerald-100">
+                        <div className={audioIconClass}>
                             <SlidersHorizontal size={17} />
                         </div>
                         <div className="min-w-0">
-                            <div className="truncate text-sm font-black uppercase tracking-wider text-white">Пульт звука</div>
-                            <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-white/35">
+                            <div className="truncate text-sm font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Пульт звука</div>
+                            <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
                                 {deckState.cues.length} кнопок / {assets.length} аудио
                             </div>
                         </div>
@@ -642,7 +651,7 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                         <button
                             type="button"
                             onClick={() => void loadAssets()}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/45 transition-colors hover:bg-white/10 hover:text-white"
+                            className={`${audioButtonClass} h-8 w-8`}
                             title="Обновить аудио ассеты"
                         >
                             <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
@@ -650,7 +659,7 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                         <button
                             type="button"
                             onClick={stopAll}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-300/20 bg-red-400/10 text-red-100/75 transition-colors hover:bg-red-400/20 hover:text-white"
+                            className={`${audioButtonClass} ${audioDangerButtonClass} h-8 w-8`}
                             title="Остановить все каналы"
                         >
                             <VolumeX size={14} />
@@ -669,10 +678,10 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                                 key={channel.id}
                                 type="button"
                                 onClick={() => setActiveChannel(channel.id)}
-                                className={`min-w-0 rounded-lg border px-2 py-2 text-left transition-colors ${
+                                className={`min-w-0 rounded-[var(--vibe-radius-sm)] border px-2 py-2 text-left transition-colors ${
                                     isActive
-                                        ? 'border-emerald-200/35 bg-emerald-300/15 text-emerald-50'
-                                        : 'border-white/10 bg-white/[0.04] text-white/45 hover:bg-white/[0.07] hover:text-white/75'
+                                        ? audioActiveClass
+                                        : audioIdleClass
                                 }`}
                             >
                                 <span className="block text-[9px] font-black uppercase tracking-wider">{channel.shortLabel}</span>
@@ -685,27 +694,27 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                 </div>
             </div>
 
-            <div className="grid border-b border-white/10 bg-[#111927] p-3">
+            <div className="grid border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] p-3">
                 <div className="flex items-center justify-between gap-2">
-                    <label className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-white/55">
-                        <Radio size={13} className={syncToPlayers ? 'text-emerald-200' : 'text-white/30'} />
+                    <label className="inline-flex items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">
+                        <Radio size={13} className={syncToPlayers ? 'text-[var(--vibe-success)]' : 'text-[var(--vibe-text-faint)]'} />
                         Игрокам
                         <input
                             type="checkbox"
                             checked={syncToPlayers}
                             onChange={(event) => setSyncToPlayers(event.target.checked)}
-                            className="h-3.5 w-3.5 accent-emerald-300"
+                            className="h-3.5 w-3.5 accent-[var(--vibe-success)]"
                         />
                     </label>
-                    <div className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/20 px-2 py-1.5" title="Fade in/out для запуска и остановки звука">
-                        <span className="text-[9px] font-black uppercase tracking-wider text-white/35">Fade</span>
+                    <div className="flex items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5" title="Fade in/out для запуска и остановки звука">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-[var(--vibe-text-faint)]">Fade</span>
                         {[0, 1000, 3000].map(value => (
                             <button
                                 key={value}
                                 type="button"
                                 onClick={() => setFadeMs(value)}
-                                className={`rounded-md px-2 py-1 text-[9px] font-black uppercase tracking-wider transition-colors ${
-                                    fadeMs === value ? 'bg-white/20 text-white' : 'text-white/35 hover:bg-white/10 hover:text-white/70'
+                                className={`rounded-[var(--vibe-radius-sm)] px-2 py-1 text-[9px] font-black uppercase tracking-wider transition-colors ${
+                                    fadeMs === value ? 'bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)]' : 'text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                                 }`}
                             >
                                 {value === 0 ? '0s' : `${value / 1000}s`}
@@ -716,7 +725,7 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
 
                 <div className="mt-3 grid grid-cols-2 gap-2">
                     {CHANNELS.map(channel => (
-                        <label key={channel.id} className="grid grid-cols-[62px_1fr_28px] items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                        <label key={channel.id} className="grid grid-cols-[62px_1fr_28px] items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
                             <span>{channel.shortLabel}</span>
                             <input
                                 type="range"
@@ -725,9 +734,9 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                                 step={0.01}
                                 value={channelVolumes[channel.id]}
                                 onChange={(event) => setChannelVolume(channel.id, Number(event.target.value))}
-                                className="w-full accent-emerald-300"
+                                className="w-full accent-[var(--vibe-success)]"
                             />
-                            <span className="text-right font-mono text-white/45">{Math.round(channelVolumes[channel.id] * 100)}</span>
+                            <span className="text-right font-mono text-[var(--vibe-text-muted)]">{Math.round(channelVolumes[channel.id] * 100)}</span>
                         </label>
                     ))}
                 </div>
@@ -735,14 +744,14 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
 
             <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
                 {error && (
-                    <div className="m-3 rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-xs text-red-100">
+                    <div className="m-3 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] p-2 text-xs text-[var(--vibe-danger)]">
                         {error}
                     </div>
                 )}
 
-                <div className="border-b border-white/10 p-3">
+                <div className="border-b border-[var(--vibe-border-subtle)] p-3">
                     <div className="mb-2 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-white/45">
+                        <div className={audioTitleClass}>
                             <Music size={13} />
                             Кнопки / {getChannelLabel(activeChannel)}
                         </div>
@@ -750,7 +759,7 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                             <button
                                 type="button"
                                 onClick={() => stopChannel(activeChannel)}
-                                className="rounded-lg border border-red-300/20 bg-red-400/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-red-100/75 transition-colors hover:bg-red-400/20 hover:text-white"
+                                className={`rounded-[var(--vibe-radius-sm)] border px-2 py-1 text-[9px] font-black uppercase tracking-wider transition-colors ${audioDangerButtonClass}`}
                             >
                                 Стоп
                             </button>
@@ -758,7 +767,7 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                     </div>
 
                     {cuesForActiveChannel.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-white/10 bg-black/20 p-4 text-center text-xs italic text-white/30">
+                        <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-4 text-center text-xs italic text-[var(--vibe-text-faint)]">
                             Нет кнопок на этом канале
                         </div>
                     ) : (
@@ -771,17 +780,17 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                                 return (
                                     <div
                                         key={cue.id}
-                                        className={`rounded-xl border p-2 shadow-inner transition-colors ${
+                                        className={`rounded-[var(--vibe-radius-md)] border p-2 shadow-inner transition-colors ${
                                             isPlaying
-                                                ? 'border-emerald-200/40 bg-emerald-300/15'
-                                                : 'border-white/10 bg-white/[0.04]'
+                                                ? 'border-[color-mix(in_srgb,var(--vibe-success)_42%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_14%,transparent)]'
+                                                : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)]'
                                         } ${isMissing ? 'opacity-45' : ''}`}
                                     >
                                         <div className="min-h-[34px]">
-                                            <div className="truncate text-xs font-black text-white/80" title={cue.assetName}>
+                                            <div className="truncate text-xs font-black text-[var(--vibe-text-primary)]" title={cue.assetName}>
                                                 {cue.label ?? cue.assetName}
                                             </div>
-                                            <div className="mt-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/30">
+                                            <div className="mt-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
                                                 <span>{getCueModeLabel(cue.mode)}</span>
                                                 {cue.loop && <span>Loop</span>}
                                             </div>
@@ -793,8 +802,8 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                                                 disabled={isMissing}
                                                 className={`flex h-8 flex-1 items-center justify-center rounded-lg border text-[10px] font-black uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                                                     isPlaying
-                                                        ? 'border-emerald-200/35 bg-emerald-300/20 text-emerald-50'
-                                                        : 'border-white/10 bg-black/20 text-white/55 hover:bg-white/10 hover:text-white'
+                                                        ? 'border-[color-mix(in_srgb,var(--vibe-success)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_18%,transparent)] text-[var(--vibe-success)]'
+                                                        : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                                                 }`}
                                             >
                                                 {isPlaying ? <Square size={13} /> : <Play size={13} />}
@@ -802,7 +811,7 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                                             <button
                                                 type="button"
                                                 onClick={() => removeCue(cue.id)}
-                                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/20 text-red-200/50 transition-colors hover:border-red-300/25 hover:bg-red-400/15 hover:text-red-100"
+                                                className={`flex h-8 w-8 items-center justify-center rounded-[var(--vibe-radius-sm)] border transition-colors ${audioDangerButtonClass}`}
                                                 title="Удалить cue"
                                             >
                                                 <Trash2 size={13} />
@@ -817,41 +826,41 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
 
                 <div className="p-3 pb-8">
                     <div className="mb-2 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-white/45">
+                        <div className={audioTitleClass}>
                             <Volume2 size={13} />
                             Аудио
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="hidden items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/25 sm:inline-flex">
+                            <span className="hidden items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] sm:inline-flex">
                                 <Upload size={11} />
                                 Drop
                             </span>
-                            <span className="font-mono text-[10px] text-white/30">{visibleAssets.length}</span>
+                            <span className="font-mono text-[10px] text-[var(--vibe-text-faint)]">{visibleAssets.length}</span>
                         </div>
                     </div>
                     <input
                         value={query}
                         onChange={(event) => setQuery(event.target.value)}
                         placeholder="Поиск аудио..."
-                        className="mb-2 h-9 w-full rounded-lg border border-white/10 bg-black/25 px-3 text-xs text-white/80 outline-none transition-colors placeholder:text-white/30 focus:border-emerald-200/30 focus:bg-black/35"
+                        className={`${glass.input} mb-2 h-9 w-full px-3 text-xs`}
                     />
 
                     {visibleAssets.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-white/10 bg-black/20 p-4 text-center text-xs italic text-white/30">
+                        <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-4 text-center text-xs italic text-[var(--vibe-text-faint)]">
                             {isLoading ? 'Сканирую assets...' : 'Аудио не найдено'}
                         </div>
                     ) : (
                         <div className="space-y-1.5">
                             {visibleAssets.slice(0, 80).map(asset => (
-                                <div key={asset.id} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-2">
+                                <div key={asset.id} className="flex items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-2">
                                     <div className="min-w-0 flex-1">
-                                        <div className="truncate text-xs font-bold text-white/70" title={asset.path}>{asset.name}</div>
-                                        <div className="truncate text-[9px] text-white/25">{asset.path}</div>
+                                        <div className="truncate text-xs font-bold text-[var(--vibe-text-muted)]" title={asset.path}>{asset.name}</div>
+                                        <div className="truncate text-[9px] text-[var(--vibe-text-faint)]">{asset.path}</div>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => addCueFromAsset(asset)}
-                                        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-emerald-200/20 bg-emerald-300/10 text-emerald-100/75 transition-colors hover:bg-emerald-300/20 hover:text-white"
+                                        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-success)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_12%,transparent)] text-[var(--vibe-success)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-success)_20%,transparent)]"
                                         title={`Добавить в ${getChannelLabel(activeChannel)}`}
                                     >
                                         <Plus size={14} />

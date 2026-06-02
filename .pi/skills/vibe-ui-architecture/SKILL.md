@@ -52,8 +52,13 @@ description: Complete UI architecture reference for Vibe TTRPG Platform. Use whe
 - `MarkdownRenderer`: headings, blockquote, code/pre, tables, stats/inventory custom markdown blocks.
 - `AttributeBlock`, `SkillsBlock`, `CompetenciesBlock`, `AbilitiesBlock`, `ResourcesBlock`, `StatTooltip`: core stat/resource/ability surfaces, popovers, counters and status colors use `--vibe-*` semantic tokens.
 - `TagPickerPopup`, `EntityImageBlock`: picker modal, tag creation, image placeholder, overlay editor and upload/error states use `glass.*` and semantic tokens.
+- `ObjectSheet`, `AttackSheet`: parameter cards, action/danger panels, formula roll controls, tag pills and description empty states use semantic tokens.
+- `InventoryBlock`: equipped attack summary, dense item table, category sections, sort headers, equip toggles, qty input and total weight use semantic tokens.
+- `SettingsWindow`: settings frame, interface/audio/canvas/world/roles panels, language switch, role badges, toggles, range/input controls and error states use semantic tokens.
+- `AssetBrowser`: host/player file surfaces, toolbar, migrate warning, filters/sort, selection bar, empty/error states and asset cards use semantic tokens.
+- `AudioDesk`: player mixer, GM audio desk, channel tabs, broadcast/fade controls, cues, audio list, empty/error states and danger/success actions use semantic tokens.
 
-Оставшиеся старые слои, которые нельзя считать финальным UI: `ObjectSheet`, `InventoryBlock`, `AttackSheet`, `SettingsWindow` polish и `AudioDesk/AssetBrowser` polish.
+После этого token-pass старые hardcoded surfaces нужно искать точечно через `rg "white/|black/|#[0-9a-fA-F]{6}|bg-black|text-white|border-white"` перед каждым UI-срезом, а не считать какой-то один файл главным долгом.
 
 ---
 
@@ -410,6 +415,9 @@ Shift (rotate): snap 30°
 ### Файлы:
 - `app/src/locales/ru.json` — русский (основной)
 - `app/src/locales/en.json` — английский
+- `app/src/utils/localization.ts` — supported locales, localStorage key, normalization helpers
+- `app/src/hooks/useLocalePreference.ts` — UI hook для смены языка через i18next
+- `.pi/docs/i18n-custom-locales-foundation.md` — mini-plan для будущих custom world locales
 
 ### Использование:
 ```tsx
@@ -417,6 +425,11 @@ import { useTranslation } from 'react-i18next';
 const { t } = useTranslation();
 t('hud.activeElements') // → "Объекты на канвасе"
 ```
+
+### Правило:
+- первый срез `FEAT-I18N-002` уже даёт RU/EN switch в `SettingsWindow -> Интерфейс` и хранит выбор локально;
+- новые UI-строки, добавляемые в текущем UI-redesign pass, нужно заводить через `t(...)`;
+- custom world locale files и редактор переводов пока planned, не записывай `world/locales/*.json` без отдельного product/architecture gate.
 
 ---
 

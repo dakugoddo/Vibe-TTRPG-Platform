@@ -12,6 +12,7 @@
 - [x] Фичи проходят через `.pi/FEATURE_BACKLOG.md`.
 - [x] Крупные изменения проходят Architecture/Product gate: sync, permissions, модули, внешние API, упаковка, 3D, файловый формат.
 - [x] Core остаётся local-first: `.md` + YAML frontmatter на диске хоста.
+- [x] Длинные срезы имеют живой handoff в `.pi/workflows/`, чтобы продолжать после compaction/лимитов без повторных расспросов.
 
 ## 1. UI Redesign Gate: ближайший приоритет
 
@@ -22,8 +23,13 @@
 - [x] После решений владельца идти foundation-first: theme tokens -> app shell/drawers -> i18n manager -> entity sheets -> asset/audio/settings polish.
 - [x] Срез theme tokens: `theme.ts` управляет semantic variables для surface/border/shadow/blur/radius, а SettingsWindow показывает visual theme presets.
 - [x] Первый entity UI-срез: EntityWindow frame/header/actions/relations/context menu, CharacterSheet notes и MarkdownRenderer переведены на semantic tokens.
-- [x] Core entity block-pass: `AttributeBlock`, `SkillsBlock`, `CompetenciesBlock`, `AbilitiesBlock`, `ResourcesBlock`, `StatTooltip`, `TagPickerPopup` и `EntityImageBlock` переведены на semantic tokens.
-- [ ] Следующий entity UI-срез: ObjectSheet, InventoryBlock и AttackSheet surfaces на тот же semantic contract.
+- [x] Core entity-sheet pass: `AttributeBlock`, `SkillsBlock`, `CompetenciesBlock`, `AbilitiesBlock`, `ResourcesBlock`, `ObjectSheet`, `AttackSheet`, `InventoryBlock`, `StatTooltip`, `TagPickerPopup` и `EntityImageBlock` переведены на semantic tokens.
+- [x] SettingsWindow polish: вкладки interface/audio/canvas/world/roles, role badges, toggles, range/input controls и error states переведены на semantic tokens.
+- [x] AssetBrowser polish: host/player states, toolbar, filters/sort, selection bar, warnings, empty/error states и asset cards переведены на semantic tokens.
+- [x] AudioDesk polish: player mixer, GM desk, channel tabs, broadcast/fade controls, cues, audio list, empty/error states и danger/success actions переведены на semantic tokens.
+- [x] i18n manager/custom locales foundation: language switch в `SettingsWindow -> Интерфейс`, localStorage preference, built-in ru/en bundles и mini-plan custom world locales без записи файлов мира.
+- [x] Первый compact character card slice: `character` token info overlay показывает быстрые метрики, wounds/resources bars и счётчики атак/способностей/вещей без изменения canvas data format.
+- [ ] Следующий UI-срез: tabbed compact character card для режима `Карточка` на canvas.
 - [ ] После block-pass проектировать компактный character card view для canvas.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
@@ -98,8 +104,10 @@
 - [x] Поддерживать тему через variables/tokens, чтобы будущие custom themes не требовали переписывать компоненты: первый `theme.ts` token foundation и shell pass внесены.
 - [ ] Не делать случайную декоративность; интерфейс должен быть рабочим GM/player cockpit.
 - [x] Довести EntityWindow frame/context menu и MarkdownRenderer до первого semantic token слоя.
-- [x] Довести core entity blocks (`Attribute/Skills/Competencies/Abilities/Resources/StatTooltip/TagPicker/EntityImage`) до semantic tokens.
-- [ ] Довести оставшиеся старые hardcoded surfaces в ObjectSheet, InventoryBlock, AttackSheet, AssetBrowser, SettingsWindow и AudioDesk до semantic tokens.
+- [x] Довести core entity sheets (`Attribute/Skills/Competencies/Abilities/Resources/Object/Attack/Inventory/StatTooltip/TagPicker/EntityImage`) до semantic tokens.
+- [x] Довести SettingsWindow surfaces до semantic tokens.
+- [x] Довести AssetBrowser surfaces до semantic tokens.
+- [x] Довести AudioDesk surfaces до semantic tokens.
 
 ## 7. Platform Future
 
@@ -115,6 +123,7 @@
 - `.pi/docs/audio-source-extensions.md` — SoundCloud/YouTube как extensions.
 - `.pi/docs/notification-system.md` — уведомления и upload approvals.
 - `.pi/docs/testing-multiplayer.md` — ручная QA.
+- `.pi/workflows/current-ui-redesign.md` — активная память UI redesign с решениями владельца, запретами и следующим безопасным срезом.
 
 ## Следующий Безопасный Срез
 
@@ -123,6 +132,12 @@
 3. ✅ Спроектировать chunked/resumable upload для файлов больше `250 MB` — **ГОТОВО**, запушено.
 4. ✅ Поднять UI redesign gate, внести решения владельца и первый semantic theme foundation — **ГОТОВО**.
 5. ✅ EntityWindow/Markdown/notes surfaces на semantic tokens — **ГОТОВО**.
-6. ✅ Core entity blocks (Attribute/Skills/Competencies/Abilities/Resources/StatTooltip/TagPicker/EntityImage) на semantic tokens — **ГОТОВО**.
-7. [ ] Следующий UI-срез: ObjectSheet, InventoryBlock и AttackSheet surfaces на semantic tokens.
-8. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.
+6. ✅ Core entity sheets (Attribute/Skills/Competencies/Abilities/Resources/Object/Attack/Inventory/StatTooltip/TagPicker/EntityImage) на semantic tokens — **ГОТОВО**.
+7. ✅ SettingsWindow surfaces на semantic tokens — **ГОТОВО**.
+8. ✅ AssetBrowser surfaces на semantic tokens — **ГОТОВО**.
+9. ✅ AudioDesk surfaces на semantic tokens — **ГОТОВО**.
+10. [x] i18n manager/custom locales foundation: RU/EN switch, localStorage-backed preference, focused localization test и mini-plan для будущих world locales.
+11. [x] Закрепить `.pi/workflows/current-ui-redesign.md` как живой handoff для UI-среза.
+12. [x] Первый compact character card slice: helper + token info overlay summary для персонажей.
+13. [ ] Следующий UI-срез: tabbed compact character card для режима `Карточка` на canvas.
+14. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.

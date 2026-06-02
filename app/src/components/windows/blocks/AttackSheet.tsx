@@ -21,6 +21,11 @@ interface AttackSheetProps {
 type AttackTab = 'stats' | 'description' | 'canvas';
 
 const DISTANCES = ['ближняя', 'средняя', 'дальняя', 'экстремальная', 'запредельная'];
+const attackPanelClass = `${glass.blockBg} border-[color-mix(in_srgb,var(--vibe-danger)_28%,var(--vibe-border-subtle))] shadow-[inset_0_0_20px_color-mix(in_srgb,var(--vibe-danger)_8%,transparent)]`;
+const statCardClass = 'group flex flex-col items-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 shadow-sm transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]';
+const statLabelClass = 'mb-1 cursor-pointer text-[10px] font-bold uppercase text-[var(--vibe-text-faint)] transition-colors hover:text-[var(--vibe-text-primary)]';
+const statInputClass = 'w-full bg-transparent text-center text-lg font-bold text-[var(--vibe-text-primary)] outline-none transition-colors group-hover:text-[var(--vibe-danger)]';
+const tagPillClass = 'group/tag flex items-center overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] shadow-[var(--vibe-shadow-block)] transition-colors hover:border-[color-mix(in_srgb,var(--vibe-danger)_42%,var(--vibe-border-strong))]';
 
 function getEntityOwnerId(entity: Entity): string | undefined {
     const owner = entity.properties?._playerOwner;
@@ -102,7 +107,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                 endSlot={activeTab === 'description' && canEditAttack ? (
                     <button
                         onClick={() => setIsEditingDescription(!isEditingDescription)}
-                        className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${isEditingDescription ? 'bg-white/20 text-white shadow-sm' : 'text-white/45 hover:bg-white/10 hover:text-white'}`}
+                        className={`grid h-8 w-8 place-items-center rounded-[var(--vibe-radius-sm)] transition-colors ${isEditingDescription ? glass.iconButtonActive : glass.iconButton}`}
                         title={isEditingDescription ? 'Завершить редактирование' : 'Редактировать описание'}
                     >
                         {isEditingDescription ? <Check size={14} /> : <Edit2 size={14} />}
@@ -112,16 +117,16 @@ export function AttackSheet({ entity }: AttackSheetProps) {
 
             {activeTab === 'stats' && (
                 <>
-            <div className={`${glass.blockBg} border-red-500/20 shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]`}>
-                <h3 className={glass.blockHeader + " text-red-400 border-red-500/20 mb-3"}>
+            <div className={attackPanelClass}>
+                <h3 className={`${glass.blockHeader} mb-3 border-[color-mix(in_srgb,var(--vibe-danger)_28%,transparent)] text-[var(--vibe-danger)]`}>
                     Характеристики Атаки
                 </h3>
 
                 <div className="grid grid-cols-2 gap-3">
                     {/* Урон */}
-                    <div className="bg-[#2a2d3d]/40 p-2 rounded-lg border border-[#2a2d3d] flex flex-col items-center group hover:bg-[#2a2d3d] hover:border-white/10 transition-all shadow-sm">
+                    <div className={statCardClass}>
                         <span
-                            className="text-[10px] text-white/40 uppercase font-bold mb-1 cursor-pointer hover:text-white transition-colors"
+                            className={statLabelClass}
                             onClick={() => handleOpenNote('Урон')}
                         >
                             Урон
@@ -131,15 +136,15 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                             value={entity.properties.урон ?? 1}
                             readOnly={!canEditAttack}
                             onChange={(e) => updateProperty('урон', parseInt(e.target.value) || 0)}
-                            className="bg-transparent text-white font-bold text-lg w-full text-center outline-none group-hover:text-red-300 transition-colors"
+                            className={statInputClass}
                             placeholder="0"
                         />
                     </div>
 
                     {/* Масштаб */}
-                    <div className="bg-[#2a2d3d]/40 p-2 rounded-lg border border-[#2a2d3d] flex flex-col items-center group hover:bg-[#2a2d3d] hover:border-white/10 transition-all shadow-sm">
+                    <div className={statCardClass}>
                         <span
-                            className="text-[10px] text-white/40 uppercase font-bold mb-1 cursor-pointer hover:text-white transition-colors"
+                            className={statLabelClass}
                             onClick={() => handleOpenNote('Масштаб')}
                         >
                             Масштаб
@@ -149,15 +154,15 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                             value={entity.properties.масштаб ?? 1}
                             readOnly={!canEditAttack}
                             onChange={(e) => updateProperty('масштаб', parseInt(e.target.value) || 0)}
-                            className="bg-transparent text-white font-bold text-lg w-full text-center outline-none group-hover:text-red-300 transition-colors"
+                            className={statInputClass}
                             placeholder="0"
                         />
                     </div>
 
                     {/* Попадание */}
-                    <div className="bg-[#2a2d3d]/40 p-2 rounded-lg border border-[#2a2d3d] flex flex-col items-center group hover:bg-[#2a2d3d] hover:border-white/10 transition-all shadow-sm">
+                    <div className={statCardClass}>
                         <span
-                            className="text-[10px] text-white/40 uppercase font-bold mb-1 cursor-pointer hover:text-white transition-colors"
+                            className={statLabelClass}
                             onClick={() => handleOpenNote('Попадание')}
                         >
                             Попадание
@@ -167,15 +172,15 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                             value={entity.properties.попадание ?? 1}
                             readOnly={!canEditAttack}
                             onChange={(e) => updateProperty('попадание', parseInt(e.target.value) || 0)}
-                            className="bg-transparent text-white font-bold text-lg w-full text-center outline-none group-hover:text-red-300 transition-colors"
+                            className={statInputClass}
                             placeholder="0"
                         />
                     </div>
 
                     {/* Дистанция */}
-                    <div className="bg-[#2a2d3d]/40 p-2 rounded-lg border border-[#2a2d3d] flex flex-col justify-center group hover:bg-[#2a2d3d] hover:border-white/10 transition-all shadow-sm">
+                    <div className={`${statCardClass} justify-center`}>
                         <span
-                            className="text-[10px] text-white/40 uppercase font-bold mb-1 text-center cursor-pointer hover:text-white transition-colors"
+                            className={`${statLabelClass} text-center`}
                             onClick={() => handleOpenNote('Дистанция')}
                         >
                             Дистанция
@@ -184,7 +189,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                             value={entity.properties.дистанция || DISTANCES[0]}
                             disabled={!canEditAttack}
                             onChange={(e) => updateProperty('дистанция', e.target.value)}
-                            className="bg-[#1a1c29] text-white/90 text-xs font-bold w-full text-center outline-none appearance-none rounded p-1 border border-[#1a1c29] hover:border-red-500/50 transition-all cursor-pointer focus:ring-1 focus:ring-red-500 shadow-inner"
+                            className={`${glass.input} w-full cursor-pointer appearance-none p-1 text-center text-xs font-bold`}
                         >
                             {DISTANCES.map(d => (
                                 <option key={d} value={d}>{d}</option>
@@ -192,8 +197,8 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                         </select>
                     </div>
 
-                    <div className="col-span-2 bg-[#2a2d3d]/40 p-2 rounded-lg border border-red-500/20 flex flex-col gap-1.5 group hover:bg-[#2a2d3d] hover:border-red-500/40 transition-all shadow-sm">
-                        <span className="text-[10px] text-red-300/70 uppercase font-bold">
+                    <div className="group col-span-2 flex flex-col gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_28%,var(--vibe-border-subtle))] bg-[var(--vibe-surface-input)] p-2 shadow-sm transition-all hover:border-[color-mix(in_srgb,var(--vibe-danger)_42%,var(--vibe-border-strong))] hover:bg-[var(--vibe-surface-hover)]">
+                        <span className="text-[10px] font-bold uppercase text-[color-mix(in_srgb,var(--vibe-danger)_78%,var(--vibe-text-muted))]">
                             Формула броска
                         </span>
                         <div className="flex items-center gap-2">
@@ -202,14 +207,14 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                                 value={rollFormula}
                                 readOnly={!canEditAttack}
                                 onChange={(e) => updateProperty('diceFormula', e.target.value)}
-                                className="min-w-0 flex-1 bg-[#1a1c29] text-white/90 text-xs font-mono outline-none rounded p-1.5 border border-white/10 focus:border-red-400/50 read-only:text-white/40 read-only:cursor-default"
+                                className={`${glass.input} min-w-0 flex-1 rounded-[var(--vibe-radius-sm)] p-1.5 font-mono text-xs read-only:cursor-default read-only:text-[var(--vibe-text-faint)]`}
                                 placeholder="1d20+2 / 2d6"
                             />
                             <button
                                 type="button"
                                 onClick={() => sendAttackRollToChat(entity, parentEntity ? [parentEntity] : [])}
                                 disabled={!canRoll}
-                                className={`grid h-8 w-8 place-items-center rounded-lg border transition-all ${canRoll ? 'border-red-500/35 bg-red-500/20 text-red-200 hover:bg-red-500/35 hover:text-red-100' : 'border-transparent bg-white/5 text-white/20 cursor-not-allowed'}`}
+                                className={`grid h-8 w-8 place-items-center rounded-[var(--vibe-radius-sm)] border transition-all ${canRoll ? 'border-[color-mix(in_srgb,var(--vibe-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] text-[var(--vibe-danger)] hover:bg-[color-mix(in_srgb,var(--vibe-danger)_28%,transparent)]' : 'cursor-not-allowed border-transparent bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)]'}`}
                                 title={canRoll ? `Бросить ${rollFormula}` : 'Укажите формулу броска'}
                             >
                                 <Dices size={14} />
@@ -220,9 +225,9 @@ export function AttackSheet({ entity }: AttackSheetProps) {
             </div>
 
             {/* ПРОПЕРТИЗ БЛОК (Свойства) */}
-            <div className={`${glass.blockBg} border-red-500/20 shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]`}>
+            <div className={attackPanelClass}>
                 <div className="flex items-center justify-between mb-4">
-                    <h4 className={glass.blockHeader + " text-red-400 border-red-500/20 mb-0"}>
+                    <h4 className={`${glass.blockHeader} mb-0 border-[color-mix(in_srgb,var(--vibe-danger)_28%,transparent)] text-[var(--vibe-danger)]`}>
                         <Tag size={14} className="mr-2" />
                         Свойства
                     </h4>
@@ -230,7 +235,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                     {canEditAttack && (
                         <>
                             <button
-                                className="flex items-center gap-1 px-2 py-1 bg-white/5 border border-white/10 border-dashed rounded-md text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-wider"
+                                className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                                 onClick={() => setIsTagPickerOpen(true)}
                             >
                                 <Plus size={12} /> Добавить
@@ -255,15 +260,15 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                 <div className="flex flex-wrap gap-2 text-sm">
                     {entity.tags && entity.tags.length > 0 ? entity.tags.map(tagId => {
                         return (
-                            <div key={tagId} className="group/tag flex items-center bg-[#2e3145] border border-white/5 rounded-lg overflow-hidden transition-colors hover:border-red-500/50 shadow-md">
-                                <EntityLink entityId={tagId} underline={false} className="px-2 py-1 text-white/80 font-medium whitespace-nowrap hover:text-red-300 text-xs" />
+                            <div key={tagId} className={tagPillClass}>
+                                <EntityLink entityId={tagId} underline={false} className="whitespace-nowrap px-2 py-1 text-xs font-medium text-[var(--vibe-text-muted)] hover:text-[var(--vibe-danger)]" />
                                 {canEditAttack && (
                                     <button
                                         onClick={() => {
                                             const newTags = entity.tags.filter(id => id !== tagId);
                                             yjsStore.updateEntity(entity.id, { tags: newTags });
                                         }}
-                                        className="px-2 py-1 text-white/30 hover:bg-red-900/40 hover:text-red-400 transition-colors border-l border-white/10 group-hover/tag:border-red-500/50"
+                                        className="border-l border-[var(--vibe-border-subtle)] px-2 py-1 text-[var(--vibe-text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)] group-hover/tag:border-[color-mix(in_srgb,var(--vibe-danger)_42%,var(--vibe-border-strong))]"
                                         title="Убрать"
                                     >
                                         <Trash2 size={12} />
@@ -271,7 +276,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                                 )}
                             </div>
                         )
-                    }) : <span className="text-white/30 text-xs italic">Нет свойств</span>}
+                    }) : <span className="text-xs italic text-[var(--vibe-text-faint)]">Нет свойств</span>}
                 </div>
             </div>
                 </>
@@ -290,10 +295,10 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                             autoFocus
                         />
                     ) : (
-                        <div className="min-h-[180px] text-sm leading-relaxed text-white/80" onDoubleClick={() => { if (canEditAttack) setIsEditingDescription(true); }}>
+                        <div className="min-h-[180px] text-sm leading-relaxed text-[var(--vibe-text-muted)]" onDoubleClick={() => { if (canEditAttack) setIsEditingDescription(true); }}>
                             {entity.description
                                 ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
-                                : <span className="text-white/30 italic cursor-pointer">{canEditAttack ? 'Описание пустое. Дважды кликните для редактирования.' : 'Описание пустое.'}</span>}
+                                : <span className="cursor-pointer italic text-[var(--vibe-text-faint)]">{canEditAttack ? 'Описание пустое. Дважды кликните для редактирования.' : 'Описание пустое.'}</span>}
                         </div>
                     )}
                 </div>

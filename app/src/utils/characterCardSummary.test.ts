@@ -1,0 +1,59 @@
+import assert from 'node:assert/strict';
+import type { Entity } from '../types';
+import { buildCharacterCompactSummary } from './characterCardSummary';
+
+function entity(partial: Partial<Entity>): Entity {
+    return {
+        id: partial.id ?? 'entity',
+        parentId: partial.parentId ?? null,
+        type: partial.type ?? 'note',
+        name: partial.name ?? 'Entity',
+        description: partial.description ?? '',
+        properties: partial.properties ?? {},
+        tags: partial.tags ?? [],
+        database: partial.database ?? 'general',
+    };
+}
+
+const character = entity({
+    id: 'hero',
+    type: 'character',
+    name: 'Hero',
+    properties: {
+        attributes: {
+            wounds: { current: 3, limit: { base: 5 } },
+            constitution: { base: 2 },
+            cognition: { base: 4 },
+            speed: { base: 6 },
+        },
+        stats: {
+            strength: 14,
+            dexterity: 12,
+        },
+        resources: {
+            focus: { label: 'Фокус', current: 2, max: 5 },
+        },
+    },
+});
+
+const sword = entity({ id: 'sword', type: 'object', parentId: 'hero' });
+const potion = entity({ id: 'potion', type: 'object', parentId: 'hero' });
+const ability = entity({ id: 'blink', type: 'ability', parentId: 'hero' });
+const attack = entity({ id: 'slash', type: 'attack', parentId: 'sword' });
+const unrelatedAttack = entity({ id: 'hidden', type: 'attack', parentId: 'other' });
+
+const summary = buildCharacterCompactSummary(character, [character, sword, potion, ability, attack, unrelatedAttack]);
+
+assert.deepEqual(summary.metrics, [
+    { id: 'strength', label: 'СИЛ', value: 14 },
+    { id: 'dexterity', label: 'ЛОВ', value: 12 },
+    { id: 'constitution', label: 'ВЫН', value: 2 },
+    { id: 'cognition', label: 'КОГ', value: 4 },
+]);
+assert.deepEqual(summary.resources[0], { id: 'wounds', label: 'Раны', current: 3, max: 10, ratio: 0.3 });
+assert.deepEqual(summary.resources[1], { id: 'focus', label: 'Фокус', current: 2, max: 5, ratio: 0.4 });
+assert.equal(summary.inventoryCount, 2);
+assert.equal(summary.abilityCount, 1);
+assert.equal(summary.attackCount, 1);
+
+console.log('character card summary tests passed');

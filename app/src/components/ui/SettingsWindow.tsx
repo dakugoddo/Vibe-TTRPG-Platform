@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2, Loader2, Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2, Loader2, Users, Languages } from 'lucide-react';
 import { yjsStore } from '../../store/yjsStore';
 import { useCanvasDrawStore } from '../../store/canvasDrawStore';
 import { useAudioChannelVolumes } from '../../hooks/useAudioChannelVolumes';
 import { useAudioSessionEnabled } from '../../hooks/useAudioSessionEnabled';
 import { useAppModuleEnabled } from '../../hooks/useAppModuleEnablement';
+import { useLocalePreference } from '../../hooks/useLocalePreference';
 import { useThemePreset } from '../../hooks/useThemePreset';
 import { DEFAULT_ROLE_DEFINITIONS, getEffectivePermissions, type PermissionKey, type UserRole } from '../../utils/permissions';
-import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, saveCustomThemeColors, themePresets, type CustomThemeColors } from '../../utils/theme';
+import { SUPPORTED_LOCALES } from '../../utils/localization';
+import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, glass, saveCustomThemeColors, themePresets, type CustomThemeColors } from '../../utils/theme';
 import type { AudioChannel, PlayerProfile } from '../../types';
 import { listPlayerProfiles, updatePlayerProfileRole } from '../../services/fileApi';
 
@@ -50,6 +53,14 @@ const CUSTOM_THEME_COLOR_FIELDS: Array<{ key: keyof CustomThemeColors; label: st
     { key: 'scrollbar', label: 'Scroll' },
 ];
 
+const settingsPanelClass = 'rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] p-4 shadow-[var(--vibe-shadow-block)]';
+const settingsCardClass = 'rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3';
+const settingsSectionTitleClass = 'mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]';
+const settingsMutedTextClass = 'text-[var(--vibe-text-faint)]';
+const toggleOptionClass = 'flex cursor-pointer items-center justify-between gap-3 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] p-4 shadow-[var(--vibe-shadow-block)]';
+const activeControlClass = 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)]';
+const idleControlClass = 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
+
 function getSettingsTabs(isGM: boolean) {
     const tabs: Array<{ id: SettingsTabId; label: string; icon: typeof Monitor; gmOnly?: boolean }> = [
         { id: 'interface', label: 'Интерфейс', icon: Monitor },
@@ -66,12 +77,14 @@ function getSettingsTabs(isGM: boolean) {
 }
 
 export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProps) {
+    const { t } = useTranslation();
     const isGM = yjsStore.localRole === 'gm';
     const tabs = useMemo(() => getSettingsTabs(isGM), [isGM]);
     const [activeTab, setActiveTab] = useState<SettingsTabId>('interface');
     const [audioEnabled, setAudioEnabled] = useAudioSessionEnabled();
     const [audioModuleEnabled, setAudioModuleEnabled] = useAppModuleEnabled('audio');
     const [channelVolumes, setChannelVolume] = useAudioChannelVolumes();
+    const [locale, setLocale] = useLocalePreference();
     const [themeId, setThemeId] = useThemePreset();
     const [customThemeColors, setCustomThemeColors] = useState<CustomThemeColors>(getStoredCustomThemeColors);
     const gridEnabled = useCanvasDrawStore((state) => state.gridEnabled);
@@ -141,7 +154,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     };
 
     return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[color-mix(in_srgb,var(--vibe-body-bg)_58%,transparent)] p-4 backdrop-blur-sm">
             <div className="flex h-[min(720px,calc(100vh-32px))] w-[min(900px,calc(100vw-32px))] overflow-hidden rounded-[var(--vibe-radius-lg)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-window)] text-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-window)] backdrop-blur-[var(--vibe-backdrop-blur)]">
                 <aside className="flex w-52 flex-col border-r border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] p-3">
                     <div className="mb-4 flex items-center gap-2 px-2 py-1.5">
@@ -226,7 +239,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                         {preset.swatches.map((color) => (
                                                             <span
                                                                 key={color}
-                                                                className="h-4 flex-1 rounded border border-white/10"
+                                                                className="h-4 flex-1 rounded border border-[var(--vibe-border-subtle)]"
                                                                 style={{ backgroundColor: color }}
                                                             />
                                                         ))}
@@ -282,49 +295,104 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                         </div>
                                     </div>
                                 </div>
+
+                                <div className={settingsPanelClass}>
+                                    <div className={settingsSectionTitleClass}>
+                                        <Languages size={14} />
+                                        {t('settings.interface.language.title')}
+                                    </div>
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        {SUPPORTED_LOCALES.map((option) => {
+                                            const selected = locale === option.id;
+                                            const localeSummaryKey = option.id === 'ru'
+                                                ? 'settings.interface.language.localeRu'
+                                                : 'settings.interface.language.localeEn';
+                                            return (
+                                                <button
+                                                    key={option.id}
+                                                    type="button"
+                                                    onClick={() => setLocale(option.id)}
+                                                    className={`rounded-[var(--vibe-radius-md)] border p-3 text-left transition-colors ${
+                                                        selected
+                                                            ? activeControlClass
+                                                            : idleControlClass
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-xs font-bold text-[var(--vibe-text-primary)]">{option.nativeLabel}</span>
+                                                        <span className="rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{option.id}</span>
+                                                    </div>
+                                                    <div className="mt-1 text-[10px] leading-snug text-[var(--vibe-text-faint)]">{t(localeSummaryKey)}</div>
+                                                    <div className="mt-2 truncate font-mono text-[9px] text-[var(--vibe-text-faint)]">{option.bundlePath}</div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                        <div className={settingsCardClass}>
+                                            <div className="mb-1 flex items-center justify-between gap-2">
+                                                <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.interface.language.appBundlesTitle')}</div>
+                                                <span className="rounded border border-[color-mix(in_srgb,var(--vibe-success)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_12%,transparent)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-success)]">
+                                                    {t('settings.interface.language.readyBadge')}
+                                                </span>
+                                            </div>
+                                            <div className="text-[11px] leading-snug text-[var(--vibe-text-faint)]">{t('settings.interface.language.appBundlesDescription')}</div>
+                                        </div>
+                                        <div className={settingsCardClass}>
+                                            <div className="mb-1 flex items-center justify-between gap-2">
+                                                <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.interface.language.worldLocalesTitle')}</div>
+                                                <span className="rounded border border-[color-mix(in_srgb,var(--vibe-warning)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-warning)_12%,transparent)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-warning)]">
+                                                    {t('settings.interface.language.plannedBadge')}
+                                                </span>
+                                            </div>
+                                            <div className="text-[11px] leading-snug text-[var(--vibe-text-faint)]">{t('settings.interface.language.worldLocalesDescription')}</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </section>
                         )}
 
                         {safeActiveTab === 'audio' && (
                             <section className="space-y-3">
-                                <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                                <label className={toggleOptionClass}>
                                     <span>
-                                        <span className="block text-xs font-bold uppercase tracking-widest text-white/75">Аудио-модуль</span>
-                                        <span className="mt-1 block text-[11px] text-white/40">Нижний плеер, пульт звука и приём сессионных audio-команд</span>
+                                        <span className="block text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-primary)]">Аудио-модуль</span>
+                                        <span className={`mt-1 block text-[11px] ${settingsMutedTextClass}`}>Нижний плеер, пульт звука и приём сессионных audio-команд</span>
                                     </span>
                                     <input
                                         type="checkbox"
                                         checked={audioModuleEnabled}
                                         onChange={(event) => setAudioModuleEnabled(event.target.checked)}
-                                        className="h-4 w-4 accent-emerald-300"
+                                        className="h-4 w-4 accent-[var(--vibe-success)]"
                                     />
                                 </label>
 
-                                <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                                <label className={toggleOptionClass}>
                                     <span>
-                                        <span className="block text-xs font-bold uppercase tracking-widest text-white/75">Звук сессии</span>
-                                        <span className="mt-1 block text-[11px] text-white/40">Воспроизведение команд Host/GM на этом клиенте</span>
+                                        <span className="block text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-primary)]">Звук сессии</span>
+                                        <span className={`mt-1 block text-[11px] ${settingsMutedTextClass}`}>Воспроизведение команд Host/GM на этом клиенте</span>
                                     </span>
                                     <input
                                         type="checkbox"
                                         checked={audioEnabled}
                                         disabled={!audioModuleEnabled}
                                         onChange={(event) => setAudioEnabled(event.target.checked)}
-                                        className="h-4 w-4 accent-cyan-300"
+                                        className="h-4 w-4 accent-[var(--vibe-accent)]"
                                     />
                                 </label>
 
-                                <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-                                    <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/45">
+                                <div className={settingsPanelClass}>
+                                    <div className={settingsSectionTitleClass}>
                                         <SlidersHorizontal size={14} />
                                         Микшер каналов
                                     </div>
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         {AUDIO_CHANNELS.map((channel) => (
-                                            <label key={channel.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
-                                                <div className="mb-2 flex items-center justify-between gap-2 text-xs font-bold text-white/70">
+                                            <label key={channel.id} className={settingsCardClass}>
+                                                <div className="mb-2 flex items-center justify-between gap-2 text-xs font-bold text-[var(--vibe-text-muted)]">
                                                     <span>{channel.label}</span>
-                                                    <span className="font-mono text-white/35">{Math.round(channelVolumes[channel.id] * 100)}</span>
+                                                    <span className="font-mono text-[var(--vibe-text-faint)]">{Math.round(channelVolumes[channel.id] * 100)}</span>
                                                 </div>
                                                 <input
                                                     type="range"
@@ -334,7 +402,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                     value={channelVolumes[channel.id]}
                                                     disabled={!audioModuleEnabled}
                                                     onChange={(event) => setChannelVolume(channel.id, Number(event.target.value))}
-                                                    className="h-1 w-full accent-cyan-300"
+                                                    className="h-1 w-full accent-[var(--vibe-accent)]"
                                                 />
                                             </label>
                                         ))}
@@ -345,8 +413,8 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
 
                         {safeActiveTab === 'canvas' && (
                             <section className="space-y-3">
-                                <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-                                    <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/45">
+                                <div className={settingsPanelClass}>
+                                    <div className={settingsSectionTitleClass}>
                                         <Grid3X3 size={14} />
                                         Сетка и snap
                                     </div>
@@ -354,10 +422,10 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                         <button
                                             type="button"
                                             onClick={toggleGrid}
-                                            className={`h-9 rounded-lg border px-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+                                            className={`h-9 rounded-[var(--vibe-radius-sm)] border px-3 text-xs font-bold uppercase tracking-wider transition-colors ${
                                                 gridEnabled
-                                                    ? 'border-cyan-200/35 bg-cyan-300/15 text-cyan-50'
-                                                    : 'border-white/10 bg-black/20 text-white/45 hover:border-white/20 hover:text-white/75'
+                                                    ? activeControlClass
+                                                    : idleControlClass
                                             }`}
                                         >
                                             {gridEnabled ? 'Сетка включена' : 'Сетка выключена'}
@@ -367,10 +435,10 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                 key={type}
                                                 type="button"
                                                 onClick={() => setGridType(type)}
-                                                className={`h-9 rounded-lg border px-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+                                                className={`h-9 rounded-[var(--vibe-radius-sm)] border px-3 text-xs font-bold uppercase tracking-wider transition-colors ${
                                                     gridType === type
-                                                        ? 'border-emerald-200/30 bg-emerald-300/15 text-emerald-50'
-                                                        : 'border-white/10 bg-black/20 text-white/45 hover:border-white/20 hover:text-white/75'
+                                                        ? activeControlClass
+                                                        : idleControlClass
                                                 }`}
                                             >
                                                 {type === 'square' ? 'Квадраты' : 'Гексы'}
@@ -378,9 +446,9 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                         ))}
                                     </div>
                                     <label className="mt-4 block max-w-xs">
-                                        <div className="mb-2 flex items-center justify-between text-xs font-bold text-white/65">
+                                        <div className="mb-2 flex items-center justify-between text-xs font-bold text-[var(--vibe-text-muted)]">
                                             <span>Шаг сетки</span>
-                                            <span className="font-mono text-white/35">{gridSpacing}</span>
+                                            <span className="font-mono text-[var(--vibe-text-faint)]">{gridSpacing}</span>
                                         </div>
                                         <input
                                             type="range"
@@ -389,7 +457,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                             step="2"
                                             value={gridSpacing}
                                             onChange={(event) => setGridSpacing(Number(event.target.value))}
-                                            className="h-1 w-full accent-cyan-300"
+                                            className="h-1 w-full accent-[var(--vibe-accent)]"
                                         />
                                     </label>
                                 </div>
@@ -398,19 +466,19 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
 
                         {safeActiveTab === 'world' && isGM && (
                             <section className="space-y-3">
-                                <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-                                    <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/45">
+                                <div className={settingsPanelClass}>
+                                    <div className={settingsSectionTitleClass}>
                                         <Globe2 size={14} />
                                         Мир
                                     </div>
                                     <div className="grid gap-3 sm:grid-cols-2">
-                                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                                            <div className="text-xs font-bold text-white/75">Комната</div>
-                                            <div className="mt-1 truncate text-[11px] text-white/40">{roomName}</div>
+                                        <div className={settingsCardClass}>
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Комната</div>
+                                            <div className={`mt-1 truncate text-[11px] ${settingsMutedTextClass}`}>{roomName}</div>
                                         </div>
-                                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                                            <div className="text-xs font-bold text-white/75">Хранилище</div>
-                                            <div className="mt-1 text-[11px] text-white/40">Файлы мира на Host-диске</div>
+                                        <div className={settingsCardClass}>
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Хранилище</div>
+                                            <div className={`mt-1 text-[11px] ${settingsMutedTextClass}`}>Файлы мира на Host-диске</div>
                                         </div>
                                     </div>
                                 </div>
@@ -419,8 +487,8 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
 
                         {safeActiveTab === 'roles' && isGM && (
                             <section className="space-y-3">
-                                <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-                                    <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/45">
+                                <div className={settingsPanelClass}>
+                                    <div className={settingsSectionTitleClass}>
                                         <Shield size={14} />
                                         Роли
                                     </div>
@@ -430,16 +498,16 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                 ? role.permissions
                                                 : getEffectivePermissions(role.id as UserRole);
                                             return (
-                                            <div key={role.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                                            <div key={role.id} className={settingsCardClass}>
                                                 <div className="mb-2 flex items-center justify-between gap-2">
-                                                    <div className="text-xs font-bold text-white/75">{role.label}</div>
+                                                    <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{role.label}</div>
                                                     {role.locked && (
-                                                        <span className="rounded border border-amber-200/20 bg-amber-300/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-amber-100/70">
+                                                        <span className="rounded border border-[color-mix(in_srgb,var(--vibe-warning)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-warning)_12%,transparent)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-warning)]">
                                                             База
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="mb-2 text-[11px] text-white/40">
+                                                <div className={`mb-2 text-[11px] ${settingsMutedTextClass}`}>
                                                     {role.id === 'base-player'
                                                         ? 'Неснимаемая роль, которая ограничивает все обычные роли.'
                                                         : role.id === 'gm'
@@ -452,8 +520,8 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                             key={permission.key}
                                                             className={`rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
                                                                 permissions[permission.key]
-                                                                    ? 'border-emerald-200/20 bg-emerald-300/10 text-emerald-100/65'
-                                                                    : 'border-white/10 bg-white/[0.03] text-white/25'
+                                                                    ? 'border-[color-mix(in_srgb,var(--vibe-success)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_12%,transparent)] text-[var(--vibe-success)]'
+                                                                    : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] text-[var(--vibe-text-faint)]'
                                                             }`}
                                                         >
                                                             {permission.label}
@@ -466,17 +534,17 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                     </div>
                                 </div>
 
-                                <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                                <div className={settingsPanelClass}>
                                     <div className="mb-3 flex items-center justify-between gap-3">
-                                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/45">
+                                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
                                             <Users size={14} />
                                             Игроки
                                         </div>
-                                        {loadingPlayerProfiles && <Loader2 size={14} className="animate-spin text-white/35" />}
+                                        {loadingPlayerProfiles && <Loader2 size={14} className="animate-spin text-[var(--vibe-text-faint)]" />}
                                     </div>
 
                                     {playerProfileError && (
-                                        <div className="mb-3 rounded-lg border border-red-300/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-100/75">
+                                        <div className="mb-3 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] px-3 py-2 text-[11px] text-[var(--vibe-danger)]">
                                             {playerProfileError}
                                         </div>
                                     )}
@@ -486,35 +554,35 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                             const roleValue = profile.assignedRole === 'gm' ? 'player' : profile.assignedRole;
                                             const isUpdating = updatingPlayerId === profile.playerId;
                                             return (
-                                                <div key={profile.playerId} className="flex flex-col gap-3 rounded-lg border border-white/10 bg-black/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+                                                <div key={profile.playerId} className={`${settingsCardClass} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
                                                     <div className="min-w-0">
                                                         <div className="flex flex-wrap items-center gap-2">
-                                                            <span className="truncate text-xs font-bold text-white/75">{profile.displayName}</span>
+                                                            <span className="truncate text-xs font-bold text-[var(--vibe-text-primary)]">{profile.displayName}</span>
                                                             {profile.legacy && (
-                                                                <span className="rounded border border-amber-200/20 bg-amber-300/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-amber-100/70">
+                                                                <span className="rounded border border-[color-mix(in_srgb,var(--vibe-warning)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-warning)_12%,transparent)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-warning)]">
                                                                     legacy
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div className="mt-1 truncate font-mono text-[10px] text-white/35">
+                                                        <div className="mt-1 truncate font-mono text-[10px] text-[var(--vibe-text-faint)]">
                                                             {profile.playerId} · users/{profile.storageRoot}
                                                         </div>
                                                         {profile.legacy && (
-                                                            <div className="mt-1 text-[10px] text-white/35">
+                                                            <div className="mt-1 text-[10px] text-[var(--vibe-text-faint)]">
                                                                 Профиль появится после входа игрока с этим именем.
                                                             </div>
                                                         )}
                                                     </div>
 
                                                     <div className="flex items-center gap-2">
-                                                        {isUpdating && <Loader2 size={14} className="animate-spin text-cyan-100/60" />}
+                                                        {isUpdating && <Loader2 size={14} className="animate-spin text-[var(--vibe-accent)]" />}
                                                         <select
                                                             value={roleValue}
                                                             disabled={profile.legacy || isUpdating}
                                                             onChange={(event) => {
                                                                 void handleUpdatePlayerRole(profile, event.target.value as Exclude<UserRole, 'gm'>);
                                                             }}
-                                                            className="h-9 rounded-lg border border-white/10 bg-[#111827] px-2 text-xs font-bold text-white/75 outline-none transition-colors hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-45"
+                                                            className={`${glass.input} h-9 px-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-45`}
                                                         >
                                                             {ASSIGNABLE_PLAYER_ROLES.map((role) => (
                                                                 <option key={role.id} value={role.id}>
@@ -528,7 +596,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                         })}
 
                                         {!loadingPlayerProfiles && playerProfiles.length === 0 && (
-                                            <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-[11px] text-white/40">
+                                            <div className={`${settingsCardClass} text-[11px] text-[var(--vibe-text-faint)]`}>
                                                 Профилей пока нет. Они создаются при подключении игрока к открытому миру.
                                             </div>
                                         )}

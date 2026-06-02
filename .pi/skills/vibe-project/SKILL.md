@@ -223,6 +223,8 @@ cd app && npm run dev -- --host
 | `.pi/DEVELOPMENT_PLAN.md` | Короткий текущий чеклист и следующий безопасный срез |
 | `.pi/FEATURE_BACKLOG.md` | Очередь новых функций, зависимости и acceptance criteria |
 | `.pi/BUG_BACKLOG.md` | Очередь багов, приоритеты и batch-группы |
+| `.pi/workflows/README.md` | Правило живой памяти для длинных задач |
+| `.pi/workflows/current-ui-redesign.md` | Активный handoff по UI redesign/theme/i18n/entity polish |
 | `.pi/docs/code-map.md` | Карта владельцев логики в коде |
 | `.pi/docs/module-architecture.md` | План отключаемых внутренних модулей и future extensions |
 | `.pi/ARCHITECTURE_ANALYSIS.md` | Разбор проблем масштабирования |
@@ -247,4 +249,5 @@ cd app && npm run dev -- --host
 8. **Новые z-index** — сверяйся с иерархией слоёв (UI Architecture секция 3)
 9. **При добавлении файлов** — обнови этот документ
 10. **Пиши в .pi/** все аналитические документы
-11. **Agent-induced regression** — если чинишь баг, который явно появился из-за предыдущей AI-правки, обнови релевантный `.pi/docs/*`, `.pi/rules/*` или `.pi/skills/*/SKILL.md` коротким правилом, чтобы следующий агент не повторил тот же паттерн.
+11. **Длинные задачи** — после этого skill прочитай активный `.pi/workflows/*`, если задача продолжается больше одного turn или уже имеет handoff.
+12. **Agent-induced regression** — если чинишь баг, который явно появился из-за предыдущей AI-правки, обнови релевантный `.pi/docs/*`, `.pi/rules/*` или `.pi/skills/*/SKILL.md` коротким правилом, чтобы следующий агент не повторил тот же паттерн.
