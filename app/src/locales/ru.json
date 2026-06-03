@@ -23,6 +23,31 @@
     "newEntity": "+ НОВАЯ СУЩНОСТЬ",
     "emptyDirectory": "Пустая база"
   },
+  "workspace": {
+    "mode": {
+      "canvas": "Канвас",
+      "notes": "Заметки"
+    },
+    "notes": {
+      "kicker": "Notes workspace",
+      "title": "Рабочая область заметок",
+      "subtitle": "Личные окна сущностей без рендера canvas.",
+      "grid": "Сетка",
+      "cascade": "Каскад",
+      "save": "Снимок",
+      "restore": "Вернуть",
+      "openWindows": "Открыто",
+      "noOpenWindows": "Окна сущностей появятся здесь.",
+      "quickAccess": "Быстрый доступ",
+      "surfaceTitle": "Заметки, правила и сущности",
+      "availableCount": "{{count}} доступно",
+      "quickNotes": "Заметки",
+      "quickCharacters": "Персонажи",
+      "quickObjects": "Предметы",
+      "quickAbilities": "Способности",
+      "emptySection": "Пока пусто"
+    }
+  },
   "settings": {
     "interface": {
       "language": {

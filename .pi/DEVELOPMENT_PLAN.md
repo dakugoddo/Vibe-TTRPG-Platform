@@ -35,7 +35,7 @@
 - [x] `FEAT-WORKSPACE-001`: создать design gate для Obsidian-like workspace/window ergonomics: `.pi/docs/workspace-window-ergonomics-plan.md`.
 - [x] Первый workspace code slice: local-only layout actions и quick screen snapshot для unpinned окон (`left/right/corners/grid/center`) без world-shared workspace format.
 - [x] Canvas pinned window foundation: экранное окно остаётся единственным личным экземпляром, а закрепление создаёт отдельный `canvasWindowInstances[]` объект в активном canvas, поэтому одну сущность можно закреплять много раз без копирования entity-файла.
-- [ ] Спроектировать отдельный Notes workspace mode: Obsidian-like режим, где canvas не рендерится, а база/заметки открываются как вкладки/панели поверх того же Entity/Markdown фундамента.
+- [x] Спроектировать отдельный Notes workspace mode: Obsidian-like режим без рендера canvas; design gate `.pi/docs/notes-workspace-mode-design.md` и первый local-only shell внесены.
 - [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей только после короткого product gate.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
@@ -155,5 +155,5 @@
 17. [x] Первый workspace code slice: local-only layout actions + quick screen snapshot для unpinned окон.
 18. [x] Canvas pinned window foundation: `canvasWindowInstances[]` в canvas entity, screen singleton в `windowStore`, pinned instances не пишут `windowState` в entity-файлы.
 19. [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей после короткого product gate.
-20. [ ] Notes workspace mode design: изучить Obsidian workspace docs/patterns перед кодом, затем сделать local-first UI режим без рендера canvas.
+20. [x] Notes workspace mode design + первый local-only shell: Obsidian workspace patterns изучены, добавлен режим `Канвас/Заметки`, `NotesWorkspace`, localStorage-backed mode и скрытие canvas-pinned placements в notes mode.
 21. [ ] После UI foundation перейти к Tauri/native migration design gate, затем к multi-window/multi-monitor.

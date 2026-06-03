@@ -1,17 +1,21 @@
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
+import { BookOpen, Map } from 'lucide-react';
 import { onSyncStatus } from '../../services/fileSyncService';
 import { getIsHost } from '../../services/fileApi';
 import { glass } from '../../utils/theme';
+import type { WorkspaceMode } from '../../utils/workspaceMode';
 
 interface HudBarProps {
     roomName: string;
     onLeave: () => void;
     onOpenDatabase: () => void;
     dbOpen: boolean;
+    workspaceMode: WorkspaceMode;
+    onWorkspaceModeChange: (mode: WorkspaceMode) => void;
 }
 
-export function HudBar({ roomName, onLeave, onOpenDatabase, dbOpen }: HudBarProps) {
+export function HudBar({ roomName, onLeave, onOpenDatabase, dbOpen, workspaceMode, onWorkspaceModeChange }: HudBarProps) {
     const { t } = useTranslation();
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
@@ -55,6 +59,33 @@ export function HudBar({ roomName, onLeave, onOpenDatabase, dbOpen }: HudBarProp
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
                     </button>
                 </header>
+
+                <div className={`pointer-events-auto grid grid-cols-2 gap-1 rounded-[var(--vibe-radius-lg)] p-1 ${glass.panel}`}>
+                    <button
+                        type="button"
+                        onClick={() => onWorkspaceModeChange('canvas')}
+                        className={`flex h-10 items-center justify-center gap-2 rounded-[var(--vibe-radius-sm)] text-xs font-bold uppercase tracking-wider transition-colors ${workspaceMode === 'canvas'
+                            ? glass.iconButtonActive
+                            : 'text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+                            }`}
+                        title={t('workspace.mode.canvas')}
+                    >
+                        <Map size={15} />
+                        {t('workspace.mode.canvas')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onWorkspaceModeChange('notes')}
+                        className={`flex h-10 items-center justify-center gap-2 rounded-[var(--vibe-radius-sm)] text-xs font-bold uppercase tracking-wider transition-colors ${workspaceMode === 'notes'
+                            ? glass.iconButtonActive
+                            : 'text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+                            }`}
+                        title={t('workspace.mode.notes')}
+                    >
+                        <BookOpen size={15} />
+                        {t('workspace.mode.notes')}
+                    </button>
+                </div>
 
                 <button
                     onClick={onOpenDatabase}

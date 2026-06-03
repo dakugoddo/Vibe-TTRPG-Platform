@@ -23,6 +23,31 @@
         "newEntity": "+ NEW ENTITY",
         "emptyDirectory": "Empty Directory"
     },
+    "workspace": {
+        "mode": {
+            "canvas": "Canvas",
+            "notes": "Notes"
+        },
+        "notes": {
+            "kicker": "Notes workspace",
+            "title": "Notes workspace",
+            "subtitle": "Personal entity windows without rendering the canvas.",
+            "grid": "Grid",
+            "cascade": "Cascade",
+            "save": "Snapshot",
+            "restore": "Restore",
+            "openWindows": "Open",
+            "noOpenWindows": "Entity windows will appear here.",
+            "quickAccess": "Quick access",
+            "surfaceTitle": "Notes, rules, and entities",
+            "availableCount": "{{count}} available",
+            "quickNotes": "Notes",
+            "quickCharacters": "Characters",
+            "quickObjects": "Objects",
+            "quickAbilities": "Abilities",
+            "emptySection": "Nothing here yet"
+        }
+    },
     "settings": {
         "interface": {
             "language": {

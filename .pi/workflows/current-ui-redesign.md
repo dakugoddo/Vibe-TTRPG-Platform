@@ -34,6 +34,7 @@
 - Compact character card tabbed content внесён: `Статы`, `Действия`, `Ресурсы`, `Заметки`. Helper отдаёт первые атаки/способности с формулами, nested attack parent name и inventory preview.
 - Compact character card roll actions внесены: `AttackSheet`, `AbilitiesBlock` и canvas compact card используют общий `entityActionRoll` service поверх Roll Engine facade.
 - Workspace/window ergonomics design gate и первый local-only code slice внесены: `.pi/docs/workspace-window-ergonomics-plan.md`, `windowLayout.ts`, `tileWindow`, `arrangeVisibleWindowsGrid`, `cascadeVisibleWindows`, quick screen snapshot, layout menu в `EntityWindow`.
+- Notes workspace mode design gate и первый local-only shell внесены: `.pi/docs/notes-workspace-mode-design.md`, `workspaceMode.ts`, `workspaceModeStore.ts`, HUD `Канвас/Заметки`, `NotesWorkspace`, скрытие `InfiniteCanvas`/`CanvasToolbar` и canvas-pinned placements в notes mode.
 - Документация обновлена в `.pi/docs/ui-redesign-master-plan.md`, `.pi/DEVELOPMENT_PLAN.md`, `.pi/FEATURE_BACKLOG.md` и `.pi/skills/vibe-ui-architecture/SKILL.md`.
 - Последние token-pass изменения проверены командами `npm.cmd exec tsc -- --noEmit`, `npm.cmd run lint`, `npm.cmd run build`, `tsx src/utils/theme.test.ts`, но могут оставаться незакоммиченными из-за git/sandbox approval limit.
 
@@ -49,7 +50,7 @@
 
 ## Следующий безопасный срез
 
-1. Продолжить workspace после product gate: named/local workspace snapshots, GM-shared layouts или browser popout foundation.
+1. Развивать Notes workspace только через следующий safe slice: tab/split tree design или named local snapshots, без нового world format.
 2. Добавить entity-level defaults/настройки полей compact card только после короткого product gate, потому что это затронет UX сущностей и сохранение preference.
 3. Custom world locales/editor продолжать только после отдельного формата и server endpoint design.
 
@@ -93,13 +94,14 @@ cd app
 - `windowStore.openWindow` теперь работает как screen singleton и не блокируется pinned copies.
 - `EntityWindow` больше не пишет pinned `windowState` в саму entity; pin создаёт canvas placement, unpin/delete удаляет placement.
 - Если entity недоступна игроку, pinned window показывает заглушку без содержимого.
+- `NotesWorkspace` добавлен как локальный режим интерфейса: canvas не рендерится, canvas toolbar скрыт, canvas-specific drop route отключён, а screen windows продолжают работать через существующий `EntityWindow`.
 
 Следующий безопасный UI-срез:
 
-1. Сначала завершить проверки текущего pinned-window foundation: `canvasPersistence.test`, `windowStore.test`, `tsc`, `lint`, `build`.
-2. Затем спроектировать Notes workspace mode отдельным `.pi/docs/*` документом с Obsidian research и UX-границами.
+1. Для Notes workspace: спроектировать полноценную tab/split tree-модель или named local snapshots отдельным `.pi/docs/*` срезом.
+2. Entity-level compact card defaults делать только после product gate, потому что это затронет UX сущностей и preference format.
 3. После UI foundation открыть Tauri/native migration design gate; не начинать browser popout как основной путь multi-monitor.
 
 ## Handoff note
 
-Следующий агент должен продолжать UI foundation, а не возвращаться к аудио/roles/canvas крупным срезам, пока интерфейсный фундамент не станет устойчивым. Главный ближайший кодовый шаг - language switch/custom locales foundation в SettingsWindow без изменения файлового формата мира.
+Следующий агент должен продолжать UI foundation, а не возвращаться к аудио/roles/canvas крупным срезам, пока интерфейсный фундамент не станет устойчивым. Главный ближайший кодовый шаг - решить следующий safe UI-slice: либо развить Notes workspace tab/split tree, либо начать Tauri/native migration design gate после фиксации, что UI foundation достаточно устойчив.

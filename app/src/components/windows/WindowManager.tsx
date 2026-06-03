@@ -6,7 +6,11 @@ import { useEntities } from '../../hooks/useEntities';
 import { readCanvasWindowInstances } from '../../utils/canvasPersistence';
 import { EntityWindow } from './EntityWindow';
 
-export function WindowManager() {
+interface WindowManagerProps {
+    showPinned?: boolean;
+}
+
+export function WindowManager({ showPinned = true }: WindowManagerProps) {
     const windows = useWindowStore((state) => state.windows);
     const hydrateWindow = useWindowStore((state) => state.hydrateWindow);
     const activeCanvasId = useCanvasStore((state) => state.activeCanvasId);
@@ -52,10 +56,12 @@ export function WindowManager() {
 
     const visibleWindows = Object.values(windows).filter(win => !win.isPinned || win.canvasId === activeCanvasId);
 
-    const pinnedWindows = [
-        ...visibleWindows.filter(win => win.isPinned),
-        ...canvasWindowStates,
-    ].sort((left, right) => left.zIndex - right.zIndex);
+    const pinnedWindows = showPinned
+        ? [
+            ...visibleWindows.filter(win => win.isPinned),
+            ...canvasWindowStates,
+        ].sort((left, right) => left.zIndex - right.zIndex)
+        : [];
     const unpinnedWindows = visibleWindows.filter(win => !win.isPinned);
 
     const stageScale = useCanvasStore(s => s.scale);

@@ -4,12 +4,14 @@ import { yjsStore } from './store/yjsStore';
 import { initEntityStoreObserver, getEntitiesSnapshot } from './store/entityStore';
 import { useCanvasStore } from './store/canvasStore';
 import { useCanvasDrawStore } from './store/canvasDrawStore';
+import { useWorkspaceModeStore } from './store/workspaceModeStore';
 import { stopSync, forceFlush, setPlayerName } from './services/fileSyncService';
 import { importMarkdown, getIsHost as checkHost } from './services/fileApi';
 import { loadWindowLayout, clearWindowLayout } from './store/windowStore';
 import { WindowManager } from './components/windows/WindowManager';
 import { InfiniteCanvas } from './components/canvas/InfiniteCanvas';
 import { CanvasToolbar } from './components/canvas/CanvasToolbar';
+import { NotesWorkspace } from './components/workspace/NotesWorkspace';
 import { DragDropPopover, type DragDropPromptData } from './components/ui/DragDropPopover';
 import { useAppModuleEnabled } from './hooks/useAppModuleEnablement';
 import { useThemePreset } from './hooks/useThemePreset';
@@ -40,6 +42,8 @@ function App() {
   const [audioModuleEnabled] = useAppModuleEnabled('audio');
 
   const { activeCanvasId } = useCanvasStore();
+  const workspaceMode = useWorkspaceModeStore((state) => state.mode);
+  const setWorkspaceMode = useWorkspaceModeStore((state) => state.setMode);
   const isDraggingGlobal = useCanvasDrawStore((s) => s.isDraggingGlobal);
 
   // Style to disable pointer events on UI elements during canvas drag
@@ -121,6 +125,7 @@ function App() {
         }
 
         const draggedId = e.dataTransfer.getData("application/entity-id");
+        if (workspaceMode !== 'canvas') return;
         if (draggedId) {
           const allEnts = getEntitiesSnapshot();
           const original = allEnts[draggedId];
@@ -197,13 +202,13 @@ function App() {
         }
       }}
     >
-      <InfiniteCanvas />
+      {workspaceMode === 'canvas' ? <InfiniteCanvas /> : <NotesWorkspace />}
       <div className="ui-layer">
-        <WindowManager />
+        <WindowManager showPinned={workspaceMode === 'canvas'} />
       </div>
-      <div className="ui-layer">
+      {workspaceMode === 'canvas' && <div className="ui-layer">
         <CanvasToolbar />
-      </div>
+      </div>}
 
       <div className="ui-layer">
         <HudBar
@@ -211,6 +216,8 @@ function App() {
           onLeave={handleLeave}
           onOpenDatabase={() => setDbOpen(!dbOpen)}
           dbOpen={dbOpen}
+          workspaceMode={workspaceMode}
+          onWorkspaceModeChange={setWorkspaceMode}
         />
       </div>
 
