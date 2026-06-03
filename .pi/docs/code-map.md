@@ -41,6 +41,7 @@
 |--------|------------|
 | Toolbar/tool buttons/style controls | `app/src/components/canvas/CanvasToolbar.tsx` |
 | Pointer flow, drawing, lasso, selection, drag, resize, rotate | `app/src/components/canvas/InfiniteCanvas.tsx` |
+| Canvas camera navigation | `app/src/components/canvas/InfiniteCanvas.tsx`, `app/src/store/canvasStore.ts` — wheel zoom, `setTransform`, stage offset/scale, middle-button pan lifecycle; middle-pan starts on Stage but move/up must stay global until the real middle-button release |
 | Canvas image picker | `app/src/components/canvas/CanvasImagePicker.tsx`, `app/src/components/canvas/InfiniteCanvas.tsx` |
 | Draw element bounds, z-order, selection math, fog geometry | `app/src/types/canvasTypes.ts` |
 | Canvas object anchors / line endpoint snap | `app/src/utils/canvasAnchors.ts`, `app/src/components/canvas/InfiniteCanvas.tsx` |

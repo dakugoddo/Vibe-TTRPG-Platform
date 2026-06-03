@@ -85,6 +85,7 @@
 - [x] `BUG-CANVAS-007`: защитить fog texture от zero-size render, который мог давать `drawImage` InvalidStateError при старте canvas.
 - [x] `BUG-ASSETS-005`: восстановить `/api/assets/index`, чтобы тестовый мир снова показывал файлы во вкладке `Файлы` и в интерфейсе плеера.
 - [x] `BUG-CANVAS-006`: GIF на canvas рендерится через DOM overlay поверх Konva, потому что layer redraw не оживил `giphy.gif`; ручная проверка ещё нужна.
+- [x] `BUG-CANVAS-008`: middle-button pan теперь живёт до реального отпускания средней кнопки через глобальные `window` listeners и не обрывается при пересечении окон, шторок или DOM-оверлеев.
 - [x] GIF canvas render больше не грузит тот же `.gif` одновременно через `use-image` и DOM overlay; animated sources идут сразу в DOM `<img>`.
 - [x] Asset Browser стал менее жадным к аудио: duration metadata грузится только при открытом аудио-фильтре, а не при любом просмотре файлов.
 - [x] Добавить upload notifications/progress во все основные host upload входы: AssetBrowser, EntityImageBlock, canvas image tool.

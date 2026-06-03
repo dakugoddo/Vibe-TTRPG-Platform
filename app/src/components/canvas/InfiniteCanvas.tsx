@@ -2509,6 +2509,7 @@ export function InfiniteCanvas() {
   // Track drawing and middle-click pan state
   const isDrawingRef = useRef(false);
   const isMiddlePanRef = useRef(false);
+  const suppressMiddleAuxClickUntilRef = useRef(0);
   const middlePanStartRef = useRef({ x: 0, y: 0, stageX: 0, stageY: 0 });
   const dragElementSnapshotRef = useRef<DrawElement[] | null>(null);
   const lastDragDeltaRef = useRef({ dx: 0, dy: 0 });
@@ -2877,58 +2878,117 @@ export function InfiniteCanvas() {
 
   // ─── Middle-click pan (works in ALL modes) ───
 
+  const setMiddlePanCursor = useCallback((cursor: string) => {
+    const stage = stageRef.current;
+    const container = stage?.container();
+    if (container) container.style.cursor = cursor;
+    document.documentElement.style.cursor = cursor;
+    document.body.style.cursor = cursor;
+  }, []);
+
+  const clearMiddlePanCursor = useCallback(() => {
+    const stage = stageRef.current;
+    const container = stage?.container();
+    if (container) container.style.cursor = '';
+    document.documentElement.style.cursor = '';
+    document.body.style.cursor = '';
+  }, []);
+
+  const applyMiddlePanMove = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!isMiddlePanRef.current) return;
+      const stage = stageRef.current;
+      if (!stage) return;
+
+      const dx = clientX - middlePanStartRef.current.x;
+      const dy = clientY - middlePanStartRef.current.y;
+      const newX = middlePanStartRef.current.stageX + dx;
+      const newY = middlePanStartRef.current.stageY + dy;
+
+      stage.position({ x: newX, y: newY });
+      stage.batchDraw();
+      // Sync store so pinned windows follow in real-time.
+      throttledSetTransform(stage.scaleX(), newX, newY);
+    },
+    [throttledSetTransform]
+  );
+
+  const handleMiddlePanEnd = useCallback(() => {
+    if (!isMiddlePanRef.current) return;
+    isMiddlePanRef.current = false;
+    clearMiddlePanCursor();
+
+    const stage = stageRef.current;
+    if (stage) {
+      // Sync Zustand state after pan ends.
+      setTransform(stage.scaleX(), stage.x(), stage.y());
+    }
+  }, [clearMiddlePanCursor, setTransform]);
+
   const handleMiddlePanStart = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
       if (e.evt.button !== 1) return;
       e.evt.preventDefault();
+      e.evt.stopPropagation();
       const stage = e.target.getStage();
       if (!stage) return;
 
       isMiddlePanRef.current = true;
+      suppressMiddleAuxClickUntilRef.current = Date.now() + 1000;
       middlePanStartRef.current = {
         x: e.evt.clientX,
         y: e.evt.clientY,
         stageX: stage.x(),
         stageY: stage.y(),
       };
-      const container = stage.container();
-      if (container) container.style.cursor = 'grabbing';
+      setMiddlePanCursor('grabbing');
     },
-    []
+    [setMiddlePanCursor]
   );
 
-  const handleMiddlePanMove = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent>) => {
+  useEffect(() => {
+    const handleGlobalMouseMove = (event: MouseEvent) => {
       if (!isMiddlePanRef.current) return;
-      const stage = e.target.getStage();
-      if (!stage) return;
 
-      const dx = e.evt.clientX - middlePanStartRef.current.x;
-      const dy = e.evt.clientY - middlePanStartRef.current.y;
-      const newX = middlePanStartRef.current.stageX + dx;
-      const newY = middlePanStartRef.current.stageY + dy;
-
-      stage.position({ x: newX, y: newY });
-      // Sync store so pinned windows follow in real-time
-      throttledSetTransform(stage.scaleX(), newX, newY);
-    },
-    [throttledSetTransform]
-  );
-
-  const handleMiddlePanEnd = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent>) => {
-      if (!isMiddlePanRef.current) return;
-      isMiddlePanRef.current = false;
-      const stage = e.target.getStage();
-      if (stage) {
-        const container = stage.container();
-        if (container) container.style.cursor = '';
-        // Sync Zustand state after pan ends
-        setTransform(stage.scaleX(), stage.x(), stage.y());
+      if ((event.buttons & 4) !== 4) {
+        handleMiddlePanEnd();
+        return;
       }
-    },
-    [setTransform]
-  );
+
+      event.preventDefault();
+      applyMiddlePanMove(event.clientX, event.clientY);
+    };
+
+    const handleGlobalMouseUp = (event: MouseEvent) => {
+      if (!isMiddlePanRef.current) return;
+      if (event.button !== 1 && (event.buttons & 4) === 4) return;
+
+      event.preventDefault();
+      handleMiddlePanEnd();
+    };
+
+    const handleGlobalAuxClick = (event: MouseEvent) => {
+      if (event.button !== 1) return;
+      if (isMiddlePanRef.current || Date.now() <= suppressMiddleAuxClickUntilRef.current) {
+        event.preventDefault();
+        event.stopPropagation();
+        handleMiddlePanEnd();
+      }
+    };
+
+    window.addEventListener('mousemove', handleGlobalMouseMove, true);
+    window.addEventListener('mouseup', handleGlobalMouseUp, true);
+    window.addEventListener('auxclick', handleGlobalAuxClick, true);
+    window.addEventListener('blur', handleMiddlePanEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove, true);
+      window.removeEventListener('mouseup', handleGlobalMouseUp, true);
+      window.removeEventListener('auxclick', handleGlobalAuxClick, true);
+      window.removeEventListener('blur', handleMiddlePanEnd);
+      handleMiddlePanEnd();
+    };
+  }, [applyMiddlePanMove, handleMiddlePanEnd]);
 
   // ─── Select mode: drag to move selected elements ───
 
@@ -3564,11 +3624,8 @@ export function InfiniteCanvas() {
         if (pt) setLocalCursor(pt.x, pt.y);
       }
 
-      // ─── Middle-click pan works in ALL modes, including fog edit ───
-      if (isMiddlePanRef.current) {
-        handleMiddlePanMove(e);
-        return;
-      }
+      // Middle-click pan is handled by global window listeners after it starts.
+      if (isMiddlePanRef.current) return;
 
       // ─── Fog edit mode: block all other handlers, only process fog ───
       if (isGM && useCanvasDrawStore.getState().fogEditMode) {
@@ -3693,7 +3750,7 @@ export function InfiniteCanvas() {
         });
       }
     },
-    [activeTool, drawingElement, getCanvasPoint, updateDrawing, handleMiddlePanMove, isDraggingElement, handleSelectDragMove, updateMarquee, setLocalCursor, isGM, applyFogBrushOperation, snapCanvasPoint, snapLinePoint]
+    [activeTool, drawingElement, getCanvasPoint, updateDrawing, isDraggingElement, handleSelectDragMove, updateMarquee, setLocalCursor, isGM, applyFogBrushOperation, snapCanvasPoint, snapLinePoint]
   );
 
   const handleMouseUp = useCallback(
@@ -3702,7 +3759,7 @@ export function InfiniteCanvas() {
 
       // End middle-click pan
       if (isMiddlePanRef.current) {
-        handleMiddlePanEnd(e);
+        handleMiddlePanEnd();
         return;
       }
 
@@ -3867,6 +3924,16 @@ export function InfiniteCanvas() {
       }
     },
     [activeCanvasId, activeTool, finishDrawing, handleMiddlePanEnd, isDraggingElement, handleSelectDragEnd, finishMarquee, selectElements, pushHistory, selectElement, setTool, setEditingFrameLabelId, clearSelection, getCanvasPoint, commitCanvasFogPreview]
+  );
+
+  const handleMouseLeave = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      // During middle-button camera pan, the pointer may cross DOM windows,
+      // drawers or canvas HTML overlays. Only the real global release ends it.
+      if (isMiddlePanRef.current) return;
+      handleMouseUp(e);
+    },
+    [handleMouseUp]
   );
 
   // ─── Select mode: double click to edit text ───
@@ -4445,7 +4512,7 @@ export function InfiniteCanvas() {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
       >
         {/* Layer 0: Grid + Snap lines */}
         <Layer>

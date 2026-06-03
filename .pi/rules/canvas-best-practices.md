@@ -76,6 +76,16 @@ newX = worldX * stageScale + stageOffset.x; // clamp to viewport
 newY = worldY * stageScale + stageOffset.y;
 ```
 
+### 2.4 Middle-button pan — глобальная input-сессия
+
+Панорамирование камеры средней кнопкой мыши начинается на Konva Stage, но после старта не должно зависеть от того, над каким DOM/Konva-элементом оказался курсор.
+
+Практическое правило:
+- старт: `mousedown button === 1` на canvas/Stage;
+- движение и завершение: `window` listeners в capture-фазе для `mousemove`, `mouseup`, `auxclick`, `blur`;
+- `onMouseLeave` у Stage не имеет права завершать middle-pan, потому что закреплённые окна, шторки и DOM overlays находятся поверх Stage;
+- во время движения обновляй Stage position напрямую и синхронизируй `useCanvasStore.setTransform`, чтобы pinned windows следовали за камерой.
+
 ---
 
 ## 3. ИНСТРУМЕНТЫ РИСОВАНИЯ
