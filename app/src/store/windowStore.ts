@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { useCanvasStore } from './canvasStore';
 import {
     getScreenWindowLayoutBounds,
     getWindowCascadeLayoutRects,
@@ -55,6 +54,19 @@ function ensureLayoutMode(win: WindowState): WindowMode {
     return win.mode === 'icon' ? 'compact' : win.mode;
 }
 
+function findScreenWindowForEntity(windows: Record<string, WindowState>, entityId: string): WindowState | undefined {
+    return Object.values(windows)
+        .filter((win) => !win.isPinned && win.entityId === entityId)
+        .sort((a, b) => b.zIndex - a.zIndex)[0];
+}
+
+function getScreenWindowId(entityId: string, windows: Record<string, WindowState>): string {
+    const existingByEntityId = windows[entityId];
+    if (!existingByEntityId || !existingByEntityId.isPinned) return entityId;
+
+    return `${entityId}_screen`;
+}
+
 export const useWindowStore = create<WindowStoreState>((set, get) => ({
     windows: {},
     focusedWindowId: null,
@@ -62,76 +74,20 @@ export const useWindowStore = create<WindowStoreState>((set, get) => ({
 
     openWindow: (entityId, x = 100, y = 100) => {
         const { windows, highestZIndex, focusWindow } = get();
-        const existing = windows[entityId];
+        const existingScreenWindow = findScreenWindowForEntity(windows, entityId);
 
-        if (existing) {
-            if (existing.isPinned) {
-                const canvasState = useCanvasStore.getState();
-                if (existing.canvasId === canvasState.activeCanvasId) {
-                    // SAME canvas: ALWAYS pan camera to the pinned window, then focus it
-                    const scale = canvasState.scale;
-                    const vw = globalThis.innerWidth;
-                    const vh = globalThis.innerHeight;
-                    canvasState.setTransform(
-                        scale,
-                        vw / 2 - existing.x * scale,
-                        vh / 2 - existing.y * scale
-                    );
-                    // Also update Konva Stage directly (no render delay)
-                    window.__vibeSetStageCamera?.(scale, vw / 2 - existing.x * scale, vh / 2 - existing.y * scale);
-                    // Focus even if already focused (force zIndex bump for visual feedback)
-                    const newZIndex = highestZIndex + 1;
-                    set({
-                        windows: {
-                            ...windows,
-                            [entityId]: { ...existing, zIndex: newZIndex },
-                        },
-                        focusedWindowId: entityId,
-                        highestZIndex: newZIndex,
-                    });
-                    return;
-                } else {
-                    // DIFFERENT canvas: open a new unpinned window on the screen
-                    // Use a unique ID so it doesn't conflict with the pinned one
-                    const tempId = `${entityId}_screen`;
-                    if (windows[tempId]) {
-                        focusWindow(tempId);
-                        return;
-                    }
-                    const newZIndex = highestZIndex + 1;
-                    set({
-                        windows: {
-                            ...windows,
-                            [tempId]: {
-                                id: tempId,
-                                entityId,
-                                mode: 'compact',
-                                x,
-                                y,
-                                width: 400,
-                                height: 300,
-                                zIndex: newZIndex,
-                                isPinned: false,
-                            },
-                        },
-                        focusedWindowId: tempId,
-                        highestZIndex: newZIndex,
-                    });
-                    return;
-                }
-            } else {
-                // Not pinned, just focus
-                focusWindow(entityId);
-                return;
-            }
+        if (existingScreenWindow) {
+            focusWindow(existingScreenWindow.id);
+            return;
         }
 
         const newZIndex = highestZIndex + 1;
+        const screenWindowId = getScreenWindowId(entityId, windows);
         set({
             windows: {
                 ...windows,
-                [entityId]: {
-                    id: entityId,
+                [screenWindowId]: {
+                    id: screenWindowId,
                     entityId,
                     mode: 'compact',
                     x,
@@ -142,7 +98,7 @@ export const useWindowStore = create<WindowStoreState>((set, get) => ({
                     isPinned: false,
                 },
             },
-            focusedWindowId: entityId,
+            focusedWindowId: screenWindowId,
             highestZIndex: newZIndex,
         });
     },

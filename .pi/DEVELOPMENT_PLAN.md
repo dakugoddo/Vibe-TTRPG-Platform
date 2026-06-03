@@ -34,6 +34,8 @@
 - [x] Compact card roll/action buttons: вкладка `Действия` бросает атаки/способности через общий `entityActionRoll` service и существующий Roll Engine facade.
 - [x] `FEAT-WORKSPACE-001`: создать design gate для Obsidian-like workspace/window ergonomics: `.pi/docs/workspace-window-ergonomics-plan.md`.
 - [x] Первый workspace code slice: local-only layout actions и quick screen snapshot для unpinned окон (`left/right/corners/grid/center`) без world-shared workspace format.
+- [x] Canvas pinned window foundation: экранное окно остаётся единственным личным экземпляром, а закрепление создаёт отдельный `canvasWindowInstances[]` объект в активном canvas, поэтому одну сущность можно закреплять много раз без копирования entity-файла.
+- [ ] Спроектировать отдельный Notes workspace mode: Obsidian-like режим, где canvas не рендерится, а база/заметки открываются как вкладки/панели поверх того же Entity/Markdown фундамента.
 - [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей только после короткого product gate.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
@@ -115,7 +117,9 @@
 
 ## 7. Platform Future
 
-- [ ] Не начинать Tauri/Rust/Steam/3D миграцию без отдельного решения.
+- [x] Решение владельца 2026-06-03: Tauri/native migration становится вторым крупным приоритетом после UI foundation.
+- [ ] До кода Tauri сделать отдельный design-doc/decision update: runtime, file access, native windows, build/dev scripts, Steam-friendly ограничения и rollback path.
+- [ ] Multi-window/multi-monitor переносится после Tauri/native gate; browser popout больше не ближайший приоритет.
 - [ ] Держать код platform-neutral.
 - [ ] Future 3D и Steam-friendly modules должны идти через `.pi/docs/platform-runtime-decision.md` и `.pi/3D_FUTURE_ANALYSIS.md`.
 
@@ -148,5 +152,7 @@
 15. [x] Compact card roll/action buttons через Roll Engine facade.
 16. [x] `FEAT-WORKSPACE-001`: design gate для Obsidian-like window/workspace ergonomics.
 17. [x] Первый workspace code slice: local-only layout actions + quick screen snapshot для unpinned окон.
-18. [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей после короткого product gate.
-19. [ ] После UI foundation вернуться к Manual QA entity ID migration на копии мира + roles/player identity slice.
+18. [x] Canvas pinned window foundation: `canvasWindowInstances[]` в canvas entity, screen singleton в `windowStore`, pinned instances не пишут `windowState` в entity-файлы.
+19. [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей после короткого product gate.
+20. [ ] Notes workspace mode design: изучить Obsidian workspace docs/patterns перед кодом, затем сделать local-first UI режим без рендера canvas.
+21. [ ] После UI foundation перейти к Tauri/native migration design gate, затем к multi-window/multi-monitor.

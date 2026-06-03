@@ -76,6 +76,30 @@ cd app
 
 Для UI желательно открыть локальное приложение в Browser/in-app browser и проверить Settings/AssetBrowser/AudioDesk. Если Browser недоступен или сервер не запущен, честно записать это в финале.
 
+## Обновление 2026-06-03
+
+Решения владельца по workspace:
+
+- Screen entity window = один личный unpinned экземпляр. Повторное открытие фокусирует screen window.
+- Pinned windows/cards/tokens на canvas = отдельные canvas placements. Одну сущность можно закреплять много раз.
+- Window layouts/snapshots остаются локальными для пользователя. GM-shared layouts не нужны.
+- Движение/удаление canvas placement проверяется по праву на canvas; редактирование содержимого - по праву на entity.
+- Tauri/native migration стала вторым крупным приоритетом после UI foundation; multi-window/multi-monitor перенесён после Tauri gate.
+- Нужен будущий Notes workspace mode: Obsidian-like режим без рендера canvas, с заметками/сущностями как вкладками/панелями. Перед кодом изучить Obsidian workspace docs/patterns.
+
+Кодовый foundation внесён:
+
+- `canvasWindowInstances[]` в canvas entity заменяет новый shared pinned-window путь.
+- `windowStore.openWindow` теперь работает как screen singleton и не блокируется pinned copies.
+- `EntityWindow` больше не пишет pinned `windowState` в саму entity; pin создаёт canvas placement, unpin/delete удаляет placement.
+- Если entity недоступна игроку, pinned window показывает заглушку без содержимого.
+
+Следующий безопасный UI-срез:
+
+1. Сначала завершить проверки текущего pinned-window foundation: `canvasPersistence.test`, `windowStore.test`, `tsc`, `lint`, `build`.
+2. Затем спроектировать Notes workspace mode отдельным `.pi/docs/*` документом с Obsidian research и UX-границами.
+3. После UI foundation открыть Tauri/native migration design gate; не начинать browser popout как основной путь multi-monitor.
+
 ## Handoff note
 
 Следующий агент должен продолжать UI foundation, а не возвращаться к аудио/roles/canvas крупным срезам, пока интерфейсный фундамент не станет устойчивым. Главный ближайший кодовый шаг - language switch/custom locales foundation в SettingsWindow без изменения файлового формата мира.

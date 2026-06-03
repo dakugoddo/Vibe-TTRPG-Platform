@@ -83,6 +83,7 @@ const objectEntity: Entity = {
         damage: '2d6 + 4',
         weight: 6,
         rarity: 'legendary',
+        windowState: { isPinned: true, x: 10, y: 20 },
     },
 };
 
@@ -149,6 +150,9 @@ const canvasEntity: Entity = {
         fogReveals: [
             { id: 'fog_1', type: 'rect', x: 0, y: 0, width: 100, height: 100 },
         ],
+        canvasWindowInstances: [
+            { id: 'canvas-window-1', entityId: 'torin', mode: 'compact', x: 120, y: 160, width: 420, height: 320, zIndex: 4 },
+        ],
         tokens: [
             { entity: 'Торин Железнобокий', x: 320, y: 480 },
         ],
@@ -201,12 +205,14 @@ console.log('\n🗡️ Test 3: Object roundtrip');
     const md = serializeEntity(objectEntity);
     assert(md.includes('type: object'), 'Has object type');
     assert(md.includes('[[Гора Судьбы]]'), 'Wiki-links in description preserved');
+    assert(!md.includes('windowState'), 'Legacy windowState is not serialized');
 
     const { entity } = parseEntityFile(md, 'Экскалибур');
     assert(entity.type === 'object', 'Parsed type is object');
     assert(entity.name === 'Экскалибур', 'Parsed name matches');
     assert(entity.properties.damage === '2d6 + 4', 'Damage preserved');
     assert(entity.properties.weight === 6, 'Weight preserved');
+    assert(entity.properties.windowState === undefined, 'Legacy windowState is not parsed back');
 }
 
 // Test 4: Tag with modifiers roundtrip
@@ -253,6 +259,7 @@ console.log('\n🗺️ Test 6: Canvas roundtrip');
     const drawElements = Array.isArray(entity.properties.drawElements) ? entity.properties.drawElements : [];
     assert(asRecord(drawElements[0]).id === 'draw_1', 'Draw element id preserved');
     assert(Array.isArray(entity.properties.fogReveals), 'Fog patches is array');
+    assert(Array.isArray(entity.properties.canvasWindowInstances), 'Canvas window instances are array');
 }
 
 // Test 7: Filename generation

@@ -215,6 +215,7 @@ export function serializeEntity(entity: Entity, options: SerializeOptions = {}):
         delete props.x;
         delete props.y;
         delete props.targetCanvasId; // Portal runtime data
+        delete props.windowState; // Legacy UI/runtime data; shared pinned windows live on canvasWindowInstances
 
         if (Object.keys(props).length > 0) {
             frontmatter.properties = props;

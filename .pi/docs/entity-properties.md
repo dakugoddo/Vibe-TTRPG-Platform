@@ -189,10 +189,22 @@ properties: {
   portals?: unknown[];
   drawElements?: unknown[];
   fogReveals?: unknown[]; // legacy name, currently stores dark fog patches
+  canvasWindowInstances?: Array<{
+    id: string;
+    entityId: string;
+    mode: 'full' | 'compact' | 'icon';
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    zIndex: number;
+  }>;
 }
 ```
 
 `drawElements` и `fogReveals` зеркалятся из canvas Y.Doc в canvas entity с debounce. Для совместимости имя `fogReveals` пока сохранено, хотя текущая patch-based модель хранит там темные области тумана, а не отверстия просвета.
+
+`canvasWindowInstances` хранит закреплённые на canvas окна сущностей. Это ссылки на `entityId`, а не копии сущностей: одну сущность можно закрепить много раз, каждый placement имеет свой `id`, позицию, размер и режим. Не возвращай shared pinned windows в `entity.properties.windowState`; `windowState` считается legacy/local runtime и сервер всё равно вычищает его из `.md`.
 
 Системный стартовый canvas хранится как Entity с `id: root` и `name: root`; UI показывает его локализованным названием и скрывает реальную системную запись из обычного списка.
 

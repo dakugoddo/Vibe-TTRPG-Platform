@@ -1,7 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useWindowStore } from '../../store/windowStore';
+import type { WindowState } from '../../store/windowStore';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useEntities } from '../../hooks/useEntities';
+import { readCanvasWindowInstances } from '../../utils/canvasPersistence';
 import { EntityWindow } from './EntityWindow';
 
 export function WindowManager() {
@@ -9,6 +11,23 @@ export function WindowManager() {
     const hydrateWindow = useWindowStore((state) => state.hydrateWindow);
     const activeCanvasId = useCanvasStore((state) => state.activeCanvasId);
     const entities = useEntities();
+    const canvasWindowStates = useMemo<WindowState[]>(() => {
+        const activeCanvas = entities.find(entity => entity.id === activeCanvasId && entity.type === 'canvas');
+        if (!activeCanvas) return [];
+
+        return readCanvasWindowInstances(activeCanvas.properties).map(instance => ({
+            id: instance.id,
+            entityId: instance.entityId,
+            mode: instance.mode,
+            x: instance.x,
+            y: instance.y,
+            width: instance.width,
+            height: instance.height,
+            zIndex: instance.zIndex,
+            isPinned: true,
+            canvasId: activeCanvas.id,
+        }));
+    }, [activeCanvasId, entities]);
 
     // Auto-hydrate saved pinned windows from DB
     useEffect(() => {
@@ -33,7 +52,10 @@ export function WindowManager() {
 
     const visibleWindows = Object.values(windows).filter(win => !win.isPinned || win.canvasId === activeCanvasId);
 
-    const pinnedWindows = visibleWindows.filter(win => win.isPinned);
+    const pinnedWindows = [
+        ...visibleWindows.filter(win => win.isPinned),
+        ...canvasWindowStates,
+    ].sort((left, right) => left.zIndex - right.zIndex);
     const unpinnedWindows = visibleWindows.filter(win => !win.isPinned);
 
     const stageScale = useCanvasStore(s => s.scale);

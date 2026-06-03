@@ -59,6 +59,7 @@ description: Complete UI architecture reference for Vibe TTRPG Platform. Use whe
 - `AudioDesk`: player mixer, GM audio desk, channel tabs, broadcast/fade controls, cues, audio list, empty/error states and danger/success actions use semantic tokens.
 - `Compact character card`: `app/src/utils/characterCardSummary.ts` owns character summary data, `app/src/utils/entityActionRollModel.ts` + `app/src/services/entityActionRoll.ts` own roll formulas/chat dispatch, and `InfiniteCanvas.tsx` owns the unified DOM overlay tabs (`Статы`, `Действия`, `Ресурсы`, `Заметки`) for both `Фишка` and `Карточка`. Do not add a parallel Konva-only card flow or local dice logic in canvas.
 - `Workspace windows`: `app/src/utils/windowLayout.ts` owns screen-space layout math; `windowStore.ts` applies local-only `tile/grid/cascade` actions and quick screen snapshot; `EntityWindow.tsx` owns the layout menu. Do not apply screen-space auto-layout to pinned canvas windows without a separate coordinate QA slice.
+- `Pinned entity windows`: shared pinned windows are canvas placements in `canvas.properties.canvasWindowInstances[]` (`canvasTypes.ts` + `canvasPersistence.ts`), not `entity.properties.windowState`. `openWindow(entityId)` is a personal screen singleton; pin creates a separate canvas window instance, so one entity can be pinned many times without copying the entity file. Movement/deletion checks canvas edit rights; content editing checks entity rights.
 
 После этого token-pass старые hardcoded surfaces нужно искать точечно через `rg "white/|black/|#[0-9a-fA-F]{6}|bg-black|text-white|border-white"` перед каждым UI-срезом, а не считать какой-то один файл главным долгом.
 
@@ -152,13 +153,13 @@ interface WindowState {
 
 | Метод | Что делает |
 |-------|-----------|
-| `openWindow(entityId, x, y)` | Открыть окно. Если уже открыто — фокус. Если pinned на другом канвасе — создать unpinned копию. |
+| `openWindow(entityId, x, y)` | Открыть личное screen-окно. Если screen-окно этой entity уже открыто — фокус. Pinned copies на canvas не блокируют screen-окно. |
 | `closeWindow(id)` | Закрыть окно |
 | `updateWindow(id, partial)` | Обновить свойства |
 | `focusWindow(id)` | Поднять z-index |
 | `setMode(id, mode)` | Сменить режим |
-| `togglePin(id, canvasId)` | Закрепить/открепить с конвертацией координат |
-| `hydrateWindow(state)` | Восстановить pinned окно из БД при загрузке |
+| `togglePin(id, canvasId)` | Legacy/local pin toggle. Для shared pinned windows новый код должен создавать/удалять `canvasWindowInstances[]`. |
+| `hydrateWindow(state)` | Legacy-восстановление старого pinned `windowState`; не использовать для нового shared canvas placement. |
 
 ### 4.3 WindowManager.tsx — рендер
 

@@ -17,6 +17,7 @@ export type DrawLineMode = 'straight' | 'curved' | 'elbow';
 
 export type EntityTokenMode = 'token' | 'art';
 export type EntityTokenFrame = 'plain' | 'ring' | 'badge' | 'hex';
+export type CanvasWindowMode = 'full' | 'compact' | 'icon';
 
 export type LineCap = 'none' | 'arrow' | 'circle' | 'diamond' | 'square';
 
@@ -110,6 +111,23 @@ export interface DrawElement {
 
   // Description / inner text for shapes (double-click to edit)
   description?: string;
+}
+
+/**
+ * A shared canvas-level entity window placement.
+ *
+ * This is a reference to an Entity, not a copy of the Entity file.
+ * Multiple instances may point to the same entityId on the same canvas.
+ */
+export interface CanvasWindowInstance {
+  id: string;
+  entityId: string;
+  mode: CanvasWindowMode;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zIndex: number;
 }
 
 // ─── Tool types ───

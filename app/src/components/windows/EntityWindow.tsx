@@ -1,5 +1,5 @@
 import { Rnd } from 'react-rnd';
-import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network, Copy, Box, FileText, Lightbulb, Sword, Wand2, LayoutGrid, PanelLeft, PanelRight, Crosshair, Layers, Save, RotateCcw } from 'lucide-react';
+import { Minimize2, X, CircleDot, Pin, PinOff, Bug, Plus, Tag, Trash2, Edit2, Check, Link2, CornerDownRight, Network, Copy, Box, FileText, Lightbulb, Sword, Wand2, LayoutGrid, PanelLeft, PanelRight, Crosshair, Layers, Save, RotateCcw, Lock } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { restoreWindowLayoutSnapshot, saveCurrentWindowLayoutSnapshot, useWindowStore } from '../../store/windowStore';
 import type { WindowState, WindowMode } from '../../store/windowStore';
@@ -32,6 +32,13 @@ import { glass } from '../../utils/theme';
 import { canViewEntity } from '../../utils/permissions';
 import { writeClipboardText } from '../../utils/clipboard';
 import { generateEntityId } from '../../utils/entityId';
+import {
+    CANVAS_WINDOW_INSTANCES_PROPERTY,
+    readCanvasWindowInstances,
+    removeCanvasWindowInstance,
+    upsertCanvasWindowInstance,
+} from '../../utils/canvasPersistence';
+import type { CanvasWindowInstance } from '../../types/canvasTypes';
 
 interface EntityWindowProps {
     windowState: WindowState;
@@ -50,6 +57,17 @@ function canViewRelatedEntity(entity: Entity): boolean {
         yjsStore.localPlayerId,
         yjsStore.localPlayerName
     );
+}
+
+function canModifyEntityRecord(entity: Entity | undefined): boolean {
+    if (!entity) return false;
+    return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
+}
+
+function createCanvasWindowInstanceId(entityId: string): string {
+    const safeEntityId = entityId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32) || 'entity';
+    const randomPart = Math.random().toString(36).slice(2, 8);
+    return `canvas-window-${safeEntityId}-${Date.now().toString(36)}-${randomPart}`;
 }
 
 function normalizeWikiTarget(target: string): string {
@@ -250,6 +268,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     const stageScale = useCanvasStore(s => s.scale);
     const stageOffset = useCanvasStore(s => s.offset);
     const activeCanvasId = useCanvasStore(s => s.activeCanvasId);
+    const canvasEntity = useEntity(windowState.canvasId || activeCanvasId || '');
     const { openConfirm } = useUIStore();
 
     const [contextMenuState, setContextMenuState] = useState<ContextMenuState | null>(null);
@@ -263,15 +282,75 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
         }
     }, [isEditingName]);
 
+    const canvasWindowInstances = useMemo(
+        () => canvasEntity?.type === 'canvas' ? readCanvasWindowInstances(canvasEntity.properties) : [],
+        [canvasEntity]
+    );
+    const isCanvasWindowInstance = isPinned && canvasWindowInstances.some((instance) => instance.id === id);
+
     if (!entity) return null; // Entity deleted while window was open
-    const canEditCurrentEntity = yjsStore.canModify(entity.database, getEntityOwnerId(entity));
+    const canViewCurrentEntity = canViewRelatedEntity(entity);
+    const canEditCurrentEntity = canViewCurrentEntity && canModifyEntityRecord(entity);
+    const canEditPinnedPlacement = isPinned
+        ? (canvasEntity?.type === 'canvas' ? canModifyEntityRecord(canvasEntity) : canEditCurrentEntity)
+        : false;
+
+    const getCurrentCanvasEntity = (): Entity | undefined => {
+        const canvasId = windowState.canvasId || activeCanvasId;
+        if (!canvasId) return undefined;
+        const candidate = getEntitiesSnapshot()[canvasId];
+        return candidate?.type === 'canvas' ? candidate : undefined;
+    };
+
+    const updateCanvasWindowPlacement = (patch: Partial<CanvasWindowInstance>): boolean => {
+        const currentCanvas = getCurrentCanvasEntity();
+        if (!currentCanvas || !canModifyEntityRecord(currentCanvas)) return false;
+
+        const instances = readCanvasWindowInstances(currentCanvas.properties);
+        const currentInstance = instances.find((instance) => instance.id === id);
+        if (!currentInstance) return false;
+
+        yjsStore.updateEntity(currentCanvas.id, {
+            properties: {
+                ...currentCanvas.properties,
+                [CANVAS_WINDOW_INSTANCES_PROPERTY]: upsertCanvasWindowInstance(instances, {
+                    ...currentInstance,
+                    ...patch,
+                }),
+            },
+        });
+        return true;
+    };
+
+    const removeCanvasWindowPlacement = (): boolean => {
+        const currentCanvas = getCurrentCanvasEntity();
+        if (!currentCanvas || !canModifyEntityRecord(currentCanvas)) return false;
+
+        const instances = readCanvasWindowInstances(currentCanvas.properties);
+        if (!instances.some((instance) => instance.id === id)) return false;
+
+        yjsStore.updateEntity(currentCanvas.id, {
+            properties: {
+                ...currentCanvas.properties,
+                [CANVAS_WINDOW_INSTANCES_PROPERTY]: removeCanvasWindowInstance(instances, id),
+            },
+        });
+        return true;
+    };
+
+    const handleCloseWindow = () => {
+        if (isCanvasWindowInstance) {
+            if (canEditPinnedPlacement) removeCanvasWindowPlacement();
+            return;
+        }
+
+        closeWindow(id);
+    };
 
     const handleModeChange = (newMode: WindowMode) => {
         setMode(id, newMode);
-        if (isPinned && canEditCurrentEntity) {
-            yjsStore.updateEntity(entityId, {
-                properties: { ...entity.properties, windowState: { ...entity.properties?.windowState, mode: newMode } }
-            });
+        if (isCanvasWindowInstance && canEditPinnedPlacement) {
+            updateCanvasWindowPlacement({ mode: newMode });
         }
     };
 
@@ -342,10 +421,8 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
         const newX = d.x;
         const newY = d.y;
         updateWindow(id, { x: newX, y: newY });
-        if (isPinned && canEditCurrentEntity) {
-            yjsStore.updateEntity(entityId, {
-                properties: { ...entity.properties, windowState: { ...entity.properties?.windowState, x: newX, y: newY } }
-            });
+        if (isCanvasWindowInstance && canEditPinnedPlacement) {
+            updateCanvasWindowPlacement({ x: newX, y: newY });
         }
     };
 
@@ -370,9 +447,12 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
             x: newX,
             y: newY,
         });
-        if (isPinned && canEditCurrentEntity) {
-            yjsStore.updateEntity(entityId, {
-                properties: { ...entity.properties, windowState: { ...entity.properties?.windowState, x: newX, y: newY, width: newWidth, height: newHeight } }
+        if (isCanvasWindowInstance && canEditPinnedPlacement) {
+            updateCanvasWindowPlacement({
+                x: newX,
+                y: newY,
+                width: newWidth,
+                height: newHeight,
             });
         }
     };
@@ -383,6 +463,52 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
         pointerEvents: 'auto',
     };
 
+    if (!canViewCurrentEntity) {
+        return (
+            <Rnd
+                size={{ width: Math.max(width, 260), height: Math.max(height, 150) }}
+                position={{ x: displayX, y: displayY }}
+                onDragStop={handleDragStop}
+                onResizeStop={handleResizeStop}
+                onMouseDown={() => focusWindow(id)}
+                disableDragging={isPinned && !canEditPinnedPlacement}
+                enableResizing={!isPinned || canEditPinnedPlacement}
+                minWidth={240}
+                minHeight={130}
+                style={customRndStyle}
+                dragHandleClassName="draggable-header"
+                scale={isPinned ? stageScale : 1}
+            >
+                <div
+                    data-canvas-drop-blocker="true"
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    className={`h-full w-full overflow-hidden ${glass.window} ${isPinned ? 'ring-2 ring-[color-mix(in_srgb,var(--vibe-warning)_45%,transparent)]' : ''}`}
+                >
+                    <div className={`${glass.header} draggable-header flex cursor-move items-center justify-between gap-2 border-b border-[var(--vibe-border-subtle)] px-3 py-2`}>
+                        <div className="flex min-w-0 items-center gap-2">
+                            <Lock size={14} className="text-[var(--vibe-warning)]" />
+                            <span className="truncate text-sm font-bold text-[var(--vibe-text-primary)]">Скрытая сущность</span>
+                        </div>
+                        {(!isCanvasWindowInstance || canEditPinnedPlacement) && (
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleCloseWindow(); }}
+                                className="rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)]"
+                                title="Убрать с канваса"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
+                    <div className="grid h-[calc(100%-42px)] place-items-center px-4 text-center text-sm text-[var(--vibe-text-muted)]">
+                        Нет доступа к файлу этой сущности
+                    </div>
+                </div>
+            </Rnd>
+        );
+    }
+
     if (mode === 'icon') {
         return (
             <Rnd
@@ -392,6 +518,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                 onMouseDown={() => focusWindow(id)}
                 onDoubleClick={() => handleModeChange('compact')}
                 enableResizing={false}
+                disableDragging={isPinned && !canEditPinnedPlacement}
                 style={customRndStyle}
                 scale={isPinned ? stageScale : 1}
             >
@@ -437,6 +564,12 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     }`;
     const contextMenuItemClass = 'group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[var(--vibe-text-muted)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
     const contextMenuIconClass = 'text-[var(--vibe-text-faint)] transition-colors group-hover:text-[var(--vibe-text-primary)]';
+    const canToggleCanvasPin = isPinned
+        ? (!isCanvasWindowInstance || canEditPinnedPlacement)
+        : Boolean(activeCanvasId && canvasEntity?.type === 'canvas' && canModifyEntityRecord(canvasEntity));
+    const pinButtonTitle = isPinned
+        ? (canToggleCanvasPin ? 'Открепить от канваса' : 'Нет права менять этот canvas')
+        : (canToggleCanvasPin ? 'Закрепить на канвасе' : 'Нет права менять активный canvas');
     const layoutMenuActions: Array<{ id: string; label: string; icon: LucideIcon; run: () => void }> = [
         { id: 'left', label: 'Левая половина', icon: PanelLeft, run: () => tileWindow(id, 'left') },
         { id: 'right', label: 'Правая половина', icon: PanelRight, run: () => tileWindow(id, 'right') },
@@ -461,6 +594,8 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
             onDragStop={handleDragStop}
             onResizeStop={handleResizeStop}
             onMouseDown={() => focusWindow(id)}
+            disableDragging={isPinned && !canEditPinnedPlacement}
+            enableResizing={!isPinned || canEditPinnedPlacement}
             minWidth={isFullMode ? 400 : 300}
             minHeight={isFullMode ? 500 : 200}
             style={customRndStyle}
@@ -525,46 +660,67 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
+                                if (!canToggleCanvasPin) return;
                                 const newIsPinned = !isPinned;
 
                                 // Proper coordinate conversion to prevent UI jumping
                                 let newX = x;
                                 let newY = y;
+                                const safeStageScale = stageScale || 1;
 
                                 if (newIsPinned) {
                                     // Screen to Canvas
-                                    newX = (x - stageOffset.x) / stageScale;
-                                    newY = (y - stageOffset.y) / stageScale;
+                                    newX = (x - stageOffset.x) / safeStageScale;
+                                    newY = (y - stageOffset.y) / safeStageScale;
+                                    const currentCanvas = getCurrentCanvasEntity();
+                                    if (!currentCanvas || !canModifyEntityRecord(currentCanvas)) return;
+
+                                    const instances = readCanvasWindowInstances(currentCanvas.properties);
+                                    const nextZIndex = Math.max(zIndex, ...instances.map((instance) => instance.zIndex), 10) + 1;
+                                    const canvasWindowInstance: CanvasWindowInstance = {
+                                        id: createCanvasWindowInstanceId(entityId),
+                                        entityId,
+                                        mode,
+                                        x: newX,
+                                        y: newY,
+                                        width,
+                                        height,
+                                        zIndex: nextZIndex,
+                                    };
+
+                                    yjsStore.updateEntity(currentCanvas.id, {
+                                        properties: {
+                                            ...currentCanvas.properties,
+                                            [CANVAS_WINDOW_INSTANCES_PROPERTY]: upsertCanvasWindowInstance(instances, canvasWindowInstance),
+                                        },
+                                    });
+                                    closeWindow(id);
+                                    return;
                                 } else {
                                     // Canvas to Screen
-                                    newX = (x * stageScale) + stageOffset.x;
-                                    newY = (y * stageScale) + stageOffset.y;
+                                    newX = (x * safeStageScale) + stageOffset.x;
+                                    newY = (y * safeStageScale) + stageOffset.y;
 
                                     // Keep on-screen after unpinning
                                     const wW = window.innerWidth;
                                     const wH = window.innerHeight;
                                     newX = Math.max(10, Math.min(newX, wW - 300));
                                     newY = Math.max(10, Math.min(newY, wH - 100));
+
+                                    if (isCanvasWindowInstance) {
+                                        if (!canEditPinnedPlacement) return;
+                                        removeCanvasWindowPlacement();
+                                        openWindow(entityId, newX, newY);
+                                        return;
+                                    }
                                 }
 
                                 togglePin(id, activeCanvasId);
                                 updateWindow(id, { x: newX, y: newY, isPinned: newIsPinned, canvasId: newIsPinned ? activeCanvasId : undefined });
-
-                                if (canEditCurrentEntity) {
-                                    yjsStore.updateEntity(entityId, {
-                                        properties: {
-                                            ...entity.properties, windowState: {
-                                                ...entity.properties?.windowState,
-                                                isPinned: newIsPinned,
-                                                canvasId: newIsPinned ? activeCanvasId : undefined,
-                                                x: newX, y: newY, width, height, mode, zIndex
-                                            }
-                                        }
-                                    });
-                                }
                             }}
-                            className={`${iconActionClass} ${isPinned ? 'bg-[color-mix(in_srgb,var(--vibe-warning)_18%,transparent)] text-[var(--vibe-warning)]' : ''}`}
-                            title={isPinned ? 'Открепить от канваса' : 'Закрепить на канвасе'}
+                            disabled={!canToggleCanvasPin}
+                            className={`${iconActionClass} ${isPinned ? 'bg-[color-mix(in_srgb,var(--vibe-warning)_18%,transparent)] text-[var(--vibe-warning)]' : ''} ${!canToggleCanvasPin ? 'cursor-not-allowed opacity-45' : ''}`}
+                            title={pinButtonTitle}
                         >
                             {isPinned ? <Pin size={14} /> : <PinOff size={14} />}
                         </button>
@@ -584,9 +740,9 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                             {isFullMode ? <Minimize2 size={14} /> : <Bug size={14} />}
                         </button>
                         <button
-                            onClick={(e) => { e.stopPropagation(); closeWindow(id); }}
+                            onClick={(e) => { e.stopPropagation(); handleCloseWindow(); }}
                             className="ml-1 rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)]"
-                            title="Закрыть окно"
+                            title={isCanvasWindowInstance ? 'Убрать с канваса' : 'Закрыть окно'}
                         >
                             <X size={14} />
                         </button>
@@ -890,8 +1046,8 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                     confirmText: "Удалить",
                                     isDestructive: true,
                                     onConfirm: () => {
+                                        handleCloseWindow();
                                         yjsStore.deleteEntity(entityId);
-                                        closeWindow(id);
                                     }
                                 });
                             }}

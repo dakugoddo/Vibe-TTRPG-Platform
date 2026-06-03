@@ -166,3 +166,20 @@ npm.cmd run build
 - Canvas bugs: search in `InfiniteCanvas.tsx` for the action name, then check `canvasDrawStore.ts` and `canvasSyncStore.ts`.
 - Entity write bugs: check UI component first, then `yjsStore.canModify`, then server serializer only if data reaches disk incorrectly.
 - If 3-5 targeted searches do not locate the owner, update this file or `.pi/ARCHITECTURE.md` with the missing map before continuing.
+
+## Workspace / Pinned Entity Windows
+
+- `app/src/store/windowStore.ts` owns personal screen windows only: `openWindow(entityId)` is a screen singleton and layout actions/snapshots ignore pinned canvas placements.
+- `app/src/types/canvasTypes.ts` owns `CanvasWindowInstance`.
+- `app/src/utils/canvasPersistence.ts` owns `canvasWindowInstances[]` read/sanitize/upsert/remove helpers.
+- `app/src/components/windows/WindowManager.tsx` maps active canvas `canvasWindowInstances[]` into pinned `EntityWindow` render states.
+- `app/src/components/windows/EntityWindow.tsx` owns pin/unpin/delete/drag/resize behavior for canvas window placements and must split permissions: canvas edit rights for placement, entity edit rights for content.
+- Do not persist shared pinned windows in `entity.properties.windowState`; that field is legacy/local runtime and is stripped by `server/src/fileManager.ts`.
+
+Focused tests:
+
+```bat
+cd app
+..\server\node_modules\.bin\tsx.cmd src\utils\canvasPersistence.test.ts
+..\server\node_modules\.bin\tsx.cmd src\store\windowStore.test.ts
+```

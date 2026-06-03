@@ -143,3 +143,34 @@ Quick local snapshot уже есть в первом срезе. Следующ�
 - Проверить маленький viewport: layout menu не должен создавать окна шире экрана.
 - Проверить pinned окно: layout action не должен ломать canvas scale/offset.
 - Проверить фокус/z-index после auto-layout: активное окно остаётся сверху.
+
+## Решения владельца 2026-06-03
+
+1. Screen window contract: незакреплённая сущность на экране открывается только в одном экземпляре. Повторное открытие фокусирует уже открытое screen-окно.
+2. Canvas placement contract: закреплённые окна, фишки и карточки считаются отдельными объектами canvas. Одну и ту же сущность можно закрепить сколько угодно раз, но это всегда ссылки на один `entityId`, а не копии `.md` файла.
+3. Layout ownership: у каждого пользователя свои screen windows и local layout snapshots. GM-shared window layouts не нужны; если ГМ хочет показать игрокам объект, он закрепляет его на canvas.
+4. Permission split: движение/удаление canvas placement проверяется по праву редактировать canvas; редактирование содержимого окна проверяется по праву на саму entity. Если entity недоступна, UI должен показывать заглушку без содержимого.
+5. Pinned window model: закреплённое окно больше не должно писать `properties.windowState` в entity-файл. Новый путь - `canvas.properties.canvasWindowInstances[]`.
+6. Notes workspace mode: нужен отдельный будущий режим работы с заметками, ближе к Obsidian. В этом режиме canvas можно не рендерить, а сущности/заметки должны открываться как вкладки/панели. Перед кодом изучить Obsidian workspace docs/patterns.
+7. Platform order: Tauri/native migration становится вторым крупным приоритетом после UI foundation. Multi-window/multi-monitor переносится после Tauri gate.
+
+## Implementation note 2026-06-03
+
+Внесён foundation для `canvasWindowInstances[]`:
+
+- `app/src/types/canvasTypes.ts` содержит `CanvasWindowInstance`.
+- `app/src/utils/canvasPersistence.ts` читает, нормализует, upsert/remove и санитайзит canvas window placements.
+- `app/src/components/windows/WindowManager.tsx` рендерит `canvasWindowInstances[]` активного canvas в pinned layer.
+- `app/src/components/windows/EntityWindow.tsx` при pin создаёт новый canvas window instance с уникальным id и закрывает screen window. При unpin/delete удаляет только этот placement.
+- `app/src/store/windowStore.ts` теперь трактует `openWindow(entityId)` как screen singleton и не фокусирует pinned copies вместо screen window.
+
+Правило для будущих агентов: не возвращать запись pinned windows в `entity.properties.windowState`. `windowState` остаётся legacy/local runtime следом; shared canvas placements должны жить в canvas entity.
+
+Focused QA:
+
+```bat
+cd app
+..\server\node_modules\.bin\tsx.cmd src\utils\canvasPersistence.test.ts
+..\server\node_modules\.bin\tsx.cmd src\store\windowStore.test.ts
+npm.cmd exec tsc -- --noEmit
+```
