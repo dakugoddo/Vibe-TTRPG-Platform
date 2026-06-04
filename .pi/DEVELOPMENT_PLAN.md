@@ -125,7 +125,7 @@
 ## 7. Platform Future
 
 - [x] Решение владельца 2026-06-03: Tauri/native migration становится вторым крупным приоритетом после UI foundation.
-- [ ] До кода Tauri сделать отдельный design-doc/decision update: runtime, file access, native windows, build/dev scripts, Steam-friendly ограничения и rollback path.
+- [x] До кода Tauri сделать отдельный design-doc/decision update: `.pi/docs/tauri-native-migration-plan.md` фиксирует runtime, file access, native windows, build/dev scripts, Steam-friendly ограничения и rollback path.
 - [ ] Multi-window/multi-monitor переносится после Tauri/native gate; browser popout больше не ближайший приоритет.
 - [ ] Держать код platform-neutral.
 - [ ] Future 3D и Steam-friendly modules должны идти через `.pi/docs/platform-runtime-decision.md` и `.pi/3D_FUTURE_ANALYSIS.md`.
@@ -139,6 +139,7 @@
 - `.pi/docs/notification-system.md` — уведомления и upload approvals.
 - `.pi/docs/testing-multiplayer.md` — ручная QA.
 - `.pi/workflows/current-ui-redesign.md` — активная память UI redesign с решениями владельца, запретами и следующим безопасным срезом.
+- `.pi/docs/tauri-native-migration-plan.md` — Tauri/native migration gate: sidecar-first runtime, file access, native windows, Steam-friendly ограничения и rollback path.
 
 ## Следующий Безопасный Срез
 
@@ -168,4 +169,5 @@
 24. [x] Notes workspace local tab persistence: validated `localStorage` для tab board layout без world format.
 25. [x] Notes workspace linked views: read-only Markdown/outline/backlinks/graph-summary поверх `notesWorkspaceLinks.ts`.
 26. [x] Notes workspace drag/drop tabs: reorder/move вкладок внутри и между tab groups.
-27. [ ] После UI foundation перейти к Tauri/native migration design gate, затем к multi-window/multi-monitor.
+27. [x] После UI foundation открыть Tauri/native migration design gate: `.pi/docs/tauri-native-migration-plan.md`.
+28. [ ] После принятия gate делать отдельную prototype branch для Tauri shell без runtime rewrite, затем sidecar proof и только потом multi-window/multi-monitor.

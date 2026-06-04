@@ -35,6 +35,7 @@
 - Compact character card roll actions внесены: `AttackSheet`, `AbilitiesBlock` и canvas compact card используют общий `entityActionRoll` service поверх Roll Engine facade.
 - Workspace/window ergonomics design gate и первый local-only code slice внесены: `.pi/docs/workspace-window-ergonomics-plan.md`, `windowLayout.ts`, `tileWindow`, `arrangeVisibleWindowsGrid`, `cascadeVisibleWindows`, quick screen snapshot, layout menu в `EntityWindow`.
 - Notes workspace mode design gate и local-only foundation внесены: `.pi/docs/notes-workspace-mode-design.md`, `workspaceMode.ts`, `workspaceModeStore.ts`, HUD `Канвас/Заметки`, `NotesWorkspace`, скрытие `InfiniteCanvas`/`CanvasToolbar`, canvas-pinned placements в notes mode, named local snapshots screen-окон, pure tab/split model `notesWorkspaceLayout.ts`, persisted local tab board через `notesWorkspaceStore.ts`, read-only linked views через `notesWorkspaceLinks.ts` и drag/drop вкладок внутри/между groups.
+- Tauri/native migration gate внесён: `.pi/docs/tauri-native-migration-plan.md` фиксирует Tauri v2 host shell + React/Vite frontend + текущий Express/Yjs server как sidecar-прототип; runtime rewrite, browser popout и native multi-window не начинать до отдельной prototype branch.
 - Документация обновлена в `.pi/docs/ui-redesign-master-plan.md`, `.pi/DEVELOPMENT_PLAN.md`, `.pi/FEATURE_BACKLOG.md` и `.pi/skills/vibe-ui-architecture/SKILL.md`.
 - Последние token-pass изменения проверены командами `npm.cmd exec tsc -- --noEmit`, `npm.cmd run lint`, `npm.cmd run build`, `tsx src/utils/theme.test.ts`, но могут оставаться незакоммиченными из-за git/sandbox approval limit.
 
@@ -50,9 +51,10 @@
 
 ## Следующий безопасный срез
 
-1. Развивать Notes workspace только через следующий safe slice: tab resize polish или Tauri/native design gate, без нового world format.
+1. Развивать Notes workspace только через следующий safe slice: tab resize polish, без нового world format.
 2. Добавить entity-level defaults/настройки полей compact card только после короткого product gate, потому что это затронет UX сущностей и сохранение preference.
 3. Custom world locales/editor продолжать только после отдельного формата и server endpoint design.
+4. Tauri/native продолжать только через отдельную prototype branch: shell -> sidecar lifecycle -> player delivery -> native windows.
 
 ## Проверки
 
@@ -89,6 +91,7 @@ cd app
 - Window layouts/snapshots остаются локальными для пользователя. GM-shared layouts не нужны.
 - Движение/удаление canvas placement проверяется по праву на canvas; редактирование содержимого - по праву на entity.
 - Tauri/native migration стала вторым крупным приоритетом после UI foundation; multi-window/multi-monitor перенесён после Tauri gate.
+- Tauri gate закрыт документом `.pi/docs/tauri-native-migration-plan.md`: первый путь - Tauri host shell и существующий server как sidecar, без переписи на Rust до proof.
 - Нужен будущий Notes workspace mode: Obsidian-like режим без рендера canvas, с заметками/сущностями как вкладками/панелями. Перед кодом изучить Obsidian workspace docs/patterns.
 
 Кодовый foundation внесён:
@@ -105,10 +108,10 @@ cd app
 
 Следующий безопасный UI-срез:
 
-1. Для Notes workspace: следующий safe slice - resize polish или Tauri/native design gate; не писать workspace layout в world files без отдельного gate.
+1. Для Notes workspace: следующий safe slice - resize polish; не писать workspace layout в world files без отдельного gate.
 2. Entity-level compact card defaults делать только после product gate, потому что это затронет UX сущностей и preference format.
-3. После UI foundation открыть Tauri/native migration design gate; не начинать browser popout как основной путь multi-monitor.
+3. Tauri/native продолжать только в prototype branch по `.pi/docs/tauri-native-migration-plan.md`; не начинать browser popout как основной путь multi-monitor.
 
 ## Handoff note
 
-Следующий агент должен продолжать UI foundation, а не возвращаться к аудио/roles/canvas крупным срезам, пока интерфейсный фундамент не станет устойчивым. Главный ближайший кодовый шаг - развить Notes workspace resize polish или начать Tauri/native migration design gate после фиксации, что UI foundation достаточно устойчив.
+Следующий агент должен продолжать UI foundation, а не возвращаться к аудио/roles/canvas крупным срезам, пока интерфейсный фундамент не станет устойчивым. Ближайший кодовый шаг - Notes workspace resize polish или отдельная Tauri prototype branch по готовому gate; не делать runtime rewrite в основном дереве.
