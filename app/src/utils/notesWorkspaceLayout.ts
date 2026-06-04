@@ -221,6 +221,75 @@ export function closeNotesWorkspaceTab(
     };
 }
 
+function insertTabBefore(
+    tabs: NotesWorkspaceTab[],
+    tab: NotesWorkspaceTab,
+    beforeTabId?: string | null
+): NotesWorkspaceTab[] {
+    if (!beforeTabId) return [...tabs, tab];
+
+    const targetIndex = tabs.findIndex((candidate) => candidate.id === beforeTabId);
+    if (targetIndex < 0) return [...tabs, tab];
+
+    return [
+        ...tabs.slice(0, targetIndex),
+        tab,
+        ...tabs.slice(targetIndex),
+    ];
+}
+
+export function moveNotesWorkspaceTab(
+    layout: NotesWorkspaceLayout,
+    sourceGroupId: string,
+    tabId: string,
+    targetGroupId: string,
+    beforeTabId?: string | null
+): NotesWorkspaceLayout {
+    const sourceGroup = findTabsNode(layout.root, sourceGroupId);
+    const targetGroup = findTabsNode(layout.root, targetGroupId);
+    const movingTab = sourceGroup?.tabs.find((tab) => tab.id === tabId);
+
+    if (!sourceGroup || !targetGroup || !movingTab) return layout;
+    if (sourceGroupId === targetGroupId && beforeTabId === tabId) return layout;
+
+    return {
+        ...layout,
+        activeGroupId: targetGroupId,
+        root: mapNode(layout.root, (node) => {
+            if (node.type !== 'tabs') return node;
+
+            if (sourceGroupId === targetGroupId && node.id === sourceGroupId) {
+                const withoutMovingTab = node.tabs.filter((tab) => tab.id !== tabId);
+                const nextTabs = insertTabBefore(withoutMovingTab, movingTab, beforeTabId);
+                return {
+                    ...node,
+                    tabs: nextTabs,
+                    activeTabId: movingTab.id,
+                };
+            }
+
+            if (node.id === sourceGroupId) {
+                const nextTabs = node.tabs.filter((tab) => tab.id !== tabId);
+                return {
+                    ...node,
+                    tabs: nextTabs,
+                    activeTabId: node.activeTabId === tabId ? nextTabs.at(-1)?.id ?? null : node.activeTabId,
+                };
+            }
+
+            if (node.id === targetGroupId) {
+                return {
+                    ...node,
+                    tabs: insertTabBefore(node.tabs, movingTab, beforeTabId),
+                    activeTabId: movingTab.id,
+                };
+            }
+
+            return node;
+        }),
+    };
+}
+
 export function listNotesWorkspaceGroups(node: NotesWorkspaceNode): NotesWorkspaceTabsNode[] {
     if (node.type === 'tabs') return [node];
     return [...listNotesWorkspaceGroups(node.children[0]), ...listNotesWorkspaceGroups(node.children[1])];

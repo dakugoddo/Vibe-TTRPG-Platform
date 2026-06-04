@@ -41,6 +41,7 @@
 - [x] Notes workspace local tab board: `notesWorkspaceStore.ts` подключает tab/split модель к `NotesWorkspace`, а вкладки открывают/фокусируют существующие screen windows без нового editor/world format.
 - [x] Notes workspace local tab persistence: tab board layout сохраняется в `localStorage` с runtime validation и не пишет ничего в мир.
 - [x] Notes workspace linked views: read-only Markdown, outline, backlinks и graph-summary вкладки через pure helper `notesWorkspaceLinks.ts` без нового editor/world format.
+- [x] Notes workspace drag/drop tabs: pure `moveNotesWorkspaceTab`, store action и HTML drag/drop для reorder/move вкладок внутри/между группами без world format.
 - [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей только после короткого product gate.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
@@ -166,4 +167,5 @@
 23. [x] Notes workspace local tab board: UI-render tab groups/splits поверх `notesWorkspaceLayout.ts` через `notesWorkspaceStore.ts`, без записи layout в мир и без параллельного editor.
 24. [x] Notes workspace local tab persistence: validated `localStorage` для tab board layout без world format.
 25. [x] Notes workspace linked views: read-only Markdown/outline/backlinks/graph-summary поверх `notesWorkspaceLinks.ts`.
-26. [ ] После UI foundation перейти к Tauri/native migration design gate, затем к multi-window/multi-monitor.
+26. [x] Notes workspace drag/drop tabs: reorder/move вкладок внутри и между tab groups.
+27. [ ] После UI foundation перейти к Tauri/native migration design gate, затем к multi-window/multi-monitor.

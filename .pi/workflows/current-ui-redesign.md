@@ -34,7 +34,7 @@
 - Compact character card tabbed content внесён: `Статы`, `Действия`, `Ресурсы`, `Заметки`. Helper отдаёт первые атаки/способности с формулами, nested attack parent name и inventory preview.
 - Compact character card roll actions внесены: `AttackSheet`, `AbilitiesBlock` и canvas compact card используют общий `entityActionRoll` service поверх Roll Engine facade.
 - Workspace/window ergonomics design gate и первый local-only code slice внесены: `.pi/docs/workspace-window-ergonomics-plan.md`, `windowLayout.ts`, `tileWindow`, `arrangeVisibleWindowsGrid`, `cascadeVisibleWindows`, quick screen snapshot, layout menu в `EntityWindow`.
-- Notes workspace mode design gate и local-only foundation внесены: `.pi/docs/notes-workspace-mode-design.md`, `workspaceMode.ts`, `workspaceModeStore.ts`, HUD `Канвас/Заметки`, `NotesWorkspace`, скрытие `InfiniteCanvas`/`CanvasToolbar`, canvas-pinned placements в notes mode, named local snapshots screen-окон, pure tab/split model `notesWorkspaceLayout.ts`, persisted local tab board через `notesWorkspaceStore.ts` и read-only linked views через `notesWorkspaceLinks.ts`.
+- Notes workspace mode design gate и local-only foundation внесены: `.pi/docs/notes-workspace-mode-design.md`, `workspaceMode.ts`, `workspaceModeStore.ts`, HUD `Канвас/Заметки`, `NotesWorkspace`, скрытие `InfiniteCanvas`/`CanvasToolbar`, canvas-pinned placements в notes mode, named local snapshots screen-окон, pure tab/split model `notesWorkspaceLayout.ts`, persisted local tab board через `notesWorkspaceStore.ts`, read-only linked views через `notesWorkspaceLinks.ts` и drag/drop вкладок внутри/между groups.
 - Документация обновлена в `.pi/docs/ui-redesign-master-plan.md`, `.pi/DEVELOPMENT_PLAN.md`, `.pi/FEATURE_BACKLOG.md` и `.pi/skills/vibe-ui-architecture/SKILL.md`.
 - Последние token-pass изменения проверены командами `npm.cmd exec tsc -- --noEmit`, `npm.cmd run lint`, `npm.cmd run build`, `tsx src/utils/theme.test.ts`, но могут оставаться незакоммиченными из-за git/sandbox approval limit.
 
@@ -50,7 +50,7 @@
 
 ## Следующий безопасный срез
 
-1. Развивать Notes workspace только через следующий safe slice: drag/drop tabs, tab resize polish или Tauri/native design gate, без нового world format.
+1. Развивать Notes workspace только через следующий safe slice: tab resize polish или Tauri/native design gate, без нового world format.
 2. Добавить entity-level defaults/настройки полей compact card только после короткого product gate, потому что это затронет UX сущностей и сохранение preference.
 3. Custom world locales/editor продолжать только после отдельного формата и server endpoint design.
 
@@ -101,13 +101,14 @@ cd app
 - Named local snapshots добавлены в `windowStore` и левую панель `NotesWorkspace`: screen-window раскладки можно сохранить под именем, восстановить и удалить; canvas-pinned placements не попадают в snapshot.
 - Pure tab/split model добавлен в `notesWorkspaceLayout.ts` и подключён к `NotesWorkspace` через local-only `notesWorkspaceStore.ts`: tab board умеет открывать сущность в existing screen window, фокусировать окно, закрывать вкладку, split-ить активную группу и переживать reload через validated `localStorage` без world format и без параллельного editor.
 - Read-only linked views добавлены через `notesWorkspaceLinks.ts`: Markdown, outline по headings, backlinks и graph-summary показываются внутри tab board без записи в мир и без нового editor.
+- Drag/drop вкладок добавлен через `moveNotesWorkspaceTab`, `notesWorkspaceStore.moveTab` и HTML drag/drop в `NotesWorkspace`: можно менять порядок вкладок и переносить их между tab groups.
 
 Следующий безопасный UI-срез:
 
-1. Для Notes workspace: следующий safe slice - drag/drop tabs, resize polish или Tauri/native design gate; не писать workspace layout в world files без отдельного gate.
+1. Для Notes workspace: следующий safe slice - resize polish или Tauri/native design gate; не писать workspace layout в world files без отдельного gate.
 2. Entity-level compact card defaults делать только после product gate, потому что это затронет UX сущностей и preference format.
 3. После UI foundation открыть Tauri/native migration design gate; не начинать browser popout как основной путь multi-monitor.
 
 ## Handoff note
 
-Следующий агент должен продолжать UI foundation, а не возвращаться к аудио/roles/canvas крупным срезам, пока интерфейсный фундамент не станет устойчивым. Главный ближайший кодовый шаг - развить Notes workspace drag/drop tabs/resize polish или начать Tauri/native migration design gate после фиксации, что UI foundation достаточно устойчив.
+Следующий агент должен продолжать UI foundation, а не возвращаться к аудио/roles/canvas крупным срезам, пока интерфейсный фундамент не станет устойчивым. Главный ближайший кодовый шаг - развить Notes workspace resize polish или начать Tauri/native migration design gate после фиксации, что UI foundation достаточно устойчив.

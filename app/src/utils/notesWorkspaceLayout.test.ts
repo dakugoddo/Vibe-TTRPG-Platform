@@ -3,6 +3,7 @@ import {
     closeNotesWorkspaceTab,
     createEmptyNotesWorkspaceLayout,
     listNotesWorkspaceGroups,
+    moveNotesWorkspaceTab,
     openNotesWorkspaceTab,
     setActiveNotesWorkspaceGroup,
     setActiveNotesWorkspaceTab,
@@ -54,9 +55,20 @@ groups = listNotesWorkspaceGroups(layout.root);
 assert.equal(groups[1].tabs.length, 1);
 assert.equal(groups[1].tabs[0].entityId, 'character-1');
 
+layout = moveNotesWorkspaceTab(layout, groups[0].id, groups[0].tabs[1].id, groups[0].id, groups[0].tabs[0].id);
+groups = listNotesWorkspaceGroups(layout.root);
+assert.equal(groups[0].tabs[0].entityId, 'note-1', 'Tab can be reordered inside the same group');
+
+layout = moveNotesWorkspaceTab(layout, groups[0].id, groups[0].tabs[0].id, groups[1].id);
+groups = listNotesWorkspaceGroups(layout.root);
+assert.equal(groups[0].tabs.length, 1);
+assert.equal(groups[1].tabs.length, 2);
+assert.equal(groups[1].tabs[1].entityId, 'note-1', 'Tab can move between groups');
+assert.equal(layout.activeGroupId, groups[1].id);
+
 layout = closeNotesWorkspaceTab(layout, groups[1].id, groups[1].tabs[0].id);
 groups = listNotesWorkspaceGroups(layout.root);
-assert.equal(groups[1].tabs.length, 0);
-assert.equal(groups[1].activeTabId, null);
+assert.equal(groups[1].tabs.length, 1);
+assert.equal(groups[1].activeTabId, groups[1].tabs[0].id);
 
 console.log('notes workspace layout tests passed');

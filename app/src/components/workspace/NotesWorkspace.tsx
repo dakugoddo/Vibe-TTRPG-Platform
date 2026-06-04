@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
 import { BookOpen, Box, FileText, Grid2X2, Layers, Link2, ListTree, Network, PanelLeft, PanelRight, Plus, RotateCcw, Save, Trash2, User, X } from 'lucide-react';
@@ -45,6 +46,26 @@ const VIEW_LABEL_KEYS: Record<NotesWorkspaceView, string> = {
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
+const NOTES_WORKSPACE_TAB_MIME = 'application/vnd.vibe-notes-workspace-tab';
+
+interface NotesWorkspaceTabDragPayload {
+    groupId: string;
+    tabId: string;
+}
+
+function readTabDragPayload(event: DragEvent): NotesWorkspaceTabDragPayload | null {
+    try {
+        const data = event.dataTransfer.getData(NOTES_WORKSPACE_TAB_MIME);
+        if (!data) return null;
+
+        const parsed = JSON.parse(data);
+        if (!parsed || typeof parsed.groupId !== 'string' || typeof parsed.tabId !== 'string') return null;
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
 function getEntityOwnerId(entity: Entity): string | undefined {
     const owner = entity.properties?._playerOwner;
     return typeof owner === 'string' ? owner : undefined;
@@ -78,6 +99,7 @@ interface NotesWorkspaceNodeViewProps {
     onSetActiveTab: (groupId: string, tabId: string) => void;
     onCloseTab: (groupId: string, tabId: string) => void;
     onSplitGroup: (groupId: string, direction: 'row' | 'column') => void;
+    onMoveTab: (sourceGroupId: string, tabId: string, targetGroupId: string, beforeTabId?: string | null) => void;
     onOpenView: (entityId: string, view: NotesWorkspaceView) => void;
     onFocusEntity: (entityId: string) => void;
     t: Translate;
@@ -106,6 +128,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
         visibleEntities,
         onCloseTab,
         onFocusEntity,
+        onMoveTab,
         onOpenView,
         onSetActiveGroup,
         onSetActiveTab,
@@ -169,7 +192,23 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                 </div>
             </div>
 
-            <div className="flex min-h-10 shrink-0 gap-1 overflow-x-auto border-b border-[var(--vibe-border-subtle)] px-2 py-1.5">
+            <div
+                className="flex min-h-10 shrink-0 gap-1 overflow-x-auto border-b border-[var(--vibe-border-subtle)] px-2 py-1.5"
+                onDragOver={(event) => {
+                    if (event.dataTransfer.types.includes(NOTES_WORKSPACE_TAB_MIME)) {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = 'move';
+                    }
+                }}
+                onDrop={(event) => {
+                    const payload = readTabDragPayload(event);
+                    if (!payload) return;
+
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onMoveTab(payload.groupId, payload.tabId, node.id, null);
+                }}
+            >
                 {node.tabs.length === 0 ? (
                     <span className="flex items-center px-2 text-xs text-[var(--vibe-text-faint)]">
                         {t('workspace.notes.emptyGroup')}
@@ -180,6 +219,25 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                     return (
                         <div
                             key={tab.id}
+                            draggable
+                            onDragStart={(event) => {
+                                event.dataTransfer.effectAllowed = 'move';
+                                event.dataTransfer.setData(NOTES_WORKSPACE_TAB_MIME, JSON.stringify({ groupId: node.id, tabId: tab.id }));
+                            }}
+                            onDragOver={(event) => {
+                                if (event.dataTransfer.types.includes(NOTES_WORKSPACE_TAB_MIME)) {
+                                    event.preventDefault();
+                                    event.dataTransfer.dropEffect = 'move';
+                                }
+                            }}
+                            onDrop={(event) => {
+                                const payload = readTabDragPayload(event);
+                                if (!payload) return;
+
+                                event.preventDefault();
+                                event.stopPropagation();
+                                onMoveTab(payload.groupId, payload.tabId, node.id, tab.id);
+                            }}
                             className={`group flex h-8 max-w-[220px] shrink-0 items-center gap-2 rounded-[var(--vibe-radius-sm)] border px-2 text-left text-xs transition-colors ${
                                 isActiveTab
                                     ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-surface-hover)] text-[var(--vibe-text-primary)]'
@@ -395,6 +453,7 @@ export function NotesWorkspace() {
     const notesLayout = useNotesWorkspaceStore((state) => state.layout);
     const openWorkspaceTab = useNotesWorkspaceStore((state) => state.openTab);
     const closeWorkspaceTab = useNotesWorkspaceStore((state) => state.closeTab);
+    const moveWorkspaceTab = useNotesWorkspaceStore((state) => state.moveTab);
     const setActiveWorkspaceGroup = useNotesWorkspaceStore((state) => state.setActiveGroup);
     const setActiveWorkspaceTab = useNotesWorkspaceStore((state) => state.setActiveTab);
     const splitActiveWorkspaceGroup = useNotesWorkspaceStore((state) => state.splitActiveGroup);
@@ -684,6 +743,7 @@ export function NotesWorkspace() {
                                 onSetActiveTab={setActiveWorkspaceTab}
                                 onCloseTab={closeWorkspaceTab}
                                 onSplitGroup={handleSplitWorkspaceGroup}
+                                onMoveTab={moveWorkspaceTab}
                                 onOpenView={openWorkspaceTab}
                                 onFocusEntity={handleFocusEntity}
                                 t={t}

@@ -3,6 +3,7 @@ import {
     closeNotesWorkspaceTab,
     createEmptyNotesWorkspaceLayout,
     listNotesWorkspaceGroups,
+    moveNotesWorkspaceTab,
     openNotesWorkspaceTab,
     setActiveNotesWorkspaceGroup,
     setActiveNotesWorkspaceTab,
@@ -20,6 +21,7 @@ interface NotesWorkspaceStoreState {
     layout: NotesWorkspaceLayout;
     openTab: (entityId: string, view?: NotesWorkspaceView) => void;
     closeTab: (groupId: string, tabId: string) => void;
+    moveTab: (sourceGroupId: string, tabId: string, targetGroupId: string, beforeTabId?: string | null) => void;
     setActiveGroup: (groupId: string) => void;
     setActiveTab: (groupId: string, tabId: string) => void;
     splitActiveGroup: (direction: NotesWorkspaceSplitNode['direction']) => void;
@@ -108,6 +110,10 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
 
     closeTab: (groupId, tabId) => set((state) => ({
         layout: closeNotesWorkspaceTab(state.layout, groupId, tabId),
+    })),
+
+    moveTab: (sourceGroupId, tabId, targetGroupId, beforeTabId) => set((state) => ({
+        layout: moveNotesWorkspaceTab(state.layout, sourceGroupId, tabId, targetGroupId, beforeTabId),
     })),
 
     setActiveGroup: (groupId) => set((state) => ({

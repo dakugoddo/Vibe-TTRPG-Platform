@@ -41,13 +41,19 @@ groups = listNotesWorkspaceGroups(layout.root);
 assert.equal(groups[1].tabs.length, 1);
 assert.equal(groups[1].tabs[0].entityId, 'character-1');
 
-useNotesWorkspaceStore.getState().setActiveTab(groups[0].id, groups[0].tabs[0].id);
+useNotesWorkspaceStore.getState().moveTab(groups[0].id, groups[0].tabs[0].id, groups[1].id, groups[1].tabs[0].id);
 layout = useNotesWorkspaceStore.getState().layout;
-assert.equal(layout.activeGroupId, groups[0].id);
-
-useNotesWorkspaceStore.getState().closeTab(groups[0].id, groups[0].tabs[0].id);
-groups = listNotesWorkspaceGroups(useNotesWorkspaceStore.getState().layout.root);
+groups = listNotesWorkspaceGroups(layout.root);
 assert.equal(groups[0].tabs.length, 0);
+assert.deepEqual(groups[1].tabs.map((tab) => tab.entityId), ['note-1', 'character-1']);
+
+useNotesWorkspaceStore.getState().setActiveTab(groups[0].id, 'missing-tab');
+layout = useNotesWorkspaceStore.getState().layout;
+assert.equal(layout.activeGroupId, groups[1].id, 'Missing source tab cannot steal focus');
+
+useNotesWorkspaceStore.getState().closeTab(groups[1].id, groups[1].tabs[0].id);
+groups = listNotesWorkspaceGroups(useNotesWorkspaceStore.getState().layout.root);
+assert.equal(groups[1].tabs.length, 1);
 
 const persistedLayout = globalThis.localStorage.getItem(NOTES_WORKSPACE_LAYOUT_STORAGE_KEY);
 assert.ok(persistedLayout);
