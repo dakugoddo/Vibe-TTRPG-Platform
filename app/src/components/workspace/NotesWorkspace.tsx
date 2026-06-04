@@ -1,14 +1,20 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
-import { BookOpen, Box, FileText, Grid2X2, Layers, RotateCcw, Save, User } from 'lucide-react';
+import { BookOpen, Box, FileText, Grid2X2, Layers, PanelLeft, PanelRight, Plus, RotateCcw, Save, Trash2, User, X } from 'lucide-react';
 import { useEntities } from '../../hooks/useEntities';
+import { useNotesWorkspaceStore } from '../../store/notesWorkspaceStore';
 import {
+    deleteNamedWindowLayoutSnapshot,
+    listNamedWindowLayoutSnapshots,
     restoreWindowLayoutSnapshot,
+    restoreNamedWindowLayoutSnapshot,
     saveCurrentWindowLayoutSnapshot,
+    saveNamedWindowLayoutSnapshot,
     useWindowStore,
 } from '../../store/windowStore';
 import { yjsStore } from '../../store/yjsStore';
+import { listNotesWorkspaceGroups, type NotesWorkspaceNode, type NotesWorkspaceTab, type NotesWorkspaceView } from '../../utils/notesWorkspaceLayout';
 import { canViewEntity } from '../../utils/permissions';
 import { glass } from '../../utils/theme';
 import type { Entity, EntityType } from '../../types';
@@ -25,6 +31,16 @@ const QUICK_SECTIONS: QuickSectionConfig[] = [
     { type: 'object', icon: Box, titleKey: 'workspace.notes.quickObjects' },
     { type: 'ability', icon: BookOpen, titleKey: 'workspace.notes.quickAbilities' },
 ];
+
+const VIEW_LABEL_KEYS: Record<NotesWorkspaceView, string> = {
+    entity: 'workspace.notes.views.entity',
+    markdown: 'workspace.notes.views.markdown',
+    graph: 'workspace.notes.views.graph',
+    backlinks: 'workspace.notes.views.backlinks',
+    outline: 'workspace.notes.views.outline',
+};
+
+type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 function getEntityOwnerId(entity: Entity): string | undefined {
     const owner = entity.properties?._playerOwner;
@@ -45,9 +61,208 @@ function sortByName(left: Entity, right: Entity): number {
     return left.name.localeCompare(right.name, 'ru', { sensitivity: 'base' });
 }
 
+function getActiveTab(tabs: NotesWorkspaceTab[], activeTabId: string | null): NotesWorkspaceTab | null {
+    return tabs.find((tab) => tab.id === activeTabId) ?? tabs.at(-1) ?? null;
+}
+
+interface NotesWorkspaceNodeViewProps {
+    node: NotesWorkspaceNode;
+    activeGroupId: string;
+    groupOrder: Map<string, number>;
+    entitiesById: Map<string, Entity>;
+    onSetActiveGroup: (groupId: string) => void;
+    onSetActiveTab: (groupId: string, tabId: string) => void;
+    onCloseTab: (groupId: string, tabId: string) => void;
+    onSplitGroup: (groupId: string, direction: 'row' | 'column') => void;
+    onFocusEntity: (entityId: string) => void;
+    t: Translate;
+}
+
+function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
+    const { node } = props;
+
+    if (node.type === 'split') {
+        return (
+            <div className={`flex min-h-0 flex-1 gap-3 ${node.direction === 'row' ? 'flex-row' : 'flex-col'}`}>
+                <div className="min-h-0 min-w-0 flex-1">
+                    <NotesWorkspaceNodeView {...props} node={node.children[0]} />
+                </div>
+                <div className="min-h-0 min-w-0 flex-1">
+                    <NotesWorkspaceNodeView {...props} node={node.children[1]} />
+                </div>
+            </div>
+        );
+    }
+
+    const {
+        activeGroupId,
+        groupOrder,
+        entitiesById,
+        onCloseTab,
+        onFocusEntity,
+        onSetActiveGroup,
+        onSetActiveTab,
+        onSplitGroup,
+        t,
+    } = props;
+    const isActiveGroup = node.id === activeGroupId;
+    const activeTab = getActiveTab(node.tabs, node.activeTabId);
+    const activeEntity = activeTab ? entitiesById.get(activeTab.entityId) : null;
+    const groupIndex = groupOrder.get(node.id) ?? 1;
+
+    return (
+        <div
+            className={`flex h-full min-h-[190px] min-w-0 flex-col overflow-hidden rounded-[var(--vibe-radius-md)] border bg-[var(--vibe-surface-input)] transition-colors ${
+                isActiveGroup
+                    ? 'border-[var(--vibe-accent)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--vibe-accent)_35%,transparent)]'
+                    : 'border-[var(--vibe-border-subtle)]'
+            }`}
+            onMouseDown={() => onSetActiveGroup(node.id)}
+        >
+            <div className="flex min-h-10 items-center justify-between gap-2 border-b border-[var(--vibe-border-subtle)] px-2.5 py-2">
+                <div className="flex min-w-0 items-center gap-2">
+                    <span className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-1 font-mono text-[10px] text-[var(--vibe-text-muted)]">
+                        {t('workspace.notes.groupLabel', { index: groupIndex })}
+                    </span>
+                    {isActiveGroup && (
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-accent)]">
+                            {t('workspace.notes.activeGroup')}
+                        </span>
+                    )}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onSplitGroup(node.id, 'row');
+                        }}
+                        className="flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-text-faint)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                        title={t('workspace.notes.splitRow')}
+                    >
+                        <PanelLeft size={14} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onSplitGroup(node.id, 'column');
+                        }}
+                        className="flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-text-faint)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                        title={t('workspace.notes.splitColumn')}
+                    >
+                        <PanelRight size={14} />
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex min-h-10 shrink-0 gap-1 overflow-x-auto border-b border-[var(--vibe-border-subtle)] px-2 py-1.5">
+                {node.tabs.length === 0 ? (
+                    <span className="flex items-center px-2 text-xs text-[var(--vibe-text-faint)]">
+                        {t('workspace.notes.emptyGroup')}
+                    </span>
+                ) : node.tabs.map((tab) => {
+                    const entity = entitiesById.get(tab.entityId);
+                    const isActiveTab = tab.id === activeTab?.id;
+                    return (
+                        <div
+                            key={tab.id}
+                            className={`group flex h-8 max-w-[220px] shrink-0 items-center gap-2 rounded-[var(--vibe-radius-sm)] border px-2 text-left text-xs transition-colors ${
+                                isActiveTab
+                                    ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-surface-hover)] text-[var(--vibe-text-primary)]'
+                                    : 'border-transparent text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-subtle)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+                            }`}
+                            title={entity?.name ?? tab.entityId}
+                        >
+                            <button
+                                type="button"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    onSetActiveTab(node.id, tab.id);
+                                    onFocusEntity(tab.entityId);
+                                }}
+                                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                            >
+                                <span className="min-w-0 truncate font-bold">
+                                    {entity?.name ?? tab.entityId}
+                                </span>
+                                <span className="shrink-0 text-[9px] uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                    {t(VIEW_LABEL_KEYS[tab.view])}
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    onCloseTab(node.id, tab.id);
+                                }}
+                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-text-faint)] opacity-70 transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_16%,transparent)] hover:text-[var(--vibe-danger)] group-hover:opacity-100"
+                                title={t('workspace.notes.closeTab')}
+                            >
+                                <X size={11} />
+                            </button>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div className="min-h-0 flex-1 p-3">
+                {!activeTab ? (
+                    <div className="flex h-full min-h-[120px] items-center justify-center rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] text-xs text-[var(--vibe-text-faint)]">
+                        {t('workspace.notes.emptyGroup')}
+                    </div>
+                ) : (
+                    <div className="flex h-full min-h-[120px] flex-col justify-between rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] p-3">
+                        <div className="min-w-0">
+                            <div className="mb-3 flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="truncate text-sm font-black text-[var(--vibe-text-primary)]">
+                                        {activeEntity?.name ?? t('workspace.notes.missingEntity')}
+                                    </p>
+                                    <p className="mt-1 truncate text-[10px] uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                        {activeEntity?.type ?? 'entity'} / {activeEntity?.database ?? 'general'}
+                                    </p>
+                                </div>
+                                <FileText size={18} className="shrink-0 text-[var(--vibe-accent)]" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-[10px] uppercase tracking-wider text-[var(--vibe-text-muted)]">
+                                <span className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1">
+                                    {t(VIEW_LABEL_KEYS[activeTab.view])}
+                                </span>
+                                <span className="truncate rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1">
+                                    {activeTab.entityId}
+                                </span>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onFocusEntity(activeTab.entityId);
+                            }}
+                            className="mt-3 flex items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-3 py-2 text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-muted)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                        >
+                            {t('workspace.notes.focusWindow')}
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export function NotesWorkspace() {
     const { t } = useTranslation();
+    const [snapshotName, setSnapshotName] = useState('');
+    const [namedSnapshots, setNamedSnapshots] = useState(() => listNamedWindowLayoutSnapshots());
     const entities = useEntities();
+    const notesLayout = useNotesWorkspaceStore((state) => state.layout);
+    const openWorkspaceTab = useNotesWorkspaceStore((state) => state.openTab);
+    const closeWorkspaceTab = useNotesWorkspaceStore((state) => state.closeTab);
+    const setActiveWorkspaceGroup = useNotesWorkspaceStore((state) => state.setActiveGroup);
+    const setActiveWorkspaceTab = useNotesWorkspaceStore((state) => state.setActiveTab);
+    const splitActiveWorkspaceGroup = useNotesWorkspaceStore((state) => state.splitActiveGroup);
+    const resetWorkspaceLayout = useNotesWorkspaceStore((state) => state.resetLayout);
     const windows = useWindowStore((state) => state.windows);
     const focusWindow = useWindowStore((state) => state.focusWindow);
     const openWindow = useWindowStore((state) => state.openWindow);
@@ -81,10 +296,42 @@ export function NotesWorkspace() {
         [visibleEntities]
     );
 
-    const handleOpenEntity = (entity: Entity, index = 0) => {
+    const workspaceGroupOrder = useMemo(
+        () => new Map(listNotesWorkspaceGroups(notesLayout.root).map((group, index) => [group.id, index + 1])),
+        [notesLayout.root]
+    );
+
+    const handleFocusEntity = (entityId: string, index = 0) => {
         const column = index % 2;
         const row = Math.floor(index / 2);
-        openWindow(entity.id, 140 + column * 72, 128 + row * 52);
+        openWindow(entityId, 140 + column * 72, 128 + row * 52);
+    };
+
+    const handleOpenEntity = (entity: Entity, index = 0) => {
+        openWorkspaceTab(entity.id, 'entity');
+        handleFocusEntity(entity.id, index);
+    };
+
+    const handleSplitWorkspaceGroup = (groupId: string, direction: 'row' | 'column') => {
+        setActiveWorkspaceGroup(groupId);
+        splitActiveWorkspaceGroup(direction);
+    };
+
+    const refreshNamedSnapshots = () => setNamedSnapshots(listNamedWindowLayoutSnapshots());
+
+    const handleSaveNamedSnapshot = () => {
+        const snapshot = saveNamedWindowLayoutSnapshot(snapshotName);
+        if (!snapshot) return;
+        setSnapshotName('');
+        refreshNamedSnapshots();
+    };
+
+    const handleRestoreNamedSnapshot = (id: string) => {
+        if (restoreNamedWindowLayoutSnapshot(id)) refreshNamedSnapshots();
+    };
+
+    const handleDeleteNamedSnapshot = (id: string) => {
+        if (deleteNamedWindowLayoutSnapshot(id)) refreshNamedSnapshots();
     };
 
     const actionButtonClass = `flex items-center justify-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-3 py-2 text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-muted)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]`;
@@ -132,6 +379,71 @@ export function NotesWorkspace() {
                             <RotateCcw size={14} />
                             {t('workspace.notes.restore')}
                         </button>
+                    </div>
+
+                    <div className="border-t border-[var(--vibe-border-subtle)] p-3">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
+                                {t('workspace.notes.namedSnapshots')}
+                            </span>
+                            <span className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-0.5 font-mono text-[10px] text-[var(--vibe-text-muted)]">
+                                {namedSnapshots.length}
+                            </span>
+                        </div>
+                        <div className="flex gap-2">
+                            <input
+                                value={snapshotName}
+                                onChange={(event) => setSnapshotName(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter') handleSaveNamedSnapshot();
+                                }}
+                                className="min-w-0 flex-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-3 py-2 text-xs text-[var(--vibe-text-primary)] outline-none transition-colors placeholder:text-[var(--vibe-text-faint)] focus:border-[var(--vibe-border-strong)]"
+                                placeholder={t('workspace.notes.snapshotNamePlaceholder')}
+                            />
+                            <button
+                                type="button"
+                                onClick={handleSaveNamedSnapshot}
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-accent)]"
+                                title={t('workspace.notes.saveNamedSnapshot')}
+                            >
+                                <Plus size={15} />
+                            </button>
+                        </div>
+
+                        <div className="mt-2 max-h-[150px] space-y-1.5 overflow-y-auto">
+                            {namedSnapshots.length === 0 ? (
+                                <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] p-3 text-center text-xs text-[var(--vibe-text-faint)]">
+                                    {t('workspace.notes.noNamedSnapshots')}
+                                </div>
+                            ) : namedSnapshots.map((snapshot) => (
+                                <div
+                                    key={snapshot.id}
+                                    className="group flex min-w-0 items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5"
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRestoreNamedSnapshot(snapshot.id)}
+                                        className="min-w-0 flex-1 text-left"
+                                        title={t('workspace.notes.restoreNamedSnapshot')}
+                                    >
+                                        <span className="block truncate text-xs font-bold text-[var(--vibe-text-primary)]">
+                                            {snapshot.name}
+                                        </span>
+                                        <span className="block truncate text-[10px] text-[var(--vibe-text-faint)]">
+                                            {t('workspace.notes.snapshotMeta', { count: snapshot.windowCount })}
+                                        </span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDeleteNamedSnapshot(snapshot.id)}
+                                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-text-faint)] opacity-80 transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_16%,transparent)] hover:text-[var(--vibe-danger)] group-hover:opacity-100"
+                                        title={t('workspace.notes.deleteNamedSnapshot')}
+                                    >
+                                        <Trash2 size={13} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="min-h-0 flex-1 overflow-y-auto border-t border-[var(--vibe-border-subtle)] p-3">
@@ -185,6 +497,59 @@ export function NotesWorkspace() {
                         </div>
                         <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-3 py-2 text-xs font-bold text-[var(--vibe-text-muted)]">
                             {t('workspace.notes.availableCount', { count: visibleEntities.length })}
+                        </div>
+                    </div>
+
+                    <div className={`flex min-h-[300px] max-h-[42vh] flex-col overflow-hidden rounded-[var(--vibe-radius-lg)] ${glass.panel}`}>
+                        <div className={`${glass.panelHeader} flex items-center justify-between gap-3 p-3`}>
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-accent)]">
+                                    {t('workspace.notes.tabsBoard')}
+                                </p>
+                                <h3 className="mt-1 truncate text-sm font-black text-[var(--vibe-text-primary)]">
+                                    {t('workspace.notes.tabsBoardTitle')}
+                                </h3>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => splitActiveWorkspaceGroup('row')}
+                                    className="flex h-8 w-8 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                                    title={t('workspace.notes.splitRow')}
+                                >
+                                    <PanelLeft size={14} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => splitActiveWorkspaceGroup('column')}
+                                    className="flex h-8 w-8 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                                    title={t('workspace.notes.splitColumn')}
+                                >
+                                    <PanelRight size={14} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={resetWorkspaceLayout}
+                                    className="flex h-8 w-8 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                                    title={t('workspace.notes.resetTabs')}
+                                >
+                                    <RotateCcw size={14} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="min-h-0 flex-1 p-3">
+                            <NotesWorkspaceNodeView
+                                node={notesLayout.root}
+                                activeGroupId={notesLayout.activeGroupId}
+                                groupOrder={workspaceGroupOrder}
+                                entitiesById={entitiesById}
+                                onSetActiveGroup={setActiveWorkspaceGroup}
+                                onSetActiveTab={setActiveWorkspaceTab}
+                                onCloseTab={closeWorkspaceTab}
+                                onSplitGroup={handleSplitWorkspaceGroup}
+                                onFocusEntity={handleFocusEntity}
+                                t={t}
+                            />
                         </div>
                     </div>
 

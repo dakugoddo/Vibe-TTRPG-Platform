@@ -24,6 +24,15 @@ export interface WindowState {
     canvasId?: string;
 }
 
+export interface NamedWindowLayoutSnapshot {
+    id: string;
+    name: string;
+    savedAt: string;
+    windowCount: number;
+    windows: Record<string, WindowState>;
+    highestZIndex: number;
+}
+
 interface WindowStoreState {
     windows: Record<string, WindowState>;
     focusedWindowId: string | null;
@@ -294,11 +303,55 @@ function getWindowSnapshotStorageKey(): string {
     return `${WINDOW_STORAGE_PREFIX}${_currentRoom ?? 'local'}-screen-snapshot`;
 }
 
-export function saveCurrentWindowLayoutSnapshot(): boolean {
-    const { windows, highestZIndex } = useWindowStore.getState();
-    const screenWindows = Object.fromEntries(
-        Object.entries(windows).filter(([, win]) => !win.isPinned)
+function getNamedWindowSnapshotsStorageKey(): string {
+    return `${WINDOW_STORAGE_PREFIX}${_currentRoom ?? 'local'}-named-screen-snapshots`;
+}
+
+function getScreenWindowsSnapshot(): Record<string, WindowState> {
+    return Object.fromEntries(
+        Object.entries(useWindowStore.getState().windows).filter(([, win]) => !win.isPinned)
     );
+}
+
+function normalizeSnapshotName(name: string, savedAt: string): string {
+    const trimmed = name.trim();
+    if (trimmed) return trimmed.slice(0, 80);
+    return `Workspace ${new Date(savedAt).toLocaleString('ru-RU')}`;
+}
+
+function readNamedWindowLayoutSnapshots(): NamedWindowLayoutSnapshot[] {
+    try {
+        const data = localStorage.getItem(getNamedWindowSnapshotsStorageKey());
+        if (!data) return [];
+        const parsed = JSON.parse(data);
+        if (!Array.isArray(parsed)) return [];
+
+        return parsed.filter((item): item is NamedWindowLayoutSnapshot =>
+            Boolean(
+                item
+                && typeof item.id === 'string'
+                && typeof item.name === 'string'
+                && typeof item.savedAt === 'string'
+                && typeof item.windows === 'object'
+            )
+        );
+    } catch {
+        return [];
+    }
+}
+
+function writeNamedWindowLayoutSnapshots(snapshots: NamedWindowLayoutSnapshot[]): boolean {
+    try {
+        localStorage.setItem(getNamedWindowSnapshotsStorageKey(), JSON.stringify(snapshots));
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+export function saveCurrentWindowLayoutSnapshot(): boolean {
+    const { highestZIndex } = useWindowStore.getState();
+    const screenWindows = getScreenWindowsSnapshot();
 
     try {
         localStorage.setItem(getWindowSnapshotStorageKey(), JSON.stringify({
@@ -334,4 +387,55 @@ export function restoreWindowLayoutSnapshot(): boolean {
     } catch {
         return false;
     }
+}
+
+export function listNamedWindowLayoutSnapshots(): NamedWindowLayoutSnapshot[] {
+    return readNamedWindowLayoutSnapshots()
+        .sort((left, right) => right.savedAt.localeCompare(left.savedAt));
+}
+
+export function saveNamedWindowLayoutSnapshot(name: string): NamedWindowLayoutSnapshot | null {
+    const { highestZIndex } = useWindowStore.getState();
+    const screenWindows = getScreenWindowsSnapshot();
+    const savedAt = new Date().toISOString();
+    const snapshot: NamedWindowLayoutSnapshot = {
+        id: `workspace-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+        name: normalizeSnapshotName(name, savedAt),
+        savedAt,
+        windowCount: Object.keys(screenWindows).length,
+        windows: screenWindows,
+        highestZIndex,
+    };
+
+    const nextSnapshots = [
+        snapshot,
+        ...readNamedWindowLayoutSnapshots().filter((item) => item.id !== snapshot.id),
+    ].slice(0, 12);
+
+    return writeNamedWindowLayoutSnapshots(nextSnapshots) ? snapshot : null;
+}
+
+export function restoreNamedWindowLayoutSnapshot(id: string): boolean {
+    const snapshot = readNamedWindowLayoutSnapshots().find((item) => item.id === id);
+    if (!snapshot) return false;
+
+    const current = useWindowStore.getState();
+    const pinnedWindows = Object.fromEntries(
+        Object.entries(current.windows).filter(([, win]) => win.isPinned)
+    );
+    useWindowStore.setState({
+        windows: {
+            ...pinnedWindows,
+            ...snapshot.windows,
+        },
+        highestZIndex: Math.max(current.highestZIndex, snapshot.highestZIndex || 10),
+    });
+    return true;
+}
+
+export function deleteNamedWindowLayoutSnapshot(id: string): boolean {
+    const snapshots = readNamedWindowLayoutSnapshots();
+    const nextSnapshots = snapshots.filter((item) => item.id !== id);
+    if (nextSnapshots.length === snapshots.length) return false;
+    return writeNamedWindowLayoutSnapshots(nextSnapshots);
 }

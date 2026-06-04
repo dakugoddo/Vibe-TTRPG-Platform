@@ -36,6 +36,10 @@
 - [x] Первый workspace code slice: local-only layout actions и quick screen snapshot для unpinned окон (`left/right/corners/grid/center`) без world-shared workspace format.
 - [x] Canvas pinned window foundation: экранное окно остаётся единственным личным экземпляром, а закрепление создаёт отдельный `canvasWindowInstances[]` объект в активном canvas, поэтому одну сущность можно закреплять много раз без копирования entity-файла.
 - [x] Спроектировать отдельный Notes workspace mode: Obsidian-like режим без рендера canvas; design gate `.pi/docs/notes-workspace-mode-design.md` и первый local-only shell внесены.
+- [x] Notes workspace local snapshots: именованные раскладки screen-окон сохраняются/восстанавливаются/удаляются локально и не трогают canvas-pinned placements или файлы мира.
+- [x] Notes workspace tab/split data model: pure helper `notesWorkspaceLayout.ts` и тесты для tabs, reuse existing, split group, active tab и close tab.
+- [x] Notes workspace local tab board: `notesWorkspaceStore.ts` подключает tab/split модель к `NotesWorkspace`, а вкладки открывают/фокусируют существующие screen windows без нового editor/world format.
+- [x] Notes workspace local tab persistence: tab board layout сохраняется в `localStorage` с runtime validation и не пишет ничего в мир.
 - [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей только после короткого product gate.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
@@ -156,4 +160,8 @@
 18. [x] Canvas pinned window foundation: `canvasWindowInstances[]` в canvas entity, screen singleton в `windowStore`, pinned instances не пишут `windowState` в entity-файлы.
 19. [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей после короткого product gate.
 20. [x] Notes workspace mode design + первый local-only shell: Obsidian workspace patterns изучены, добавлен режим `Канвас/Заметки`, `NotesWorkspace`, localStorage-backed mode и скрытие canvas-pinned placements в notes mode.
-21. [ ] После UI foundation перейти к Tauri/native migration design gate, затем к multi-window/multi-monitor.
+21. [x] Notes workspace named local snapshots: список раскладок в `NotesWorkspace`, save/restore/delete через `windowStore`, focused test в `windowStore.test.ts`.
+22. [x] Notes workspace tab/split pure model: `notesWorkspaceLayout.ts` без UI-подключения, чтобы следующий срез рендера tab groups имел контракт.
+23. [x] Notes workspace local tab board: UI-render tab groups/splits поверх `notesWorkspaceLayout.ts` через `notesWorkspaceStore.ts`, без записи layout в мир и без параллельного editor.
+24. [x] Notes workspace local tab persistence: validated `localStorage` для tab board layout без world format.
+25. [ ] После UI foundation перейти к Tauri/native migration design gate, затем к multi-window/multi-monitor.

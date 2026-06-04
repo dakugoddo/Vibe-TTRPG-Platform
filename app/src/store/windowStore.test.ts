@@ -1,5 +1,29 @@
 import assert from 'node:assert/strict';
-import { useWindowStore } from './windowStore';
+import {
+    deleteNamedWindowLayoutSnapshot,
+    listNamedWindowLayoutSnapshots,
+    loadWindowLayout,
+    restoreNamedWindowLayoutSnapshot,
+    saveNamedWindowLayoutSnapshot,
+    useWindowStore,
+} from './windowStore';
+
+class MemoryStorage {
+    private data = new Map<string, string>();
+
+    getItem(key: string): string | null {
+        return this.data.get(key) ?? null;
+    }
+
+    setItem(key: string, value: string): void {
+        this.data.set(key, value);
+    }
+}
+
+Object.defineProperty(globalThis, 'localStorage', {
+    value: new MemoryStorage(),
+    configurable: true,
+});
 
 function resetWindowStore(): void {
     useWindowStore.setState({
@@ -68,5 +92,25 @@ assert.equal(Boolean(state.windows['entity-2']?.isPinned), true);
 assert.equal(state.windows['entity-2_screen']?.isPinned, false);
 assert.equal(state.windows['entity-2_screen']?.entityId, 'entity-2');
 assert.equal(state.focusedWindowId, 'entity-2_screen');
+
+loadWindowLayout('window-store-test');
+resetWindowStore();
+useWindowStore.getState().openWindow('entity-3', 100, 120);
+useWindowStore.getState().openWindow('entity-4', 300, 340);
+
+const savedSnapshot = saveNamedWindowLayoutSnapshot('Rules prep');
+assert.ok(savedSnapshot);
+assert.equal(savedSnapshot.name, 'Rules prep');
+assert.equal(savedSnapshot.windowCount, 2);
+assert.equal(listNamedWindowLayoutSnapshots().length, 1);
+
+useWindowStore.getState().closeWindow('entity-3');
+assert.equal(Object.values(useWindowStore.getState().windows).filter((win) => !win.isPinned).length, 1);
+
+assert.equal(restoreNamedWindowLayoutSnapshot(savedSnapshot.id), true);
+assert.equal(Object.values(useWindowStore.getState().windows).filter((win) => !win.isPinned).length, 2);
+
+assert.equal(deleteNamedWindowLayoutSnapshot(savedSnapshot.id), true);
+assert.equal(listNamedWindowLayoutSnapshots().length, 0);
 
 console.log('window store tests passed');

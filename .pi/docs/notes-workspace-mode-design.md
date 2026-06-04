@@ -1,7 +1,7 @@
 # Notes Workspace Mode: design gate
 
 > Дата: 2026-06-03
-> Статус: Design gate + первый local-only shell
+> Статус: Design gate + local-only shell + named local snapshots + local tab/split board persistence
 > Связанные задачи: `FEAT-WORKSPACE-001`, `FEAT-UI-002`, future Tauri/native multi-window
 
 ## Зачем это нужно
@@ -46,6 +46,9 @@
 4. Дать быстрые действия над уже открытыми screen windows: grid, cascade, save/restore snapshot.
 5. Дать быстрый список заметок/сущностей для открытия screen window через существующий `openWindow`.
 6. Хранить выбранный режим локально в `localStorage`, не в мире.
+7. Дать named local snapshots для screen-window раскладок без записи в world files.
+8. Подключить local tab/split board поверх существующего `EntityWindow`: вкладки и группы управляют фокусом/открытием screen windows, но не создают параллельный редактор.
+9. Хранить tab board layout локально в `localStorage` с runtime-валидацией, не в world files.
 
 ### Почему так
 
@@ -54,6 +57,7 @@
 - Не затрагиваются права доступа.
 - Не создаётся browser popout, который потом всё равно придётся пересобрать под Tauri.
 - Уже существующий `EntityWindow` остаётся единственной оболочкой редактирования сущности.
+- Named snapshots сохраняют только screen windows и не трогают canvas-pinned placements.
 
 ## Будущая модель после MVP
 
@@ -75,6 +79,23 @@ type NotesWorkspaceTab = {
 ```
 
 Эта модель должна жить локально, пока владелец отдельно не решит, что нужны named workspace snapshots в мире.
+
+Первый pure helper уже внесён в `app/src/utils/notesWorkspaceLayout.ts`:
+
+- `createEmptyNotesWorkspaceLayout`;
+- `openNotesWorkspaceTab` с reuse existing по `entityId + view`;
+- `splitActiveNotesWorkspaceGroup`;
+- `setActiveNotesWorkspaceGroup`;
+- `setActiveNotesWorkspaceTab`;
+- `closeNotesWorkspaceTab`;
+- `listNotesWorkspaceGroups`.
+
+UI-render подключён отдельным безопасным срезом:
+
+- `app/src/store/notesWorkspaceStore.ts` держит local-only layout state и оборачивает pure helpers;
+- `NotesWorkspace` рендерит tab groups/splits в центральной области, открывает сущности через существующий `openWindow` и фокусирует уже открытые screen windows;
+- tab board layout сохраняется локально в `localStorage` с валидацией, чтобы битые данные не ломали workspace;
+- tab board пока не сохраняется в world files и не заменяет `EntityWindow` как единственную оболочку редактирования сущностей.
 
 ### Linked views
 
@@ -112,5 +133,8 @@ Linked views не должны редактировать entity напряму�
 - Личные screen windows остаются открытыми и редактируемыми.
 - Закреплённые canvas placements не всплывают поверх notes workspace.
 - Можно быстро разложить открытые окна сеткой или каскадом.
+- Можно сохранить, восстановить и удалить named local layout snapshot.
+- Можно открыть видимую сущность в local tab board, разделить активную группу вправо/вниз, переключать/закрывать вкладки и фокусировать связанное screen window.
+- Local tab board layout переживает reload на этом клиенте.
 - Выбор режима переживает reload на этом клиенте.
-- Проверки: `npm.cmd run build`, `npm.cmd run lint`.
+- Проверки: `workspaceMode.test.ts`, `windowStore.test.ts`, `notesWorkspaceLayout.test.ts`, `notesWorkspaceStore.test.ts`, `npm.cmd run build`, `npm.cmd run lint`.
