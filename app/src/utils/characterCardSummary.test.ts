@@ -63,5 +63,34 @@ assert.deepEqual(summary.inventory, [
 assert.equal(summary.inventoryCount, 2);
 assert.equal(summary.abilityCount, 1);
 assert.equal(summary.attackCount, 1);
+assert.equal(summary.notesMode, 'short');
+
+const configuredCharacter = entity({
+    ...character,
+    properties: {
+        ...character.properties,
+        compactCard: {
+            metricIds: ['speed', 'missing'],
+            resourceIds: ['focus'],
+            actionIds: ['blink'],
+            inventoryIds: ['potion'],
+            notesMode: 'full',
+        },
+    },
+});
+const configuredSummary = buildCharacterCompactSummary(configuredCharacter, [configuredCharacter, sword, potion, ability, attack, unrelatedAttack]);
+assert.deepEqual(configuredSummary.metrics, [
+    { id: 'speed', label: 'СКР', value: 6 },
+]);
+assert.deepEqual(configuredSummary.resources, [
+    { id: 'focus', label: 'Фокус', current: 2, max: 5, ratio: 0.4 },
+]);
+assert.deepEqual(configuredSummary.actions, [
+    { id: 'blink', kind: 'ability', name: 'Blink', formula: '1d8' },
+]);
+assert.deepEqual(configuredSummary.inventory, [
+    { id: 'potion', name: 'Potion', category: 'consumable', equipped: false },
+]);
+assert.equal(configuredSummary.notesMode, 'full');
 
 console.log('character card summary tests passed');

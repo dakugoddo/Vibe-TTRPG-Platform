@@ -1,7 +1,7 @@
 import { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo, memo } from 'react';
 import { Stage, Layer, Text, Group, Circle, Line, Rect, Ellipse, RegularPolygon, Image as KonvaImage, Shape } from 'react-konva';
 import { Html } from 'react-konva-utils';
-import { Box, Copy, Dices, ExternalLink, Eye, EyeOff, Image as ImageIcon, MoveRight, Trash2 } from 'lucide-react';
+import { Box, Copy, ExternalLink, Eye, EyeOff, Image as ImageIcon, MoveRight, Trash2 } from 'lucide-react';
 import Konva from 'konva';
 import useImage from 'use-image';
 import { useCanvasStore } from '../../store/canvasStore';
@@ -13,7 +13,6 @@ import { useCanvasSyncStore, PING_DURATION_MS } from '../../store/canvasSyncStor
 import { useUIStore } from '../../store/uiStore';
 import { useNotificationStore } from '../../store/notificationStore';
 import { getAssetUrl, getIsHost, uploadAssetFile, uploadAssetFileToHost, type AssetRecord } from '../../services/fileApi';
-import { rollEntityActionToChat } from '../../services/entityActionRoll';
 import { canViewEntity } from '../../utils/permissions';
 import { readAssetDragPayload } from '../../utils/assetDrag';
 import { findNearestCanvasAnchor, updateBoundLineEndpoints } from '../../utils/canvasAnchors';
@@ -5281,49 +5280,24 @@ export function InfiniteCanvas() {
                   )}
 
                   {entityTokenInfoTab === 'actions' && (
-                    <div className="space-y-1.5">
-                      {characterSummary.actions.length > 0 ? characterSummary.actions.map((action) => {
-                        const actionEntity = yjsStore.entitiesMap.get(action.id);
-                        const parentEntity = actionEntity?.parentId ? yjsStore.entitiesMap.get(actionEntity.parentId) : undefined;
-                        const relatedEntities = [
-                          ...(parentEntity && parentEntity.id !== linkedEntity.id ? [parentEntity] : []),
-                          linkedEntity,
-                        ];
-                        const canRollAction = Boolean(actionEntity && action.formula);
-
-                        return (
-                          <div key={action.id} className="flex items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5">
-                            <span className={`flex h-6 w-9 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border text-[9px] font-black uppercase tracking-wider ${action.kind === 'attack'
-                              ? 'border-[color-mix(in_srgb,var(--vibe-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_14%,transparent)] text-[var(--vibe-danger)]'
-                              : 'border-[color-mix(in_srgb,var(--vibe-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-accent)_14%,transparent)] text-[var(--vibe-accent)]'
-                            }`}>
-                              {action.kind === 'attack' ? 'АТК' : 'СП'}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-xs font-bold text-[var(--vibe-text-primary)]">{action.name}</div>
-                              <div className="truncate text-[10px] text-[var(--vibe-text-faint)]">{action.parentName || (action.kind === 'attack' ? 'Атака персонажа' : 'Способность')}</div>
-                            </div>
-                            <div className="max-w-[86px] truncate rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-1.5 py-1 font-mono text-[10px] text-[var(--vibe-text-muted)]">
-                              {action.formula || 'без формулы'}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (!actionEntity) return;
-                                rollEntityActionToChat(actionEntity, action.kind, relatedEntities);
-                              }}
-                              disabled={!canRollAction}
-                              title={canRollAction ? `Бросить ${action.formula}` : 'Укажите формулу броска'}
-                              className={`grid h-7 w-7 flex-shrink-0 place-items-center rounded-[var(--vibe-radius-sm)] border transition-colors ${canRollAction
-                                ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] hover:bg-[var(--vibe-surface-hover)]'
-                                : 'cursor-not-allowed border-transparent bg-[var(--vibe-surface-block)] text-[var(--vibe-text-faint)]'
-                              }`}
-                            >
-                              <Dices size={13} />
-                            </button>
+                    <div className="max-h-56 space-y-1.5 overflow-y-auto pr-1 custom-scrollbar">
+                      {characterSummary.actions.length > 0 ? characterSummary.actions.map((action) => (
+                        <div key={action.id} className="flex items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5">
+                          <span className={`flex h-6 w-9 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border text-[9px] font-black uppercase tracking-wider ${action.kind === 'attack'
+                            ? 'border-[color-mix(in_srgb,var(--vibe-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_14%,transparent)] text-[var(--vibe-danger)]'
+                            : 'border-[color-mix(in_srgb,var(--vibe-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-accent)_14%,transparent)] text-[var(--vibe-accent)]'
+                          }`}>
+                            {action.kind === 'attack' ? 'АТК' : 'СП'}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-xs font-bold text-[var(--vibe-text-primary)]">{action.name}</div>
+                            <div className="truncate text-[10px] text-[var(--vibe-text-faint)]">{action.parentName || (action.kind === 'attack' ? 'Атака персонажа' : 'Способность')}</div>
                           </div>
-                        );
-                      }) : (
+                          <div className="max-w-[108px] truncate rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-1.5 py-1 font-mono text-[10px] text-[var(--vibe-text-muted)]">
+                            {action.formula || 'без формулы'}
+                          </div>
+                        </div>
+                      )) : (
                         <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-center text-[11px] text-[var(--vibe-text-faint)]">
                           Атаки и способности пока не добавлены.
                         </div>
@@ -5332,7 +5306,7 @@ export function InfiniteCanvas() {
                   )}
 
                   {entityTokenInfoTab === 'resources' && (
-                    <div className="space-y-2">
+                    <div className="max-h-56 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
                       {characterSummary.resources.length > 0 && (
                         <div className="grid gap-1.5">
                           {characterSummary.resources.map((resource) => (
@@ -5380,9 +5354,15 @@ export function InfiniteCanvas() {
                   )}
 
                   {entityTokenInfoTab === 'notes' && (
-                    <div className="max-h-32 overflow-y-auto rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 text-[11px] leading-relaxed text-[var(--vibe-text-muted)] custom-scrollbar">
-                      {description || 'Описание пока пустое.'}
-                    </div>
+                    characterSummary.notesMode === 'hidden' ? (
+                      <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-center text-[11px] text-[var(--vibe-text-faint)]">
+                        Заметки скрыты в compact card.
+                      </div>
+                    ) : (
+                      <div className="max-h-40 overflow-y-auto rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 text-[11px] leading-relaxed text-[var(--vibe-text-muted)] custom-scrollbar">
+                        {(characterSummary.notesMode === 'short' && description.length > 180) ? `${description.slice(0, 180).trim()}...` : description || 'Описание пока пустое.'}
+                      </div>
+                    )
                   )}
                 </div>
               ) : (

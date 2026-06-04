@@ -44,7 +44,8 @@
 - [x] Notes workspace drag/drop tabs: pure `moveNotesWorkspaceTab`, store action и HTML drag/drop для reorder/move вкладок внутри/между группами без world format.
 - [x] Notes workspace resize polish: split `ratio` теперь используется в UI, панели можно менять drag-handle, ratio клампится и сохраняется локально без world format.
 - [x] Создать product gate для entity-level compact card defaults: `.pi/docs/compact-character-card-defaults-gate.md`.
-- [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей только после решения владельца по gate.
+- [x] Принять решения владельца по compact card defaults: `properties.compactCard`, selected-only, single shared preset, edit-by-entity-permission, no hard limits, informational canvas overlay.
+- [x] Compact card defaults code slice: `characterCompactCardDefaults.ts`, selected fields в `characterCardSummary`, informational canvas actions без roll buttons, settings UI в `EntityCanvasTokenSettings`.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
 ## 2. Audio Module: Local-First Core
@@ -175,4 +176,5 @@
 27. [x] После UI foundation открыть Tauri/native migration design gate: `.pi/docs/tauri-native-migration-plan.md`.
 28. [x] Notes workspace resize polish: split panes используют persisted ratio и drag-handle.
 29. [x] Compact character card defaults product gate: `.pi/docs/compact-character-card-defaults-gate.md`.
-30. [ ] После принятия gate делать отдельную prototype branch для Tauri shell без runtime rewrite, затем sidecar proof и только потом multi-window/multi-monitor.
+30. [x] Compact character card defaults first implementation: `properties.compactCard`, settings UI, selected fields and informational canvas overlay.
+31. [ ] После принятия gate делать отдельную prototype branch для Tauri shell без runtime rewrite, затем sidecar proof и только потом multi-window/multi-monitor.

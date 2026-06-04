@@ -1,8 +1,18 @@
 # Compact Character Card Defaults Gate
 
 > Дата: 2026-06-04
-> Статус: product/architecture gate перед кодом
+> Статус: owner decisions accepted; первый code slice можно делать по решениям ниже
 > Связанные задачи: `FEAT-UI-002`, `FEAT-CANVAS-TOKENS-001`, `FEAT-WORKSPACE-001`
+
+## Решения владельца 2026-06-04
+
+- Хранить состав compact card в `entity.properties.compactCard`, отдельно от визуального `canvasToken`.
+- Если настройка создана, показывать ровно выбранные поля; auto-pick использовать только когда настройки ещё нет.
+- Для первого среза одна настройка на всех; отдельные GM/player presets не нужны.
+- Редактировать настройку может только тот, кто может редактировать character entity.
+- Жёсткие лимиты на выбранные поля не нужны: compact card должна уметь показывать много информации через прокрутку внутри вкладок.
+- Compact card на canvas - информационная мини-версия чарника. Она может иметь вкладки и прокрутку, но не должна становиться местом редактирования персонажа, добавления/удаления предметов или основного взаимодействия. Все изменения персонажа идут через окно сущности.
+- Roll/action buttons в canvas compact card не развивать; действия/атаки там показываются как справочная информация с формулами.
 
 ## Зачем нужен gate
 
@@ -15,7 +25,7 @@ Compact character card уже показывает быстрые вкладки
 Уже есть:
 
 - `app/src/utils/characterCardSummary.ts` - собирает данные compact card из `character` entity и дочерних entities.
-- `app/src/services/entityActionRoll.ts` - roll buttons идут через общий Roll Engine facade.
+- `app/src/services/entityActionRoll.ts` - общий Roll Engine action service для полноценных окон сущностей; canvas compact card его не вызывает.
 - `app/src/utils/entityCanvasDefaults.ts` - хранит визуальные defaults token/card в `entity.properties.canvasToken`.
 - `app/src/components/canvas/InfiniteCanvas.tsx` - рендерит unified DOM overlay для `Фишка` и `Карточка`.
 - `.pi/docs/compact-character-card-canvas.md` - текущий контракт compact card.
@@ -99,7 +109,7 @@ properties:
 
 Причина: compact card уже перестаёт быть только визуальной рамкой token/card. Это presentation preset для персонажа, который позже может использоваться в notes workspace, combat panel или player quick view. Визуальный token/card пусть остаётся в `canvasToken`, а состав данных - в `compactCard`.
 
-## Предлагаемый первый формат
+## Принятый первый формат
 
 Минимальный контракт:
 
@@ -150,17 +160,16 @@ interface CharacterCompactCardDefaults {
 
 - ничего не показывать в первом срезе.
 
-## Ограничения по плотности
+## Плотность и прокрутка
 
-Рекомендуемые лимиты:
+Жёстких лимитов на выбранные поля нет. У персонажа потенциально может быть большой чарник, а compact card нужна для быстрого просмотра множества карточек на столе.
 
-- metrics: максимум 6, показывать 4 в первом ряду и остальные компактно;
-- resources: максимум 4;
-- pinned actions: максимум 8;
-- inventory: максимум 6;
-- notes short: примерно 180 символов plain text.
+Правило UI:
 
-Если пользователь выбирает больше, UI должен либо запретить лишний выбор, либо показывать предупреждение. Первый срез лучше сделать с жёстким максимумом, потому что карточка должна оставаться компактной.
+- вкладки compact card должны иметь внутреннюю прокрутку;
+- карточка остаётся компактной по внешнему размеру;
+- выбранные статы/ресурсы/действия/вещи показываются информационно;
+- редактирование, добавление, удаление и основные действия остаются в окне сущности.
 
 ## Permission rules
 
@@ -189,7 +198,7 @@ interface CharacterCompactCardDefaults {
    - empty defaults = current behavior;
    - selected metric/resource/action order сохраняется;
    - missing ids ignored;
-   - max limits enforced.
+   - selected fields can exceed the old auto-pick counts and are handled through UI scrolling.
 4. Добавить UI в entity settings только для `character`.
 5. Обновить `.pi/docs/compact-character-card-canvas.md`, `.pi/docs/canvas-entity-tokens.md`, `.pi/docs/code-map.md`.
 
@@ -235,15 +244,7 @@ interface CharacterCompactCardDefaults {
 
 ### 5. Какие лимиты считать нормой?
 
-Рекомендация первого среза:
-
-- 6 metrics;
-- 4 resources;
-- 8 actions;
-- 6 inventory items;
-- notes short около 180 символов.
-
-Почему вопрос важен: без лимитов compact card снова превратится в большой чарник.
+Решение владельца: не вводить жёсткие лимиты на выбранные поля. Если информации много, compact card должна прокручиваться внутри вкладок.
 
 ## Рекомендованное решение по умолчанию
 
@@ -253,5 +254,5 @@ interface CharacterCompactCardDefaults {
 - одна настройка для всех ролей;
 - редактировать может только тот, кто может редактировать character entity;
 - выбранные списки не дополнять auto-pick, кроме полностью пустого списка;
-- применить лимиты: 6/4/8/6;
-- первый UI сделать в entity settings, не в canvas overlay.
+- первый UI сделать в entity settings, не в canvas overlay;
+- canvas compact card держать информационной: вкладки, прокрутка, формулы, но без roll/edit buttons.

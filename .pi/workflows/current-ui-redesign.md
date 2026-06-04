@@ -38,6 +38,7 @@
 - Notes workspace resize polish внесён: split panes используют persisted `ratio`, drag-handle между группами обновляет ratio через store, а pure helper клампит размер, чтобы панели не схлопывались.
 - Tauri/native migration gate внесён: `.pi/docs/tauri-native-migration-plan.md` фиксирует Tauri v2 host shell + React/Vite frontend + текущий Express/Yjs server как sidecar-прототип; runtime rewrite, browser popout и native multi-window не начинать до отдельной prototype branch.
 - Compact character card defaults gate внесён: `.pi/docs/compact-character-card-defaults-gate.md` рекомендует `entity.properties.compactCard`, но код не начинать до решения владельца по вопросам хранения, auto-pick, GM/player view и лимитам.
+- Compact character card defaults code slice внесён: решения владельца приняты, `properties.compactCard` хранит selected-only поля, hard limits не вводятся, canvas overlay остаётся информационным без roll/edit buttons.
 - Документация обновлена в `.pi/docs/ui-redesign-master-plan.md`, `.pi/DEVELOPMENT_PLAN.md`, `.pi/FEATURE_BACKLOG.md` и `.pi/skills/vibe-ui-architecture/SKILL.md`.
 - Последние token-pass изменения проверены командами `npm.cmd exec tsc -- --noEmit`, `npm.cmd run lint`, `npm.cmd run build`, `tsx src/utils/theme.test.ts`, но могут оставаться незакоммиченными из-за git/sandbox approval limit.
 
@@ -53,9 +54,9 @@
 
 ## Следующий безопасный срез
 
-1. Ответить на вопросы `.pi/docs/compact-character-card-defaults-gate.md` перед кодом entity-level compact card defaults.
-2. Custom world locales/editor продолжать только после отдельного формата и server endpoint design.
-3. Tauri/native продолжать только через отдельную prototype branch: shell -> sidecar lifecycle -> player delivery -> native windows.
+1. Custom world locales/editor продолжать только после отдельного формата и server endpoint design.
+2. Tauri/native продолжать только через отдельную prototype branch: shell -> sidecar lifecycle -> player delivery -> native windows.
+3. Дальнейшее изменение структуры чарника/compact card делать малыми срезами, потому что владелец ещё будет менять состав вкладок персонажа.
 
 ## Проверки
 
@@ -108,13 +109,14 @@ cd app
 - Drag/drop вкладок добавлен через `moveNotesWorkspaceTab`, `notesWorkspaceStore.moveTab` и HTML drag/drop в `NotesWorkspace`: можно менять порядок вкладок и переносить их между tab groups.
 - Resize split panes добавлен через `setNotesWorkspaceSplitRatio`, `notesWorkspaceStore.resizeSplit` и draggable separator в `NotesWorkspace`: размеры групп сохраняются локально в существующий layout.
 - Compact character card defaults gate добавлен в `.pi/docs/compact-character-card-defaults-gate.md`: рекомендуемый формат `properties.compactCard`, вопросы владельцу и первый implementation slice.
+- Compact card defaults первый кодовый срез добавлен: `characterCompactCardDefaults.ts`, `buildCharacterCompactOptions`, settings UI в `EntityCanvasTokenSettings`, `InfiniteCanvas` action tab без roll buttons.
 
 Следующий безопасный UI-срез:
 
-1. Entity-level compact card defaults делать только после ответов владельца на `.pi/docs/compact-character-card-defaults-gate.md`, потому что это затронет UX сущностей и preference format.
-2. Tauri/native продолжать только в prototype branch по `.pi/docs/tauri-native-migration-plan.md`; не начинать browser popout как основной путь multi-monitor.
-3. Custom world locales/editor продолжать только после отдельного формата и server endpoint design.
+1. Tauri/native продолжать только в prototype branch по `.pi/docs/tauri-native-migration-plan.md`; не начинать browser popout как основной путь multi-monitor.
+2. Custom world locales/editor продолжать только после отдельного формата и server endpoint design.
+3. Следующий UI-срез по character sheet/compact card сначала сверять с тем, что владелец ещё будет менять состав вкладок и информационную модель чарника.
 
 ## Handoff note
 
-Следующий агент должен продолжать UI foundation, а не возвращаться к аудио/roles/canvas крупным срезам, пока интерфейсный фундамент не станет устойчивым. Ближайшие шаги требуют gate: entity-level compact card defaults или отдельная Tauri prototype branch; не делать runtime rewrite в основном дереве.
+Следующий агент должен продолжать UI foundation, а не возвращаться к аудио/roles/canvas крупным срезам, пока интерфейсный фундамент не станет устойчивым. Ближайшие безопасные шаги: отдельная Tauri prototype branch по gate или маленький character sheet/compact card information-layout slice после уточнения состава вкладок; не делать runtime rewrite в основном дереве.
