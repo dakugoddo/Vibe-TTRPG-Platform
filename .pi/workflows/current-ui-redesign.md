@@ -37,6 +37,7 @@
 - Notes workspace mode design gate и local-only foundation внесены: `.pi/docs/notes-workspace-mode-design.md`, `workspaceMode.ts`, `workspaceModeStore.ts`, HUD `Канвас/Заметки`, `NotesWorkspace`, скрытие `InfiniteCanvas`/`CanvasToolbar`, canvas-pinned placements в notes mode, named local snapshots screen-окон, pure tab/split model `notesWorkspaceLayout.ts`, persisted local tab board через `notesWorkspaceStore.ts`, read-only linked views через `notesWorkspaceLinks.ts` и drag/drop вкладок внутри/между groups.
 - Notes workspace resize polish внесён: split panes используют persisted `ratio`, drag-handle между группами обновляет ratio через store, а pure helper клампит размер, чтобы панели не схлопывались.
 - Tauri/native migration gate внесён: `.pi/docs/tauri-native-migration-plan.md` фиксирует Tauri v2 host shell + React/Vite frontend + текущий Express/Yjs server как sidecar-прототип; runtime rewrite, browser popout и native multi-window не начинать до отдельной prototype branch.
+- Compact character card defaults gate внесён: `.pi/docs/compact-character-card-defaults-gate.md` рекомендует `entity.properties.compactCard`, но код не начинать до решения владельца по вопросам хранения, auto-pick, GM/player view и лимитам.
 - Документация обновлена в `.pi/docs/ui-redesign-master-plan.md`, `.pi/DEVELOPMENT_PLAN.md`, `.pi/FEATURE_BACKLOG.md` и `.pi/skills/vibe-ui-architecture/SKILL.md`.
 - Последние token-pass изменения проверены командами `npm.cmd exec tsc -- --noEmit`, `npm.cmd run lint`, `npm.cmd run build`, `tsx src/utils/theme.test.ts`, но могут оставаться незакоммиченными из-за git/sandbox approval limit.
 
@@ -52,7 +53,7 @@
 
 ## Следующий безопасный срез
 
-1. Добавить entity-level defaults/настройки полей compact card только после короткого product gate, потому что это затронет UX сущностей и сохранение preference.
+1. Ответить на вопросы `.pi/docs/compact-character-card-defaults-gate.md` перед кодом entity-level compact card defaults.
 2. Custom world locales/editor продолжать только после отдельного формата и server endpoint design.
 3. Tauri/native продолжать только через отдельную prototype branch: shell -> sidecar lifecycle -> player delivery -> native windows.
 
@@ -106,10 +107,11 @@ cd app
 - Read-only linked views добавлены через `notesWorkspaceLinks.ts`: Markdown, outline по headings, backlinks и graph-summary показываются внутри tab board без записи в мир и без нового editor.
 - Drag/drop вкладок добавлен через `moveNotesWorkspaceTab`, `notesWorkspaceStore.moveTab` и HTML drag/drop в `NotesWorkspace`: можно менять порядок вкладок и переносить их между tab groups.
 - Resize split panes добавлен через `setNotesWorkspaceSplitRatio`, `notesWorkspaceStore.resizeSplit` и draggable separator в `NotesWorkspace`: размеры групп сохраняются локально в существующий layout.
+- Compact character card defaults gate добавлен в `.pi/docs/compact-character-card-defaults-gate.md`: рекомендуемый формат `properties.compactCard`, вопросы владельцу и первый implementation slice.
 
 Следующий безопасный UI-срез:
 
-1. Entity-level compact card defaults делать только после product gate, потому что это затронет UX сущностей и preference format.
+1. Entity-level compact card defaults делать только после ответов владельца на `.pi/docs/compact-character-card-defaults-gate.md`, потому что это затронет UX сущностей и preference format.
 2. Tauri/native продолжать только в prototype branch по `.pi/docs/tauri-native-migration-plan.md`; не начинать browser popout как основной путь multi-monitor.
 3. Custom world locales/editor продолжать только после отдельного формата и server endpoint design.
 

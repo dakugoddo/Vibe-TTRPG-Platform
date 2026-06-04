@@ -50,7 +50,7 @@ Canvas representation хранится в `DrawElement` внутри `canvas.pro
 - Контекстное меню representation: дополнительные быстрые actions для нескольких selected tokens, если они понадобятся после ручного QA.
 - Entity settings: пользовательские frame assets из asset library.
 - Расширенный hover card: markdown preview, избранные stats, действия GM/player.
-- Entity-level defaults для compact character card: какие статы/ресурсы/действия показывать в overlay, без отдельного боевого режима окна.
+- Entity-level defaults для compact character card: какие статы/ресурсы/действия показывать в overlay, без отдельного боевого режима окна. Gate: `.pi/docs/compact-character-card-defaults-gate.md`.
 - Пользовательские рамки из asset library и сохранённые entity-level defaults для token/card.
 - Мультивыбор и массовая смена representation mode.
 

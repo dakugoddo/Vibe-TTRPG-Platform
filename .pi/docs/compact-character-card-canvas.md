@@ -52,7 +52,7 @@
 
 ## Будущие срезы
 
-- Позволить entity-level defaults выбирать, какие поля показывать на compact card.
+- Позволить entity-level defaults выбирать, какие поля показывать на compact card. Product gate: `.pi/docs/compact-character-card-defaults-gate.md`.
 - Проверить permissions: player не должен видеть GM/private fields через compact card.
 
 ## QA

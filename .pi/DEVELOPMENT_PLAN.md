@@ -43,7 +43,8 @@
 - [x] Notes workspace linked views: read-only Markdown, outline, backlinks и graph-summary вкладки через pure helper `notesWorkspaceLinks.ts` без нового editor/world format.
 - [x] Notes workspace drag/drop tabs: pure `moveNotesWorkspaceTab`, store action и HTML drag/drop для reorder/move вкладок внутри/между группами без world format.
 - [x] Notes workspace resize polish: split `ratio` теперь используется в UI, панели можно менять drag-handle, ratio клампится и сохраняется локально без world format.
-- [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей только после короткого product gate.
+- [x] Создать product gate для entity-level compact card defaults: `.pi/docs/compact-character-card-defaults-gate.md`.
+- [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей только после решения владельца по gate.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
 ## 2. Audio Module: Local-First Core
@@ -141,6 +142,7 @@
 - `.pi/docs/testing-multiplayer.md` — ручная QA.
 - `.pi/workflows/current-ui-redesign.md` — активная память UI redesign с решениями владельца, запретами и следующим безопасным срезом.
 - `.pi/docs/tauri-native-migration-plan.md` — Tauri/native migration gate: sidecar-first runtime, file access, native windows, Steam-friendly ограничения и rollback path.
+- `.pi/docs/compact-character-card-defaults-gate.md` — product gate по настройкам видимых полей compact character card.
 
 ## Следующий Безопасный Срез
 
@@ -172,4 +174,5 @@
 26. [x] Notes workspace drag/drop tabs: reorder/move вкладок внутри и между tab groups.
 27. [x] После UI foundation открыть Tauri/native migration design gate: `.pi/docs/tauri-native-migration-plan.md`.
 28. [x] Notes workspace resize polish: split panes используют persisted ratio и drag-handle.
-29. [ ] После принятия gate делать отдельную prototype branch для Tauri shell без runtime rewrite, затем sidecar proof и только потом multi-window/multi-monitor.
+29. [x] Compact character card defaults product gate: `.pi/docs/compact-character-card-defaults-gate.md`.
+30. [ ] После принятия gate делать отдельную prototype branch для Tauri shell без runtime rewrite, затем sidecar proof и только потом multi-window/multi-monitor.
