@@ -1,7 +1,7 @@
 # Notes Workspace Mode: design gate
 
 > Дата: 2026-06-03
-> Статус: Design gate + local-only shell + named local snapshots + local tab/split board persistence
+> Статус: Design gate + local-only shell + named local snapshots + local tab/split board persistence + read-only linked views
 > Связанные задачи: `FEAT-WORKSPACE-001`, `FEAT-UI-002`, future Tauri/native multi-window
 
 ## Зачем это нужно
@@ -49,6 +49,7 @@
 7. Дать named local snapshots для screen-window раскладок без записи в world files.
 8. Подключить local tab/split board поверх существующего `EntityWindow`: вкладки и группы управляют фокусом/открытием screen windows, но не создают параллельный редактор.
 9. Хранить tab board layout локально в `localStorage` с runtime-валидацией, не в world files.
+10. Добавить read-only linked views: Markdown, outline, backlinks и graph-summary без записи в мир.
 
 ### Почему так
 
@@ -97,14 +98,20 @@ UI-render подключён отдельным безопасным срезо�
 - tab board layout сохраняется локально в `localStorage` с валидацией, чтобы битые данные не ломали workspace;
 - tab board пока не сохраняется в world files и не заменяет `EntityWindow` как единственную оболочку редактирования сущностей.
 
+Read-only linked views подключены отдельным срезом:
+
+- `app/src/utils/notesWorkspaceLinks.ts` парсит markdown headings, outgoing `[[wiki]]` links и backlinks;
+- `NotesWorkspace` показывает вкладки `Markdown`, `Оглавление`, `Связи` и `Граф` как read-only слой поверх активной entity;
+- linked views не редактируют entity напрямую и не создают новый sync contract.
+
 ### Linked views
 
-После базовых splits можно добавить локальные linked views:
+Локальные linked views уже добавлены первым read-only срезом:
 
-- локальный graph view активной заметки;
-- backlinks/outgoing links;
+- markdown preview активной entity;
 - outline по markdown headings;
-- entity relations для персонажа/предмета.
+- backlinks/outgoing links;
+- graph-summary активной entity.
 
 Linked views не должны редактировать entity напрямую, только читать текущий active tab.
 
@@ -136,5 +143,6 @@ Linked views не должны редактировать entity напряму�
 - Можно сохранить, восстановить и удалить named local layout snapshot.
 - Можно открыть видимую сущность в local tab board, разделить активную группу вправо/вниз, переключать/закрывать вкладки и фокусировать связанное screen window.
 - Local tab board layout переживает reload на этом клиенте.
+- Можно открыть read-only Markdown/Outline/Backlinks/Graph-summary вкладки для активной entity.
 - Выбор режима переживает reload на этом клиенте.
-- Проверки: `workspaceMode.test.ts`, `windowStore.test.ts`, `notesWorkspaceLayout.test.ts`, `notesWorkspaceStore.test.ts`, `npm.cmd run build`, `npm.cmd run lint`.
+- Проверки: `workspaceMode.test.ts`, `windowStore.test.ts`, `notesWorkspaceLayout.test.ts`, `notesWorkspaceStore.test.ts`, `notesWorkspaceLinks.test.ts`, `npm.cmd run build`, `npm.cmd run lint`.

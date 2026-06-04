@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
-import { BookOpen, Box, FileText, Grid2X2, Layers, PanelLeft, PanelRight, Plus, RotateCcw, Save, Trash2, User, X } from 'lucide-react';
+import { BookOpen, Box, FileText, Grid2X2, Layers, Link2, ListTree, Network, PanelLeft, PanelRight, Plus, RotateCcw, Save, Trash2, User, X } from 'lucide-react';
 import { useEntities } from '../../hooks/useEntities';
 import { useNotesWorkspaceStore } from '../../store/notesWorkspaceStore';
 import {
@@ -14,6 +14,9 @@ import {
     useWindowStore,
 } from '../../store/windowStore';
 import { yjsStore } from '../../store/yjsStore';
+import { EntityLink } from '../ui/EntityLink';
+import { MarkdownRenderer } from '../ui/MarkdownRenderer';
+import { buildNotesWorkspaceLinkedViews } from '../../utils/notesWorkspaceLinks';
 import { listNotesWorkspaceGroups, type NotesWorkspaceNode, type NotesWorkspaceTab, type NotesWorkspaceView } from '../../utils/notesWorkspaceLayout';
 import { canViewEntity } from '../../utils/permissions';
 import { glass } from '../../utils/theme';
@@ -70,10 +73,12 @@ interface NotesWorkspaceNodeViewProps {
     activeGroupId: string;
     groupOrder: Map<string, number>;
     entitiesById: Map<string, Entity>;
+    visibleEntities: Entity[];
     onSetActiveGroup: (groupId: string) => void;
     onSetActiveTab: (groupId: string, tabId: string) => void;
     onCloseTab: (groupId: string, tabId: string) => void;
     onSplitGroup: (groupId: string, direction: 'row' | 'column') => void;
+    onOpenView: (entityId: string, view: NotesWorkspaceView) => void;
     onFocusEntity: (entityId: string) => void;
     t: Translate;
 }
@@ -98,8 +103,10 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
         activeGroupId,
         groupOrder,
         entitiesById,
+        visibleEntities,
         onCloseTab,
         onFocusEntity,
+        onOpenView,
         onSetActiveGroup,
         onSetActiveTab,
         onSplitGroup,
@@ -109,6 +116,12 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
     const activeTab = getActiveTab(node.tabs, node.activeTabId);
     const activeEntity = activeTab ? entitiesById.get(activeTab.entityId) : null;
     const groupIndex = groupOrder.get(node.id) ?? 1;
+    const linkedViews = activeEntity ? buildNotesWorkspaceLinkedViews(activeEntity, visibleEntities) : null;
+    const viewButtonClass = (view: NotesWorkspaceView) => `flex items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+        activeTab?.view === view
+            ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-surface-hover)] text-[var(--vibe-text-primary)]'
+            : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+    }`;
 
     return (
         <div
@@ -225,13 +238,136 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                                 </div>
                                 <FileText size={18} className="shrink-0 text-[var(--vibe-accent)]" />
                             </div>
-                            <div className="grid grid-cols-2 gap-2 text-[10px] uppercase tracking-wider text-[var(--vibe-text-muted)]">
-                                <span className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1">
-                                    {t(VIEW_LABEL_KEYS[activeTab.view])}
-                                </span>
-                                <span className="truncate rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1">
-                                    {activeTab.entityId}
-                                </span>
+                            <div className="mb-3 flex flex-wrap gap-1.5">
+                                <button type="button" className={viewButtonClass('entity')} onClick={(event) => { event.stopPropagation(); onOpenView(activeTab.entityId, 'entity'); }}>
+                                    <FileText size={11} />
+                                    {t(VIEW_LABEL_KEYS.entity)}
+                                </button>
+                                <button type="button" className={viewButtonClass('markdown')} onClick={(event) => { event.stopPropagation(); onOpenView(activeTab.entityId, 'markdown'); }}>
+                                    <BookOpen size={11} />
+                                    {t(VIEW_LABEL_KEYS.markdown)}
+                                </button>
+                                <button type="button" className={viewButtonClass('outline')} onClick={(event) => { event.stopPropagation(); onOpenView(activeTab.entityId, 'outline'); }}>
+                                    <ListTree size={11} />
+                                    {t(VIEW_LABEL_KEYS.outline)}
+                                </button>
+                                <button type="button" className={viewButtonClass('backlinks')} onClick={(event) => { event.stopPropagation(); onOpenView(activeTab.entityId, 'backlinks'); }}>
+                                    <Link2 size={11} />
+                                    {t(VIEW_LABEL_KEYS.backlinks)}
+                                </button>
+                                <button type="button" className={viewButtonClass('graph')} onClick={(event) => { event.stopPropagation(); onOpenView(activeTab.entityId, 'graph'); }}>
+                                    <Network size={11} />
+                                    {t(VIEW_LABEL_KEYS.graph)}
+                                </button>
+                            </div>
+                            <div className="min-h-0 max-h-[220px] overflow-y-auto rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3">
+                                {activeTab.view === 'markdown' && activeEntity && (
+                                    <MarkdownRenderer content={activeEntity.description || t('workspace.notes.emptyMarkdown')} entityId={activeEntity.id} allowCustomBlocks={false} />
+                                )}
+                                {activeTab.view === 'outline' && (
+                                    linkedViews?.outline.length ? (
+                                        <div className="space-y-1">
+                                            {linkedViews.outline.map((heading) => (
+                                                <div
+                                                    key={heading.id}
+                                                    className="flex items-center gap-2 rounded-[var(--vibe-radius-sm)] px-2 py-1 text-xs text-[var(--vibe-text-muted)]"
+                                                    style={{ paddingLeft: `${Math.min(heading.level - 1, 4) * 12 + 8}px` }}
+                                                >
+                                                    <span className="font-mono text-[10px] text-[var(--vibe-text-faint)]">L{heading.line}</span>
+                                                    <span className="truncate font-bold text-[var(--vibe-text-primary)]">{heading.text}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-xs text-[var(--vibe-text-faint)]">{t('workspace.notes.noOutline')}</div>
+                                    )
+                                )}
+                                {activeTab.view === 'backlinks' && (
+                                    linkedViews?.backlinks.length ? (
+                                        <div className="space-y-1.5">
+                                            {linkedViews.backlinks.map((backlink) => (
+                                                <EntityLink
+                                                    key={backlink.id}
+                                                    entityId={backlink.id}
+                                                    underline={false}
+                                                    className="flex rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2.5 py-2 text-xs font-bold text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-strong)] hover:text-[var(--vibe-text-primary)]"
+                                                >
+                                                    <span className="truncate">{backlink.name}</span>
+                                                </EntityLink>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-xs text-[var(--vibe-text-faint)]">{t('workspace.notes.noBacklinks')}</div>
+                                    )
+                                )}
+                                {activeTab.view === 'graph' && (
+                                    <div className="space-y-3">
+                                        <div>
+                                            <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                                {t('workspace.notes.outgoingLinks')}
+                                            </div>
+                                            {linkedViews?.outgoingLinks.length ? (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {linkedViews.outgoingLinks.map((link, index) => (
+                                                        link.resolvedEntityId ? (
+                                                            <EntityLink
+                                                                key={`${link.raw}-${index}`}
+                                                                entityId={link.resolvedEntityId}
+                                                                underline={false}
+                                                                className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-1 text-xs text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-strong)] hover:text-[var(--vibe-text-primary)]"
+                                                            >
+                                                                <span>{link.label ?? link.target}</span>
+                                                            </EntityLink>
+                                                        ) : (
+                                                            <span key={`${link.raw}-${index}`} className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] px-2 py-1 text-xs text-[var(--vibe-text-faint)]">
+                                                                {link.label ?? link.target}
+                                                            </span>
+                                                        )
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-[var(--vibe-text-faint)]">{t('workspace.notes.noOutgoingLinks')}</div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                                {t('workspace.notes.incomingLinks')}
+                                            </div>
+                                            {linkedViews?.backlinks.length ? (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {linkedViews.backlinks.map((backlink) => (
+                                                        <EntityLink
+                                                            key={backlink.id}
+                                                            entityId={backlink.id}
+                                                            underline={false}
+                                                            className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-1 text-xs text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-strong)] hover:text-[var(--vibe-text-primary)]"
+                                                        >
+                                                            <span>{backlink.name}</span>
+                                                        </EntityLink>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-[var(--vibe-text-faint)]">{t('workspace.notes.noBacklinks')}</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                                {activeTab.view === 'entity' && (
+                                    <div className="grid grid-cols-2 gap-2 text-[10px] uppercase tracking-wider text-[var(--vibe-text-muted)]">
+                                        <span className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-1">
+                                            {t(VIEW_LABEL_KEYS[activeTab.view])}
+                                        </span>
+                                        <span className="truncate rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-1">
+                                            {activeTab.entityId}
+                                        </span>
+                                        <span className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-1">
+                                            {t('workspace.notes.outlineCount', { count: linkedViews?.outline.length ?? 0 })}
+                                        </span>
+                                        <span className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-1">
+                                            {t('workspace.notes.linkCount', { count: (linkedViews?.outgoingLinks.length ?? 0) + (linkedViews?.backlinks.length ?? 0) })}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <button
@@ -543,10 +679,12 @@ export function NotesWorkspace() {
                                 activeGroupId={notesLayout.activeGroupId}
                                 groupOrder={workspaceGroupOrder}
                                 entitiesById={entitiesById}
+                                visibleEntities={visibleEntities}
                                 onSetActiveGroup={setActiveWorkspaceGroup}
                                 onSetActiveTab={setActiveWorkspaceTab}
                                 onCloseTab={closeWorkspaceTab}
                                 onSplitGroup={handleSplitWorkspaceGroup}
+                                onOpenView={openWorkspaceTab}
                                 onFocusEntity={handleFocusEntity}
                                 t={t}
                             />
