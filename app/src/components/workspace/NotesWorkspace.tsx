@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import type { DragEvent } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import type { DragEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
 import { BookOpen, Box, FileText, Grid2X2, Layers, Link2, ListTree, Network, PanelLeft, PanelRight, Plus, RotateCcw, Save, Trash2, User, X } from 'lucide-react';
@@ -99,6 +99,7 @@ interface NotesWorkspaceNodeViewProps {
     onSetActiveTab: (groupId: string, tabId: string) => void;
     onCloseTab: (groupId: string, tabId: string) => void;
     onSplitGroup: (groupId: string, direction: 'row' | 'column') => void;
+    onResizeSplit: (splitId: string, ratio: number) => void;
     onMoveTab: (sourceGroupId: string, tabId: string, targetGroupId: string, beforeTabId?: string | null) => void;
     onOpenView: (entityId: string, view: NotesWorkspaceView) => void;
     onFocusEntity: (entityId: string) => void;
@@ -107,14 +108,75 @@ interface NotesWorkspaceNodeViewProps {
 
 function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
     const { node } = props;
+    const splitContainerRef = useRef<HTMLDivElement | null>(null);
+    const handleSplitResizeStart = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+        if (node.type !== 'split') return;
+
+        const container = splitContainerRef.current;
+        if (!container) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const rect = container.getBoundingClientRect();
+        const previousCursor = document.body.style.cursor;
+        const previousUserSelect = document.body.style.userSelect;
+        document.body.style.cursor = node.direction === 'row' ? 'col-resize' : 'row-resize';
+        document.body.style.userSelect = 'none';
+
+        const updateRatio = (clientX: number, clientY: number) => {
+            const rawRatio = node.direction === 'row'
+                ? (clientX - rect.left) / Math.max(rect.width, 1)
+                : (clientY - rect.top) / Math.max(rect.height, 1);
+            props.onResizeSplit(node.id, rawRatio);
+        };
+
+        const handlePointerMove = (moveEvent: PointerEvent) => {
+            moveEvent.preventDefault();
+            updateRatio(moveEvent.clientX, moveEvent.clientY);
+        };
+
+        const handlePointerUp = () => {
+            document.body.style.cursor = previousCursor;
+            document.body.style.userSelect = previousUserSelect;
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            window.removeEventListener('pointercancel', handlePointerUp);
+        };
+
+        updateRatio(event.clientX, event.clientY);
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp, { once: true });
+        window.addEventListener('pointercancel', handlePointerUp, { once: true });
+    }, [node, props]);
 
     if (node.type === 'split') {
+        const firstBasis = `${node.ratio * 100}%`;
+        const secondBasis = `${(1 - node.ratio) * 100}%`;
+        const isRow = node.direction === 'row';
+
         return (
-            <div className={`flex min-h-0 flex-1 gap-3 ${node.direction === 'row' ? 'flex-row' : 'flex-col'}`}>
-                <div className="min-h-0 min-w-0 flex-1">
+            <div
+                ref={splitContainerRef}
+                className={`flex min-h-0 flex-1 ${isRow ? 'flex-row' : 'flex-col'}`}
+            >
+                <div className="min-h-0 min-w-0" style={{ flexBasis: firstBasis, flexGrow: 0, flexShrink: 1 }}>
                     <NotesWorkspaceNodeView {...props} node={node.children[0]} />
                 </div>
-                <div className="min-h-0 min-w-0 flex-1">
+                <div
+                    role="separator"
+                    aria-orientation={isRow ? 'vertical' : 'horizontal'}
+                    onPointerDown={handleSplitResizeStart}
+                    className={`group relative flex shrink-0 items-center justify-center ${
+                        isRow ? 'w-3 cursor-col-resize px-1' : 'h-3 cursor-row-resize py-1'
+                    }`}
+                    title={props.t('workspace.notes.resizeSplit')}
+                >
+                    <div className={`rounded-full bg-[var(--vibe-border-subtle)] transition-colors group-hover:bg-[var(--vibe-accent)] ${
+                        isRow ? 'h-10 w-px' : 'h-px w-10'
+                    }`} />
+                </div>
+                <div className="min-h-0 min-w-0" style={{ flexBasis: secondBasis, flexGrow: 0, flexShrink: 1 }}>
                     <NotesWorkspaceNodeView {...props} node={node.children[1]} />
                 </div>
             </div>
@@ -454,6 +516,7 @@ export function NotesWorkspace() {
     const openWorkspaceTab = useNotesWorkspaceStore((state) => state.openTab);
     const closeWorkspaceTab = useNotesWorkspaceStore((state) => state.closeTab);
     const moveWorkspaceTab = useNotesWorkspaceStore((state) => state.moveTab);
+    const resizeWorkspaceSplit = useNotesWorkspaceStore((state) => state.resizeSplit);
     const setActiveWorkspaceGroup = useNotesWorkspaceStore((state) => state.setActiveGroup);
     const setActiveWorkspaceTab = useNotesWorkspaceStore((state) => state.setActiveTab);
     const splitActiveWorkspaceGroup = useNotesWorkspaceStore((state) => state.splitActiveGroup);
@@ -743,6 +806,7 @@ export function NotesWorkspace() {
                                 onSetActiveTab={setActiveWorkspaceTab}
                                 onCloseTab={closeWorkspaceTab}
                                 onSplitGroup={handleSplitWorkspaceGroup}
+                                onResizeSplit={resizeWorkspaceSplit}
                                 onMoveTab={moveWorkspaceTab}
                                 onOpenView={openWorkspaceTab}
                                 onFocusEntity={handleFocusEntity}

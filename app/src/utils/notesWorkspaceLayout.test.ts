@@ -7,6 +7,7 @@ import {
     openNotesWorkspaceTab,
     setActiveNotesWorkspaceGroup,
     setActiveNotesWorkspaceTab,
+    setNotesWorkspaceSplitRatio,
     splitActiveNotesWorkspaceGroup,
 } from './notesWorkspaceLayout';
 
@@ -40,6 +41,20 @@ layout = splitActiveNotesWorkspaceGroup(layout, 'row');
 groups = listNotesWorkspaceGroups(layout.root);
 assert.equal(groups.length, 2);
 assert.equal(layout.activeGroupId, groups[1].id);
+assert.equal(layout.root.type, 'split');
+assert.equal(layout.root.ratio, 0.5);
+
+layout = setNotesWorkspaceSplitRatio(layout, layout.root.id, 0.7);
+assert.equal(layout.root.type, 'split');
+assert.equal(layout.root.ratio, 0.7);
+
+layout = setNotesWorkspaceSplitRatio(layout, layout.root.id, 0.02);
+assert.equal(layout.root.type, 'split');
+assert.equal(layout.root.ratio, 0.18, 'Split ratio is clamped to keep the first pane usable');
+
+layout = setNotesWorkspaceSplitRatio(layout, layout.root.id, 0.95);
+assert.equal(layout.root.type, 'split');
+assert.equal(layout.root.ratio, 0.82, 'Split ratio is clamped to keep the second pane usable');
 
 layout = setActiveNotesWorkspaceGroup(layout, groups[0].id);
 assert.equal(layout.activeGroupId, groups[0].id);

@@ -7,6 +7,7 @@ import {
     openNotesWorkspaceTab,
     setActiveNotesWorkspaceGroup,
     setActiveNotesWorkspaceTab,
+    setNotesWorkspaceSplitRatio,
     splitActiveNotesWorkspaceGroup,
     type NotesWorkspaceLayout,
     type NotesWorkspaceNode,
@@ -22,6 +23,7 @@ interface NotesWorkspaceStoreState {
     openTab: (entityId: string, view?: NotesWorkspaceView) => void;
     closeTab: (groupId: string, tabId: string) => void;
     moveTab: (sourceGroupId: string, tabId: string, targetGroupId: string, beforeTabId?: string | null) => void;
+    resizeSplit: (splitId: string, ratio: number) => void;
     setActiveGroup: (groupId: string) => void;
     setActiveTab: (groupId: string, tabId: string) => void;
     splitActiveGroup: (direction: NotesWorkspaceSplitNode['direction']) => void;
@@ -114,6 +116,10 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
 
     moveTab: (sourceGroupId, tabId, targetGroupId, beforeTabId) => set((state) => ({
         layout: moveNotesWorkspaceTab(state.layout, sourceGroupId, tabId, targetGroupId, beforeTabId),
+    })),
+
+    resizeSplit: (splitId, ratio) => set((state) => ({
+        layout: setNotesWorkspaceSplitRatio(state.layout, splitId, ratio),
     })),
 
     setActiveGroup: (groupId) => set((state) => ({

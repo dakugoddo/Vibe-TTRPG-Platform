@@ -42,6 +42,7 @@
 - [x] Notes workspace local tab persistence: tab board layout сохраняется в `localStorage` с runtime validation и не пишет ничего в мир.
 - [x] Notes workspace linked views: read-only Markdown, outline, backlinks и graph-summary вкладки через pure helper `notesWorkspaceLinks.ts` без нового editor/world format.
 - [x] Notes workspace drag/drop tabs: pure `moveNotesWorkspaceTab`, store action и HTML drag/drop для reorder/move вкладок внутри/между группами без world format.
+- [x] Notes workspace resize polish: split `ratio` теперь используется в UI, панели можно менять drag-handle, ratio клампится и сохраняется локально без world format.
 - [ ] Следующий compact card/UI-срез: entity-level defaults/настройки видимых полей только после короткого product gate.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
@@ -170,4 +171,5 @@
 25. [x] Notes workspace linked views: read-only Markdown/outline/backlinks/graph-summary поверх `notesWorkspaceLinks.ts`.
 26. [x] Notes workspace drag/drop tabs: reorder/move вкладок внутри и между tab groups.
 27. [x] После UI foundation открыть Tauri/native migration design gate: `.pi/docs/tauri-native-migration-plan.md`.
-28. [ ] После принятия gate делать отдельную prototype branch для Tauri shell без runtime rewrite, затем sidecar proof и только потом multi-window/multi-monitor.
+28. [x] Notes workspace resize polish: split panes используют persisted ratio и drag-handle.
+29. [ ] После принятия gate делать отдельную prototype branch для Tauri shell без runtime rewrite, затем sidecar proof и только потом multi-window/multi-monitor.

@@ -34,6 +34,12 @@ layout = useNotesWorkspaceStore.getState().layout;
 groups = listNotesWorkspaceGroups(layout.root);
 assert.equal(groups.length, 2);
 assert.equal(layout.activeGroupId, groups[1].id);
+assert.equal(layout.root.type, 'split');
+
+useNotesWorkspaceStore.getState().resizeSplit(layout.root.id, 0.66);
+layout = useNotesWorkspaceStore.getState().layout;
+assert.equal(layout.root.type, 'split');
+assert.equal(layout.root.ratio, 0.66);
 
 useNotesWorkspaceStore.getState().openTab('character-1');
 layout = useNotesWorkspaceStore.getState().layout;

@@ -36,11 +36,18 @@ export interface OpenNotesWorkspaceTabInput {
     pinned?: boolean;
 }
 
+const MIN_SPLIT_RATIO = 0.18;
+const MAX_SPLIT_RATIO = 0.82;
 let idCounter = 0;
 
 function createLayoutId(prefix: string): string {
     idCounter += 1;
     return `${prefix}-${Date.now().toString(36)}-${idCounter.toString(36)}`;
+}
+
+function clampSplitRatio(ratio: number): number {
+    if (!Number.isFinite(ratio)) return 0.5;
+    return Math.min(MAX_SPLIT_RATIO, Math.max(MIN_SPLIT_RATIO, ratio));
 }
 
 export function createEmptyNotesWorkspaceLayout(): NotesWorkspaceLayout {
@@ -194,6 +201,32 @@ export function splitActiveNotesWorkspaceGroup(
                 children: [node, newGroup],
             };
         }),
+    };
+}
+
+export function setNotesWorkspaceSplitRatio(
+    layout: NotesWorkspaceLayout,
+    splitId: string,
+    ratio: number
+): NotesWorkspaceLayout {
+    let didUpdate = false;
+    const nextRatio = clampSplitRatio(ratio);
+
+    const root = mapNode(layout.root, (node) => {
+        if (node.type !== 'split' || node.id !== splitId) return node;
+        if (node.ratio === nextRatio) return node;
+
+        didUpdate = true;
+        return {
+            ...node,
+            ratio: nextRatio,
+        };
+    });
+
+    if (!didUpdate) return layout;
+    return {
+        ...layout,
+        root,
     };
 }
 
