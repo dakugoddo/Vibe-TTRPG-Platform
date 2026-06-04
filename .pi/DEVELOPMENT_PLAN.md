@@ -46,6 +46,7 @@
 - [x] Создать product gate для entity-level compact card defaults: `.pi/docs/compact-character-card-defaults-gate.md`.
 - [x] Принять решения владельца по compact card defaults: `properties.compactCard`, selected-only, single shared preset, edit-by-entity-permission, no hard limits, informational canvas overlay.
 - [x] Compact card defaults code slice: `characterCompactCardDefaults.ts`, selected fields в `characterCardSummary`, informational canvas actions без roll buttons, settings UI в `EntityCanvasTokenSettings`.
+- [x] EntityCanvasTokenSettings semantic token polish: настройки canvas token/card и compact card defaults больше не используют старые `white/black/cyan/amber` utility surfaces.
 - [ ] Не фиксировать финальную тему, переводческий формат или новую структуру entity UI без product-gate решения владельца.
 
 ## 2. Audio Module: Local-First Core

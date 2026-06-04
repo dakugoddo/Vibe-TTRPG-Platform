@@ -160,18 +160,18 @@ export function EntityCanvasTokenSettings({ entity, canEdit }: EntityCanvasToken
     };
 
     return (
-        <section className="rounded-xl border border-white/10 bg-black/20 p-3 shadow-inner">
+        <section className="rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] p-3 shadow-[var(--vibe-shadow-block)]">
             <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/45">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
                     <Box size={14} />
                     Настройки на канвасе
                 </div>
-                {!canEdit && <span className="text-[10px] font-bold uppercase tracking-wider text-white/25">read-only</span>}
+                {!canEdit && <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">read-only</span>}
             </div>
 
             <div className="grid gap-3 md:grid-cols-[1fr_1.2fr]">
                 <div>
-                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-white/35">Режим</div>
+                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Режим</div>
                     <div className="flex gap-1.5">
                         {TOKEN_MODES.map((mode) => {
                             const Icon = mode.icon;
@@ -182,10 +182,10 @@ export function EntityCanvasTokenSettings({ entity, canEdit }: EntityCanvasToken
                                     type="button"
                                     disabled={!canEdit}
                                     onClick={() => updateDefaults({ mode: mode.id })}
-                                    className={`inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                                    className={`inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[var(--vibe-radius-sm)] border px-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
                                         selected
-                                            ? 'border-cyan-200/35 bg-cyan-300/15 text-cyan-50'
-                                            : 'border-white/10 bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white/70'
+                                            ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)]'
+                                            : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                                     } ${!canEdit ? 'cursor-default opacity-70' : ''}`}
                                 >
                                     <Icon size={12} />
@@ -197,7 +197,7 @@ export function EntityCanvasTokenSettings({ entity, canEdit }: EntityCanvasToken
                 </div>
 
                 <div>
-                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-white/35">Рамка</div>
+                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Рамка</div>
                     <div className="flex flex-wrap gap-1.5">
                         {ENTITY_TOKEN_FRAME_OPTIONS.map((frame) => {
                             const selected = defaults.frame === frame.id;
@@ -207,10 +207,10 @@ export function EntityCanvasTokenSettings({ entity, canEdit }: EntityCanvasToken
                                     type="button"
                                     disabled={!canEdit}
                                     onClick={() => updateDefaults({ frame: frame.id as EntityTokenFrame })}
-                                    className={`h-8 rounded-lg border px-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                                    className={`h-8 rounded-[var(--vibe-radius-sm)] border px-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
                                         selected
-                                            ? 'border-amber-200/35 bg-amber-300/15 text-amber-50'
-                                            : 'border-white/10 bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white/70'
+                                            ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)]'
+                                            : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                                     } ${!canEdit ? 'cursor-default opacity-70' : ''}`}
                                     title={frame.description}
                                 >
@@ -223,30 +223,30 @@ export function EntityCanvasTokenSettings({ entity, canEdit }: EntityCanvasToken
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-3">
-                <label className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-white/55">
+                <label className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">
                     <input
                         type="checkbox"
                         checked={defaults.showName}
                         disabled={!canEdit}
                         onChange={(event) => updateDefaults({ showName: event.target.checked })}
-                        className="h-4 w-4 accent-cyan-300"
+                        className="h-4 w-4 accent-[var(--vibe-accent)]"
                     />
                     <Eye size={12} />
                     Имя на канвасе
                 </label>
 
-                <label className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-white/55">
+                <label className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">
                     <span>Цвет рамки</span>
                     <input
                         type="color"
                         value={defaults.stroke.startsWith('#') ? defaults.stroke : '#a5b4fc'}
                         disabled={!canEdit}
                         onChange={(event) => updateDefaults({ stroke: event.target.value })}
-                        className="h-7 w-9 rounded border border-white/10 bg-black/30 p-0.5"
+                        className="h-7 w-9 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-0.5"
                     />
                 </label>
 
-                <label className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-white/55">
+                <label className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">
                     <span>W</span>
                     <input
                         type="number"
@@ -255,11 +255,11 @@ export function EntityCanvasTokenSettings({ entity, canEdit }: EntityCanvasToken
                         value={defaults.width}
                         disabled={!canEdit}
                         onChange={(event) => updateSize(activeWidthKey, event.target.value)}
-                        className="h-7 w-16 rounded border border-white/10 bg-black/30 px-2 text-xs text-white/75 outline-none focus:border-cyan-200/35 disabled:opacity-60"
+                        className="h-7 w-16 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 text-xs text-[var(--vibe-text-primary)] outline-none focus:border-[var(--vibe-border-strong)] disabled:opacity-60"
                     />
                 </label>
 
-                <label className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-white/55">
+                <label className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">
                     <span>H</span>
                     <input
                         type="number"
@@ -268,19 +268,19 @@ export function EntityCanvasTokenSettings({ entity, canEdit }: EntityCanvasToken
                         value={defaults.height}
                         disabled={!canEdit}
                         onChange={(event) => updateSize(activeHeightKey, event.target.value)}
-                        className="h-7 w-16 rounded border border-white/10 bg-black/30 px-2 text-xs text-white/75 outline-none focus:border-cyan-200/35 disabled:opacity-60"
+                        className="h-7 w-16 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 text-xs text-[var(--vibe-text-primary)] outline-none focus:border-[var(--vibe-border-strong)] disabled:opacity-60"
                     />
                 </label>
             </div>
 
             <div className="mt-3 grid gap-2 md:grid-cols-2">
                 <label className="min-w-0">
-                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-white/35">Фото фишки</div>
+                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Фото фишки</div>
                     <select
                         value={defaults.tokenImage}
                         disabled={!canEdit}
                         onChange={(event) => updateDefaults({ tokenImage: event.target.value })}
-                        className="h-8 w-full rounded-lg border border-white/10 bg-black/30 px-2 text-[10px] font-semibold text-white/70 outline-none focus:border-cyan-200/35 disabled:opacity-60"
+                        className="h-8 w-full rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 text-[10px] font-semibold text-[var(--vibe-text-primary)] outline-none focus:border-[var(--vibe-border-strong)] disabled:opacity-60"
                         title="Пусто = использовать основное фото сущности"
                     >
                         <option value="">Основное фото</option>
@@ -296,12 +296,12 @@ export function EntityCanvasTokenSettings({ entity, canEdit }: EntityCanvasToken
                 </label>
 
                 <label className="min-w-0">
-                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-white/35">Фото карточки</div>
+                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Фото карточки</div>
                     <select
                         value={defaults.artImage}
                         disabled={!canEdit}
                         onChange={(event) => updateDefaults({ artImage: event.target.value })}
-                        className="h-8 w-full rounded-lg border border-white/10 bg-black/30 px-2 text-[10px] font-semibold text-white/70 outline-none focus:border-cyan-200/35 disabled:opacity-60"
+                        className="h-8 w-full rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 text-[10px] font-semibold text-[var(--vibe-text-primary)] outline-none focus:border-[var(--vibe-border-strong)] disabled:opacity-60"
                         title="Пусто = использовать основное фото сущности"
                     >
                         <option value="">Основное фото</option>
