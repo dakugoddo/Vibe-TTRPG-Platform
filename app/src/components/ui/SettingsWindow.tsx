@@ -350,26 +350,26 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                     <div className="mb-3 flex items-center justify-between gap-3">
                                         <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
                                             <Settings size={14} />
-                                            Модули режима заметок
+                                            {t('settings.interface.notesModules.title')}
                                         </div>
                                         <button
                                             type="button"
                                             onClick={resetNotesShell}
                                             className="flex h-7 items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
-                                            title="Сбросить модули режима заметок"
+                                            title={t('settings.interface.notesModules.resetTitle')}
                                         >
                                             <RotateCcw size={12} />
-                                            <span>Сброс</span>
+                                            <span>{t('settings.interface.notesModules.reset')}</span>
                                         </button>
                                     </div>
                                     <div className="grid gap-2 sm:grid-cols-2">
                                         {notesShellModules.map((module) => {
                                             const isEnabled = notesShell.modules[module.id];
                                             const areaLabel = module.defaultArea === 'left'
-                                                ? 'Левая панель'
+                                                ? t('settings.interface.notesModules.areas.left')
                                                 : module.defaultArea === 'right'
-                                                    ? 'Правая панель'
-                                                    : 'Нижний dock';
+                                                    ? t('settings.interface.notesModules.areas.right')
+                                                    : t('settings.interface.notesModules.areas.bottom');
 
                                             return (
                                                 <label
@@ -379,7 +379,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                     <span className="min-w-0">
                                                         <span className="block truncate text-xs font-bold text-[var(--vibe-text-primary)]">{t(module.labelKey)}</span>
                                                         <span className={`mt-1 block text-[10px] uppercase tracking-wider ${settingsMutedTextClass}`}>
-                                                            {areaLabel}{module.canResize ? ' / размер' : ''}
+                                                            {areaLabel}{module.canResize ? ` / ${t('settings.interface.notesModules.resizable')}` : ''}
                                                         </span>
                                                     </span>
                                                     <input

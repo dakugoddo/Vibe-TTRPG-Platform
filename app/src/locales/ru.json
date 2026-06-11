@@ -152,6 +152,17 @@
         "worldLocalesDescription": "Custom locale files в папке мира спроектированы как следующий local-first слой без записи файлов в этом срезе.",
         "readyBadge": "готово",
         "plannedBadge": "план"
+      },
+      "notesModules": {
+        "title": "Модули режима заметок",
+        "reset": "Сброс",
+        "resetTitle": "Сбросить модули режима заметок",
+        "resizable": "размер",
+        "areas": {
+          "left": "Левая панель",
+          "right": "Правая панель",
+          "bottom": "Нижний dock"
+        }
       }
     }
   }

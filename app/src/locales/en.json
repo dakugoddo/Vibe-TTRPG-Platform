@@ -152,6 +152,17 @@
                 "worldLocalesDescription": "Custom locale files in the world folder are planned as the next local-first layer; this slice does not write world files.",
                 "readyBadge": "ready",
                 "plannedBadge": "planned"
+            },
+            "notesModules": {
+                "title": "Notes mode modules",
+                "reset": "Reset",
+                "resetTitle": "Reset notes mode modules",
+                "resizable": "resize",
+                "areas": {
+                    "left": "Left panel",
+                    "right": "Right panel",
+                    "bottom": "Bottom dock"
+                }
             }
         }
     }

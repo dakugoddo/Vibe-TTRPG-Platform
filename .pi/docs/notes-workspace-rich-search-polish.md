@@ -24,6 +24,7 @@
 - Внутри Notes mode выключение visibility `Audio` должно скрывать dock из layout, но не размонтировать `AudioDesk`, пока app-level AudioModule включён. Иначе обычное скрытие панели или переключение Canvas/Notes будет останавливать локальное воспроизведение.
 - Shell-модули Notes mode переключаются как быстрыми кнопками ribbon, так и в `SettingsWindow -> Интерфейс -> Модули режима заметок`. Оба пути должны писать в один `notesWorkspaceStore`, без второго состояния.
 - Сброс shell-модулей Notes mode выполняется через `notesWorkspaceStore.resetShell()` и должен возвращать visibility/width/height к registry-defaults без сброса открытых вкладок и split-layout заметок. Не переиспользовать для этого `resetLayout()`, потому что он отвечает только за центральную рабочую область заметок.
+- Текст настроек shell-модулей Notes mode хранится в `settings.interface.notesModules` (`ru/en`). Новые controls в этой секции не должны добавлять hardcoded UI-строки, потому что система перевода является частью ближайшего UI foundation.
 - `NotificationCenter surface="embedded"` в Notes mode является dock-контентом правой колонки. Floating-уведомления остаются для canvas shell и не должны перекрывать редактор заметок.
 - Будущая модульность Notes shell: аудио/музыкальные расширения и будущие панели должны стать dock-модулями с registry/settings visibility. Технические модули не получают крестик в шапке как entity panes; их включение/выключение должно идти через настройки/registry/ribbon.
 
