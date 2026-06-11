@@ -58,6 +58,7 @@ interface NotesWorkspaceStoreState {
     toggleShellModule: (moduleId: NotesWorkspaceShellModuleId) => void;
     setShellModuleWidth: (moduleId: 'vault' | 'context', width: number) => void;
     setShellAudioHeight: (height: number) => void;
+    resetShell: () => void;
     resetLayout: () => void;
 }
 
@@ -75,6 +76,13 @@ const DEFAULT_NOTES_WORKSPACE_SHELL: NotesWorkspaceShellState = {
         listImplementedNotesShellModules().map((module) => [module.id, module.defaultVisible])
     ) as NotesWorkspaceShellVisibility,
 };
+
+function createDefaultNotesWorkspaceShell(): NotesWorkspaceShellState {
+    return {
+        ...DEFAULT_NOTES_WORKSPACE_SHELL,
+        modules: { ...DEFAULT_NOTES_WORKSPACE_SHELL.modules },
+    };
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -180,10 +188,10 @@ function clampAudioModuleHeight(height: unknown, fallback: number): number {
 function readStoredNotesWorkspaceShell(): NotesWorkspaceShellState {
     try {
         const data = globalThis.localStorage?.getItem(NOTES_WORKSPACE_SHELL_STORAGE_KEY);
-        if (!data) return DEFAULT_NOTES_WORKSPACE_SHELL;
+        if (!data) return createDefaultNotesWorkspaceShell();
 
         const parsed = JSON.parse(data);
-        if (!isRecord(parsed) || !isRecord(parsed.modules)) return DEFAULT_NOTES_WORKSPACE_SHELL;
+        if (!isRecord(parsed) || !isRecord(parsed.modules)) return createDefaultNotesWorkspaceShell();
 
         const modules = { ...DEFAULT_NOTES_WORKSPACE_SHELL.modules };
         for (const module of listImplementedNotesShellModules()) {
@@ -200,7 +208,7 @@ function readStoredNotesWorkspaceShell(): NotesWorkspaceShellState {
             modules,
         };
     } catch {
-        return DEFAULT_NOTES_WORKSPACE_SHELL;
+        return createDefaultNotesWorkspaceShell();
     }
 }
 
@@ -292,6 +300,8 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
             audioHeight: clampAudioModuleHeight(height, state.shell.audioHeight),
         },
     })),
+
+    resetShell: () => set({ shell: createDefaultNotesWorkspaceShell() }),
 
     resetLayout: () => set({ layout: createEmptyNotesWorkspaceLayout() }),
 }));

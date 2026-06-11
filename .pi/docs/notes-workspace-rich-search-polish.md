@@ -1,6 +1,6 @@
 # Notes workspace: rich editor, search and theme polish
 
-> Обновлено: 2026-06-08
+> Обновлено: 2026-06-11
 > Статус: implemented, owner QA pending
 
 ## Контракт текущего среза
@@ -23,6 +23,7 @@
 - `Audio` в Notes mode является нижним dock-модулем с тем же `AudioDesk`. `AudioControlDock` остаётся единственным владельцем `AudioDesk`: в canvas mode он показывает floating bottom dock, в Notes mode позиционируется в `NOTES_AUDIO_DOCK_HOST_ID`, а без видимого host остаётся скрытым, но смонтированным.
 - Внутри Notes mode выключение visibility `Audio` должно скрывать dock из layout, но не размонтировать `AudioDesk`, пока app-level AudioModule включён. Иначе обычное скрытие панели или переключение Canvas/Notes будет останавливать локальное воспроизведение.
 - Shell-модули Notes mode переключаются как быстрыми кнопками ribbon, так и в `SettingsWindow -> Интерфейс -> Модули режима заметок`. Оба пути должны писать в один `notesWorkspaceStore`, без второго состояния.
+- Сброс shell-модулей Notes mode выполняется через `notesWorkspaceStore.resetShell()` и должен возвращать visibility/width/height к registry-defaults без сброса открытых вкладок и split-layout заметок. Не переиспользовать для этого `resetLayout()`, потому что он отвечает только за центральную рабочую область заметок.
 - `NotificationCenter surface="embedded"` в Notes mode является dock-контентом правой колонки. Floating-уведомления остаются для canvas shell и не должны перекрывать редактор заметок.
 - Будущая модульность Notes shell: аудио/музыкальные расширения и будущие панели должны стать dock-модулями с registry/settings visibility. Технические модули не получают крестик в шапке как entity panes; их включение/выключение должно идти через настройки/registry/ribbon.
 
@@ -41,6 +42,7 @@
 - Потянуть вертикальные разделители между Vault/editor/context и проверить изменение ширины.
 - В ribbon слева выключить/включить `Vault`, `Context`, `Notifications`, `Search`, `Graph`, `Audio`; центральный editor board должен расширяться, правый модуль должен исчезать только когда выключены все правые dock-модули, а нижний Audio dock должен исчезать только при выключенном `Audio`.
 - В настройках `Интерфейс -> Модули режима заметок` выключить/включить те же shell-модули и проверить, что ribbon сразу отражает состояние.
+- В настройках нажать `Сброс` в секции shell-модулей и проверить, что `Vault`, `Context`, `Notifications` снова включены, `Search`, `Graph`, `Audio` выключены, размеры вернулись к дефолтам, а открытые вкладки заметок не закрылись.
 - В ribbon слева включить `Search`, ввести запрос и проверить, что правый dock показывает те же расширенные результаты, что и Vault search: название, описание, свойства, теги, тип, база и ID.
 - В ribbon слева включить `Graph`, открыть сущность с `[[wiki-link]]`/backlinks и проверить компактный правый dock: центр выбранной сущности, входящие/исходящие счётчики и быстрые переходы по связанным сущностям.
 - В ribbon слева включить `Audio`, проверить нижний `AudioDesk`, drag/drop аудиофайлов у host, player volume view и resize-разделитель между editor board и Audio dock.

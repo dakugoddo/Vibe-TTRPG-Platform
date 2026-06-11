@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2, Loader2, Users, Languages } from 'lucide-react';
+import { Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2, Loader2, Users, Languages, RotateCcw } from 'lucide-react';
 import { yjsStore } from '../../store/yjsStore';
 import { useCanvasDrawStore } from '../../store/canvasDrawStore';
 import { useNotesWorkspaceStore } from '../../store/notesWorkspaceStore';
@@ -99,6 +99,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const setGridSpacing = useCanvasDrawStore((state) => state.setGridSpacing);
     const notesShell = useNotesWorkspaceStore((state) => state.shell);
     const toggleNotesShellModule = useNotesWorkspaceStore((state) => state.toggleShellModule);
+    const resetNotesShell = useNotesWorkspaceStore((state) => state.resetShell);
     const notesShellModules = useMemo(
         () => listImplementedNotesShellModules()
             .filter((module) => module.id !== 'audio' || audioModuleEnabled),
@@ -346,9 +347,20 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                 </div>
 
                                 <div className={settingsPanelClass}>
-                                    <div className={settingsSectionTitleClass}>
-                                        <Settings size={14} />
-                                        Модули режима заметок
+                                    <div className="mb-3 flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
+                                            <Settings size={14} />
+                                            Модули режима заметок
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={resetNotesShell}
+                                            className="flex h-7 items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                                            title="Сбросить модули режима заметок"
+                                        >
+                                            <RotateCcw size={12} />
+                                            <span>Сброс</span>
+                                        </button>
                                     </div>
                                     <div className="grid gap-2 sm:grid-cols-2">
                                         {notesShellModules.map((module) => {

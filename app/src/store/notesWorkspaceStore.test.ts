@@ -96,9 +96,26 @@ assert.equal(useNotesWorkspaceStore.getState().shell.audioHeight, 180);
 useNotesWorkspaceStore.getState().setShellAudioHeight(900);
 assert.equal(useNotesWorkspaceStore.getState().shell.audioHeight, 520);
 
+useNotesWorkspaceStore.getState().resetShell();
+groups = listNotesWorkspaceGroups(useNotesWorkspaceStore.getState().layout.root);
+assert.equal(groups.length, 2);
+assert.deepEqual(groups[1].tabs.map((tab) => tab.entityId), ['character-1']);
+assert.equal(useNotesWorkspaceStore.getState().shell.vaultWidth, 300);
+assert.equal(useNotesWorkspaceStore.getState().shell.contextWidth, 320);
+assert.equal(useNotesWorkspaceStore.getState().shell.audioHeight, 300);
+assert.equal(useNotesWorkspaceStore.getState().shell.modules.vault, true);
+assert.equal(useNotesWorkspaceStore.getState().shell.modules.context, true);
+assert.equal(useNotesWorkspaceStore.getState().shell.modules.notifications, true);
+assert.equal(useNotesWorkspaceStore.getState().shell.modules.search, false);
+assert.equal(useNotesWorkspaceStore.getState().shell.modules.graph, false);
+assert.equal(useNotesWorkspaceStore.getState().shell.modules.audio, false);
+
+useNotesWorkspaceStore.getState().toggleShellModule('audio');
+useNotesWorkspaceStore.getState().setShellAudioHeight(900);
+
 const persistedShell = globalThis.localStorage.getItem(NOTES_WORKSPACE_SHELL_STORAGE_KEY);
 assert.ok(persistedShell);
-assert.ok(persistedShell.includes('"contextWidth":460'));
+assert.ok(persistedShell.includes('"contextWidth":320'));
 assert.ok(persistedShell.includes('"audioHeight":520'));
 assert.ok(persistedShell.includes('"audio":true'));
 
