@@ -16,6 +16,7 @@
 - Notes workspace получил Obsidian-like первый срез: vault tree, tabs/splits, source/preview/split modes, data view, linked context.
 - Notes shell-модули встроены в рабочую область: `Vault`, `Context`, `Notifications`, `Search`, `Graph`, `Audio`, settings toggles, shell-only reset и persisted resize/visibility.
 - Desktop build path проходит через `npm.cmd run desktop:build`.
+- Unpacked Electron build проверен через `npm.cmd run desktop:pack` на Windows 2026-06-11: создан `electron-release/win-unpacked/Eternity Table.exe`; остаются ожидаемые warnings по default Electron icon и Vite chunk-size.
 
 ## Перед git tag/release проверить вручную
 
@@ -40,6 +41,7 @@
    - проверить нижний Audio dock в Notes mode и отсутствие остановки воспроизведения при переключении Canvas/Notes
    - проверить read-only состояние на сущности без прав.
 4. Packaged build:
+   - очистить старые artifacts в `electron-release/`, если нужен публичный release bundle
    - `build-electron-dist.bat`
    - запустить portable exe
    - проверить embedded server и освобождение порта после закрытия.
@@ -71,7 +73,7 @@ npm.cmd run build
 
 - runtime-изменения `test-world/*`, если они не являются специально подготовленными demo-data;
 - `.pi/prototypes/*.html` owner references;
-- временные `dist/`, `electron-release/`, cache/build artifacts;
+- временные `dist/`, `electron-release/`, cache/build artifacts; перед release не смешивать старые `Vibe TTRPG Platform*` artifacts с новым `Eternity Table*`;
 - локальные профили/настройки.
 
 ## Release notes draft
