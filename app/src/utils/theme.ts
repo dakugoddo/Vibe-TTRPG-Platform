@@ -1,6 +1,7 @@
 export type BuiltInThemePresetId = 'universalGlass' | 'woodenTable' | 'arcaneControl' | 'rgbGameDesk' | 'lowLoad';
 export type ThemePresetId = BuiltInThemePresetId | 'custom';
 export type ThemeEffectLevel = 'rich' | 'balanced' | 'minimal';
+export type InterfaceDensityId = 'compact' | 'balanced' | 'spacious';
 
 export interface ThemePreset {
     id: BuiltInThemePresetId;
@@ -14,6 +15,7 @@ export interface ThemePreset {
 
 export const THEME_STORAGE_KEY = 'vibe-ui-theme-preset';
 export const CUSTOM_THEME_STORAGE_KEY = 'vibe-ui-custom-theme';
+export const DENSITY_STORAGE_KEY = 'vibe-ui-density';
 
 export interface CustomThemeColors {
     backgroundStart: string;
@@ -61,6 +63,25 @@ interface ThemeVarInput {
     backdropBlur: string;
 }
 
+interface DensityVarInput {
+    contentPadding: string;
+    blockPadding: string;
+    blockGap: string;
+    controlPaddingX: string;
+    controlPaddingY: string;
+    tabHeight: string;
+    rowHeight: string;
+    fontScale: string;
+}
+
+export interface InterfaceDensityPreset {
+    id: InterfaceDensityId;
+    label: string;
+    description: string;
+    tone: string;
+    vars: Record<string, string>;
+}
+
 function buildThemeVars(input: ThemeVarInput): Record<string, string> {
     return {
         '--vibe-app-bg': input.appBg,
@@ -89,6 +110,19 @@ function buildThemeVars(input: ThemeVarInput): Record<string, string> {
         '--vibe-shadow-window': input.shadowWindow,
         '--vibe-shadow-block': input.shadowBlock,
         '--vibe-backdrop-blur': input.backdropBlur,
+    };
+}
+
+function buildDensityVars(input: DensityVarInput): Record<string, string> {
+    return {
+        '--vibe-space-content': input.contentPadding,
+        '--vibe-space-block': input.blockPadding,
+        '--vibe-space-gap': input.blockGap,
+        '--vibe-control-px': input.controlPaddingX,
+        '--vibe-control-py': input.controlPaddingY,
+        '--vibe-tab-height': input.tabHeight,
+        '--vibe-row-height': input.rowHeight,
+        '--vibe-font-scale': input.fontScale,
     };
 }
 
@@ -190,9 +224,9 @@ export const themePresets: ThemePreset[] = [
             borderSubtle: 'rgba(223, 177, 91, 0.14)',
             borderStrong: 'rgba(223, 177, 91, 0.32)',
             scrollbarThumb: 'rgba(223, 177, 91, 0.42)',
-            radiusSm: '6px',
-            radiusMd: '10px',
-            radiusLg: '14px',
+            radiusSm: '2px',
+            radiusMd: '3px',
+            radiusLg: '4px',
             shadowWindow: '0 18px 46px rgba(0, 0, 0, 0.68), inset 0 0 0 1px rgba(223, 177, 91, 0.03)',
             shadowBlock: 'inset 0 0 18px rgba(223, 177, 91, 0.035), 0 8px 22px rgba(0,0,0,0.32)',
             backdropBlur: '18px',
@@ -270,8 +304,63 @@ export const themePresets: ThemePreset[] = [
     },
 ];
 
+export const interfaceDensityPresets: InterfaceDensityPreset[] = [
+    {
+        id: 'compact',
+        label: 'Compact',
+        tone: 'Больше данных',
+        description: 'Плотные панели для больших списков и экранов с большим количеством чисел.',
+        vars: buildDensityVars({
+            contentPadding: '14px',
+            blockPadding: '12px',
+            blockGap: '10px',
+            controlPaddingX: '10px',
+            controlPaddingY: '5px',
+            tabHeight: '32px',
+            rowHeight: '28px',
+            fontScale: '0.96',
+        }),
+    },
+    {
+        id: 'balanced',
+        label: 'Balanced',
+        tone: 'По умолчанию',
+        description: 'Баланс читаемости и плотности для обычной партии и подготовки мира.',
+        vars: buildDensityVars({
+            contentPadding: '20px',
+            blockPadding: '16px',
+            blockGap: '16px',
+            controlPaddingX: '12px',
+            controlPaddingY: '6px',
+            tabHeight: '36px',
+            rowHeight: '32px',
+            fontScale: '1',
+        }),
+    },
+    {
+        id: 'spacious',
+        label: 'Spacious',
+        tone: 'Больше воздуха',
+        description: 'Крупнее клики и спокойнее чтение, когда важнее обзор одного окна.',
+        vars: buildDensityVars({
+            contentPadding: '24px',
+            blockPadding: '20px',
+            blockGap: '18px',
+            controlPaddingX: '14px',
+            controlPaddingY: '8px',
+            tabHeight: '40px',
+            rowHeight: '36px',
+            fontScale: '1.03',
+        }),
+    },
+];
+
 export function getThemePreset(id: string | null | undefined): ThemePreset {
     return themePresets.find((preset) => preset.id === id) || themePresets[0];
+}
+
+export function getInterfaceDensityPreset(id: string | null | undefined): InterfaceDensityPreset {
+    return interfaceDensityPresets.find((preset) => preset.id === id) || interfaceDensityPresets[1];
 }
 
 export function getStoredThemePresetId(): ThemePresetId {
@@ -279,6 +368,11 @@ export function getStoredThemePresetId(): ThemePresetId {
     const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
     if (stored === 'custom') return 'custom';
     return getThemePreset(stored).id;
+}
+
+export function getStoredInterfaceDensityId(): InterfaceDensityId {
+    if (typeof window === 'undefined') return 'balanced';
+    return getInterfaceDensityPreset(window.localStorage.getItem(DENSITY_STORAGE_KEY)).id;
 }
 
 export function normalizeHexColor(value: unknown, fallback: string): string {
@@ -378,17 +472,27 @@ export function applyThemePreset(id: ThemePresetId): void {
     if (typeof window !== 'undefined') window.localStorage.setItem(THEME_STORAGE_KEY, id);
 }
 
+export function applyInterfaceDensity(id: InterfaceDensityId): void {
+    if (typeof document === 'undefined') return;
+    const preset = getInterfaceDensityPreset(id);
+    document.documentElement.dataset.vibeDensity = preset.id;
+    for (const [key, value] of Object.entries(preset.vars)) {
+        document.documentElement.style.setProperty(key, value);
+    }
+    if (typeof window !== 'undefined') window.localStorage.setItem(DENSITY_STORAGE_KEY, preset.id);
+}
+
 export const glass = {
     bg: 'vibe-app-bg',
     window: 'bg-[var(--vibe-surface-window)] backdrop-blur-[var(--vibe-backdrop-blur)] border border-[var(--vibe-border-subtle)] shadow-[var(--vibe-shadow-window)] rounded-[var(--vibe-radius-lg)] text-[var(--vibe-text-primary)]',
     panel: 'bg-[var(--vibe-surface-window)] backdrop-blur-[var(--vibe-backdrop-blur)] border border-[var(--vibe-border-subtle)] shadow-[var(--vibe-shadow-window)] text-[var(--vibe-text-primary)]',
-    header: 'bg-[var(--vibe-surface-header)] border-b border-[var(--vibe-border-subtle)] p-4 rounded-t-[var(--vibe-radius-lg)]',
+    header: 'bg-[var(--vibe-surface-header)] border-b border-[var(--vibe-border-subtle)] p-[var(--vibe-space-block)] rounded-t-[var(--vibe-radius-lg)]',
     panelHeader: 'bg-[var(--vibe-surface-header)] border-b border-[var(--vibe-border-subtle)]',
     titleText: 'text-[var(--vibe-text-primary)] font-semibold tracking-wide',
-    content: 'p-5 flex flex-col gap-4',
-    blockBg: 'bg-[var(--vibe-surface-block)] border border-[var(--vibe-border-subtle)] rounded-[var(--vibe-radius-md)] p-4 shadow-[var(--vibe-shadow-block)]',
-    blockHeader: 'text-[10px] text-[var(--vibe-text-faint)] font-bold uppercase tracking-widest mb-4 flex justify-between items-center',
-    input: 'bg-[var(--vibe-surface-input)] border border-[var(--vibe-border-subtle)] rounded-[var(--vibe-radius-sm)] px-3 py-1.5 text-[var(--vibe-text-primary)] outline-none focus:bg-[var(--vibe-surface-hover)] focus:border-[var(--vibe-border-strong)] transition-all font-sans hover:bg-[var(--vibe-surface-hover)]',
+    content: 'p-[var(--vibe-space-content)] flex flex-col gap-[var(--vibe-space-gap)] text-[length:calc(1rem*var(--vibe-font-scale))]',
+    blockBg: 'bg-[var(--vibe-surface-block)] border border-[var(--vibe-border-subtle)] rounded-[var(--vibe-radius-md)] p-[var(--vibe-space-block)] shadow-[var(--vibe-shadow-block)]',
+    blockHeader: 'text-[10px] text-[var(--vibe-text-faint)] font-bold uppercase tracking-widest mb-[var(--vibe-space-gap)] flex justify-between items-center',
+    input: 'bg-[var(--vibe-surface-input)] border border-[var(--vibe-border-subtle)] rounded-[var(--vibe-radius-sm)] px-[var(--vibe-control-px)] py-[var(--vibe-control-py)] text-[var(--vibe-text-primary)] outline-none focus:bg-[var(--vibe-surface-hover)] focus:border-[var(--vibe-border-strong)] transition-all font-sans hover:bg-[var(--vibe-surface-hover)]',
     iconButton: 'bg-[var(--vibe-surface-window)] backdrop-blur-[var(--vibe-backdrop-blur)] border border-[var(--vibe-border-subtle)] shadow-[var(--vibe-shadow-block)] text-[var(--vibe-text-muted)] hover:text-[var(--vibe-text-primary)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] transition-colors',
     iconButtonActive: 'bg-[var(--vibe-accent-soft)] border-[var(--vibe-border-strong)] text-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-block)]',
     tabBar: 'bg-[var(--vibe-surface-input)] border border-[var(--vibe-border-subtle)] shadow-[var(--vibe-shadow-block)]',

@@ -158,7 +158,11 @@ function NotificationRow({ notification, compact = false }: { notification: AppN
     );
 }
 
-export function NotificationCenter() {
+interface NotificationCenterProps {
+    surface?: 'floating' | 'embedded';
+}
+
+export function NotificationCenter({ surface = 'floating' }: NotificationCenterProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [now, setNow] = useState(() => Date.now());
     const notifications = useNotificationStore((state) => state.notifications);
@@ -179,6 +183,46 @@ export function NotificationCenter() {
     }, [activeNotifications, now]);
 
     const pendingCount = activeNotifications.filter((notification) => ['pending', 'unread', 'failed'].includes(notification.status)).length;
+
+    if (surface === 'embedded') {
+        return (
+            <section className={`overflow-hidden rounded-[var(--vibe-radius-md)] ${glass.panel}`}>
+                <div className={`flex items-center justify-between gap-3 px-3 py-2.5 ${glass.panelHeader}`}>
+                    <div className="flex min-w-0 items-center gap-2">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)]">
+                            <Bell size={15} />
+                        </div>
+                        <div className="min-w-0">
+                            <div className="truncate text-xs font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Уведомления</div>
+                            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                {notifications.length} записей
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={clearCompleted}
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`}
+                        title="Очистить завершённые"
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                </div>
+
+                <div className="max-h-72 space-y-2 overflow-y-auto p-2 custom-scrollbar">
+                    {notifications.length === 0 ? (
+                        <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-4 text-center text-xs italic text-[var(--vibe-text-faint)]">
+                            Пока тихо
+                        </div>
+                    ) : (
+                        notifications.slice(0, 8).map((notification) => (
+                            <NotificationRow key={notification.id} notification={notification} compact />
+                        ))
+                    )}
+                </div>
+            </section>
+        );
+    }
 
     return (
         <div className="pointer-events-none fixed right-4 top-4 z-[46] flex max-w-[min(520px,calc(100vw-32px))] items-start justify-end gap-3 xl:left-[calc(50%+340px)] xl:right-auto xl:justify-start">

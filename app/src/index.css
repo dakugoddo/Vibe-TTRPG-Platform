@@ -27,6 +27,14 @@
   --vibe-shadow-window: 0 30px 70px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.16);
   --vibe-shadow-block: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.24);
   --vibe-backdrop-blur: 34px;
+  --vibe-space-content: 20px;
+  --vibe-space-block: 16px;
+  --vibe-space-gap: 16px;
+  --vibe-control-px: 12px;
+  --vibe-control-py: 6px;
+  --vibe-tab-height: 36px;
+  --vibe-row-height: 32px;
+  --vibe-font-scale: 1;
 }
 
 body {
@@ -74,6 +82,11 @@ body.dragging-global .ui-layer {
 }
 body.dragging-global .ui-layer * {
   pointer-events: none !important;
+}
+
+body.canvas-camera-panning {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .contexify {

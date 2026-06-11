@@ -1,109 +1,79 @@
 # Platform Runtime Decision
 
 > Дата: 2026-05-21
-> Статус: decision draft. Не начинать миграцию без отдельного прототипа.
+> Обновлено: 2026-06-06
+> Статус: Electron packaging foundation implemented. Browser-first режим остаётся rollback path.
 
-> Обновление 2026-06-04: актуальный gate перед Tauri-кодом вынесен в `.pi/docs/tauri-native-migration-plan.md`. Этот документ остаётся историческим сравнением runtime-вариантов; рабочий порядок миграции теперь читать там.
+## Текущий вывод
 
-## Вопрос
+Фундамент проекта не переписывать. React + TypeScript + Vite frontend, Express/Yjs server и local-first `.md` world files остаются основной базой разработки.
 
-Нужно ли переносить Vibe TTRPG Platform на Tauri + Rust, Electron, Neutralino или игровой движок ради будущего Steam-релиза, встроенного сервера, файлового доступа и потенциального 3D?
+Рабочий desktop path на ближайший этап изменён решением владельца 2026-06-05:
 
-## Короткий вывод
+1. Закончить UI foundation.
+2. После UI сделать Electron migration.
+3. После Electron foundation вернуться к полноценному Notes workspace mode и multi-window/multi-monitor workflow.
 
-Сейчас фундамент переписывать не нужно.
+Актуальный gate: `.pi/docs/electron-desktop-migration-plan.md`.
 
-Текущий React + TypeScript + Vite + Express + Yjs стек остается основной базой разработки. Самый выгодный путь - сохранить browser-first приложение и позже проверить Tauri как тонкую desktop-оболочку с bundled sidecar, а не как немедленную перепись сервера на Rust.
+Обновление 2026-06-06: Electron foundation доведён до packaged desktop path. Внесены shell, preload marker, Vite `base: './'`, desktop scripts, one-command dev launcher, typed preload IPC, native folder dialog, `electron-builder`, `desktop:pack`/`desktop:dist`, compiled `server/dist` и packaged embedded server import из `resources/server/dist`. Собранный exe smoke-test подтвердил `/api/world/status` и освобождение порта после закрытия. Player delivery policy, icon/signing polish и native asset actions ещё не решены.
 
-Минимальный следующий runtime-прототип:
-
-1. Собрать production frontend через `vite build`.
-2. Запустить существующий Express/WebSocket сервер как bundled sidecar.
-3. Открыть локальный URL внутри Tauri WebView.
-4. Проверить file access, world folder picker, websocket multiplayer, shutdown sidecar, portable build.
-
-Если этот прототип пройдет, можно думать о Rust-sidecar или частичном Rust core. Если нет - Electron остается более тяжелым, но более прямым fallback для уже существующего Node/Express приложения.
+Прежний Tauri-first вариант считается историческим сравнением, а не ближайшим next step. Возвращаться к Tauri/Rust можно позже отдельным architecture gate, если Electron proof покажет неприемлемые ограничения.
 
 ## Почему не переписывать сейчас
 
-- Основная ценность проекта сейчас в Entity-модели, `.md` source of truth, Roll Engine, canvas, permissions и GM workflow, а не в desktop shell.
-- Tauri/Rust rewrite затронет file manager, world manager, websocket lifecycle, watcher, permissions и packaging одновременно. Это высокий риск для фундамента, который еще активно стабилизируется.
-- Steam-релиз требует не только оболочку, но и отдельные вопросы: Workshop packaging, Cloud paths, Steam Networking/lobbies, app ID, SDK, деплой, обновления, тестовые аккаунты.
-- Простое 3D можно проверять внутри текущего React-приложения через Three.js/Babylon.js, без смены runtime.
+- Основная ценность проекта сейчас в Entity model, `.md` source of truth, Roll Engine, canvas, permissions и GM workflow, а не в desktop shell.
+- Перепись runtime затронет file manager, world manager, websocket lifecycle, watcher, permissions и packaging одновременно.
+- UI foundation ещё стабилизируется; переносить нестабильный UX в desktop shell рано.
+- Steam/3D требуют отдельных gates: Workshop, Cloud paths, networking/lobbies, app ID, SDK, deployment, 3D viewport contract.
+
+## Почему Electron выбран ближайшим desktop path
+
+- Текущий проект уже использует Node/Express, поэтому Electron ближе к существующему runtime.
+- Chromium runtime снижает риск canvas/audio/DOM overlay отличий относительно текущей разработки в браузере.
+- Server lifecycle можно доказать без переписывания backend на Rust.
+- Multi-window/multi-monitor логичнее строить после desktop shell proof, а не через browser popout.
+
+Минусы Electron - размер приложения и baseline RAM. На этом этапе это менее опасно, чем преждевременная перепись server/file layer.
 
 ## Альтернативы
 
-| Вариант | Выгода | Риск | Рекомендация |
-|---------|--------|------|--------------|
-| Browser-first + `start.bat`/launcher | Минимальный риск, текущая разработка быстрая, игрокам уже достаточно браузера | Не выглядит как Steam desktop app, ручной запуск сервера | Оставить основной путь до стабильного vertical slice |
-| Tauri shell + Node/Express sidecar | Малый desktop bundle, можно использовать текущий frontend/server почти без переписи | Sidecar lifecycle, installer quirks, WebView различия по ОС | Лучший первый desktop-прототип |
-| Tauri shell + Rust backend | Малый runtime, сильный file/process control, потенциально чище для Steam | Большая перепись сервера и файлового слоя | Рассматривать только после успешного Tauri sidecar прототипа |
-| Electron | Самый прямой перенос Node + Chromium, меньше WebView surprises | Больший размер, выше baseline RAM, нужно аккуратно изолировать main/renderer | Fallback, если Tauri sidecar окажется дорогим |
-| Neutralino | Очень легкий shell, native API из JS | Меньше экосистема, сложнее для комплексного server/Steam пути | Не основной кандидат |
-| Godot/Unity | Сильный 3D/game runtime | Полная перепись UI, Entity, Obsidian-like KB и web workflow | Не делать для основной платформы |
-| Three.js/Babylon.js внутри React | Быстрый 3D-прототип без миграции | Нужно держать 3D как отдельный viewport, не смешивать с Konva без плана | Делать как feature-прототип, не как platform rewrite |
+| Вариант | Выгода | Риск | Текущий статус |
+|---------|--------|------|----------------|
+| Browser-first + `start.bat` | Минимальный риск, текущая разработка быстрая, игрокам достаточно браузера | Не выглядит как полноценное desktop/Steam app | Оставить обязательным rollback path |
+| Electron shell + текущий server | Прямой перенос Node + Chromium, меньше WebView surprises | Больший размер, main/renderer security, server lifecycle | Ближайший desktop path после UI |
+| Tauri shell + Node sidecar | Меньший desktop bundle | WebView differences, sidecar/package quirks | Исторический вариант, не ближайший next step |
+| Tauri shell + Rust backend | Малый runtime, сильный file/process control | Большая перепись server/file layer | Только после отдельного будущего gate |
+| Neutralino | Лёгкий shell | Меньше ecosystem для сложного server/Steam path | Не основной кандидат |
+| Godot/Unity | Сильный 3D/game runtime | Полная перепись UI, Entity и web workflow | Не делать для основной платформы |
+| Three.js/Babylon.js внутри React | Быстрый 3D prototype без runtime migration | Нужен отдельный viewport contract | Можно как feature prototype позже |
 
-## 3D стратегия
+## Практический курс
 
-3D не требует перехода на игровой движок.
+1. Продолжать foundation-first разработку в текущем web-stack.
+2. Electron dependencies уже добавлены как desktop proof; не тянуть Electron APIs в browser runtime.
+3. Продолжать Electron малыми proof-срезами: server lifecycle, native dialogs, packaging decision.
+4. Сохранить browser-first mode как обязательный rollback path для dev/player clients.
+5. После Electron proof вернуться к native windows, multi-monitor и полноценному Notes workspace mode.
+6. 3D/Steam вести отдельными design gates, не смешивать с первым Electron proof.
 
-Первый 3D vertical slice должен быть маленьким и встроенным:
+## Что Codex может делать сам
 
-- отдельное окно или режим canvas viewport;
-- импорт простой сцены/модели или генеративная тестовая сцена;
-- связь с Entity: token/entity id, позиция, видимость;
-- без переноса всего 2D canvas в 3D.
+- Поддерживать platform-neutral код.
+- Не завязывать app/runtime API на browser-only assumptions без явной причины.
+- Подготовить Electron prototype checklist и smoke tests.
+- Вести docs/backlog так, чтобы следующий агент не вернулся к устаревшему Tauri-first порядку.
 
-Three.js лучше для первого минимального прототипа, потому что он ближе к текущему React/frontend стеку. Babylon.js стоит рассмотреть, если понадобится больше game-engine возможностей: WebGPU/WebGL abstraction, physics, scene tooling.
+## Что требует отдельного решения владельца
 
-## Steam путь
+- Когда UI foundation считается достаточно стабильным для Electron prototype.
+- Нужна ли поддержка старого browser-only режима после desktop release.
+- Какие desktop windows нужны первыми: notes, canvas, assets, player screen или GM dashboard.
+- Когда возвращаться к Steamworks SDK, Cloud/Workshop и 3D.
 
-Steam не должен диктовать перепись сейчас, но текущая `.md` модель хорошо подходит под будущие функции:
+## Проверенные источники для будущего gate
 
-- Workshop item = папка мира (`world.yaml`, `general/`, `gm/`, `users/`, assets);
-- Steam Cloud = sync выбранных world/save paths;
-- Steam Networking/lobbies = потенциальная замена Hamachi/Radmin для поздней версии;
-- Achievements/statistics = отдельный слой, не часть core Entity.
-
-Что потребуется от владельца проекта:
-
-- Steamworks partner/app access;
-- Steam App ID и SDK;
-- решение, какие папки миров синхронизировать в Cloud;
-- политика Workshop: что публикуется, что приватно, как паковать assets;
-- тесты на реальном Steam клиенте и нескольких аккаунтах.
-
-## Что Codex может сделать сам
-
-- Поддерживать browser-first разработку.
-- Подготовить Tauri proof-of-concept с sidecar, если будет принято решение.
-- Добавить Three.js/Babylon.js 3D prototype внутри текущего React-приложения.
-- Написать packaging checklist и smoke tests.
-- Разделить runtime adapters так, чтобы file/world API не был завязан на browser-only assumptions.
-
-## Что требует ручного решения владельца
-
-- Когда именно начинать desktop prototype.
-- Готов ли проект принять Rust как runtime dependency.
-- Нужен ли Steamworks SDK до публичной playable beta.
-- Какой уровень 3D нужен: визуальный просмотр, тактическая сцена, полноценная 3D VTT.
-- Какие данные мира можно синхронизировать через Steam Cloud/Workshop.
-
-## Решение на сейчас
-
-`defer rewrite, prototype shell later`.
-
-Практический курс:
-
-1. Продолжать foundation-first разработку в текущем веб-стеке.
-2. Не добавлять Tauri/Rust в основной код, пока vertical slice не стабилен.
-3. После стабильного gameplay slice сделать отдельную ветку/prototype: `Tauri shell + Node sidecar`.
-4. Параллельно разрешить маленький 3D prototype внутри React, если он не ломает 2D canvas.
-
-## Проверенные источники
-
-- Tauri architecture and sidecar docs: `https://v2.tauri.app/concept/architecture/`, `https://tauri.app/fr/develop/sidecar/`
 - Electron process model docs: `https://www.electronjs.org/docs/latest/tutorial/process-model`
-- Neutralino docs: `https://neutralino.js.org/`, `https://neutralino.js.org/docs/api/overview`
-- Steamworks docs: `https://partner.steamgames.com/doc/features/workshop/implementation`, `https://partner.steamgames.com/doc/features/cloud`, `https://partner.steamgames.com/doc/api/ISteamnetworkingSockets`
+- Electron security docs: `https://www.electronjs.org/docs/latest/tutorial/security`
+- Steamworks docs: `https://partner.steamgames.com/doc/features/workshop/implementation`, `https://partner.steamgames.com/doc/features/cloud`
 - Three.js/Babylon docs: `https://threejs.org/manual/en/fundamentals.html`, `https://www.babylonjs.com/specifications`

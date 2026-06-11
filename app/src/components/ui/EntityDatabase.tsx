@@ -4,6 +4,8 @@ import { yjsStore } from '../../store/yjsStore';
 import { useEntities } from '../../hooks/useEntities';
 import { useWindowStore } from '../../store/windowStore';
 import { useCanvasStore } from '../../store/canvasStore';
+import { useNotesWorkspaceStore } from '../../store/notesWorkspaceStore';
+import { useWorkspaceModeStore } from '../../store/workspaceModeStore';
 import { DragDropPopover, type DragDropPromptData } from './DragDropPopover';
 import { getAssetUrl, importMarkdown, getIsHost, listPlayers, showEntityInExplorer } from '../../services/fileApi';
 import { useUIStore } from '../../store/uiStore';
@@ -375,6 +377,8 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
     const renameInputRef = useRef<HTMLInputElement>(null);
     const { openWindow } = useWindowStore();
     const { navigate } = useCanvasStore();
+    const workspaceMode = useWorkspaceModeStore((state) => state.mode);
+    const openNotesWorkspaceTab = useNotesWorkspaceStore((state) => state.openTab);
     const { openConfirm } = useUIStore();
 
     const isRenaming = renamingId === entity.id;
@@ -412,8 +416,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
     const children = entities.filter(e => e.parentId === entity.id && e.id !== 'root');
     const group = EntityGroups.find(g => g.type === entity.type) || defaultGroupContext || EntityGroups[3];
     const canEditEntity = entity.id !== 'root' && canModifyEntityInUi(entity);
-    const expandsOnRowClick = entity.type === 'character' || entity.type === 'folder' || entity.type === 'competency';
-    const canExpandEntity = expandsOnRowClick || entity.type === 'canvas' || children.length > 0;
+    const canExpandEntity = children.length > 0;
     const isExpanded = expanded || searchActive;
     const searchResult = searchResultsById.get(entity.id);
     const searchFieldLabel = formatSearchFields(searchResult);
@@ -425,23 +428,26 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
     }
 
     const Icon = TYPE_ICONS[entity.type] || ImageIcon;
+    const handleOpenEntity = () => {
+        if (entity.type === 'canvas') {
+            navigate(entity.id);
+            return;
+        }
+
+        if (workspaceMode === 'notes') {
+            openNotesWorkspaceTab(entity.id, 'source');
+            return;
+        }
+
+        openWindow(entity.id, Math.random() * 200 + 50, Math.random() * 200 + 50);
+    };
 
     return (
         <div className="flex flex-col gap-1 w-full relative">
             <div
                 onClick={(event) => {
                     if (onEntitySelectionClick(entity.id, event)) return;
-                    if (expandsOnRowClick) setExpanded(!expanded);
-                    else {
-                        if (entity.type === 'canvas') navigate(entity.id);
-                        else openWindow(entity.id, Math.random() * 200 + 50, Math.random() * 200 + 50);
-                    }
-                }}
-                onDoubleClick={(e) => {
-                    if (entity.type === 'character') {
-                        e.stopPropagation();
-                        openWindow(entity.id, Math.random() * 200 + 50, Math.random() * 200 + 50);
-                    }
+                    handleOpenEntity();
                 }}
                 draggable={true}
                 onDragStart={(e) => {
@@ -605,6 +611,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
                                 setExpanded(!expanded);
                             }}
                             className="p-1 text-white/40 hover:text-white"
+                            title={isExpanded ? 'Свернуть вложенные сущности' : 'Развернуть вложенные сущности'}
                         >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>

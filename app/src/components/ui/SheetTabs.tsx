@@ -61,7 +61,7 @@ export function SheetTabs<T extends string>({ tabs, activeTab, onChange, endSlot
 
     return (
         <div className={clsx(
-            `mb-4 flex items-center gap-2 rounded-[var(--vibe-radius-md)] p-1 ${glass.tabBar}`,
+            `mb-[var(--vibe-space-gap)] flex items-center gap-2 rounded-[var(--vibe-radius-md)] p-1 ${glass.tabBar}`,
             className
         )}>
             {(canScrollLeft || canScrollRight) && (
@@ -69,7 +69,7 @@ export function SheetTabs<T extends string>({ tabs, activeTab, onChange, endSlot
                     type="button"
                     onClick={() => scrollTabs(-1)}
                     disabled={!canScrollLeft}
-                    className={`grid h-8 w-7 flex-shrink-0 place-items-center rounded-[var(--vibe-radius-sm)] disabled:opacity-25 ${glass.iconButton}`}
+                    className={`grid h-[var(--vibe-tab-height)] w-7 flex-shrink-0 place-items-center rounded-[var(--vibe-radius-sm)] disabled:opacity-25 ${glass.iconButton}`}
                     title="Прокрутить вкладки влево"
                 >
                     <ChevronLeft size={14} />
@@ -90,7 +90,7 @@ export function SheetTabs<T extends string>({ tabs, activeTab, onChange, endSlot
                             key={tab.id}
                             onClick={() => onChange(tab.id)}
                             className={clsx(
-                                'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[11px] font-bold uppercase tracking-wider transition-colors',
+                                'inline-flex h-[var(--vibe-tab-height)] shrink-0 items-center gap-1.5 rounded-lg border px-[var(--vibe-control-px)] text-[11px] font-bold uppercase tracking-wider transition-colors',
                                 isActive
                                     ? glass.tabActive
                                     : glass.tabIdle
@@ -116,7 +116,7 @@ export function SheetTabs<T extends string>({ tabs, activeTab, onChange, endSlot
                     type="button"
                     onClick={() => scrollTabs(1)}
                     disabled={!canScrollRight}
-                    className={`grid h-8 w-7 flex-shrink-0 place-items-center rounded-[var(--vibe-radius-sm)] disabled:opacity-25 ${glass.iconButton}`}
+                    className={`grid h-[var(--vibe-tab-height)] w-7 flex-shrink-0 place-items-center rounded-[var(--vibe-radius-sm)] disabled:opacity-25 ${glass.iconButton}`}
                     title="Прокрутить вкладки вправо"
                 >
                     <ChevronRight size={14} />

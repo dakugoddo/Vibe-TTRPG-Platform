@@ -76,6 +76,12 @@ newX = worldX * stageScale + stageOffset.x; // clamp to viewport
 newY = worldY * stageScale + stageOffset.y;
 ```
 
+### 2.3.1 Stage render area
+
+Konva Stage в `InfiniteCanvas` должен оставаться размером с видимый viewport. Не увеличивай Stage ради скрытого render overscan без отдельного профилирования: площадь canvas быстро растёт, и Electron может просесть до 10 FPS, особенно когда камера отдалена и видно много элементов.
+
+Если при compositor-first middle-button pan видны обрезанные элементы у края экрана, сначала уменьши threshold camera commit, чтобы CSS preview не уезжал далеко от реальной позиции Stage. Это дешевле, чем рендерить большую canvas-поверхность. Render overscan можно возвращать только как отдельный эксперимент с dev overlay, замером FPS и строгим cap.
+
 ### 2.4 Middle-button pan — глобальная input-сессия
 
 Панорамирование камеры средней кнопкой мыши начинается на Konva Stage, но после старта не должно зависеть от того, над каким DOM/Konva-элементом оказался курсор.
@@ -84,7 +90,13 @@ newY = worldY * stageScale + stageOffset.y;
 - старт: `mousedown button === 1` на canvas/Stage;
 - движение и завершение: `window` listeners в capture-фазе для `mousemove`, `mouseup`, `auxclick`, `blur`;
 - `onMouseLeave` у Stage не имеет права завершать middle-pan, потому что закреплённые окна, шторки и DOM overlays находятся поверх Stage;
-- во время движения обновляй Stage position напрямую и синхронизируй `useCanvasStore.setTransform`, чтобы pinned windows следовали за камерой.
+- во время движения обновляй Stage position напрямую; закреплённый DOM-слой окон двигай imperative transform (`window.__vibeSetPinnedLayerCamera`), а `useCanvasStore.setTransform` вызывай throttled и финально при отпускании кнопки. Нельзя обновлять React/Zustand на каждый `mousemove`, потому что это создаёт перерендеры `InfiniteCanvas`/окон и в Electron легко превращает camera pan в 3-10 FPS.
+- если нужен `batchDraw` в camera hot path, коалесцируй его через `requestAnimationFrame`; частота событий мыши может быть выше частоты экрана, и прямой `batchDraw()` на каждый `mousemove` создаёт лишнюю очередь полной перерисовки.
+- для middle-button pan используй compositor-first preview: CSS `translate3d` на Konva DOM container + imperative transform pinned layer; Stage position и `setTransform` коммитятся редко по threshold и в конце жеста. Это даёт плавный drag без полной перерисовки каждого кадра.
+- CSS transform записи для compositor-first preview тоже коалесцируй через `requestAnimationFrame`: `mousemove` обновляет pending state, а реальные `style.transform` записи для Stage container и pinned layer выполняются максимум один раз за кадр.
+- На время camera pan добавляй `body.canvas-camera-panning` только для cursor/user-select и диагностики состояния. Не отключай blur, тени, анимации и pointer-events у всего UI по умолчанию: это визуально ломает интерфейс и легко становится неполным из-за элементов вне `.ui-layer`.
+- Во время middle-button pan можно временно отключать `pointer-events` у Konva Stage container. Жест уже ведётся глобальными `window` listeners, поэтому Stage не должен продолжать участвовать в Konva hit-testing, пока кнопка не отпущена. Обязательно восстанавливай pointer-events при `mouseup`, `blur` и unmount.
+- Отключение `backdrop-filter`, transitions или pointer-events у UI layer допустимо только как отдельный performance fallback после измерений в dev overlay, если именно UI/compositor подтверждён как источник просадок.
 
 ---
 

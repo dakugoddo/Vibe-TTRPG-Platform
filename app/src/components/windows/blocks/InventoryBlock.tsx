@@ -20,8 +20,9 @@ const CATEGORIES = ['оружие', 'броня', 'расходуемое', 'д�
 type Category = typeof CATEGORIES[number];
 const attackPanelClass = `${glass.blockBg} border-[color-mix(in_srgb,var(--vibe-danger)_28%,var(--vibe-border-subtle))] shadow-[inset_0_0_20px_color-mix(in_srgb,var(--vibe-danger)_8%,transparent)]`;
 const inventoryCategoryClass = 'overflow-hidden rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] pb-2 shadow-[var(--vibe-shadow-block)]';
-const tableHeadCellClass = 'px-2 py-1.5 font-normal transition-colors hover:text-[var(--vibe-text-primary)]';
-const tableValueCellClass = 'px-2 py-1.5 text-center font-mono text-[10px] text-[var(--vibe-text-muted)]';
+const tableCellClass = 'px-[var(--vibe-control-px)] py-[var(--vibe-control-py)]';
+const tableHeadCellClass = `${tableCellClass} font-normal transition-colors hover:text-[var(--vibe-text-primary)]`;
+const tableValueCellClass = `${tableCellClass} text-center font-mono text-[10px] text-[var(--vibe-text-muted)]`;
 
 type SortConfig = {
     key: string;
@@ -276,7 +277,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                 onDragEnter={(e) => { if (canEditInventory) e.preventDefault(); }}
                                 onDrop={(e) => handleDrop(e, category)}
                             >
-                                <div className="mb-1 flex items-center justify-between border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-muted)] shadow-inner">
+                                <div className="mb-1 flex items-center justify-between border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)] px-[var(--vibe-control-px)] py-[var(--vibe-control-py)] text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-muted)] shadow-inner">
                                     {category} ({itemsInCategory.length})
                                 </div>
 
@@ -289,7 +290,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                         <table className="w-full text-left border-collapse min-w-max">
                                             <thead>
                                                 <tr className="select-none border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] text-[9px] uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                                    <th className="font-normal px-2 py-1.5 w-6"></th>
+                                                    <th className={`${tableCellClass} w-6 font-normal`}></th>
                                                     <th className={`${tableHeadCellClass} cursor-pointer`} onClick={() => handleSort(category, 'name')}>
                                                         Предмет <SortIcon colKey="name" />
                                                     </th>
@@ -316,7 +317,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                     <th className={`${tableHeadCellClass} cursor-pointer text-center text-[var(--vibe-warning)]`} title="Цена (У.Е.)" onClick={() => handleSort(category, 'цена')}>
                                                         Цена <SortIcon colKey="цена" />
                                                     </th>
-                                                    <th className="font-normal px-2 py-1.5 text-center w-6"></th>
+                                                    <th className={`${tableCellClass} w-6 text-center font-normal`}></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -339,16 +340,16 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                                 e.dataTransfer.effectAllowed = "move";
                                                             }}
                                                         >
-                                                            <td className="cursor-grab px-2 py-1.5 text-[var(--vibe-text-faint)] opacity-30 transition-opacity active:cursor-grabbing group-hover:opacity-100" onDragStart={(e) => e.preventDefault()} draggable={false}>
+                                                            <td className={`cursor-grab ${tableCellClass} text-[var(--vibe-text-faint)] opacity-30 transition-opacity active:cursor-grabbing group-hover:opacity-100`} onDragStart={(e) => e.preventDefault()} draggable={false}>
                                                                 {canEditItem && <GripVertical size={12} />}
                                                             </td>
-                                                            <td className="px-2 py-1.5">
+                                                            <td className={tableCellClass}>
                                                                 <div draggable={false} onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                                                                     <EntityLink entityId={item.id} className="block max-w-[120px] truncate text-xs font-bold text-[var(--vibe-text-muted)] transition-colors group-hover:text-[var(--vibe-text-primary)]" underline={false} />
                                                                 </div>
                                                             </td>
                                                             {isWeaponOrArmor && (
-                                                                <td className="px-2 py-1.5 text-center" onDragStart={(e) => e.preventDefault()} draggable={true}>
+                                                                <td className={`${tableCellClass} text-center`} onDragStart={(e) => e.preventDefault()} draggable={true}>
                                                                     <div className="flex justify-center items-center w-full h-full">
                                                                         <button
                                                                             onClick={(e) => { e.stopPropagation(); updateItemProperty(item.id, 'equipped', !item.properties.equipped); }}
@@ -361,7 +362,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                                     </div>
                                                                 </td>
                                                             )}
-                                                            <td className="px-2 py-1.5 text-center w-14" onDragStart={(e) => e.preventDefault()} draggable={true}>
+                                                            <td className={`${tableCellClass} w-14 text-center`} onDragStart={(e) => e.preventDefault()} draggable={true}>
                                                                 <input
                                                                     type="number"
                                                                     min="1"
@@ -383,10 +384,10 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                             <td className={tableValueCellClass}>
                                                                 {item.properties.редкость ?? 0}
                                                             </td>
-                                                            <td className="px-2 py-1.5 text-center font-mono text-[10px] font-bold text-[var(--vibe-warning)]">
+                                                            <td className={`${tableCellClass} text-center font-mono text-[10px] font-bold text-[var(--vibe-warning)]`}>
                                                                 {item.properties.цена ?? 0}
                                                             </td>
-                                                            <td className="px-2 py-1.5 text-center w-6">
+                                                            <td className={`${tableCellClass} w-6 text-center`}>
                                                                 {canEditItem && (
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id, item.name); }}

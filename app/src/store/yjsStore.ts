@@ -57,7 +57,8 @@ export class YjsStore {
 
         // Connect to the host's Express server on port 3001
         const savedIp = localStorage.getItem('vibe_server_ip');
-        const host = savedIp && savedIp.trim() !== '' ? savedIp.trim() : window.location.hostname;
+        const locationHost = window.location.hostname || 'localhost';
+        const host = savedIp && savedIp.trim() !== '' ? savedIp.trim() : locationHost;
         this.provider = new WebsocketProvider(`ws://${host}:3001/ws/world`, roomName, this.doc, { connect: true });
 
         // Initialize default folders when ready

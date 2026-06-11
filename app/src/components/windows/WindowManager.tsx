@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useWindowStore } from '../../store/windowStore';
 import type { WindowState } from '../../store/windowStore';
 import { useCanvasStore } from '../../store/canvasStore';
@@ -11,6 +11,7 @@ interface WindowManagerProps {
 }
 
 export function WindowManager({ showPinned = true }: WindowManagerProps) {
+    const pinnedLayerRef = useRef<HTMLDivElement | null>(null);
     const windows = useWindowStore((state) => state.windows);
     const hydrateWindow = useWindowStore((state) => state.hydrateWindow);
     const activeCanvasId = useCanvasStore((state) => state.activeCanvasId);
@@ -64,17 +65,47 @@ export function WindowManager({ showPinned = true }: WindowManagerProps) {
         : [];
     const unpinnedWindows = visibleWindows.filter(win => !win.isPinned);
 
-    const stageScale = useCanvasStore(s => s.scale);
-    const stageOffset = useCanvasStore(s => s.offset);
+    useEffect(() => {
+        const applyCameraTransform = (scale: number, x: number, y: number) => {
+            const layer = pinnedLayerRef.current;
+            if (!layer) return;
+            layer.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+        };
+
+        const camera = useCanvasStore.getState();
+        applyCameraTransform(camera.scale, camera.offset.x, camera.offset.y);
+        window.__vibeSetPinnedLayerCamera = applyCameraTransform;
+
+        const unsubscribe = useCanvasStore.subscribe((state, previous) => {
+            if (
+                state.scale === previous.scale &&
+                state.offset.x === previous.offset.x &&
+                state.offset.y === previous.offset.y
+            ) {
+                return;
+            }
+            applyCameraTransform(state.scale, state.offset.x, state.offset.y);
+        });
+
+        return () => {
+            unsubscribe();
+            if (window.__vibeSetPinnedLayerCamera === applyCameraTransform) {
+                window.__vibeSetPinnedLayerCamera = undefined;
+            }
+        };
+    }, []);
+
+    const camera = useCanvasStore.getState();
 
     return (
         <>
             {/* Pinned Window Layer (Scaled with Canvas) - Layer 10 */}
             <div className="fixed inset-0 pointer-events-none z-10 overflow-hidden">
                 <div
+                    ref={pinnedLayerRef}
                     className="absolute origin-top-left"
                     style={{
-                        transform: `translate(${stageOffset.x}px, ${stageOffset.y}px) scale(${stageScale})`,
+                        transform: `translate(${camera.offset.x}px, ${camera.offset.y}px) scale(${camera.scale})`,
                         top: 0, left: 0, right: 0, bottom: 0
                     }}
                 >

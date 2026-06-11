@@ -317,7 +317,8 @@ export const useCanvasSyncStore = create<CanvasSyncState>((set, get) => ({
         const fogMap = doc.getMap<FogReveal>('fogReveals');
 
         const savedIp = localStorage.getItem('vibe_server_ip');
-        const host = savedIp && savedIp.trim() !== '' ? savedIp.trim() : window.location.hostname;
+        const locationHost = window.location.hostname || 'localhost';
+        const host = savedIp && savedIp.trim() !== '' ? savedIp.trim() : locationHost;
         const roomName = `canvas-${canvasId}`;
         const persistence = new IndexeddbPersistence(getYjsPersistenceKey(roomName), doc);
         seedCanvasDocFromEntity(canvasId, doc, elementsMap, fogMap);

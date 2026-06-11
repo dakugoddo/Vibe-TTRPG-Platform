@@ -3,14 +3,17 @@ import { useTranslation } from 'react-i18next';
 import { Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2, Loader2, Users, Languages } from 'lucide-react';
 import { yjsStore } from '../../store/yjsStore';
 import { useCanvasDrawStore } from '../../store/canvasDrawStore';
+import { useNotesWorkspaceStore } from '../../store/notesWorkspaceStore';
 import { useAudioChannelVolumes } from '../../hooks/useAudioChannelVolumes';
 import { useAudioSessionEnabled } from '../../hooks/useAudioSessionEnabled';
 import { useAppModuleEnabled } from '../../hooks/useAppModuleEnablement';
+import { useInterfaceDensity } from '../../hooks/useInterfaceDensity';
 import { useLocalePreference } from '../../hooks/useLocalePreference';
 import { useThemePreset } from '../../hooks/useThemePreset';
 import { DEFAULT_ROLE_DEFINITIONS, getEffectivePermissions, type PermissionKey, type UserRole } from '../../utils/permissions';
 import { SUPPORTED_LOCALES } from '../../utils/localization';
-import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, glass, saveCustomThemeColors, themePresets, type CustomThemeColors } from '../../utils/theme';
+import { listImplementedNotesShellModules } from '../../utils/notesWorkspaceModules';
+import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, glass, interfaceDensityPresets, saveCustomThemeColors, themePresets, type CustomThemeColors } from '../../utils/theme';
 import type { AudioChannel, PlayerProfile } from '../../types';
 import { listPlayerProfiles, updatePlayerProfileRole } from '../../services/fileApi';
 
@@ -86,6 +89,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const [channelVolumes, setChannelVolume] = useAudioChannelVolumes();
     const [locale, setLocale] = useLocalePreference();
     const [themeId, setThemeId] = useThemePreset();
+    const [densityId, setDensityId] = useInterfaceDensity();
     const [customThemeColors, setCustomThemeColors] = useState<CustomThemeColors>(getStoredCustomThemeColors);
     const gridEnabled = useCanvasDrawStore((state) => state.gridEnabled);
     const gridType = useCanvasDrawStore((state) => state.gridType);
@@ -93,6 +97,13 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const toggleGrid = useCanvasDrawStore((state) => state.toggleGrid);
     const setGridType = useCanvasDrawStore((state) => state.setGridType);
     const setGridSpacing = useCanvasDrawStore((state) => state.setGridSpacing);
+    const notesShell = useNotesWorkspaceStore((state) => state.shell);
+    const toggleNotesShellModule = useNotesWorkspaceStore((state) => state.toggleShellModule);
+    const notesShellModules = useMemo(
+        () => listImplementedNotesShellModules()
+            .filter((module) => module.id !== 'audio' || audioModuleEnabled),
+        [audioModuleEnabled]
+    );
 
     const [playerProfiles, setPlayerProfiles] = useState<PlayerProfile[]>([]);
     const [loadingPlayerProfiles, setLoadingPlayerProfiles] = useState(false);
@@ -283,6 +294,44 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                 ))}
                                             </div>
                                         </div>
+
+                                        <div className="mt-3 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3">
+                                            <div className="mb-3 flex items-end justify-between gap-3">
+                                                <div>
+                                                    <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Плотность интерфейса</div>
+                                                    <div className="mt-1 text-[10px] text-[var(--vibe-text-faint)]">Меняет отступы, высоту контролов и общий ритм панелей без смены визуальной темы.</div>
+                                                </div>
+                                                <SlidersHorizontal size={15} className="text-[var(--vibe-text-faint)]" />
+                                            </div>
+                                            <div className="grid gap-2 sm:grid-cols-3">
+                                                {interfaceDensityPresets.map((preset) => {
+                                                    const selected = densityId === preset.id;
+                                                    return (
+                                                        <button
+                                                            key={preset.id}
+                                                            type="button"
+                                                            onClick={() => setDensityId(preset.id)}
+                                                            className={`rounded-[var(--vibe-radius-md)] border p-3 text-left transition-colors ${
+                                                                selected
+                                                                    ? activeControlClass
+                                                                    : idleControlClass
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--vibe-text-primary)]">{preset.label}</span>
+                                                                <span className="rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{preset.tone}</span>
+                                                            </div>
+                                                            <div className="mt-2 flex items-end gap-1.5 text-[var(--vibe-accent)]">
+                                                                <span className="h-3 w-2 rounded-sm bg-current opacity-45" />
+                                                                <span className="h-4 w-2 rounded-sm bg-current opacity-65" />
+                                                                <span className="h-5 w-2 rounded-sm bg-current opacity-85" />
+                                                            </div>
+                                                            <div className="mt-2 text-[10px] leading-snug text-[var(--vibe-text-faint)]">{preset.description}</div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3">
@@ -293,6 +342,43 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                             <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Доступ</div>
                                             <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">{isGM ? 'Полный GM-контроль' : 'Личные настройки игрока'}</div>
                                         </div>
+                                    </div>
+                                </div>
+
+                                <div className={settingsPanelClass}>
+                                    <div className={settingsSectionTitleClass}>
+                                        <Settings size={14} />
+                                        Модули режима заметок
+                                    </div>
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        {notesShellModules.map((module) => {
+                                            const isEnabled = notesShell.modules[module.id];
+                                            const areaLabel = module.defaultArea === 'left'
+                                                ? 'Левая панель'
+                                                : module.defaultArea === 'right'
+                                                    ? 'Правая панель'
+                                                    : 'Нижний dock';
+
+                                            return (
+                                                <label
+                                                    key={module.id}
+                                                    className={`${settingsCardClass} flex cursor-pointer items-center justify-between gap-3 transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]`}
+                                                >
+                                                    <span className="min-w-0">
+                                                        <span className="block truncate text-xs font-bold text-[var(--vibe-text-primary)]">{t(module.labelKey)}</span>
+                                                        <span className={`mt-1 block text-[10px] uppercase tracking-wider ${settingsMutedTextClass}`}>
+                                                            {areaLabel}{module.canResize ? ' / размер' : ''}
+                                                        </span>
+                                                    </span>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isEnabled}
+                                                        onChange={() => toggleNotesShellModule(module.id)}
+                                                        className="h-4 w-4 shrink-0 accent-[var(--vibe-accent)]"
+                                                    />
+                                                </label>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 

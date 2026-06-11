@@ -128,7 +128,7 @@ Quick local snapshot уже есть в первом срезе. Следующ�
 2. Layout presets должны быть только локальными для пользователя или ГМ должен уметь раздать игрокам "сценарную раскладку"?
 3. Pinned canvas окна должны участвовать в auto-layout, или auto-layout работает только с unpinned screen windows?
 4. Нужно ли в первом MVP отдельное окно/режим "Notes workspace", или достаточно layout actions + улучшенного reading layout для note windows?
-5. Для multi-monitor ближайшая цель: browser popout/tab foundation или ждать Tauri/native window gate?
+5. Для multi-monitor ближайшая цель: ждать Electron desktop window gate; browser popout не делать как основной путь.
 
 ## Рекомендация по умолчанию
 
@@ -152,7 +152,7 @@ Quick local snapshot уже есть в первом срезе. Следующ�
 4. Permission split: движение/удаление canvas placement проверяется по праву редактировать canvas; редактирование содержимого окна проверяется по праву на саму entity. Если entity недоступна, UI должен показывать заглушку без содержимого.
 5. Pinned window model: закреплённое окно больше не должно писать `properties.windowState` в entity-файл. Новый путь - `canvas.properties.canvasWindowInstances[]`.
 6. Notes workspace mode: нужен отдельный будущий режим работы с заметками, ближе к Obsidian. В этом режиме canvas можно не рендерить, а сущности/заметки должны открываться как вкладки/панели. Перед кодом изучить Obsidian workspace docs/patterns.
-7. Platform order: Tauri/native migration становится вторым крупным приоритетом после UI foundation. Multi-window/multi-monitor переносится после Tauri gate.
+7. Platform order: Electron migration становится вторым крупным приоритетом после UI foundation. Multi-window/multi-monitor и полноценный Notes workspace переносятся после Electron gate.
 
 ## Implementation note 2026-06-03
 

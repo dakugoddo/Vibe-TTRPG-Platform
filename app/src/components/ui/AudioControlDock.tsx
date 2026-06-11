@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ChevronDown, Music, Pause, Play, SlidersHorizontal, Square, Volume2, X } from 'lucide-react';
 import { getIsHost } from '../../services/fileApi';
 import { useAudioSessionEnabled } from '../../hooks/useAudioSessionEnabled';
@@ -16,6 +16,18 @@ const IDLE_MUSIC_STATUS: MusicPlaybackStatus = {
     volume: 0,
 };
 
+interface AudioControlDockProps {
+    floatingEnabled?: boolean;
+    embeddedTargetId?: string | null;
+}
+
+interface AudioDockRect {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+}
+
 function formatPlayerTime(seconds: number | null | undefined): string {
     if (seconds == null || !Number.isFinite(seconds)) return '0:00';
     const safeSeconds = Math.max(0, Math.floor(seconds));
@@ -32,7 +44,7 @@ function isSessionAudioCommandActive(command: AudioSessionCommand | null): boole
     return ageMs < 30_000;
 }
 
-export function AudioControlDock() {
+export function AudioControlDock({ floatingEnabled = true, embeddedTargetId = null }: AudioControlDockProps = {}) {
     const isHost = getIsHost();
     const [isOpen, setIsOpen] = useState(false);
     const [isCompact, setIsCompact] = useState(true);
@@ -55,6 +67,57 @@ export function AudioControlDock() {
         return yjsStore.observeAudioCommands(updateRemoteAudioCue);
     }, [isHost]);
 
+    const [embeddedRect, setEmbeddedRect] = useState<AudioDockRect | null>(null);
+
+    useLayoutEffect(() => {
+        let frameId: number | null = null;
+        const publishRect = (rect: AudioDockRect | null) => {
+            if (frameId !== null) window.cancelAnimationFrame(frameId);
+            frameId = window.requestAnimationFrame(() => {
+                setEmbeddedRect(rect);
+                frameId = null;
+            });
+        };
+
+        if (floatingEnabled || !embeddedTargetId) {
+            publishRect(null);
+            return () => {
+                if (frameId !== null) window.cancelAnimationFrame(frameId);
+            };
+        }
+
+        const target = document.getElementById(embeddedTargetId);
+        if (!target) {
+            publishRect(null);
+            return () => {
+                if (frameId !== null) window.cancelAnimationFrame(frameId);
+            };
+        }
+
+        const updateRect = () => {
+            const rect = target.getBoundingClientRect();
+            publishRect({
+                left: rect.left,
+                top: rect.top,
+                width: rect.width,
+                height: rect.height,
+            });
+        };
+
+        updateRect();
+        const resizeObserver = new ResizeObserver(updateRect);
+        resizeObserver.observe(target);
+        window.addEventListener('resize', updateRect);
+        window.addEventListener('scroll', updateRect, true);
+
+        return () => {
+            if (frameId !== null) window.cancelAnimationFrame(frameId);
+            resizeObserver.disconnect();
+            window.removeEventListener('resize', updateRect);
+            window.removeEventListener('scroll', updateRect, true);
+        };
+    }, [embeddedTargetId, floatingEnabled]);
+
     const showEnablePulse = !isHost && !sessionAudioEnabled && hasRemoteAudioCue;
     const duration = musicStatus.duration ?? 0;
     const currentTime = Math.min(musicStatus.currentTime, duration || musicStatus.currentTime);
@@ -63,11 +126,28 @@ export function AudioControlDock() {
         return Math.max(0, Math.min(100, (currentTime / duration) * 100));
     }, [currentTime, duration]);
 
+    const isEmbedded = !floatingEnabled && Boolean(embeddedRect);
+    const rootClassName = isEmbedded
+        ? 'pointer-events-none fixed z-[45]'
+        : floatingEnabled
+            ? 'pointer-events-none fixed inset-x-0 bottom-4 z-[45] flex flex-col items-center gap-3 px-4'
+            : 'pointer-events-none fixed left-0 top-0 z-[45] h-0 w-0 overflow-hidden';
+    const rootStyle = isEmbedded && embeddedRect
+        ? {
+            left: embeddedRect.left,
+            top: embeddedRect.top,
+            width: embeddedRect.width,
+            height: embeddedRect.height,
+        }
+        : undefined;
+
     return (
-        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[45] flex flex-col items-center gap-3 px-4">
+        <div className={rootClassName} style={rootStyle}>
             <div
-                className={`pointer-events-auto w-[min(920px,calc(100vw-32px))] overflow-hidden rounded-[var(--vibe-radius-lg)] transition-all ${glass.panel} ${
-                    isOpen ? 'block' : 'hidden'
+                className={`pointer-events-auto overflow-hidden rounded-[var(--vibe-radius-lg)] transition-all ${glass.panel} ${
+                    isEmbedded
+                        ? 'flex h-full w-full flex-col'
+                        : `w-[min(920px,calc(100vw-32px))] ${floatingEnabled && isOpen ? 'block' : 'hidden'}`
                 }`}
             >
                 <div className={`flex items-center justify-between gap-3 px-3 py-2.5 ${glass.panelHeader}`}>
@@ -91,7 +171,7 @@ export function AudioControlDock() {
                         <X size={15} />
                     </button>
                 </div>
-                <div className="h-[min(72vh,720px)] min-h-[320px] sm:min-h-[420px]">
+                <div className={isEmbedded ? 'min-h-0 flex-1' : 'h-[min(72vh,720px)] min-h-[320px] sm:min-h-[420px]'}>
                     <AudioDesk
                         onMusicPlaybackChange={setMusicStatus}
                         musicSeekRequest={musicSeekRequest}
@@ -101,7 +181,7 @@ export function AudioControlDock() {
                 </div>
             </div>
 
-            {isCompact && !isOpen ? (
+            {floatingEnabled && (isCompact && !isOpen ? (
                 <button
                     type="button"
                     onClick={() => {
@@ -297,7 +377,7 @@ export function AudioControlDock() {
                     </>
                 )}
             </div>
-            )}
+            ))}
         </div>
     );
 }

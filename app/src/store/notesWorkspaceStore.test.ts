@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { listNotesWorkspaceGroups } from '../utils/notesWorkspaceLayout';
-import { NOTES_WORKSPACE_LAYOUT_STORAGE_KEY, useNotesWorkspaceStore } from './notesWorkspaceStore';
+import {
+    NOTES_WORKSPACE_LAYOUT_STORAGE_KEY,
+    NOTES_WORKSPACE_SHELL_STORAGE_KEY,
+    useNotesWorkspaceStore,
+} from './notesWorkspaceStore';
 
 class MemoryStorage {
     private data = new Map<string, string>();
@@ -28,6 +32,12 @@ let groups = listNotesWorkspaceGroups(layout.root);
 assert.equal(groups.length, 1);
 assert.equal(groups[0].tabs.length, 1);
 assert.equal(groups[0].tabs[0].entityId, 'note-1');
+assert.equal(groups[0].tabs[0].view, 'source');
+
+useNotesWorkspaceStore.getState().setTabView(groups[0].id, groups[0].tabs[0].id, 'preview');
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
+assert.equal(groups[0].tabs[0].view, 'preview');
 
 useNotesWorkspaceStore.getState().splitActiveGroup('row');
 layout = useNotesWorkspaceStore.getState().layout;
@@ -64,5 +74,32 @@ assert.equal(groups[1].tabs.length, 1);
 const persistedLayout = globalThis.localStorage.getItem(NOTES_WORKSPACE_LAYOUT_STORAGE_KEY);
 assert.ok(persistedLayout);
 assert.ok(persistedLayout.includes('character-1'));
+
+useNotesWorkspaceStore.getState().toggleShellModule('vault');
+assert.equal(useNotesWorkspaceStore.getState().shell.modules.vault, false);
+
+useNotesWorkspaceStore.getState().setShellModuleVisible('vault', true);
+assert.equal(useNotesWorkspaceStore.getState().shell.modules.vault, true);
+
+useNotesWorkspaceStore.getState().setShellModuleWidth('vault', 120);
+assert.equal(useNotesWorkspaceStore.getState().shell.vaultWidth, 220);
+
+useNotesWorkspaceStore.getState().setShellModuleWidth('context', 900);
+assert.equal(useNotesWorkspaceStore.getState().shell.contextWidth, 460);
+
+useNotesWorkspaceStore.getState().toggleShellModule('audio');
+assert.equal(useNotesWorkspaceStore.getState().shell.modules.audio, true);
+
+useNotesWorkspaceStore.getState().setShellAudioHeight(120);
+assert.equal(useNotesWorkspaceStore.getState().shell.audioHeight, 180);
+
+useNotesWorkspaceStore.getState().setShellAudioHeight(900);
+assert.equal(useNotesWorkspaceStore.getState().shell.audioHeight, 520);
+
+const persistedShell = globalThis.localStorage.getItem(NOTES_WORKSPACE_SHELL_STORAGE_KEY);
+assert.ok(persistedShell);
+assert.ok(persistedShell.includes('"contextWidth":460'));
+assert.ok(persistedShell.includes('"audioHeight":520'));
+assert.ok(persistedShell.includes('"audio":true'));
 
 console.log('notes workspace store tests passed');

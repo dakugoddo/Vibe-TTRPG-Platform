@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import {
   buildCustomThemeVars,
   DEFAULT_CUSTOM_THEME_COLORS,
+  getInterfaceDensityPreset,
   getThemePreset,
+  interfaceDensityPresets,
   normalizeCustomThemeColors,
   normalizeHexColor,
   themePresets,
@@ -61,5 +63,13 @@ for (const preset of themePresets) {
 }
 
 assert.equal(getThemePreset('missing').id, themePresets[0].id);
+assert.equal(getInterfaceDensityPreset('missing').id, 'balanced');
+
+for (const preset of interfaceDensityPresets) {
+  assert.ok(['compact', 'balanced', 'spacious'].includes(preset.id));
+  assert.ok(preset.vars['--vibe-space-content']);
+  assert.ok(preset.vars['--vibe-control-py']);
+  assert.ok(preset.vars['--vibe-font-scale']);
+}
 
 console.log('theme tests passed');

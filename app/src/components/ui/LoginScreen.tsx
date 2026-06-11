@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { claimPlayerProfile, setIsHost, resetServerCache } from '../../services/fileApi';
 import { loadWorld, onSyncProgress, onSyncStatus } from '../../services/fileSyncService';
+import { isDesktopRuntime, selectWorldFolder } from '../../services/desktopBridge';
 import { StyleDemo } from '../ui-demo/StyleDemo';
 import { glass } from '../../utils/theme';
 import type { UserRole } from '../../types';
@@ -43,6 +44,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
     const [loadStatus, setLoadStatus] = useState('');
     const [error, setError] = useState('');
     const [showDemo, setShowDemo] = useState(false);
+    const desktopRuntime = isDesktopRuntime();
 
     useEffect(() => {
         localStorage.setItem('vibe_saved_worlds', JSON.stringify(savedWorlds));
@@ -114,6 +116,15 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
     const handleDeleteSavedWorld = (path: string, e: React.MouseEvent) => {
         e.stopPropagation();
         setSavedWorlds(savedWorlds.filter(w => w.path !== path));
+    };
+
+    const handleSelectWorldFolder = async () => {
+        try {
+            const selectedPath = await selectWorldFolder();
+            if (selectedPath) setWorldPath(selectedPath);
+        } catch (err) {
+            setError((err as Error).message);
+        }
     };
 
     // ─── Step 2b: Join Server ───
@@ -194,11 +205,11 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                 {/* Header */}
                 <div className="flex justify-center mb-6">
                     <div className="w-14 h-14 bg-gradient-to-br from-white/20 to-white/5 rounded-2xl shadow-lg shadow-white/50/10 flex items-center justify-center border border-white/20 backdrop-blur-xl">
-                        <span className="text-2xl font-black text-white drop-shadow-md">V</span>
+                        <span className="text-2xl font-black text-white drop-shadow-md">E</span>
                     </div>
                 </div>
                 <h1 className="text-2xl font-bold mb-6 text-center bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
-                    Vibe TTRPG
+                    Eternity Table
                 </h1>
 
                 {error && (
@@ -285,7 +296,18 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                                 {createMode && (
                                     <input type="text" value={worldName} onChange={e => setWorldName(e.target.value)} className={`${glass.input} w-full text-sm`} placeholder="Название вселенной" required />
                                 )}
-                                <input type="text" value={worldPath} onChange={e => setWorldPath(e.target.value)} className={`${glass.input} w-full text-sm font-mono`} placeholder={createMode ? 'C:\\Games\\MyTTRPG' : 'Путь к папке мира'} required />
+                                <div className="flex gap-2">
+                                    <input type="text" value={worldPath} onChange={e => setWorldPath(e.target.value)} className={`${glass.input} min-w-0 flex-1 text-sm font-mono`} placeholder={createMode ? 'C:\\Games\\MyTTRPG' : 'Путь к папке мира'} required />
+                                    {desktopRuntime && (
+                                        <button
+                                            type="button"
+                                            onClick={handleSelectWorldFolder}
+                                            className="shrink-0 rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+                                        >
+                                            Выбрать
+                                        </button>
+                                    )}
+                                </div>
                                 <button type="submit" className="w-full mt-2 bg-gradient-to-r from-emerald-600/80 to-emerald-500/80 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold py-2.5 rounded-lg shadow-lg transition-all text-sm">
                                     {createMode ? 'Запустить новую Вселенную' : 'Запустить сервер'}
                                 </button>

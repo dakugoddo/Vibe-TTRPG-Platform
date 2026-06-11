@@ -43,7 +43,7 @@
 15. Раскладки screen-окон и snapshots локальные для пользователя. GM-shared layouts не нужны: для общего просмотра ГМ закрепляет объект на canvas.
 16. Движение/удаление canvas placement проверяется по праву редактировать canvas; редактирование содержимого - по праву на саму entity.
 17. Нужен будущий Notes workspace mode ближе к Obsidian: режим без рендера canvas, где заметки/сущности работают как вкладки/панели.
-18. Tauri/native migration становится вторым крупным приоритетом после UI foundation; multi-window/multi-monitor переносится после Tauri gate.
+18. Electron migration становится вторым крупным приоритетом после UI foundation; multi-window/multi-monitor и полноценный Notes workspace переносятся после Electron gate.
 
 Новые reference prototypes от владельца лежат в `.pi/prototypes/`. Главный ориентир: `Universal Glass Workspace.html`; остальные темы использовать как стилевые референсы, а не как готовый сайт.
 
@@ -501,7 +501,7 @@ Settings становится центром:
 - [x] Пересобрать `utils/theme.ts` вокруг semantic tokens.
 - [x] Сохранить совместимость `glass.*`, чтобы не переписывать всё за раз.
 - [x] Добавить theme registry.
-- [ ] Добавить density registry.
+- [x] Добавить density registry: `compact/balanced/spacious` presets, localStorage-backed switch и CSS variables для spacing/control rhythm.
 - [x] Focused tests для theme normalization.
 
 ### Slice 2: Settings UI

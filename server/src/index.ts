@@ -14,6 +14,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
@@ -31,6 +32,7 @@ import {
     importRawMarkdown,
     serializeEntity,
     migrateEntityIds,
+    getEntityFilePath,
 } from './fileManager.js';
 import { startWatching, stopWatching, addWsClient, getClientCount } from './fileWatcher.js';
 import { renameEntity } from './renameManager.js';
@@ -39,6 +41,8 @@ import type { Entity, DatabaseType, UserRole } from './shared/types.js';
 const PORT = 3001;
 const app = express();
 const server = createServer(app);
+let isServerStarted = false;
+let isServerStopping = false;
 
 // ─── Middleware ───
 
@@ -323,6 +327,30 @@ app.delete('/api/entities/:id', (req, res) => {
             return;
         }
 
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.post('/api/entities/:id/show-in-explorer', (req, res) => {
+    try {
+        const db = (req.query.db as DatabaseType) || 'general';
+        const player = req.query.player as string | undefined;
+        const filePath = getEntityFilePath(db, req.params.id, player);
+        if (!filePath) {
+            res.status(404).json({ error: `Entity not found: ${req.params.id}` });
+            return;
+        }
+        if (process.platform !== 'win32') {
+            res.status(400).json({ error: 'Show in Explorer is available only on Windows hosts' });
+            return;
+        }
+
+        spawn('explorer.exe', buildExplorerRevealArgs(filePath), {
+            detached: true,
+            stdio: 'ignore',
+        }).unref();
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: (err as Error).message });
@@ -813,36 +841,69 @@ server.on('upgrade', (request, socket, head) => {
 
 // ─── Graceful shutdown (Problem #4.4) ───
 
-function shutdown() {
+export function stopVibeFileServer(options: { exitProcess?: boolean } = {}): Promise<void> {
+    if (isServerStopping) return Promise.resolve();
+    isServerStopping = true;
+
     console.log('\n🛑 Shutting down...');
     stopWatching();
     watchWss.close();
     yjsWss.close();
-    server.close(() => {
-        console.log('✅ Server stopped');
-        process.exit(0);
+
+    return new Promise((resolve) => {
+        server.close(() => {
+            isServerStarted = false;
+            isServerStopping = false;
+            console.log('✅ Server stopped');
+            if (options.exitProcess) process.exit(0);
+            resolve();
+        });
     });
 }
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+function shutdown() {
+    void stopVibeFileServer({ exitProcess: true });
+}
 
 // ─── Start ───
 
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`
+export function startVibeFileServer(options: { registerProcessHandlers?: boolean } = {}): Promise<void> {
+    if (isServerStarted) return Promise.resolve();
+    isServerStarted = true;
+
+    if (options.registerProcessHandlers !== false) {
+        process.once('SIGINT', shutdown);
+        process.once('SIGTERM', shutdown);
+    }
+
+    return new Promise((resolve, reject) => {
+        server.once('error', (error) => {
+            isServerStarted = false;
+            reject(error);
+        });
+
+        server.listen(PORT, '0.0.0.0', () => {
+            console.log(`
 ╔══════════════════════════════════════════╗
 ║   🎲 Vibe TTRPG File Server             ║
 ║   Port: ${PORT}                            ║
 ║   Status: Running                        ║
 ╚══════════════════════════════════════════╝
     `);
-    console.log('Endpoints:');
-    console.log('  POST /api/world/create   — Create new world');
-    console.log('  POST /api/world/open     — Open existing world');
-    console.log('  GET  /api/entities       — List entities');
-    console.log('  WS   /ws/watch           — File change notifications');
-    console.log('  WS   /ws/world           — Global Yjs sync');
-    console.log('  WS   /ws/canvas/<id>     — Canvas Yjs sync');
-    console.log('');
-});
+            console.log('Endpoints:');
+            console.log('  POST /api/world/create   — Create new world');
+            console.log('  POST /api/world/open     — Open existing world');
+            console.log('  GET  /api/entities       — List entities');
+            console.log('  WS   /ws/watch           — File change notifications');
+            console.log('  WS   /ws/world           — Global Yjs sync');
+            console.log('  WS   /ws/canvas/<id>     — Canvas Yjs sync');
+            console.log('');
+            resolve();
+        });
+    });
+}
+
+const entryPath = process.argv[1] ? fileURLToPath(import.meta.url) : null;
+if (entryPath && path.resolve(process.argv[1]) === path.resolve(entryPath)) {
+    void startVibeFileServer();
+}

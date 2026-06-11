@@ -69,7 +69,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                 endSlot={activeTab === 'notes' && canEditCharacter ? (
                     <button
                         onClick={() => setIsEditingNotes(!isEditingNotes)}
-                        className={`grid h-8 w-8 place-items-center rounded-[var(--vibe-radius-sm)] border transition-colors ${isEditingNotes ? glass.tabActive : glass.tabIdle}`}
+                        className={`grid h-[var(--vibe-tab-height)] w-[var(--vibe-tab-height)] place-items-center rounded-[var(--vibe-radius-sm)] border transition-colors ${isEditingNotes ? glass.tabActive : glass.tabIdle}`}
                         title={isEditingNotes ? 'Завершить редактирование' : 'Редактировать заметки'}
                     >
                         {isEditingNotes ? <Check size={14} /> : <Edit2 size={14} />}
@@ -111,7 +111,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                                 onValueChange={handleUpdateDescription}
                                 excludeEntityId={entity.id}
                                 placeholder="Character backstory and notes..."
-                                className={`${glass.input} flex-1 w-full resize-none p-3 text-sm custom-scrollbar font-sans`}
+                                className={`${glass.input} flex-1 w-full resize-none p-[var(--vibe-space-block)] text-sm custom-scrollbar font-sans`}
                                 autoFocus
                             />
                         ) : (

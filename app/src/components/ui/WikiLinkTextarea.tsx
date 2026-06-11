@@ -1,9 +1,11 @@
-import { useMemo, useRef, useState, type KeyboardEvent, type TextareaHTMLAttributes } from 'react';
+import { forwardRef, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent, type TextareaHTMLAttributes } from 'react';
 import clsx from 'clsx';
+import { useTranslation } from 'react-i18next';
 import { Search } from 'lucide-react';
 import { useEntities } from '../../hooks/useEntities';
 import { yjsStore } from '../../store/yjsStore';
 import { canViewEntity } from '../../utils/permissions';
+import { glass } from '../../utils/theme';
 import type { Entity } from '../../types';
 
 interface WikiLinkTextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'> {
@@ -36,64 +38,64 @@ function findWikiTrigger(value: string, caret: number): WikiTrigger | null {
     return { start: openIndex, query };
 }
 
-function getEntityTypeLabel(entity: Entity): string {
-    const labels: Record<Entity['type'], string> = {
-        character: 'персонаж',
-        object: 'предмет',
-        ability: 'способность',
-        competency: 'компетенция',
-        tag: 'тег',
-        canvas: 'канвас',
-        note: 'заметка',
-        portal: 'портал',
-        folder: 'папка',
-        attack: 'атака',
-    };
-
-    return labels[entity.type] ?? entity.type;
-}
-
-export function WikiLinkTextarea({ value, onValueChange, excludeEntityId, className, onKeyDown, ...props }: WikiLinkTextareaProps) {
+export const WikiLinkTextarea = forwardRef<HTMLTextAreaElement, WikiLinkTextareaProps>(function WikiLinkTextarea({
+    value,
+    onValueChange,
+    excludeEntityId,
+    className,
+    onKeyDown,
+    readOnly,
+    disabled,
+    ...props
+}: WikiLinkTextareaProps, forwardedRef) {
+    const { t } = useTranslation();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const entities = useEntities();
     const [trigger, setTrigger] = useState<WikiTrigger | null>(null);
     const [activeIndex, setActiveIndex] = useState(0);
+    const autocompleteDisabled = Boolean(readOnly || disabled);
+
+    useImperativeHandle(forwardedRef, () => textareaRef.current as HTMLTextAreaElement, []);
 
     const visibleEntities = useMemo(() => {
         return entities
-            .filter(entity => entity.id !== excludeEntityId)
-            .filter(entity => canViewEntity(
+            .filter((entity) => entity.id !== excludeEntityId)
+            .filter((entity) => canViewEntity(
                 yjsStore.localRole,
                 entity.database,
                 getEntityOwnerId(entity),
                 yjsStore.localPlayerId,
                 yjsStore.localPlayerName
             ))
-            .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+            .sort((left, right) => left.name.localeCompare(right.name, 'ru', { sensitivity: 'base' }));
     }, [entities, excludeEntityId]);
 
     const suggestions = useMemo(() => {
-        if (!trigger) return [];
+        if (!trigger || autocompleteDisabled) return [];
         const query = trigger.query.trim().toLowerCase();
 
         return visibleEntities
-            .filter(entity => {
+            .filter((entity) => {
                 if (!query) return true;
                 return entity.name.toLowerCase().includes(query)
                     || entity.id.toLowerCase().includes(query)
                     || entity.type.toLowerCase().includes(query);
             })
             .slice(0, 8);
-    }, [trigger, visibleEntities]);
+    }, [autocompleteDisabled, trigger, visibleEntities]);
 
     const syncTrigger = (nextValue: string, caret: number) => {
-        const nextTrigger = findWikiTrigger(nextValue, caret);
-        setTrigger(nextTrigger);
+        if (autocompleteDisabled) {
+            setTrigger(null);
+            return;
+        }
+
+        setTrigger(findWikiTrigger(nextValue, caret));
         setActiveIndex(0);
     };
 
     const insertSuggestion = (entity: Entity) => {
-        if (!trigger) return;
+        if (!trigger || autocompleteDisabled) return;
         const textarea = textareaRef.current;
         const caret = textarea?.selectionStart ?? value.length;
         const nextValue = `${value.slice(0, trigger.start)}[[${entity.id}]]${value.slice(caret)}`;
@@ -109,16 +111,22 @@ export function WikiLinkTextarea({ value, onValueChange, excludeEntityId, classN
     };
 
     const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+        if (autocompleteDisabled) {
+            setTrigger(null);
+            onKeyDown?.(event);
+            return;
+        }
+
         if (trigger && suggestions.length > 0) {
             if (event.key === 'ArrowDown') {
                 event.preventDefault();
-                setActiveIndex(index => (index + 1) % suggestions.length);
+                setActiveIndex((index) => (index + 1) % suggestions.length);
                 return;
             }
 
             if (event.key === 'ArrowUp') {
                 event.preventDefault();
-                setActiveIndex(index => (index - 1 + suggestions.length) % suggestions.length);
+                setActiveIndex((index) => (index - 1 + suggestions.length) % suggestions.length);
                 return;
             }
 
@@ -144,6 +152,8 @@ export function WikiLinkTextarea({ value, onValueChange, excludeEntityId, classN
                 {...props}
                 ref={textareaRef}
                 value={value}
+                readOnly={readOnly}
+                disabled={disabled}
                 onChange={(event) => {
                     onValueChange(event.target.value);
                     syncTrigger(event.target.value, event.target.selectionStart);
@@ -154,15 +164,16 @@ export function WikiLinkTextarea({ value, onValueChange, excludeEntityId, classN
                 className={className}
             />
 
-            {trigger && (
-                <div className="absolute left-2 right-2 top-10 z-[9999] max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-[#111827]/95 p-1.5 shadow-[0_18px_48px_rgba(0,0,0,0.65)] backdrop-blur-2xl custom-scrollbar">
-                    <div className="mb-1 flex items-center gap-1.5 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-white/35">
+            {trigger && !autocompleteDisabled && (
+                <div className={`absolute left-2 right-2 top-10 z-[9999] max-h-64 overflow-y-auto p-1.5 custom-scrollbar ${glass.popover}`}>
+                    <div className="mb-1 flex items-center gap-1.5 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
                         <Search size={11} />
-                        Wiki-ссылка
+                        {t('workspace.notes.wikiLinkAutocomplete')}
                     </div>
+
                     {suggestions.length === 0 ? (
-                        <div className="px-3 py-4 text-center text-xs italic text-white/35">
-                            Нет подходящих сущностей
+                        <div className="px-3 py-4 text-center text-xs italic text-[var(--vibe-text-faint)]">
+                            {t('workspace.notes.noWikiLinkSuggestions')}
                         </div>
                     ) : (
                         suggestions.map((entity, index) => (
@@ -174,18 +185,20 @@ export function WikiLinkTextarea({ value, onValueChange, excludeEntityId, classN
                                     insertSuggestion(entity);
                                 }}
                                 className={clsx(
-                                    'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors',
-                                    index === activeIndex ? 'bg-white/15 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
+                                    'flex w-full items-center gap-2 rounded-[var(--vibe-radius-sm)] px-2.5 py-2 text-left transition-colors',
+                                    index === activeIndex
+                                        ? 'bg-[var(--vibe-surface-hover)] text-[var(--vibe-text-primary)]'
+                                        : 'text-[var(--vibe-text-muted)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                                 )}
                             >
                                 <span className="min-w-0 flex-1">
                                     <span className="block truncate text-sm font-semibold">{entity.name}</span>
-                                    <span className="block truncate text-[10px] text-white/35">
-                                        {getEntityTypeLabel(entity)} · {entity.id}
+                                    <span className="block truncate text-[10px] text-[var(--vibe-text-faint)]">
+                                        {t(`workspace.notes.entityTypes.${entity.type}`)} / {entity.id}
                                     </span>
                                 </span>
-                                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] uppercase text-white/35">
-                                    {entity.database ?? 'general'}
+                                <span className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-0.5 text-[9px] uppercase text-[var(--vibe-text-faint)]">
+                                    {t(`workspace.notes.databases.${entity.database ?? 'general'}`)}
                                 </span>
                             </button>
                         ))
@@ -194,4 +207,4 @@ export function WikiLinkTextarea({ value, onValueChange, excludeEntityId, classN
             )}
         </div>
     );
-}
+});

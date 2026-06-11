@@ -92,6 +92,14 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     },
 
     setTransform: (scale, x, y) => {
+        const current = get();
+        if (
+            Math.abs(current.scale - scale) < 0.0001 &&
+            Math.abs(current.offset.x - x) < 0.1 &&
+            Math.abs(current.offset.y - y) < 0.1
+        ) {
+            return;
+        }
         set({ scale, offset: { x, y } });
     }
 }));

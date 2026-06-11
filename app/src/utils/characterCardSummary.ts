@@ -1,5 +1,4 @@
 import type { Entity } from '../types';
-import { getCharacterCompactCardDefaults, hasCharacterCompactCardDefaults, type CharacterCompactNotesMode } from './characterCompactCardDefaults';
 import { getEntityActionRollFormula } from './entityActionRollModel';
 import { normalizeResources } from './resourceModel';
 
@@ -40,14 +39,6 @@ export interface CharacterCompactSummary {
     inventoryCount: number;
     abilityCount: number;
     attackCount: number;
-    notesMode: CharacterCompactNotesMode;
-}
-
-export interface CharacterCompactOptions {
-    metrics: CharacterCompactMetric[];
-    resources: CharacterCompactResource[];
-    actions: CharacterCompactAction[];
-    inventory: CharacterCompactInventoryItem[];
 }
 
 const ATTRIBUTE_LABELS: Record<string, string> = {
@@ -167,14 +158,7 @@ function readMetricCandidates(character: Entity): CharacterCompactMetric[] {
         .filter((metric): metric is CharacterCompactMetric => Boolean(metric));
 }
 
-function selectByIds<T extends { id: string }>(items: T[], ids: string[]): T[] {
-    const itemById = new Map(items.map((item) => [item.id, item]));
-    return ids
-        .map((id) => itemById.get(id))
-        .filter((item): item is T => Boolean(item));
-}
-
-function buildCharacterCompactContent(character: Entity, allEntities: readonly Entity[]) {
+export function buildCharacterCompactSummary(character: Entity, allEntities: readonly Entity[]): CharacterCompactSummary {
     const entityById = new Map(allEntities.map((entity) => [entity.id, entity]));
     const children = allEntities.filter((entity) => entity.parentId === character.id);
     const inventory = children.filter((entity) => entity.type === 'object');
@@ -228,32 +212,5 @@ function buildCharacterCompactContent(character: Entity, allEntities: readonly E
         inventoryCount: inventory.length,
         abilityCount: abilities.length,
         attackCount: attacks.length,
-    };
-}
-
-export function buildCharacterCompactOptions(character: Entity, allEntities: readonly Entity[]): CharacterCompactOptions {
-    const content = buildCharacterCompactContent(character, allEntities);
-    return {
-        metrics: content.metrics,
-        resources: content.resources,
-        actions: content.actions,
-        inventory: content.inventory,
-    };
-}
-
-export function buildCharacterCompactSummary(character: Entity, allEntities: readonly Entity[]): CharacterCompactSummary {
-    const content = buildCharacterCompactContent(character, allEntities);
-    const defaults = getCharacterCompactCardDefaults(character);
-    const isConfigured = hasCharacterCompactCardDefaults(character);
-
-    return {
-        metrics: isConfigured ? selectByIds(content.metrics, defaults.metricIds) : content.metrics.slice(0, 4),
-        resources: isConfigured ? selectByIds(content.resources, defaults.resourceIds) : content.resources.slice(0, 3),
-        actions: isConfigured ? selectByIds(content.actions, defaults.actionIds) : content.actions.slice(0, 8),
-        inventory: isConfigured ? selectByIds(content.inventory, defaults.inventoryIds) : content.inventory.slice(0, 6),
-        inventoryCount: content.inventoryCount,
-        abilityCount: content.abilityCount,
-        attackCount: content.attackCount,
-        notesMode: isConfigured ? defaults.notesMode : 'short',
     };
 }

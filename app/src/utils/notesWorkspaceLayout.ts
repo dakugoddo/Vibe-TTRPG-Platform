@@ -1,4 +1,4 @@
-export type NotesWorkspaceView = 'entity' | 'markdown' | 'graph' | 'backlinks' | 'outline';
+export type NotesWorkspaceView = 'source' | 'preview' | 'split' | 'ui' | 'entity' | 'graph' | 'backlinks' | 'outline';
 
 export interface NotesWorkspaceTab {
     id: string;
@@ -29,6 +29,8 @@ export interface NotesWorkspaceLayout {
     root: NotesWorkspaceNode;
     activeGroupId: string;
 }
+
+export type NotesWorkspaceSplitPlacement = 'before' | 'after';
 
 export interface OpenNotesWorkspaceTabInput {
     entityId: string;
@@ -69,7 +71,7 @@ function createTab(input: OpenNotesWorkspaceTabInput): NotesWorkspaceTab {
     return {
         id: createLayoutId('tab'),
         entityId: input.entityId,
-        view: input.view ?? 'entity',
+        view: input.view ?? 'source',
         pinned: input.pinned,
     };
 }
@@ -107,20 +109,38 @@ function findTabLocation(
     return findTabLocation(node.children[0], entityId, view) ?? findTabLocation(node.children[1], entityId, view);
 }
 
+function findEntityTabLocation(
+    node: NotesWorkspaceNode,
+    entityId: string
+): { groupId: string; tabId: string } | null {
+    if (node.type === 'tabs') {
+        const tab = node.tabs.find((candidate) => candidate.entityId === entityId);
+        return tab ? { groupId: node.id, tabId: tab.id } : null;
+    }
+
+    return findEntityTabLocation(node.children[0], entityId) ?? findEntityTabLocation(node.children[1], entityId);
+}
+
 export function openNotesWorkspaceTab(
     layout: NotesWorkspaceLayout,
     input: OpenNotesWorkspaceTabInput,
     options: { reuseExisting?: boolean } = { reuseExisting: true }
 ): NotesWorkspaceLayout {
-    const view = input.view ?? 'entity';
-    const existing = options.reuseExisting === false ? null : findTabLocation(layout.root, input.entityId, view);
+    const view = input.view ?? 'source';
+    const existing = options.reuseExisting === false
+        ? null
+        : findTabLocation(layout.root, input.entityId, view) ?? findEntityTabLocation(layout.root, input.entityId);
     if (existing) {
         return {
             ...layout,
             activeGroupId: existing.groupId,
             root: mapNode(layout.root, (node) => {
                 if (node.type !== 'tabs' || node.id !== existing.groupId) return node;
-                return { ...node, activeTabId: existing.tabId };
+                return {
+                    ...node,
+                    activeTabId: existing.tabId,
+                    tabs: node.tabs.map((tab) => tab.id === existing.tabId ? { ...tab, view } : tab),
+                };
             }),
         };
     }
@@ -146,6 +166,41 @@ export function openNotesWorkspaceTab(
 function findFirstTabsNode(node: NotesWorkspaceNode): NotesWorkspaceTabsNode {
     if (node.type === 'tabs') return node;
     return findFirstTabsNode(node.children[0]);
+}
+
+function removeTabsNode(
+    node: NotesWorkspaceNode,
+    groupId: string
+): { node: NotesWorkspaceNode | null; removed: boolean } {
+    if (node.type === 'tabs') {
+        return node.id === groupId ? { node: null, removed: true } : { node, removed: false };
+    }
+
+    const first = removeTabsNode(node.children[0], groupId);
+    if (first.removed) {
+        if (!first.node) return { node: node.children[1], removed: true };
+        return {
+            node: {
+                ...node,
+                children: [first.node, node.children[1]],
+            },
+            removed: true,
+        };
+    }
+
+    const second = removeTabsNode(node.children[1], groupId);
+    if (second.removed) {
+        if (!second.node) return { node: node.children[0], removed: true };
+        return {
+            node: {
+                ...node,
+                children: [node.children[0], second.node],
+            },
+            removed: true,
+        };
+    }
+
+    return { node, removed: false };
 }
 
 export function setActiveNotesWorkspaceTab(
@@ -174,6 +229,30 @@ export function setActiveNotesWorkspaceGroup(
     return { ...layout, activeGroupId: groupId };
 }
 
+export function setNotesWorkspaceTabView(
+    layout: NotesWorkspaceLayout,
+    groupId: string,
+    tabId: string,
+    view: NotesWorkspaceView
+): NotesWorkspaceLayout {
+    const group = findTabsNode(layout.root, groupId);
+    if (!group?.tabs.some((tab) => tab.id === tabId)) return layout;
+
+    return {
+        ...layout,
+        activeGroupId: groupId,
+        root: mapNode(layout.root, (node) => {
+            if (node.type !== 'tabs' || node.id !== groupId) return node;
+
+            return {
+                ...node,
+                activeTabId: tabId,
+                tabs: node.tabs.map((tab) => tab.id === tabId ? { ...tab, view } : tab),
+            };
+        }),
+    };
+}
+
 export function splitActiveNotesWorkspaceGroup(
     layout: NotesWorkspaceLayout,
     direction: NotesWorkspaceSplitNode['direction']
@@ -199,6 +278,58 @@ export function splitActiveNotesWorkspaceGroup(
                 direction,
                 ratio: 0.5,
                 children: [node, newGroup],
+            };
+        }),
+    };
+}
+
+export function splitNotesWorkspaceGroupFromTab(
+    layout: NotesWorkspaceLayout,
+    sourceGroupId: string,
+    tabId: string,
+    targetGroupId: string,
+    direction: NotesWorkspaceSplitNode['direction'],
+    placement: NotesWorkspaceSplitPlacement
+): NotesWorkspaceLayout {
+    const sourceGroup = findTabsNode(layout.root, sourceGroupId);
+    const targetGroup = findTabsNode(layout.root, targetGroupId);
+    const movingTab = sourceGroup?.tabs.find((tab) => tab.id === tabId);
+    if (!sourceGroup || !targetGroup || !movingTab) return layout;
+
+    const newGroup: NotesWorkspaceTabsNode = {
+        type: 'tabs',
+        id: createLayoutId('group'),
+        activeTabId: movingTab.id,
+        tabs: [movingTab],
+    };
+
+    return {
+        ...layout,
+        activeGroupId: newGroup.id,
+        root: mapNode(layout.root, (node) => {
+            if (node.type !== 'tabs') return node;
+
+            const withoutMovingTab = node.id === sourceGroupId
+                ? {
+                    ...node,
+                    tabs: node.tabs.filter((tab) => tab.id !== tabId),
+                    activeTabId: node.activeTabId === tabId
+                        ? node.tabs.filter((tab) => tab.id !== tabId).at(-1)?.id ?? null
+                        : node.activeTabId,
+                }
+                : node;
+
+            if (node.id !== targetGroupId) return withoutMovingTab;
+
+            const targetNode = withoutMovingTab;
+            return {
+                type: 'split',
+                id: createLayoutId('split'),
+                direction,
+                ratio: 0.5,
+                children: placement === 'before'
+                    ? [newGroup, targetNode]
+                    : [targetNode, newGroup],
             };
         }),
     };
@@ -251,6 +382,27 @@ export function closeNotesWorkspaceTab(
                 activeTabId: node.activeTabId === tabId ? fallbackActiveTabId : node.activeTabId,
             };
         }),
+    };
+}
+
+export function closeNotesWorkspaceGroup(
+    layout: NotesWorkspaceLayout,
+    groupId: string
+): NotesWorkspaceLayout {
+    const groups = listNotesWorkspaceGroups(layout.root);
+    if (groups.length <= 1 || !groups.some((group) => group.id === groupId)) return layout;
+
+    const result = removeTabsNode(layout.root, groupId);
+    if (!result.removed || !result.node) return layout;
+
+    const nextActiveGroupId = layout.activeGroupId === groupId
+        ? findFirstTabsNode(result.node).id
+        : layout.activeGroupId;
+
+    return {
+        ...layout,
+        root: result.node,
+        activeGroupId: nextActiveGroupId,
     };
 }
 

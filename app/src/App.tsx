@@ -4,6 +4,7 @@ import { yjsStore } from './store/yjsStore';
 import { initEntityStoreObserver, getEntitiesSnapshot } from './store/entityStore';
 import { useCanvasStore } from './store/canvasStore';
 import { useCanvasDrawStore } from './store/canvasDrawStore';
+import { useNotesWorkspaceStore } from './store/notesWorkspaceStore';
 import { useWorkspaceModeStore } from './store/workspaceModeStore';
 import { stopSync, forceFlush, setPlayerName } from './services/fileSyncService';
 import { importMarkdown, getIsHost as checkHost } from './services/fileApi';
@@ -11,9 +12,10 @@ import { loadWindowLayout, clearWindowLayout } from './store/windowStore';
 import { WindowManager } from './components/windows/WindowManager';
 import { InfiniteCanvas } from './components/canvas/InfiniteCanvas';
 import { CanvasToolbar } from './components/canvas/CanvasToolbar';
-import { NotesWorkspace } from './components/workspace/NotesWorkspace';
+import { NOTES_AUDIO_DOCK_HOST_ID, NotesWorkspace } from './components/workspace/NotesWorkspace';
 import { DragDropPopover, type DragDropPromptData } from './components/ui/DragDropPopover';
 import { useAppModuleEnabled } from './hooks/useAppModuleEnablement';
+import { useInterfaceDensity } from './hooks/useInterfaceDensity';
 import { useThemePreset } from './hooks/useThemePreset';
 
 import { LoginScreen } from './components/ui/LoginScreen';
@@ -27,12 +29,14 @@ import { AudioControlDock } from './components/ui/AudioControlDock';
 import { NotificationCenter } from './components/ui/NotificationCenter';
 import { SessionNotificationBridge } from './components/ui/SessionNotificationBridge';
 import { SettingsWindow } from './components/ui/SettingsWindow';
+import { DevPerformanceOverlay } from './components/ui/DevPerformanceOverlay';
 import { generateEntityId } from './utils/entityId';
 import { glass } from './utils/theme';
 import type { UserRole } from './types';
 
 function App() {
   useThemePreset();
+  useInterfaceDensity();
   const [roomName, setRoomName] = useState('');
   const [inRoom, setInRoom] = useState(false);
   const [dbOpen, setDbOpen] = useState(false);
@@ -44,7 +48,11 @@ function App() {
   const { activeCanvasId } = useCanvasStore();
   const workspaceMode = useWorkspaceModeStore((state) => state.mode);
   const setWorkspaceMode = useWorkspaceModeStore((state) => state.setMode);
+  const notesShellModules = useNotesWorkspaceStore((state) => state.shell.modules);
   const isDraggingGlobal = useCanvasDrawStore((s) => s.isDraggingGlobal);
+  const notesAudioEmbeddedTargetId = workspaceMode === 'notes' && audioModuleEnabled && notesShellModules.audio
+    ? NOTES_AUDIO_DOCK_HOST_ID
+    : null;
 
   // Style to disable pointer events on UI elements during canvas drag
   useEffect(() => {
@@ -202,7 +210,17 @@ function App() {
         }
       }}
     >
-      {workspaceMode === 'canvas' ? <InfiniteCanvas /> : <NotesWorkspace />}
+      {workspaceMode === 'canvas' ? (
+        <InfiniteCanvas />
+      ) : (
+        <NotesWorkspace
+          roomName={roomName}
+          onLeave={handleLeave}
+          onOpenInventory={() => setInventoryOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onWorkspaceModeChange={setWorkspaceMode}
+        />
+      )}
       <div className="ui-layer">
         <WindowManager showPinned={workspaceMode === 'canvas'} />
       </div>
@@ -210,18 +228,21 @@ function App() {
         <CanvasToolbar />
       </div>}
 
-      <div className="ui-layer">
-        <HudBar
-          roomName={roomName}
-          onLeave={handleLeave}
-          onOpenDatabase={() => setDbOpen(!dbOpen)}
-          dbOpen={dbOpen}
-          workspaceMode={workspaceMode}
-          onWorkspaceModeChange={setWorkspaceMode}
-        />
-      </div>
+      {workspaceMode === 'canvas' && (
+        <div className="ui-layer">
+          <HudBar
+            roomName={roomName}
+            onLeave={handleLeave}
+            onOpenDatabase={() => setDbOpen(!dbOpen)}
+            dbOpen={dbOpen}
+            workspaceMode={workspaceMode}
+            onWorkspaceModeChange={setWorkspaceMode}
+          />
+        </div>
+      )}
 
       {/* Left side static modules (Personal Inventory) */}
+      {workspaceMode === 'canvas' && (
       <div className="ui-layer absolute top-6 left-6 w-[60px] z-30 max-h-[calc(100vh-48px)] flex flex-col pointer-events-none gap-4">
         <button
           onClick={() => setInventoryOpen(!inventoryOpen)}
@@ -238,24 +259,29 @@ function App() {
           <SettingsIcon size={22} />
         </button>
       </div>
+      )}
 
-      <div className="ui-layer">
+      {(workspaceMode === 'canvas' || inventoryOpen) && <div className="ui-layer">
         <LeftDrawer isOpen={inventoryOpen} onClose={() => setInventoryOpen(false)} />
-        <RightDrawer isOpen={dbOpen} onClose={() => setDbOpen(false)} />
-      </div>
+        {workspaceMode === 'canvas' && <RightDrawer isOpen={dbOpen} onClose={() => setDbOpen(false)} />}
+      </div>}
 
       <DragDropPopover data={canvasDropPrompt} />
       <ConfirmDialog />
-      <HotkeyHelp />
+      {workspaceMode === 'canvas' && <HotkeyHelp />}
       <SessionNotificationBridge />
-      <NotificationCenter />
+      {workspaceMode === 'canvas' && <NotificationCenter />}
       {audioModuleEnabled && (
         <>
           <AudioSessionBridge />
-          <AudioControlDock />
+          <AudioControlDock
+            floatingEnabled={workspaceMode === 'canvas'}
+            embeddedTargetId={notesAudioEmbeddedTargetId}
+          />
         </>
       )}
       <SettingsWindow isOpen={settingsOpen} roomName={roomName} onClose={() => setSettingsOpen(false)} />
+      <DevPerformanceOverlay />
     </div >
   );
 }

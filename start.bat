@@ -1,6 +1,6 @@
 @echo off
 echo ============================================
-echo   Starting Vibe TTRPG Platform
+echo   Starting Eternity Table
 echo ============================================
 echo.
 
@@ -21,7 +21,7 @@ if not exist node_modules (
 :: Start file server in background
 echo Starting File Server (port 3001)...
 cd /d "%~dp0server"
-start "Vibe File Server" cmd /c "npm run dev"
+start "Eternity Table File Server" cmd /c "npm run dev"
 
 :: Wait a moment for file server to initialize
 timeout /t 2 /nobreak >nul

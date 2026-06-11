@@ -19,7 +19,7 @@ import { findNearestCanvasAnchor, updateBoundLineEndpoints } from '../../utils/c
 import { getEntityCanvasTokenDefaults, getEntityCanvasTokenImageSource, type EntityCanvasTokenDefaults } from '../../utils/entityCanvasDefaults';
 import { fitEntityArtSizeToImage } from '../../utils/entityTokenSizing';
 import { ENTITY_TOKEN_FRAME_OPTIONS, getEntityTokenFrameConfig } from '../../utils/canvasEntityTokenFrame';
-import { buildCharacterCompactSummary } from '../../utils/characterCardSummary';
+import { buildCharacterCompactSummary, type CharacterCompactSummary } from '../../utils/characterCardSummary';
 import { getCanvasVisualStyleConfig, getJitteredLinePoints, getVisualStyleOffset } from '../../utils/canvasVisualStyle';
 import { findEditableLinePointNear, getLineMode, getLineTension, getRoutedLinePoints, insertLinePointAtClosestSegment, removeLinePointAtIndex } from '../../utils/canvasLineRouting';
 import { getEntityDropActions } from '../../utils/entityDropRouter';
@@ -40,6 +40,8 @@ const MIN_PEN_POINT_DISTANCE = 8; // Minimum px between pen points during drawin
 const RDP_EPSILON = 3; // Ramer-Douglas-Peucker simplification tolerance
 const OBJECT_SNAP_SCREEN_RADIUS = 18;
 const MAX_CANVAS_IMAGE_UPLOAD_BYTES = 250 * 1024 * 1024;
+const MIDDLE_PAN_COMMIT_THRESHOLD_X = 72;
+const MIDDLE_PAN_COMMIT_THRESHOLD_Y = 56;
 
 type CharacterCompactTab = 'stats' | 'actions' | 'resources' | 'notes';
 
@@ -849,6 +851,9 @@ const DrawElementNode = memo(function DrawElementNode({
     const strokeOpacity = element.strokeOpacity ?? 1;
     const entityStrokeWidth = Math.max(0, element.strokeWidth ?? (mode === 'art' ? frame.artStrokeWidth : frame.tokenStrokeWidth));
     const entityDash = getKonvaDash(element.strokeStyle ?? 'solid', Math.max(1, entityStrokeWidth));
+    const characterArtSummary = mode === 'art' && canViewLinked && linkedEntity.type === 'character' && canEditEntity(linkedEntity)
+      ? buildCharacterCompactSummary(linkedEntity, Array.from(yjsStore.entitiesMap.values()))
+      : null;
 
     const openLinkedEntity = (e: Konva.KonvaEventObject<MouseEvent>) => {
       e.cancelBubble = true;
@@ -955,6 +960,17 @@ const DrawElementNode = memo(function DrawElementNode({
               strokeWidth={1.5}
               opacity={0.52 * strokeOpacity}
               listening={false}
+            />
+          )}
+          {characterArtSummary && linkedEntity && (
+            <CharacterCanvasCardOverlay
+              x={ex}
+              y={ey}
+              width={ew}
+              height={eh}
+              entityName={linkedEntity.name}
+              summary={characterArtSummary}
+              description={getPlainEntityDescription(linkedEntity)}
             />
           )}
           {showEntityName && (
@@ -1402,6 +1418,114 @@ function AnimatedGifImageNode({
         />
       </Html>
     </Group>
+  );
+}
+
+function CharacterCanvasCardOverlay({
+  x,
+  y,
+  width,
+  height,
+  entityName,
+  summary,
+  description,
+}: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  entityName: string;
+  summary: CharacterCompactSummary;
+  description: string;
+}) {
+  return (
+    <Html
+      groupProps={{ x, y, listening: false }}
+      divProps={{
+        style: {
+          width: `${Math.max(1, width)}px`,
+          height: `${Math.max(1, height)}px`,
+          overflow: 'hidden',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        },
+      }}
+    >
+      <div className="h-full w-full overflow-hidden rounded-[8px] border border-[rgba(255,255,255,0.14)] bg-[rgba(2,6,23,0.78)] text-slate-100 shadow-[inset_0_0_36px_rgba(15,23,42,0.72)] backdrop-blur-sm">
+        <div className="flex h-full flex-col gap-1.5 overflow-y-auto p-2 custom-scrollbar">
+          <div className="min-w-0 border-b border-white/10 pb-1">
+            <div className="truncate text-[12px] font-black uppercase tracking-wide text-white">{entityName}</div>
+            <div className="text-[8px] font-bold uppercase tracking-widest text-white/42">Карточка персонажа</div>
+          </div>
+
+          {summary.metrics.length > 0 && (
+            <div className="grid grid-cols-4 gap-1">
+              {summary.metrics.map((metric) => (
+                <div key={metric.id} className="rounded border border-white/10 bg-white/[0.07] px-1 py-1 text-center">
+                  <div className="truncate text-[7px] font-black uppercase tracking-wide text-white/45">{metric.label}</div>
+                  <div className="font-mono text-[12px] font-black leading-none text-white">{metric.value}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {summary.resources.length > 0 && (
+            <div className="space-y-1">
+              {summary.resources.map((resource) => (
+                <div key={resource.id} className="rounded border border-white/10 bg-white/[0.06] px-1.5 py-1">
+                  <div className="mb-0.5 flex items-center justify-between gap-1 text-[8px] font-bold uppercase tracking-wide text-white/50">
+                    <span className="truncate">{resource.label}</span>
+                    <span className="font-mono text-white/70">{resource.current}/{resource.max || '∞'}</span>
+                  </div>
+                  <div className="h-1 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className={resource.id === 'wounds' ? 'h-full rounded-full bg-rose-400' : 'h-full rounded-full bg-cyan-300'}
+                      style={{ width: `${Math.max(4, resource.ratio * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {summary.actions.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-[8px] font-black uppercase tracking-widest text-white/38">Действия</div>
+              {summary.actions.map((action) => (
+                <div key={action.id} className="grid grid-cols-[28px_1fr_auto] items-center gap-1 rounded border border-white/10 bg-white/[0.06] px-1.5 py-1">
+                  <span className="rounded bg-white/10 px-1 text-center text-[7px] font-black uppercase tracking-wide text-white/62">
+                    {action.kind === 'attack' ? 'АТК' : 'СП'}
+                  </span>
+                  <span className="min-w-0 truncate text-[10px] font-bold text-white/88">{action.name}</span>
+                  <span className="max-w-[78px] truncate font-mono text-[9px] text-white/55">{action.formula || '-'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {summary.inventory.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-[8px] font-black uppercase tracking-widest text-white/38">Инвентарь</div>
+              {summary.inventory.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-1 rounded border border-white/10 bg-white/[0.06] px-1.5 py-1">
+                  <div className="min-w-0">
+                    <div className="truncate text-[10px] font-bold text-white/88">{item.name}</div>
+                    <div className="truncate text-[8px] text-white/45">{item.category}</div>
+                  </div>
+                  {item.equipped && <span className="rounded bg-emerald-300/15 px-1 text-[7px] font-black uppercase text-emerald-200">Надето</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {description && (
+            <div className="rounded border border-white/10 bg-white/[0.05] px-1.5 py-1 text-[9px] leading-snug text-white/62">
+              {description}
+            </div>
+          )}
+        </div>
+      </div>
+    </Html>
   );
 }
 
@@ -2510,6 +2634,13 @@ export function InfiniteCanvas() {
   const isMiddlePanRef = useRef(false);
   const suppressMiddleAuxClickUntilRef = useRef(0);
   const middlePanStartRef = useRef({ x: 0, y: 0, stageX: 0, stageY: 0 });
+  const middlePanCurrentRef = useRef({ stageX: 0, stageY: 0 });
+  const middlePanStagePointerEventsRef = useRef<string | null>(null);
+  const cameraPerfCountersRef = useRef<VibeCameraPerfCounters>({
+    panPreviewMoves: 0,
+    panPreviewFrames: 0,
+    panStageCommits: 0,
+  });
   const dragElementSnapshotRef = useRef<DrawElement[] | null>(null);
   const lastDragDeltaRef = useRef({ dx: 0, dy: 0 });
 
@@ -2520,9 +2651,90 @@ export function InfiniteCanvas() {
 
   // Refs for direct Konva manipulation (avoid React re-renders during pan)
   const stageRef = useRef<Konva.Stage>(null);
+  const panPreviewFrameRef = useRef<number | null>(null);
+  const pendingPanPreviewRef = useRef<{
+    stage: Konva.Stage;
+    dx: number;
+    dy: number;
+    scale: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const snapLinesRef = useRef<{ x?: number; y?: number }[]>([]);
   const snapLinesGroupRef = useRef<Konva.Group | null>(null);
   const lastSnapKeyRef = useRef<string>('');
+
+  const cancelPendingPanPreview = useCallback(() => {
+    if (panPreviewFrameRef.current !== null) {
+      window.cancelAnimationFrame(panPreviewFrameRef.current);
+      panPreviewFrameRef.current = null;
+    }
+    pendingPanPreviewRef.current = null;
+  }, []);
+
+  const clearStagePanPreview = useCallback((stage: Konva.Stage) => {
+    cancelPendingPanPreview();
+    const container = stage.container();
+    container.style.transform = '';
+    container.style.willChange = '';
+  }, [cancelPendingPanPreview]);
+
+  const suspendStageInputDuringMiddlePan = useCallback((stage: Konva.Stage) => {
+    const container = stage.container();
+    if (middlePanStagePointerEventsRef.current === null) {
+      middlePanStagePointerEventsRef.current = container.style.pointerEvents;
+    }
+    container.style.pointerEvents = 'none';
+  }, []);
+
+  const restoreStageInputAfterMiddlePan = useCallback((stage: Konva.Stage) => {
+    const container = stage.container();
+    if (middlePanStagePointerEventsRef.current !== null) {
+      container.style.pointerEvents = middlePanStagePointerEventsRef.current;
+      middlePanStagePointerEventsRef.current = null;
+      return;
+    }
+    container.style.pointerEvents = '';
+  }, []);
+
+  const schedulePanPreview = useCallback((stage: Konva.Stage, dx: number, dy: number, scale: number, x: number, y: number) => {
+    cameraPerfCountersRef.current.panPreviewMoves += 1;
+
+    pendingPanPreviewRef.current = { stage, dx, dy, scale, x, y };
+    if (panPreviewFrameRef.current !== null) return;
+
+    panPreviewFrameRef.current = window.requestAnimationFrame(() => {
+      panPreviewFrameRef.current = null;
+      const pending = pendingPanPreviewRef.current;
+      pendingPanPreviewRef.current = null;
+      if (!pending) return;
+
+      const container = pending.stage.container();
+      container.style.willChange = 'transform';
+      container.style.transform = `translate3d(${pending.dx}px, ${pending.dy}px, 0)`;
+      window.__vibeSetPinnedLayerCamera?.(pending.scale, pending.x, pending.y);
+      cameraPerfCountersRef.current.panPreviewFrames += 1;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    window.__vibeCameraPerfCounters = cameraPerfCountersRef.current;
+    return () => {
+      delete window.__vibeCameraPerfCounters;
+    };
+  }, []);
+
+  useEffect(() => {
+    const stageAtMount = stageRef.current;
+    return () => {
+      cancelPendingPanPreview();
+      document.body.classList.remove('canvas-camera-panning');
+      if (stageAtMount) {
+        restoreStageInputAfterMiddlePan(stageAtMount);
+      }
+    };
+  }, [cancelPendingPanPreview, restoreStageInputAfterMiddlePan]);
 
   const updateSnapLines = useCallback(() => {
     const group = snapLinesGroupRef.current;
@@ -2814,6 +3026,111 @@ export function InfiniteCanvas() {
     () => throttle((s: number, x: number, y: number) => setTransform(s, x, y), 32),
     [setTransform]
   );
+  const throttledSetTransformDuringPan = useMemo(
+    () => throttle((s: number, x: number, y: number) => setTransform(s, x, y), 250),
+    [setTransform]
+  );
+
+  const syncPinnedCameraLayer = useCallback((scale: number, x: number, y: number) => {
+    window.__vibeSetPinnedLayerCamera?.(scale, x, y);
+  }, []);
+
+  const commitMiddlePanStage = useCallback((stage: Konva.Stage, x: number, y: number) => {
+    clearStagePanPreview(stage);
+    stage.position({ x, y });
+    syncPinnedCameraLayer(stage.scaleX(), x, y);
+    stage.batchDraw();
+    cameraPerfCountersRef.current.panStageCommits += 1;
+  }, [clearStagePanPreview, syncPinnedCameraLayer]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
+    window.__vibeRunCameraPerfTest = (options = {}) => {
+      const stage = stageRef.current;
+      if (!stage) {
+        return Promise.resolve({
+          ok: false,
+          reason: 'Konva Stage is not mounted',
+          frames: 0,
+          avgFps: 0,
+          maxFrameMs: 0,
+          droppedFrames: 0,
+          durationMs: 0,
+        });
+      }
+
+      const durationMs = Math.max(500, Math.min(options.durationMs ?? 3000, 15000));
+      const amplitude = Math.max(50, Math.min(options.amplitude ?? 420, 2000));
+      const restoreCamera = options.restoreCamera ?? true;
+      const startScale = stage.scaleX();
+      const startX = stage.x();
+      const startY = stage.y();
+
+      return new Promise<VibeCameraPerfTestResult>((resolve) => {
+        const startedAt = performance.now();
+        let committedX = startX;
+        let committedY = startY;
+        let lastFrameAt = startedAt;
+        let frames = 0;
+        let maxFrameMs = 0;
+        let droppedFrames = 0;
+
+        const step = (now: number) => {
+          const frameMs = now - lastFrameAt;
+          lastFrameAt = now;
+          frames += 1;
+          maxFrameMs = Math.max(maxFrameMs, frameMs);
+          if (frameMs > 34) droppedFrames += 1;
+
+          const elapsed = now - startedAt;
+          const progress = Math.min(1, elapsed / durationMs);
+          const wave = Math.sin(progress * Math.PI * 8);
+          const waveY = Math.cos(progress * Math.PI * 6);
+          const nextX = startX + wave * amplitude;
+          const nextY = startY + waveY * amplitude * 0.45;
+          const dx = nextX - committedX;
+          const dy = nextY - committedY;
+
+          schedulePanPreview(stage, dx, dy, startScale, nextX, nextY);
+
+          if (Math.abs(dx) > MIDDLE_PAN_COMMIT_THRESHOLD_X || Math.abs(dy) > MIDDLE_PAN_COMMIT_THRESHOLD_Y) {
+            commitMiddlePanStage(stage, nextX, nextY);
+            committedX = nextX;
+            committedY = nextY;
+          }
+
+          if (progress < 1) {
+            window.requestAnimationFrame(step);
+            return;
+          }
+
+          if (restoreCamera) {
+            commitMiddlePanStage(stage, startX, startY);
+            setTransform(startScale, startX, startY);
+          } else {
+            commitMiddlePanStage(stage, nextX, nextY);
+            setTransform(startScale, nextX, nextY);
+          }
+
+          resolve({
+            ok: true,
+            frames,
+            avgFps: frames * 1000 / Math.max(1, performance.now() - startedAt),
+            maxFrameMs,
+            droppedFrames,
+            durationMs,
+          });
+        };
+
+        window.requestAnimationFrame(step);
+      });
+    };
+
+    return () => {
+      delete window.__vibeRunCameraPerfTest;
+    };
+  }, [commitMiddlePanStage, schedulePanPreview, setTransform]);
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
@@ -2839,6 +3156,7 @@ export function InfiniteCanvas() {
       y: pointer.y - mousePointTo.y * newScale,
     };
     stage.position(newPos);
+    syncPinnedCameraLayer(newScale, newPos.x, newPos.y);
     // Use throttled store sync so pinned windows don't lag during rapid zoom
     throttledSetTransform(newScale, newPos.x, newPos.y);
   };
@@ -2847,7 +3165,8 @@ export function InfiniteCanvas() {
     // Sync store during hand-tool pan so pinned windows follow camera
     const stage = stageRef.current;
     if (stage) {
-      throttledSetTransform(stage.scaleX(), stage.x(), stage.y());
+      syncPinnedCameraLayer(stage.scaleX(), stage.x(), stage.y());
+      throttledSetTransformDuringPan(stage.scaleX(), stage.x(), stage.y());
     }
   };
 
@@ -2904,25 +3223,38 @@ export function InfiniteCanvas() {
       const newX = middlePanStartRef.current.stageX + dx;
       const newY = middlePanStartRef.current.stageY + dy;
 
-      stage.position({ x: newX, y: newY });
-      stage.batchDraw();
-      // Sync store so pinned windows follow in real-time.
-      throttledSetTransform(stage.scaleX(), newX, newY);
+      middlePanCurrentRef.current = { stageX: newX, stageY: newY };
+      schedulePanPreview(stage, dx, dy, stage.scaleX(), newX, newY);
+
+      if (Math.abs(dx) > MIDDLE_PAN_COMMIT_THRESHOLD_X || Math.abs(dy) > MIDDLE_PAN_COMMIT_THRESHOLD_Y) {
+        commitMiddlePanStage(stage, newX, newY);
+        middlePanStartRef.current = {
+          x: clientX,
+          y: clientY,
+          stageX: newX,
+          stageY: newY,
+        };
+        middlePanCurrentRef.current = { stageX: newX, stageY: newY };
+      }
     },
-    [throttledSetTransform]
+    [commitMiddlePanStage, schedulePanPreview]
   );
 
   const handleMiddlePanEnd = useCallback(() => {
     if (!isMiddlePanRef.current) return;
     isMiddlePanRef.current = false;
     clearMiddlePanCursor();
+    document.body.classList.remove('canvas-camera-panning');
 
     const stage = stageRef.current;
     if (stage) {
-      // Sync Zustand state after pan ends.
-      setTransform(stage.scaleX(), stage.x(), stage.y());
+      const finalX = middlePanCurrentRef.current.stageX;
+      const finalY = middlePanCurrentRef.current.stageY;
+      commitMiddlePanStage(stage, finalX, finalY);
+      restoreStageInputAfterMiddlePan(stage);
+      setTransform(stage.scaleX(), finalX, finalY);
     }
-  }, [clearMiddlePanCursor, setTransform]);
+  }, [clearMiddlePanCursor, commitMiddlePanStage, restoreStageInputAfterMiddlePan, setTransform]);
 
   const handleMiddlePanStart = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -2933,6 +3265,7 @@ export function InfiniteCanvas() {
       if (!stage) return;
 
       isMiddlePanRef.current = true;
+      document.body.classList.add('canvas-camera-panning');
       suppressMiddleAuxClickUntilRef.current = Date.now() + 1000;
       middlePanStartRef.current = {
         x: e.evt.clientX,
@@ -2940,9 +3273,15 @@ export function InfiniteCanvas() {
         stageX: stage.x(),
         stageY: stage.y(),
       };
+      middlePanCurrentRef.current = {
+        stageX: stage.x(),
+        stageY: stage.y(),
+      };
+      clearStagePanPreview(stage);
+      suspendStageInputDuringMiddlePan(stage);
       setMiddlePanCursor('grabbing');
     },
-    [setMiddlePanCursor]
+    [clearStagePanPreview, setMiddlePanCursor, suspendStageInputDuringMiddlePan]
   );
 
   useEffect(() => {
@@ -5176,13 +5515,14 @@ export function InfiniteCanvas() {
         const element = renderedDrawElements.find((el) => el.id === entityTokenInfo.elementId);
         const linkedEntity = element?.linkedEntityId ? yjsStore.entitiesMap.get(element.linkedEntityId) : undefined;
         if (!element || !linkedEntity || !canViewCanvasEntity(linkedEntity)) return null;
+        if (linkedEntity.type === 'character' && !canEditEntity(linkedEntity)) return null;
         const mode = element.entityTokenMode || 'token';
         const rawImageSource = getEntityCanvasTokenImageSource(linkedEntity, mode);
         const imageSource = resolveCanvasImageSource(rawImageSource);
         const visibleTags = linkedEntity.tags.slice(0, 3);
         const description = getPlainEntityDescription(linkedEntity);
         const allEntitiesForCard = Array.from(yjsStore.entitiesMap.values());
-        const characterSummary = linkedEntity.type === 'character'
+        const characterSummary = linkedEntity.type === 'character' && canEditEntity(linkedEntity)
           ? buildCharacterCompactSummary(linkedEntity, allEntitiesForCard)
           : null;
         const cardWidth = characterSummary ? 340 : 280;
@@ -5354,15 +5694,9 @@ export function InfiniteCanvas() {
                   )}
 
                   {entityTokenInfoTab === 'notes' && (
-                    characterSummary.notesMode === 'hidden' ? (
-                      <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-center text-[11px] text-[var(--vibe-text-faint)]">
-                        Заметки скрыты в compact card.
-                      </div>
-                    ) : (
-                      <div className="max-h-40 overflow-y-auto rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 text-[11px] leading-relaxed text-[var(--vibe-text-muted)] custom-scrollbar">
-                        {(characterSummary.notesMode === 'short' && description.length > 180) ? `${description.slice(0, 180).trim()}...` : description || 'Описание пока пустое.'}
-                      </div>
-                    )
+                    <div className="max-h-40 overflow-y-auto rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 text-[11px] leading-relaxed text-[var(--vibe-text-muted)] custom-scrollbar">
+                      {description || 'Описание пока пустое.'}
+                    </div>
                   )}
                 </div>
               ) : (

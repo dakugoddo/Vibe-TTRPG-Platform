@@ -10,6 +10,7 @@
 
 import type { Entity, PlayerProfile, UserRole } from '../types';
 import type { AudioDeckState } from '../utils/audioDeckModel';
+import { showAssetInFolder as showDesktopAssetInFolder } from './desktopBridge';
 
 const LOCAL_FILE_SERVER_URL = 'http://localhost:3001';
 
@@ -383,6 +384,11 @@ export async function deleteAssetFile(assetPath: string): Promise<void> {
 
 export async function showAssetInExplorer(assetPath: string): Promise<boolean> {
     if (!(await shouldCallFileApi())) return false;
+    try {
+        if (await showDesktopAssetInFolder(assetPath)) return true;
+    } catch {
+        // Fall back to the file server route when native desktop reveal is unavailable.
+    }
     await apiFetch('/api/assets/show-in-explorer', {
         method: 'POST',
         body: JSON.stringify({ path: assetPath }),

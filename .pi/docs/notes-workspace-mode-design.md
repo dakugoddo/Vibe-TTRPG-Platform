@@ -1,8 +1,8 @@
 # Notes Workspace Mode: design gate
 
 > Дата: 2026-06-03
-> Статус: Design gate + local-only shell + named local snapshots + local tab/split board persistence + read-only linked views + drag/drop tabs
-> Связанные задачи: `FEAT-WORKSPACE-001`, `FEAT-UI-002`, future Tauri/native multi-window
+> Статус: исторический design gate. Актуальный контракт после Obsidian-like среза см. `.pi/docs/notes-workspace-obsidian-redesign.md`.
+> Связанные задачи: `FEAT-WORKSPACE-001`, `FEAT-UI-002`, future Electron desktop multi-window
 
 ## Зачем это нужно
 
@@ -25,7 +25,7 @@
 - **Pinned tab**: закреплённая вкладка не перехватывает обычную навигацию ссылок; ссылки открываются отдельно.
 - **Linked views**: локальный graph/backlinks/outline может быть связан с активной заметкой.
 - **Saved workspaces**: layout хранит открытые файлы/вкладки и ширину/видимость sidebars, но не меняет сами файлы.
-- **Pop-out windows**: Obsidian делает отдельные окна только на desktop; для Vibe это надо оставить после Tauri/native gate.
+- **Pop-out windows**: Obsidian делает отдельные окна только на desktop; для Vibe это надо оставить после Electron desktop gate.
 
 Источники:
 
@@ -49,7 +49,7 @@
 7. Дать named local snapshots для screen-window раскладок без записи в world files.
 8. Подключить local tab/split board поверх существующего `EntityWindow`: вкладки и группы управляют фокусом/открытием screen windows, но не создают параллельный редактор.
 9. Хранить tab board layout локально в `localStorage` с runtime-валидацией, не в world files.
-10. Добавить read-only linked views: Markdown, outline, backlinks и graph-summary без записи в мир.
+10. Исторически планировались read-only linked views; сейчас реализован local editor workspace с source/preview/split Markdown modes и entity context. См. `.pi/docs/notes-workspace-obsidian-redesign.md`.
 11. Добавить drag/drop вкладок внутри и между tab groups без записи в world files.
 
 ### Почему так
@@ -57,11 +57,13 @@
 - Не меняется формат entity `.md`.
 - Не появляется новый sync contract.
 - Не затрагиваются права доступа.
-- Не создаётся browser popout, который потом всё равно придётся пересобрать под Tauri.
+- Не создаётся browser popout, который потом всё равно придётся пересобрать под Electron desktop windows.
 - Уже существующий `EntityWindow` остаётся единственной оболочкой редактирования сущности.
 - Named snapshots сохраняют только screen windows и не трогают canvas-pinned placements.
 
 ## Будущая модель после MVP
+
+Важное решение 2026-06-05: полноценную доработку Notes workspace нужно продолжать после Electron migration. Текущий local-only shell можно поддерживать, чинить и не ломать, но большие вещи вроде multi-window, multi-monitor, отдельного desktop editing workspace и Obsidian-grade ergonomics должны идти после Electron foundation.
 
 ### Layout tree
 

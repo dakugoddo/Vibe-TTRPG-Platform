@@ -5,6 +5,8 @@ node_modules/
 dist/
 build/
 .tmp/
+electron-release/
+app/release/
 
 # Environment and local secrets
 .env
