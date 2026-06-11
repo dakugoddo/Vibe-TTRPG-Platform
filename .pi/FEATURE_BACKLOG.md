@@ -1,6 +1,6 @@
 # Eternity Table: feature backlog
 
-> Обновлено: 2026-06-07
+> Обновлено: 2026-06-11
 > Назначение: активные и планируемые фичи. Реализованная история намеренно убрана из активного контекста.
 
 ## Приоритеты
@@ -20,7 +20,7 @@
 | `FEAT-I18N-002` | `F1` | Localization / Modding | Foundation implemented, custom world layer planned | RU/EN switch и локальный preference есть. Пользовательский редактор переводов нужен для моддеров. | Design-doc для world locale format, endpoints, import/export и rollback. |
 | `FEAT-WORKSPACE-001` | `F1` | Workspace / Notes | Obsidian-like editor slice implemented, polish continues | Local notes workspace, tabs/splits, vault tree, source/preview/split editor, entity data, children, outline/backlinks/graph context и pinned canvas windows реализованы. | Ручная QA, polish linked context/search, затем native multi-window после Electron gate. |
 | `FEAT-WORKSPACE-002` | `F1` | Workspace / Notes | Implemented, owner QA pending | Notes workspace rich Markdown toolbar, storage combobox, extended entity search result cards, theme-correct shell radii and removal of duplicate central editor header. | Owner QA по `.pi/docs/notes-workspace-rich-search-polish.md`; позже решить, нужна ли настоящая WYSIWYG-зависимость. |
-| `FEAT-WORKSPACE-003` | `F1` | Workspace / Notes Modules | Foundation implemented, QA pending | Notes shell получил module registry, persisted visibility/resize для `Vault`, `Context`, `Notifications`, `Search`, `Graph`, `Audio`; уведомления, поиск, граф связей, нижний AudioDesk и SettingsWindow controls встроены как dock-модули, а не floating/ad hoc UI. | Ручная QA toggles/settings/resize/search/graph/audio; следующий срез - polish будущих shell-расширений. |
+| `FEAT-WORKSPACE-003` | `F1` | Workspace / Notes Modules | Foundation implemented, QA pending | Notes shell получил module registry, persisted visibility/resize для `Vault`, `Context`, `Notifications`, `Search`, `Graph`, `Audio`; уведомления, поиск, граф связей, нижний AudioDesk, SettingsWindow controls, shell-only reset и ru/en labels встроены как dock-модули, а не floating/ad hoc UI. | Ручная QA toggles/settings/reset/resize/search/graph/audio; следующий срез - polish будущих shell-расширений. |
 | `FEAT-ASSETS-LOAD-001` | `F1` | Asset Library / CanvasModule | Planned | Единые loading/error/retry states для image/GIF/video/PDF/audio/entity images. | Lightweight load-state helper, lazy metadata policy, player-origin QA. |
 | `FEAT-PDF-001` | `F2` | Asset Library / CanvasModule | Planned, needs design slice | Просмотр PDF и linked PDF card/page preview на canvas. | Design-doc перед зависимостями: viewer library, asset storage, zoom/search/page preview boundaries. |
 | `FEAT-AUDIO-003` | `F1` | AudioModule | Foundation implemented, polish remains | Standalone local-first audio module с bottom dock, AudioDesk, ambience multi-loop и deck persistence. | Final mixer popup, reconnect-safe snapshots, permissions/delegation, artwork metadata policy. |

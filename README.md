@@ -47,6 +47,8 @@ The project is a hybrid of:
   - vault/entity tree
   - tab groups
   - split panes
+  - dock modules for vault, context, notifications, search, graph, and audio
+  - local shell module visibility, resize, and reset controls
   - source editor
   - preview mode
   - split editor/preview mode
@@ -212,6 +214,7 @@ Focused app tests use the server-provided `tsx`:
 cd app
 ..\server\node_modules\.bin\tsx.cmd src\utils\notesWorkspaceLayout.test.ts
 ..\server\node_modules\.bin\tsx.cmd src\store\notesWorkspaceStore.test.ts
+..\server\node_modules\.bin\tsx.cmd src\utils\notesWorkspaceModules.test.ts
 ..\server\node_modules\.bin\tsx.cmd src\utils\notesWorkspaceLinks.test.ts
 ```
 

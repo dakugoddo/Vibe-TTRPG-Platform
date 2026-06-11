@@ -1,6 +1,6 @@
 # Eternity Table 0.1 beta release checklist
 
-> Обновлено: 2026-06-07
+> Обновлено: 2026-06-11
 > Статус: подготовка к beta release, без git tag/release до ручной QA
 
 ## Цель
@@ -14,6 +14,7 @@
 - Electron metadata обновлена: productName, appId, artifact names, shortcut name.
 - README для GitHub создан.
 - Notes workspace получил Obsidian-like первый срез: vault tree, tabs/splits, source/preview/split modes, data view, linked context.
+- Notes shell-модули встроены в рабочую область: `Vault`, `Context`, `Notifications`, `Search`, `Graph`, `Audio`, settings toggles, shell-only reset и persisted resize/visibility.
 - Desktop build path проходит через `npm.cmd run desktop:build`.
 
 ## Перед git tag/release проверить вручную
@@ -34,6 +35,9 @@
    - проверить, что повторное открытие одной сущности не создает дубликаты вкладок
    - проверить wiki autocomplete через `[[` в редактируемом source/split
    - проверить graph-сводку: входящие, центральная сущность, исходящие
+   - проверить ribbon/settings toggles для `Vault`, `Context`, `Notifications`, `Search`, `Graph`, `Audio`
+   - проверить `Сброс` shell-модулей: вкладки остаются открытыми, размеры/visibility возвращаются к дефолтам
+   - проверить нижний Audio dock в Notes mode и отсутствие остановки воспроизведения при переключении Canvas/Notes
    - проверить read-only состояние на сущности без прав.
 4. Packaged build:
    - `build-electron-dist.bat`
@@ -54,6 +58,7 @@ npm.cmd run build
 npm.cmd run desktop:build
 ..\server\node_modules\.bin\tsx.cmd src\utils\notesWorkspaceLayout.test.ts
 ..\server\node_modules\.bin\tsx.cmd src\store\notesWorkspaceStore.test.ts
+..\server\node_modules\.bin\tsx.cmd src\utils\notesWorkspaceModules.test.ts
 ..\server\node_modules\.bin\tsx.cmd src\utils\notesWorkspaceLinks.test.ts
 ```
 
