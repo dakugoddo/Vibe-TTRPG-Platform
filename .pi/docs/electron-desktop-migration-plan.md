@@ -88,7 +88,7 @@ build-electron-dist.bat
 start-electron-built.bat
 ```
 
-Запускает уже собранный `electron-release/win-unpacked/Vibe TTRPG Platform.exe`. Перед этим нужно хотя бы один раз выполнить `build-electron-dist.bat`.
+Запускает уже собранный `electron-release/win-unpacked/Eternity Table.exe`. Перед этим нужно хотя бы один раз выполнить `build-electron-dist.bat`.
 
 Низкоуровневые npm-команды остаются в `app/`:
 
