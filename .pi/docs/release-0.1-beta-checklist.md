@@ -16,7 +16,7 @@
 - Notes workspace получил Obsidian-like первый срез: vault tree, tabs/splits, source/preview/split modes, data view, linked context.
 - Notes shell-модули встроены в рабочую область: `Vault`, `Context`, `Notifications`, `Search`, `Graph`, `Audio`, settings toggles, shell-only reset и persisted resize/visibility.
 - Desktop build path проходит через `npm.cmd run desktop:build`.
-- Unpacked Electron build проверен через `npm.cmd run desktop:pack` на Windows 2026-06-12: создан `electron-release/win-unpacked/Eternity Table.exe`; default Electron icon warning устранён, остаётся ожидаемый Vite chunk-size warning.
+- Unpacked Electron build проверен через `npm.cmd run desktop:pack` на Windows 2026-06-12: создан `electron-release/win-unpacked/Eternity Table.exe`; default Electron icon warning и Vite chunk-size warning устранены.
 
 ## Перед git tag/release проверить вручную
 

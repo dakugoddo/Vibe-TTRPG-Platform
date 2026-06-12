@@ -113,6 +113,7 @@ Entities can contain other entities. A character can contain inventory objects, 
 - Desktop dev launcher.
 - Portable and installer build configuration through electron-builder.
 - Custom desktop icon assets wired into Electron and Windows packaging.
+- Lazy-loaded app surfaces to keep the production app shell below the Vite chunk warning threshold.
 - Dev performance overlay foundation.
 
 ## Quick Start

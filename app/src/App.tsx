@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { yjsStore } from './store/yjsStore';
 import { initEntityStoreObserver, getEntitiesSnapshot } from './store/entityStore';
@@ -9,10 +9,6 @@ import { useWorkspaceModeStore } from './store/workspaceModeStore';
 import { stopSync, forceFlush, setPlayerName } from './services/fileSyncService';
 import { importMarkdown, getIsHost as checkHost } from './services/fileApi';
 import { loadWindowLayout, clearWindowLayout } from './store/windowStore';
-import { WindowManager } from './components/windows/WindowManager';
-import { InfiniteCanvas } from './components/canvas/InfiniteCanvas';
-import { CanvasToolbar } from './components/canvas/CanvasToolbar';
-import { NOTES_AUDIO_DOCK_HOST_ID, NotesWorkspace } from './components/workspace/NotesWorkspace';
 import { DragDropPopover, type DragDropPromptData } from './components/ui/DragDropPopover';
 import { useAppModuleEnabled } from './hooks/useAppModuleEnablement';
 import { useInterfaceDensity } from './hooks/useInterfaceDensity';
@@ -20,19 +16,33 @@ import { useThemePreset } from './hooks/useThemePreset';
 
 import { LoginScreen } from './components/ui/LoginScreen';
 import { HudBar } from './components/ui/HudBar';
-import { LeftDrawer } from './components/ui/LeftDrawer';
-import { RightDrawer } from './components/ui/RightDrawer';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { HotkeyHelp } from './components/ui/HotkeyHelp';
 import { AudioSessionBridge } from './components/ui/AudioSessionBridge';
-import { AudioControlDock } from './components/ui/AudioControlDock';
 import { NotificationCenter } from './components/ui/NotificationCenter';
 import { SessionNotificationBridge } from './components/ui/SessionNotificationBridge';
-import { SettingsWindow } from './components/ui/SettingsWindow';
 import { DevPerformanceOverlay } from './components/ui/DevPerformanceOverlay';
 import { generateEntityId } from './utils/entityId';
+import { NOTES_AUDIO_DOCK_HOST_ID } from './utils/notesWorkspaceConstants';
 import { glass } from './utils/theme';
 import type { UserRole } from './types';
+
+const InfiniteCanvas = lazy(() => import('./components/canvas/InfiniteCanvas').then((module) => ({ default: module.InfiniteCanvas })));
+const CanvasToolbar = lazy(() => import('./components/canvas/CanvasToolbar').then((module) => ({ default: module.CanvasToolbar })));
+const NotesWorkspace = lazy(() => import('./components/workspace/NotesWorkspace').then((module) => ({ default: module.NotesWorkspace })));
+const WindowManager = lazy(() => import('./components/windows/WindowManager').then((module) => ({ default: module.WindowManager })));
+const LeftDrawer = lazy(() => import('./components/ui/LeftDrawer').then((module) => ({ default: module.LeftDrawer })));
+const RightDrawer = lazy(() => import('./components/ui/RightDrawer').then((module) => ({ default: module.RightDrawer })));
+const AudioControlDock = lazy(() => import('./components/ui/AudioControlDock').then((module) => ({ default: module.AudioControlDock })));
+const SettingsWindow = lazy(() => import('./components/ui/SettingsWindow').then((module) => ({ default: module.SettingsWindow })));
+
+function WorkspaceLoadingFallback() {
+  return (
+    <div className="flex min-h-screen flex-1 items-center justify-center">
+      <div className="h-9 w-9 animate-spin rounded-full border-2 border-[var(--vibe-border-subtle)] border-t-[var(--vibe-accent)]" />
+    </div>
+  );
+}
 
 function App() {
   useThemePreset();
@@ -210,22 +220,28 @@ function App() {
         }
       }}
     >
-      {workspaceMode === 'canvas' ? (
-        <InfiniteCanvas />
-      ) : (
-        <NotesWorkspace
-          roomName={roomName}
-          onLeave={handleLeave}
-          onOpenInventory={() => setInventoryOpen(true)}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onWorkspaceModeChange={setWorkspaceMode}
-        />
-      )}
+      <Suspense fallback={<WorkspaceLoadingFallback />}>
+        {workspaceMode === 'canvas' ? (
+          <InfiniteCanvas />
+        ) : (
+          <NotesWorkspace
+            roomName={roomName}
+            onLeave={handleLeave}
+            onOpenInventory={() => setInventoryOpen(true)}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onWorkspaceModeChange={setWorkspaceMode}
+          />
+        )}
+      </Suspense>
       <div className="ui-layer">
-        <WindowManager showPinned={workspaceMode === 'canvas'} />
+        <Suspense fallback={null}>
+          <WindowManager showPinned={workspaceMode === 'canvas'} />
+        </Suspense>
       </div>
       {workspaceMode === 'canvas' && <div className="ui-layer">
-        <CanvasToolbar />
+        <Suspense fallback={null}>
+          <CanvasToolbar />
+        </Suspense>
       </div>}
 
       {workspaceMode === 'canvas' && (
@@ -262,8 +278,10 @@ function App() {
       )}
 
       {(workspaceMode === 'canvas' || inventoryOpen) && <div className="ui-layer">
-        <LeftDrawer isOpen={inventoryOpen} onClose={() => setInventoryOpen(false)} />
-        {workspaceMode === 'canvas' && <RightDrawer isOpen={dbOpen} onClose={() => setDbOpen(false)} />}
+        <Suspense fallback={null}>
+          <LeftDrawer isOpen={inventoryOpen} onClose={() => setInventoryOpen(false)} />
+          {workspaceMode === 'canvas' && <RightDrawer isOpen={dbOpen} onClose={() => setDbOpen(false)} />}
+        </Suspense>
       </div>}
 
       <DragDropPopover data={canvasDropPrompt} />
@@ -274,13 +292,17 @@ function App() {
       {audioModuleEnabled && (
         <>
           <AudioSessionBridge />
-          <AudioControlDock
-            floatingEnabled={workspaceMode === 'canvas'}
-            embeddedTargetId={notesAudioEmbeddedTargetId}
-          />
+          <Suspense fallback={null}>
+            <AudioControlDock
+              floatingEnabled={workspaceMode === 'canvas'}
+              embeddedTargetId={notesAudioEmbeddedTargetId}
+            />
+          </Suspense>
         </>
       )}
-      <SettingsWindow isOpen={settingsOpen} roomName={roomName} onClose={() => setSettingsOpen(false)} />
+      <Suspense fallback={null}>
+        <SettingsWindow isOpen={settingsOpen} roomName={roomName} onClose={() => setSettingsOpen(false)} />
+      </Suspense>
       <DevPerformanceOverlay />
     </div >
   );

@@ -64,6 +64,7 @@ import {
 } from '../../utils/notesWorkspaceModules';
 import { getEntitySearchResult, getEntitySearchTerms, type EntitySearchMatchField, type EntitySearchResult } from '../../utils/entitySearch';
 import { canModifyEntity, canViewEntity } from '../../utils/permissions';
+import { NOTES_AUDIO_DOCK_HOST_ID } from '../../utils/notesWorkspaceConstants';
 import { glass } from '../../utils/theme';
 import type { WorkspaceMode } from '../../utils/workspaceMode';
 import type { DatabaseType, Entity, EntityType } from '../../types';
@@ -128,7 +129,6 @@ const NOTES_SHELL_MODULE_ICONS: Record<NotesWorkspaceModuleDefinition['iconKey']
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 const NOTES_WORKSPACE_TAB_MIME = 'application/vnd.vibe-notes-workspace-tab';
-export const NOTES_AUDIO_DOCK_HOST_ID = 'notes-audio-dock-host';
 
 type NotesWorkspaceDropZone = 'left' | 'right' | 'top' | 'bottom';
 type VaultScope = 'all' | DatabaseType | `user:${string}`;

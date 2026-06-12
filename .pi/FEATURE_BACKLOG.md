@@ -14,7 +14,7 @@
 
 | ID | Priority | Module | Status | Суть | Следующий шаг |
 |----|----------|--------|--------|------|---------------|
-| `FEAT-PLATFORM-ELECTRON-001` | `F0` | Electron Desktop | Foundation implemented | Electron shell, native folder dialog, native asset reveal, embedded server, package scripts, build artifact metadata, custom app icon, player delivery baseline и dev perf overlay реализованы. | Windows signing decision, clean-machine packaged smoke QA. |
+| `FEAT-PLATFORM-ELECTRON-001` | `F0` | Electron Desktop | Foundation implemented | Electron shell, native folder dialog, native asset reveal, embedded server, package scripts, build artifact metadata, custom app icon, lazy-loaded app shell chunks, player delivery baseline и dev perf overlay реализованы. | Windows signing decision, clean-machine packaged smoke QA. |
 | `FEAT-RELEASE-001` | `F1` | Release / Docs | Beta prep active | Product rename to Eternity Table, GitHub README and beta checklist prepared. | Manual QA checklist, clean release commit/tag only after separating runtime `test-world/*` changes. |
 | `FEAT-UI-002` | `F0` | UI / Settings / Entity sheets | Foundation implemented, polish continues | Semantic theme tokens, visual presets, density, core surfaces, compact card и UI handoff реализованы. | Точечная полировка после Electron QA: hardcoded surfaces, readability, theme consistency. |
 | `FEAT-I18N-002` | `F1` | Localization / Modding | Foundation implemented, custom world layer planned | RU/EN switch и локальный preference есть. Пользовательский редактор переводов нужен для моддеров. | Design-doc для world locale format, endpoints, import/export и rollback. |
