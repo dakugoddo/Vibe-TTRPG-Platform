@@ -112,6 +112,7 @@ Entities can contain other entities. A character can contain inventory objects, 
 - Embedded server build path.
 - Desktop dev launcher.
 - Portable and installer build configuration through electron-builder.
+- Custom desktop icon assets wired into Electron and Windows packaging.
 - Dev performance overlay foundation.
 
 ## Quick Start
@@ -318,7 +319,7 @@ Themes are intended to become full visual workspaces, not only light/dark color 
 - Full native multi-window and multi-monitor workflows are planned after the Electron foundation is stable.
 - Permissions and visibility need more GM/player QA.
 - PDF viewing is planned but not implemented.
-- Desktop app icon/signing metadata still needs final polish.
+- Windows builds are unsigned; SmartScreen warnings are expected until a signing decision is made.
 - Public release packaging should be smoke-tested on a clean machine before distribution.
 
 ## Documentation For Contributors

@@ -12,6 +12,7 @@
     "electron": "electron .",
     "electron:dev": "cross-env VIBE_ELECTRON_DEV_SERVER_URL=http://localhost:5173 electron .",
     "desktop:dev": "node scripts/desktop-dev.cjs",
+    "desktop:icons": "node scripts/generate-desktop-icons.cjs",
     "server:build": "node scripts/build-server.cjs",
     "desktop:build": "npm run build && npm run server:build",
     "desktop:start": "npm run desktop:build && electron .",
@@ -71,6 +72,7 @@
   "build": {
     "appId": "local.eternity-table.app",
     "productName": "Eternity Table",
+    "icon": "electron/assets/icon",
     "artifactName": "Eternity-Table-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "../electron-release"
@@ -95,6 +97,7 @@
       }
     ],
     "win": {
+      "icon": "electron/assets/icon.ico",
       "target": [
         "portable",
         "nsis"

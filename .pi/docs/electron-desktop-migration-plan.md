@@ -53,7 +53,7 @@
 - `start-electron-dev.bat`, `build-electron-dist.bat`, `start-electron-built.bat`: корневые Windows launchers для dev Electron, сборки desktop-дистрибутива и запуска собранного exe.
 - Проверено: `npm.cmd run desktop:pack`, `npm.cmd run desktop:dist`, packaged exe smoke-test. Собранный exe поднимает `/api/world/status`, а после остановки освобождает порт `3001`.
 
-Ограничение: auto-update, app icon/signing visual polish и installer UX ещё не сделаны. Player delivery baseline зафиксирован в `.pi/docs/electron-player-delivery-policy.md`.
+Ограничение: auto-update, Windows signing и clean-machine installer UX ещё не сделаны. Custom app icon подключён через `app/electron/assets/icon.*` и `desktop:icons`. Player delivery baseline зафиксирован в `.pi/docs/electron-player-delivery-policy.md`.
 
 ## Performance guardrails для Electron
 
@@ -153,7 +153,7 @@ Acceptance:
 
 Цель: улучшить локальный UX без изменения source of truth.
 
-Статус: первый native folder dialog для открытия/создания мира внесён. Packaging path собран через `electron-builder`. Asset reveal через Electron shell добавлен с allowlist по текущему world/assets. Build artifact names и NSIS installer UX настроены; иконка пока default Electron icon и требует отдельного визуального среза.
+Статус: первый native folder dialog для открытия/создания мира внесён. Packaging path собран через `electron-builder`. Asset reveal через Electron shell добавлен с allowlist по текущему world/assets. Build artifact names, NSIS installer UX и custom desktop icon настроены.
 
 Срез:
 

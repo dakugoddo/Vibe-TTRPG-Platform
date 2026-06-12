@@ -13,6 +13,11 @@ const shouldOpenDevTools = process.env.VIBE_ELECTRON_OPEN_DEVTOOLS === '1';
 let fileServerProcess = null;
 let embeddedFileServer = null;
 let isQuitting = false;
+const appIconPath = path.join(__dirname, 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+
+if (process.platform === 'win32') {
+  app.setAppUserModelId('local.eternity-table.app');
+}
 
 const userDataDir = process.env.VIBE_ELECTRON_USER_DATA_DIR
   || (isDev ? path.join(__dirname, '..', '.tmp', 'electron-dev-user-data') : null);
@@ -174,6 +179,7 @@ function createMainWindow() {
     backgroundColor: '#080d13',
     show: false,
     title: 'Eternity Table',
+    icon: appIconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,

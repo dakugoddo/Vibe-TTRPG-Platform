@@ -11,12 +11,12 @@
 
 - Название продукта: `Eternity Table`.
 - Версия приложения: `0.1.0`.
-- Electron metadata обновлена: productName, appId, artifact names, shortcut name.
+- Electron metadata обновлена: productName, appId, artifact names, shortcut name и custom app icon.
 - README для GitHub создан.
 - Notes workspace получил Obsidian-like первый срез: vault tree, tabs/splits, source/preview/split modes, data view, linked context.
 - Notes shell-модули встроены в рабочую область: `Vault`, `Context`, `Notifications`, `Search`, `Graph`, `Audio`, settings toggles, shell-only reset и persisted resize/visibility.
 - Desktop build path проходит через `npm.cmd run desktop:build`.
-- Unpacked Electron build проверен через `npm.cmd run desktop:pack` на Windows 2026-06-11: создан `electron-release/win-unpacked/Eternity Table.exe`; остаются ожидаемые warnings по default Electron icon и Vite chunk-size.
+- Unpacked Electron build проверен через `npm.cmd run desktop:pack` на Windows 2026-06-12: создан `electron-release/win-unpacked/Eternity Table.exe`; default Electron icon warning устранён, остаётся ожидаемый Vite chunk-size warning.
 
 ## Перед git tag/release проверить вручную
 
@@ -87,5 +87,5 @@ npm.cmd run build
 - UI еще полируется;
 - native multi-window/multi-monitor не входит в beta;
 - permissions/visibility требуют GM/player QA;
-- desktop icon/signing metadata не финализированы;
+- Windows signing не финализирован;
 - public distribution требует clean-machine smoke.

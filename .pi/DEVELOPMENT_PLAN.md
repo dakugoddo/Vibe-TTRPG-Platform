@@ -24,7 +24,7 @@
 ## Ближайший безопасный срез
 
 1. Electron desktop polish:
-   - app icon/signing visual metadata;
+   - Windows signing decision;
    - smoke QA packaged app.
 2. Beta 0.1 release QA:
    - пройти `.pi/docs/release-0.1-beta-checklist.md`;
