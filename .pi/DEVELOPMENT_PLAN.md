@@ -1,6 +1,6 @@
 # Eternity Table: текущий план разработки
 
-> Обновлено: 2026-06-11
+> Обновлено: 2026-06-12
 > Назначение: короткий рабочий план. Этот файл не является журналом всех закрытых срезов.
 
 ## Правила вектора
@@ -23,21 +23,26 @@
 
 ## Ближайший безопасный срез
 
-1. Electron desktop polish:
+1. Pre-release usability pack:
+   - идти по `.pi/docs/pre-release-usability-pack.md`;
+   - текущий пункт: `Asset loading/error/retry foundation` first slice implemented, QA pending;
+   - следующий пункт: entity quick actions;
+   - далее: Notes discoverability, Audio dock states, canvas card readability, startup flow, Settings reset controls.
+2. Electron desktop polish:
    - Windows signing decision;
    - smoke QA packaged app.
-2. Beta 0.1 release QA:
+3. Beta 0.1 release QA:
    - пройти `.pi/docs/release-0.1-beta-checklist.md`;
    - решить, какие `test-world/*` изменения являются demo-data, а какие runtime-мусор.
-3. UI polish по фактическим шероховатостям после Electron QA:
+4. UI polish по фактическим шероховатостям после Electron QA:
    - оставшиеся hardcoded surfaces;
    - compact card/entity sheet читаемость;
    - theme consistency на разных плотностях.
-4. Custom world locales/editor только после отдельного design-doc:
+5. Custom world locales/editor только после отдельного design-doc:
    - формат хранения в мире;
    - server endpoints;
    - import/export/rollback policy.
-5. Notes workspace polish и native multi-window после Electron gate:
+6. Notes workspace polish и native multi-window после Electron gate:
    - ручная QA shell modules/settings/reset/audio dock;
    - polish будущих shell-расширений после owner QA.
 
@@ -46,6 +51,7 @@
 - Owner QA: Electron middle-button pan на тестовом мире должен оставаться визуально плавным, без возврата Stage overscan.
 - Owner QA: packaged Electron build должен запускать embedded server и освобождать порт после закрытия.
 - Manual QA: asset previews/audio/video через `/api/assets/file?path=...` на host и player origin.
+- Manual QA: pre-release usability pack должен проверяться по `.pi/docs/pre-release-usability-pack.md` после каждого completed slice.
 - Manual QA: pinned entity windows должны разделять права на canvas placement и права на содержимое entity.
 - Manual QA: Notes shell modules должны переключаться через ribbon/settings, reset не должен закрывать вкладки, Audio dock не должен останавливать playback при Canvas/Notes switch.
 

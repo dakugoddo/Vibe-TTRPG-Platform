@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { ArrowDownAZ, Box, CheckSquare, File, FolderOpen, Image, Music, RefreshCw, Search, Trash2, Upload, Video, Wand2, X } from 'lucide-react';
+import { AlertTriangle, ArrowDownAZ, Box, CheckSquare, File, FolderOpen, Image, Music, RefreshCw, Search, Trash2, Upload, Video, Wand2, X } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { deleteAssetFile, getAssetUrl, getIsHost, listAssetRecords, showAssetInExplorer, uploadAsset, uploadAssetFile, uploadAssetFileToHost, type AssetRecord } from '../../services/fileApi';
 import { loadAudioDuration } from '../../services/audioPlayback';
 import { yjsStore } from '../../store/yjsStore';
 import { useNotificationStore } from '../../store/notificationStore';
 import { useUIStore } from '../../store/uiStore';
+import { useMediaLoadState } from '../../hooks/useMediaLoadState';
 import { writeAssetDragPayload } from '../../utils/assetDrag';
 import { findCanvasInlineImages, replaceInlineCanvasImage } from '../../utils/canvasInlineImageMigration';
 import { dataUrlToBase64 } from '../../utils/fileRead';
@@ -64,6 +66,72 @@ function formatAudioDuration(duration: number | null | undefined): string | null
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = String(totalSeconds % 60).padStart(2, '0');
     return `${minutes}:${seconds}`;
+}
+
+interface AssetMediaPreviewProps {
+    asset: AssetItem;
+    icon: LucideIcon;
+}
+
+function AssetMediaPreview({ asset, icon: Icon }: AssetMediaPreviewProps) {
+    const canPreviewMedia = asset.kind === 'image' || asset.kind === 'video';
+    const media = useMediaLoadState(canPreviewMedia ? asset.url : '');
+
+    if (!canPreviewMedia) {
+        return <Icon size={34} className="text-[var(--vibe-text-faint)]" />;
+    }
+
+    return (
+        <>
+            {asset.kind === 'image' ? (
+                <img
+                    src={media.mediaSrc}
+                    alt=""
+                    onLoad={media.markReady}
+                    onError={media.markError}
+                    className={`h-full w-full object-cover transition-all duration-300 group-hover:scale-105 ${media.isLoading ? 'opacity-35' : 'opacity-100'}`}
+                />
+            ) : (
+                <video
+                    src={media.mediaSrc}
+                    className={`h-full w-full object-cover transition-opacity duration-300 ${media.isLoading ? 'opacity-35' : 'opacity-100'}`}
+                    muted
+                    controls
+                    preload="metadata"
+                    onLoadedMetadata={media.markReady}
+                    onError={media.markError}
+                    onClick={(event) => event.stopPropagation()}
+                />
+            )}
+
+            {media.isLoading && (
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-[color-mix(in_srgb,var(--vibe-body-bg)_42%,transparent)] text-[var(--vibe-text-faint)] backdrop-blur-sm">
+                    <RefreshCw size={18} className="mb-1.5 animate-spin" />
+                    <span className="text-[9px] font-bold uppercase tracking-widest">Загрузка</span>
+                </div>
+            )}
+
+            {media.isError && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[color-mix(in_srgb,var(--vibe-body-bg)_72%,transparent)] p-3 text-center text-[var(--vibe-danger)] backdrop-blur-sm">
+                    <AlertTriangle size={22} className="mb-1.5" />
+                    <div className="mb-2 max-w-full text-[10px] font-bold leading-snug">
+                        Не удалось загрузить превью
+                    </div>
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            media.retry();
+                        }}
+                        className="inline-flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_34%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_20%,transparent)]"
+                    >
+                        <RefreshCw size={11} />
+                        Повторить
+                    </button>
+                </div>
+            )}
+        </>
+    );
 }
 
 export function AssetBrowser() {
@@ -860,20 +928,7 @@ export function AssetBrowser() {
                                     title={asset.kind === 'image' ? 'Перетащить на канвас' : asset.path}
                                 >
                                     <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--vibe-surface-block)]">
-                                        {asset.kind === 'image' ? (
-                                            <img src={asset.url} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                                        ) : asset.kind === 'video' ? (
-                                            <video
-                                                src={asset.url}
-                                                className="h-full w-full object-cover"
-                                                muted
-                                                controls
-                                                preload="metadata"
-                                                onClick={(event) => event.stopPropagation()}
-                                            />
-                                        ) : (
-                                            <Icon size={34} className="text-[var(--vibe-text-faint)]" />
-                                        )}
+                                        <AssetMediaPreview asset={asset} icon={Icon} />
                                         <div className="absolute left-2 top-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-body-bg)_55%,transparent)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--vibe-text-muted)] backdrop-blur">
                                             {asset.ext || asset.kind}
                                         </div>

@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { yjsStore } from '../../../store/yjsStore';
 import type { Entity } from '../../../types';
 import { glass } from '../../../utils/theme';
-import { Image as ImageIcon, Upload, X, AlertTriangle, User, Box, Sword, Wand2, Map, FileText, Bookmark } from 'lucide-react';
+import { Image as ImageIcon, Upload, X, AlertTriangle, User, Box, Sword, Wand2, Map, FileText, Bookmark, RefreshCw } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { getAssetUrl, getIsHost, listAssetRecords, uploadAssetFile, type AssetRecord } from '../../../services/fileApi';
 import { useNotificationStore } from '../../../store/notificationStore';
 import { LARGE_ASSET_UPLOAD_APPROVAL_BYTES, formatNotificationFileSize } from '../../../utils/notificationModel';
+import { useMediaLoadState } from '../../../hooks/useMediaLoadState';
 
 interface EntityImageBlockProps {
     entity: Entity;
@@ -32,7 +33,6 @@ function getEntityOwnerId(entity: Entity): string | undefined {
 export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockProps) {
     const isHost = getIsHost();
     const canEditImage = yjsStore.canModify(entity.database, getEntityOwnerId(entity));
-    const [imageError, setImageError] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [tempUrl, setTempUrl] = useState(entity.icon_url || '');
     const [availableImages, setAvailableImages] = useState<AssetRecord[]>([]);
@@ -44,10 +44,14 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const Icon = TYPE_ICONS[entity.type] || ImageIcon;
+    let fullUrl = entity.icon_url;
+    if (fullUrl && !fullUrl.startsWith('http') && !fullUrl.startsWith('data:')) {
+        fullUrl = getAssetUrl(fullUrl);
+    }
+    const imageLoadState = useMediaLoadState(entity.icon_url ? fullUrl : '');
 
     useEffect(() => {
         setTempUrl(entity.icon_url || '');
-        setImageError(false);
     }, [entity.icon_url]);
 
     useEffect(() => {
@@ -130,28 +134,42 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
         }
     };
 
-    // Calculate full URL for img src
-    let fullUrl = entity.icon_url;
-    if (fullUrl && !fullUrl.startsWith('http') && !fullUrl.startsWith('data:')) {
-        fullUrl = getAssetUrl(fullUrl);
-    }
-
     return (
         <div className={`group relative mb-4 flex flex-shrink-0 flex-col items-center justify-center overflow-hidden ${glass.blockBg} border border-[var(--vibe-border-subtle)] shadow-[var(--vibe-shadow-block)] ${isWide ? 'mx-auto h-40 w-full rounded-[var(--vibe-radius-md)]' : 'mx-auto h-48 w-48 rounded-[var(--vibe-radius-lg)]'}`}>
             
             {entity.icon_url ? (
-                imageError ? (
+                imageLoadState.isError ? (
                     <div className="flex flex-col items-center justify-center text-[var(--vibe-danger)] opacity-80">
                         <AlertTriangle size={32} className="mb-2" />
                         <span className="text-xs font-bold text-center px-4">Ссылка недействительна или изображение удалено</span>
+                        <button
+                            type="button"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                imageLoadState.retry();
+                            }}
+                            className="mt-3 inline-flex items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_34%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_20%,transparent)]"
+                        >
+                            <RefreshCw size={12} />
+                            Повторить
+                        </button>
                     </div>
                 ) : (
-                    <img 
-                        src={fullUrl} 
-                        onError={() => setImageError(true)} 
-                        alt={entity.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
+                    <>
+                        <img
+                            src={imageLoadState.mediaSrc}
+                            onLoad={imageLoadState.markReady}
+                            onError={imageLoadState.markError}
+                            alt={entity.name}
+                            className={`h-full w-full object-cover transition-all duration-500 group-hover:scale-105 ${imageLoadState.isLoading ? 'opacity-35' : 'opacity-100'}`}
+                        />
+                        {imageLoadState.isLoading && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[color-mix(in_srgb,var(--vibe-body-bg)_38%,transparent)] text-[var(--vibe-text-faint)] backdrop-blur-sm">
+                                <RefreshCw size={22} className="mb-2 animate-spin" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest">Загружаю фото</span>
+                            </div>
+                        )}
+                    </>
                 )
             ) : (
                 <div className="flex flex-col items-center justify-center text-[var(--vibe-text-faint)]">

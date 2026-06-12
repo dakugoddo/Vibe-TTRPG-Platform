@@ -66,7 +66,7 @@
 | Window layout and pinned windows | `app/src/components/windows/WindowManager.tsx` |
 | Wiki link rendering and custom markdown blocks | `app/src/components/ui/MarkdownRenderer.tsx`, `app/src/components/ui/EntityLink.tsx` |
 | Wiki link editing autocomplete | `app/src/components/ui/WikiLinkTextarea.tsx` |
-| Asset browser UI, SFX preview, asset selection and bulk delete | `app/src/components/ui/AssetBrowser.tsx`, `app/src/services/fileApi.ts`, `.pi/docs/bulk-entity-actions.md` |
+| Asset browser UI, SFX preview, asset selection and bulk delete | `app/src/components/ui/AssetBrowser.tsx`, `app/src/hooks/useMediaLoadState.ts`, `app/src/utils/assetLoadState.ts`, `app/src/services/fileApi.ts`, `.pi/docs/bulk-entity-actions.md`, `.pi/docs/pre-release-usability-pack.md` | Asset Browser image/video previews use shared loading/error/retry state; keep `/api/assets/file?path=...` from `getAssetUrl()` as source of truth. |
 | Asset drag payloads, binary upload, file reads and canvas image drop/migration | `app/src/utils/assetDrag.ts`, `app/src/utils/fileRead.ts`, `app/src/utils/canvasInlineImageMigration.ts`, `app/src/services/fileApi.ts`, `server/src/index.ts`, `app/src/components/canvas/InfiniteCanvas.tsx`, `app/src/types/canvasTypes.ts` |
 | Entity image picker | `app/src/components/windows/blocks/EntityImageBlock.tsx`, `app/src/services/fileApi.ts` |
 | Entity selectors and snapshots | `app/src/hooks/useEntities.ts` |
