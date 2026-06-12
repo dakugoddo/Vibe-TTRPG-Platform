@@ -11,6 +11,13 @@ import { getAssetUrl, importMarkdown, getIsHost, listPlayers, showEntityInExplor
 import { useUIStore } from '../../store/uiStore';
 import { canViewEntity } from '../../utils/permissions';
 import { writeClipboardText } from '../../utils/clipboard';
+import {
+    CANVAS_WINDOW_INSTANCES_PROPERTY,
+    createCanvasWindowInstance,
+    getNextCanvasWindowZIndex,
+    readCanvasWindowInstances,
+    upsertCanvasWindowInstance,
+} from '../../utils/canvasPersistence';
 import { generateEntityId } from '../../utils/entityId';
 import { addRecentEntitySearchQuery, addSavedEntitySearchQuery, getEntitySearchResult, getEntitySearchTerms, removeSavedEntitySearchQuery, type EntitySearchMatchField, type EntitySearchResult } from '../../utils/entitySearch';
 import { serializeEntity } from '../../utils/entitySerializer';
@@ -19,7 +26,7 @@ import { readEntityDragIds, writeEntityDragIds } from '../../utils/entityDragPay
 import { applyOwnerToEntityTree, getEntityOwnerId, moveEntityTreeToParent } from '../../utils/entityTreeMutations';
 import { getTopLevelEntityIds } from '../../utils/entityTreeSelection';
 import type { DatabaseType, Entity, EntityType } from '../../types';
-import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map as MapIcon, FileText, Bookmark, Lightbulb, Star, Gift, Copy, Link2, FolderSearch, Search, Upload, X, CheckSquare } from 'lucide-react';
+import { Edit2, ExternalLink, Download, Trash2, Image as ImageIcon, User, Box, Sword, Wand2, Map as MapIcon, FileText, Bookmark, Lightbulb, Star, Gift, Copy, Link2, FolderSearch, Search, Upload, X, CheckSquare, Pin, CornerDownRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const TYPE_ICONS: Partial<Record<EntityType | 'spell', LucideIcon>> = {
@@ -158,16 +165,21 @@ interface ContextMenuState {
     entityId: string;
 }
 
-function EntityContextMenu({ state, canEdit, canShowInExplorer, quickCreateActions, onRename, onDuplicate, onCreateChild, onOpenWindow, onCopyWikiLink, onShowInExplorer, onExport, onDelete, onGiveToPlayer, onClose }: {
+function EntityContextMenu({ state, canEdit, canShowInExplorer, canAddToCanvas, hasParent, quickCreateActions, onRename, onDuplicate, onCreateChild, onOpenWindow, onAddToCanvas, onOpenParent, onCopyWikiLink, onCopyId, onShowInExplorer, onExport, onDelete, onGiveToPlayer, onClose }: {
     state: ContextMenuState | null;
     canEdit: boolean;
     canShowInExplorer: boolean;
+    canAddToCanvas: boolean;
+    hasParent: boolean;
     quickCreateActions: QuickCreateAction[];
     onRename: (id: string) => void;
     onDuplicate: (id: string) => void;
     onCreateChild: (id: string, type: EntityType) => void;
     onOpenWindow: (id: string) => void;
+    onAddToCanvas: (id: string) => void;
+    onOpenParent: (id: string) => void;
     onCopyWikiLink: (id: string) => void;
+    onCopyId: (id: string) => void;
     onShowInExplorer: (id: string) => void;
     onExport: (id: string) => void;
     onDelete: (id: string) => void;
@@ -200,7 +212,7 @@ function EntityContextMenu({ state, canEdit, canShowInExplorer, quickCreateActio
     if (!state) return null;
 
     const menuWidth = 200;
-    const menuHeight = canEdit ? 320 + quickCreateActions.length * 36 + (onGiveToPlayer ? 44 : 0) : 190;
+    const menuHeight = canEdit ? 390 + quickCreateActions.length * 36 + (onGiveToPlayer ? 44 : 0) : 260;
     const x = state.x + menuWidth > window.innerWidth ? state.x - menuWidth : state.x;
     const y = state.y + menuHeight > window.innerHeight ? state.y - menuHeight : state.y;
 
@@ -261,7 +273,29 @@ function EntityContextMenu({ state, canEdit, canShowInExplorer, quickCreateActio
                 onClick={() => { onOpenWindow(state.entityId); onClose(); }}
                 className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
             >
-                <ExternalLink size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Открыть окно
+                <ExternalLink size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Открыть / сфокусировать
+            </button>
+            {canAddToCanvas && (
+                <button
+                    onClick={() => { onAddToCanvas(state.entityId); onClose(); }}
+                    className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+                >
+                    <Pin size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Закрепить на канвасе
+                </button>
+            )}
+            {hasParent && (
+                <button
+                    onClick={() => { onOpenParent(state.entityId); onClose(); }}
+                    className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+                >
+                    <CornerDownRight size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Показать родителя
+                </button>
+            )}
+            <button
+                onClick={() => { onCopyId(state.entityId); onClose(); }}
+                className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+            >
+                <Copy size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Копировать ID
             </button>
             <button
                 onClick={() => { onCopyWikiLink(state.entityId); onClose(); }}
@@ -683,6 +717,12 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         return true;
     });
     const { openWindow } = useWindowStore();
+    const activeCanvasId = useCanvasStore((state) => state.activeCanvasId);
+    const stageScale = useCanvasStore((state) => state.scale);
+    const stageOffset = useCanvasStore((state) => state.offset);
+    const navigate = useCanvasStore((state) => state.navigate);
+    const workspaceMode = useWorkspaceModeStore((state) => state.mode);
+    const openNotesWorkspaceTab = useNotesWorkspaceStore((state) => state.openTab);
     const { openConfirm } = useUIStore();
     const [dragDropPrompt, setDragDropPrompt] = useState<DragDropPromptData | null>(null);
     const [activeTab, setActiveTab] = useState<string>('all');
@@ -927,6 +967,63 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         setContextMenuState({ x: e.clientX, y: e.clientY, entityId });
     }, []);
 
+    const getVisibleEntityById = useCallback((entityId: string) => {
+        const entity = allEntities.find(e => e.id === entityId);
+        if (!entity) return undefined;
+
+        const db = entity.database || 'general';
+        const owner = getEntityOwnerId(entity);
+        return canViewEntity(yjsStore.localRole, db, owner, yjsStore.localPlayerId, yjsStore.localPlayerName)
+            ? entity
+            : undefined;
+    }, [allEntities]);
+
+    const handleOpenEntityById = useCallback((id: string) => {
+        const entity = getVisibleEntityById(id);
+        if (!entity) return;
+
+        if (entity.type === 'canvas') {
+            navigate(entity.id);
+            return;
+        }
+
+        if (workspaceMode === 'notes') {
+            openNotesWorkspaceTab(entity.id, 'source');
+            return;
+        }
+
+        openWindow(entity.id, Math.random() * 200 + 50, Math.random() * 200 + 50);
+    }, [getVisibleEntityById, navigate, openNotesWorkspaceTab, openWindow, workspaceMode]);
+
+    const handleOpenParentEntity = useCallback((id: string) => {
+        const entity = getVisibleEntityById(id);
+        if (!entity?.parentId) return;
+
+        handleOpenEntityById(entity.parentId);
+    }, [getVisibleEntityById, handleOpenEntityById]);
+
+    const handleAddEntityToCanvas = useCallback((id: string) => {
+        const entity = getVisibleEntityById(id);
+        const canvas = allEntities.find(candidate => candidate.id === activeCanvasId && candidate.type === 'canvas');
+        if (!entity || !canvas || !yjsStore.canModify(canvas.database || 'general', getEntityOwnerId(canvas))) return;
+
+        const safeScale = stageScale || 1;
+        const instances = readCanvasWindowInstances(canvas.properties);
+        const instance = createCanvasWindowInstance({
+            entityId: entity.id,
+            x: ((window.innerWidth / 2) - stageOffset.x) / safeScale - 200,
+            y: ((window.innerHeight / 2) - stageOffset.y) / safeScale - 150,
+            zIndex: getNextCanvasWindowZIndex(instances),
+        });
+
+        yjsStore.updateEntity(canvas.id, {
+            properties: {
+                ...canvas.properties,
+                [CANVAS_WINDOW_INSTANCES_PROPERTY]: upsertCanvasWindowInstance(instances, instance),
+            },
+        });
+    }, [activeCanvasId, allEntities, getVisibleEntityById, stageOffset.x, stageOffset.y, stageScale]);
+
     const handleRenameSubmit = useCallback((id: string, newName: string) => {
         if (newName && newName.trim()) {
             const entity = entities.find(e => e.id === id);
@@ -985,6 +1082,15 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
             console.warn(`Failed to copy wiki link for "${entity.name}"`, error);
         });
     }, [entities]);
+
+    const handleCopyEntityId = useCallback((id: string) => {
+        const entity = allEntities.find(e => e.id === id);
+        if (!entity) return;
+
+        void writeClipboardText(entity.id).catch((error) => {
+            console.warn(`Failed to copy entity id for "${entity.name}"`, error);
+        });
+    }, [allEntities]);
 
     const handleShowInExplorer = useCallback((id: string) => {
         const entity = entities.find(e => e.id === id);
@@ -1175,8 +1281,15 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
 
     const tabsToShow = EntityGroups.filter(g => !allowedTabs || allowedTabs.includes(g.type));
     const contextMenuEntity = contextMenuState ? entities.find(e => e.id === contextMenuState.entityId) : undefined;
+    const contextMenuParentEntity = contextMenuEntity?.parentId ? getVisibleEntityById(contextMenuEntity.parentId) : undefined;
+    const activeCanvasEntity = allEntities.find(entity => entity.id === activeCanvasId && entity.type === 'canvas');
     const contextMenuCanEdit = Boolean(contextMenuEntity && contextMenuEntity.id !== 'root' && canModifyEntityInUi(contextMenuEntity));
     const contextMenuCanShowInExplorer = Boolean(contextMenuEntity && contextMenuEntity.id !== 'root' && getIsHost());
+    const contextMenuCanAddToCanvas = Boolean(
+        contextMenuEntity
+        && activeCanvasEntity
+        && yjsStore.canModify(activeCanvasEntity.database || 'general', getEntityOwnerId(activeCanvasEntity))
+    );
     const contextMenuQuickCreateActions = contextMenuCanEdit ? getQuickCreateActions(contextMenuEntity) : [];
     const hasVisibleSearchResults = visibleEntities.some(entity => entity.id !== 'root');
 
@@ -1539,12 +1652,17 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                 state={contextMenuState}
                 canEdit={contextMenuCanEdit}
                 canShowInExplorer={contextMenuCanShowInExplorer}
+                canAddToCanvas={contextMenuCanAddToCanvas}
+                hasParent={Boolean(contextMenuParentEntity)}
                 quickCreateActions={contextMenuQuickCreateActions}
                 onRename={handleRenameStart}
                 onDuplicate={handleDuplicateEntity}
                 onCreateChild={handleCreateChildEntity}
-                onOpenWindow={(id) => openWindow(id, Math.random() * 200 + 50, Math.random() * 200 + 50)}
+                onOpenWindow={handleOpenEntityById}
+                onAddToCanvas={handleAddEntityToCanvas}
+                onOpenParent={handleOpenParentEntity}
                 onCopyWikiLink={handleCopyWikiLink}
+                onCopyId={handleCopyEntityId}
                 onShowInExplorer={handleShowInExplorer}
                 onExport={handleExportEntity}
                 onGiveToPlayer={getIsHost() && contextMenuCanEdit ? handleGiveToPlayer : undefined}

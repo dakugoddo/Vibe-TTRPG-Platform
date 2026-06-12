@@ -11,6 +11,7 @@ import {
     ChevronRight,
     Code2,
     Columns2,
+    Copy,
     Database,
     Eye,
     FileText,
@@ -29,6 +30,7 @@ import {
     Network,
     PanelLeft,
     PanelRight,
+    Pin,
     PencilLine,
     Quote,
     RotateCcw,
@@ -43,6 +45,7 @@ import {
 } from 'lucide-react';
 import { useEntities } from '../../hooks/useEntities';
 import { useAppModuleEnabled } from '../../hooks/useAppModuleEnablement';
+import { useCanvasStore } from '../../store/canvasStore';
 import { useNotesWorkspaceStore } from '../../store/notesWorkspaceStore';
 import { yjsStore } from '../../store/yjsStore';
 import { WikiLinkTextarea } from '../ui/WikiLinkTextarea';
@@ -64,6 +67,14 @@ import {
 } from '../../utils/notesWorkspaceModules';
 import { getEntitySearchResult, getEntitySearchTerms, type EntitySearchMatchField, type EntitySearchResult } from '../../utils/entitySearch';
 import { canModifyEntity, canViewEntity } from '../../utils/permissions';
+import { writeClipboardText } from '../../utils/clipboard';
+import {
+    CANVAS_WINDOW_INSTANCES_PROPERTY,
+    createCanvasWindowInstance,
+    getNextCanvasWindowZIndex,
+    readCanvasWindowInstances,
+    upsertCanvasWindowInstance,
+} from '../../utils/canvasPersistence';
 import { NOTES_AUDIO_DOCK_HOST_ID } from '../../utils/notesWorkspaceConstants';
 import { glass } from '../../utils/theme';
 import type { WorkspaceMode } from '../../utils/workspaceMode';
@@ -1091,6 +1102,10 @@ interface NotesWorkspaceNodeViewProps {
     onResizeSplit: (splitId: string, ratio: number) => void;
     onMoveTab: (sourceGroupId: string, tabId: string, targetGroupId: string, beforeTabId?: string | null) => void;
     onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
+    onCopyEntityWikiLink: (entityId: string) => void;
+    onCopyEntityId: (entityId: string) => void;
+    onPinEntityToCanvas: (entityId: string) => void;
+    canPinToCanvas: boolean;
     dockDropTarget: NotesDockDropTarget | null;
     onDockDropTargetChange: (target: NotesDockDropTarget | null) => void;
     t: Translate;
@@ -1182,6 +1197,10 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
         onCloseTab,
         onMoveTab,
         onOpenEntity,
+        onCopyEntityWikiLink,
+        onCopyEntityId,
+        onPinEntityToCanvas,
+        canPinToCanvas,
         onSetActiveGroup,
         onSetActiveTab,
         onSetTabView,
@@ -1199,6 +1218,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
     const linkedViews = activeEntity ? buildNotesWorkspaceLinkedViews(activeEntity, visibleEntities) : null;
     const childEntities = activeEntity ? childrenByParent.get(activeEntity.id) ?? [] : [];
     const canEditActiveEntity = activeEntity ? canEditEntityInWorkspace(activeEntity) : false;
+    const activeParentEntity = activeEntity?.parentId ? entitiesById.get(activeEntity.parentId) ?? null : null;
     const canCloseGroup = groupOrder.size > 1;
     const visualDropZone = dockDropTarget?.groupId === node.id ? dockDropTarget.zone : dropZone;
 
@@ -1310,6 +1330,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
             ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-surface-hover)] text-[var(--vibe-text-primary)]'
             : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
     }`;
+    const quickActionButtonClass = `flex h-8 w-8 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`;
 
     return (
         <div
@@ -1536,6 +1557,58 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                             </p>
                         </div>
                         <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                            {activeParentEntity && (
+                                <button
+                                    type="button"
+                                    data-no-pane-drag
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        onOpenEntity(activeParentEntity.id, 'source');
+                                    }}
+                                    className={quickActionButtonClass}
+                                    title={t('workspace.notes.openParent')}
+                                >
+                                    <GitFork size={13} />
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                data-no-pane-drag
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    onCopyEntityWikiLink(activeEntity.id);
+                                }}
+                                className={quickActionButtonClass}
+                                title={t('workspace.notes.copyWikiLink')}
+                            >
+                                <Link2 size={13} />
+                            </button>
+                            <button
+                                type="button"
+                                data-no-pane-drag
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    onCopyEntityId(activeEntity.id);
+                                }}
+                                className={quickActionButtonClass}
+                                title={t('workspace.notes.copyEntityId')}
+                            >
+                                <Copy size={13} />
+                            </button>
+                            <button
+                                type="button"
+                                data-no-pane-drag
+                                disabled={!canPinToCanvas}
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    if (canPinToCanvas) onPinEntityToCanvas(activeEntity.id);
+                                }}
+                                className={`${quickActionButtonClass} ${!canPinToCanvas ? 'cursor-not-allowed opacity-40' : ''}`}
+                                title={canPinToCanvas ? t('workspace.notes.pinToCanvas') : t('workspace.notes.pinToCanvasUnavailable')}
+                            >
+                                <Pin size={13} />
+                            </button>
+                            <div className="mx-1 h-8 w-px bg-[var(--vibe-border-subtle)]" />
                             {VIEW_CONFIGS.map(({ view, icon: Icon }) => (
                                 <button
                                     key={view}
@@ -1598,6 +1671,9 @@ export function NotesWorkspace({
     const [collapsedVaultGroups, setCollapsedVaultGroups] = useState<Set<EntityType>>(() => new Set());
     const [dockDropTarget, setDockDropTarget] = useState<NotesDockDropTarget | null>(null);
     const entities = useEntities();
+    const activeCanvasId = useCanvasStore((state) => state.activeCanvasId);
+    const stageScale = useCanvasStore((state) => state.scale);
+    const stageOffset = useCanvasStore((state) => state.offset);
     const notesLayout = useNotesWorkspaceStore((state) => state.layout);
     const notesShell = useNotesWorkspaceStore((state) => state.shell);
     const openWorkspaceTab = useNotesWorkspaceStore((state) => state.openTab);
@@ -1744,6 +1820,12 @@ export function NotesWorkspace({
         }, { general: 0, user: 0, gm: 0 });
     }, [visibleEntities]);
 
+    const activeCanvasEntity = useMemo(
+        () => entities.find((entity) => entity.id === activeCanvasId && entity.type === 'canvas'),
+        [activeCanvasId, entities]
+    );
+    const canPinToActiveCanvas = Boolean(activeCanvasEntity && canEditEntityInWorkspace(activeCanvasEntity));
+
     const expandEntityAncestors = useCallback((entityId: string) => {
         setExpandedEntityIds((current) => {
             const next = new Set(current);
@@ -1789,6 +1871,38 @@ export function NotesWorkspace({
         expandEntityAncestors(entityId);
         openWorkspaceTab(entityId, view);
     };
+
+    const handleCopyEntityWikiLink = useCallback((entityId: string) => {
+        void writeClipboardText(`[[${entityId}]]`).catch((error) => {
+            console.warn(`Failed to copy wiki link for entity "${entityId}"`, error);
+        });
+    }, []);
+
+    const handleCopyEntityId = useCallback((entityId: string) => {
+        void writeClipboardText(entityId).catch((error) => {
+            console.warn(`Failed to copy entity id "${entityId}"`, error);
+        });
+    }, []);
+
+    const handlePinEntityToCanvas = useCallback((entityId: string) => {
+        if (!activeCanvasEntity || !canEditEntityInWorkspace(activeCanvasEntity) || !entitiesById.has(entityId)) return;
+
+        const safeScale = stageScale || 1;
+        const instances = readCanvasWindowInstances(activeCanvasEntity.properties);
+        const instance = createCanvasWindowInstance({
+            entityId,
+            x: ((window.innerWidth / 2) - stageOffset.x) / safeScale - 200,
+            y: ((window.innerHeight / 2) - stageOffset.y) / safeScale - 150,
+            zIndex: getNextCanvasWindowZIndex(instances),
+        });
+
+        yjsStore.updateEntity(activeCanvasEntity.id, {
+            properties: {
+                ...activeCanvasEntity.properties,
+                [CANVAS_WINDOW_INSTANCES_PROPERTY]: upsertCanvasWindowInstance(instances, instance),
+            },
+        });
+    }, [activeCanvasEntity, entitiesById, stageOffset.x, stageOffset.y, stageScale]);
 
     const handleSplitWorkspaceGroup = (groupId: string, direction: 'row' | 'column') => {
         setActiveWorkspaceGroup(groupId);
@@ -2078,6 +2192,10 @@ export function NotesWorkspace({
                             onResizeSplit={resizeWorkspaceSplit}
                             onMoveTab={moveWorkspaceTab}
                             onOpenEntity={handleOpenEntity}
+                            onCopyEntityWikiLink={handleCopyEntityWikiLink}
+                            onCopyEntityId={handleCopyEntityId}
+                            onPinEntityToCanvas={handlePinEntityToCanvas}
+                            canPinToCanvas={canPinToActiveCanvas}
                             dockDropTarget={dockDropTarget}
                             onDockDropTargetChange={setDockDropTarget}
                             t={t}

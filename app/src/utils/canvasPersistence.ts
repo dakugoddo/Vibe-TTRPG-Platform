@@ -60,6 +60,37 @@ function isCanvasWindowInstance(value: unknown): value is CanvasWindowInstance {
     );
 }
 
+export function createCanvasWindowInstanceId(entityId: string): string {
+    const safeEntityId = entityId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32) || 'entity';
+    const randomPart = Math.random().toString(36).slice(2, 8);
+    return `canvas-window-${safeEntityId}-${Date.now().toString(36)}-${randomPart}`;
+}
+
+export function getNextCanvasWindowZIndex(instances: CanvasWindowInstance[], fallbackZIndex = 10): number {
+    return Math.max(fallbackZIndex, ...instances.map((instance) => instance.zIndex)) + 1;
+}
+
+export function createCanvasWindowInstance(input: {
+    entityId: string;
+    x: number;
+    y: number;
+    width?: number;
+    height?: number;
+    mode?: CanvasWindowInstance['mode'];
+    zIndex: number;
+}): CanvasWindowInstance {
+    return sanitizeCanvasWindowInstanceForPersistence({
+        id: createCanvasWindowInstanceId(input.entityId),
+        entityId: input.entityId,
+        mode: input.mode ?? 'compact',
+        x: input.x,
+        y: input.y,
+        width: input.width ?? 400,
+        height: input.height ?? 300,
+        zIndex: input.zIndex,
+    });
+}
+
 export function sanitizeDrawElementForPersistence(element: DrawElement): DrawElement {
     const clean: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(element as unknown as Record<string, unknown>)) {

@@ -3,6 +3,8 @@ import type { Entity } from '../types';
 import type { DrawElement } from '../types/canvasTypes';
 import {
     CANVAS_WINDOW_INSTANCES_PROPERTY,
+    createCanvasWindowInstance,
+    getNextCanvasWindowZIndex,
     normalizeDrawElementsForSharedSync,
     readCanvasWindowInstances,
     removeCanvasWindowInstance,
@@ -117,3 +119,16 @@ const withAddedCopy = upsertCanvasWindowInstance(withUpsert, {
 });
 assert.equal(withAddedCopy.filter((instance) => instance.entityId === 'entity_1').length, 3);
 assert.equal(removeCanvasWindowInstance(withAddedCopy, 'b').some((instance) => instance.id === 'b'), false);
+
+const createdWindow = createCanvasWindowInstance({
+    entityId: 'entity 1!',
+    x: 150,
+    y: 220,
+    zIndex: getNextCanvasWindowZIndex(withAddedCopy, 0),
+});
+assert.equal(createdWindow.entityId, 'entity 1!');
+assert.equal(createdWindow.mode, 'compact');
+assert.equal(createdWindow.width, 400);
+assert.equal(createdWindow.height, 300);
+assert.equal(createdWindow.zIndex, 5);
+assert.match(createdWindow.id, /^canvas-window-entity1-/);

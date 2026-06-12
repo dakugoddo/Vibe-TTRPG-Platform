@@ -34,6 +34,8 @@ import { writeClipboardText } from '../../utils/clipboard';
 import { generateEntityId } from '../../utils/entityId';
 import {
     CANVAS_WINDOW_INSTANCES_PROPERTY,
+    createCanvasWindowInstance,
+    getNextCanvasWindowZIndex,
     readCanvasWindowInstances,
     removeCanvasWindowInstance,
     upsertCanvasWindowInstance,
@@ -62,12 +64,6 @@ function canViewRelatedEntity(entity: Entity): boolean {
 function canModifyEntityRecord(entity: Entity | undefined): boolean {
     if (!entity) return false;
     return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
-}
-
-function createCanvasWindowInstanceId(entityId: string): string {
-    const safeEntityId = entityId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32) || 'entity';
-    const randomPart = Math.random().toString(36).slice(2, 8);
-    return `canvas-window-${safeEntityId}-${Date.now().toString(36)}-${randomPart}`;
 }
 
 function normalizeWikiTarget(target: string): string {
@@ -676,17 +672,15 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                     if (!currentCanvas || !canModifyEntityRecord(currentCanvas)) return;
 
                                     const instances = readCanvasWindowInstances(currentCanvas.properties);
-                                    const nextZIndex = Math.max(zIndex, ...instances.map((instance) => instance.zIndex), 10) + 1;
-                                    const canvasWindowInstance: CanvasWindowInstance = {
-                                        id: createCanvasWindowInstanceId(entityId),
+                                    const canvasWindowInstance = createCanvasWindowInstance({
                                         entityId,
                                         mode,
                                         x: newX,
                                         y: newY,
                                         width,
                                         height,
-                                        zIndex: nextZIndex,
-                                    };
+                                        zIndex: getNextCanvasWindowZIndex(instances, zIndex),
+                                    });
 
                                     yjsStore.updateEntity(currentCanvas.id, {
                                         properties: {

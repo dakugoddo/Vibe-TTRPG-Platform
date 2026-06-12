@@ -25,9 +25,9 @@
 
 1. Pre-release usability pack:
    - идти по `.pi/docs/pre-release-usability-pack.md`;
-   - текущий пункт: `Asset loading/error/retry foundation` first slice implemented, QA pending;
-   - следующий пункт: entity quick actions;
-   - далее: Notes discoverability, Audio dock states, canvas card readability, startup flow, Settings reset controls.
+   - completed slices: `Asset loading/error/retry foundation`, `Entity quick actions`;
+   - текущий пункт: Notes discoverability polish;
+   - далее: Audio dock states, canvas card readability, startup flow, Settings reset controls.
 2. Electron desktop polish:
    - Windows signing decision;
    - smoke QA packaged app.

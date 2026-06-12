@@ -40,6 +40,8 @@ Acceptance:
 
 ### 2. Entity quick actions
 
+Статус: implemented; automated QA passed, manual UI smoke pending.
+
 Задача: ускорить частые действия с сущностью.
 
 Форма реализации:
