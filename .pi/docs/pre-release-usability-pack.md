@@ -77,6 +77,8 @@ Acceptance:
 
 ### 4. Audio dock usability
 
+Статус: implemented, automated QA passed; manual audio smoke остаётся перед beta.
+
 Задача: убрать ощущение "сломано", когда аудио пустое, остановлено или файл не проигрался.
 
 Форма реализации:
@@ -85,6 +87,7 @@ Acceptance:
 - error state для failed playback;
 - быстрый `stop all`;
 - понятное отображение текущего трека, канала и локального/session режима.
+- нижний dock отправляет только request-id в единственный `AudioDesk`; не создавать второй playback owner, иначе Canvas/Notes switch снова начнёт останавливать звук.
 
 Acceptance:
 

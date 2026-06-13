@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { ChevronDown, Music, Pause, Play, SlidersHorizontal, Square, Volume2, X } from 'lucide-react';
+import { AlertTriangle, ChevronDown, Music, Pause, Play, SlidersHorizontal, Square, Volume2, VolumeX, X } from 'lucide-react';
 import { getIsHost } from '../../services/fileApi';
 import { useAudioSessionEnabled } from '../../hooks/useAudioSessionEnabled';
 import { useAudioChannelVolumes } from '../../hooks/useAudioChannelVolumes';
@@ -10,6 +10,9 @@ import { AudioDesk, type MusicPlaybackStatus, type MusicSeekRequest } from './Au
 
 const IDLE_MUSIC_STATUS: MusicPlaybackStatus = {
     isPlaying: false,
+    channel: 'music',
+    sessionMode: 'local',
+    error: null,
     currentTime: 0,
     duration: null,
     loop: false,
@@ -44,6 +47,17 @@ function isSessionAudioCommandActive(command: AudioSessionCommand | null): boole
     return ageMs < 30_000;
 }
 
+function getDockChannelLabel(channel: MusicPlaybackStatus['channel']): string {
+    if (channel === 'ambience') return 'Атмосфера';
+    if (channel === 'sfx') return 'SFX';
+    if (channel === 'voice') return 'Голос';
+    return 'Музыка';
+}
+
+function getDockModeLabel(sessionMode: MusicPlaybackStatus['sessionMode']): string {
+    return sessionMode === 'session' ? 'Сессия' : 'Локально';
+}
+
 export function AudioControlDock({ floatingEnabled = true, embeddedTargetId = null }: AudioControlDockProps = {}) {
     const isHost = getIsHost();
     const [isOpen, setIsOpen] = useState(false);
@@ -52,6 +66,7 @@ export function AudioControlDock({ floatingEnabled = true, embeddedTargetId = nu
     const [musicSeekRequest, setMusicSeekRequest] = useState<MusicSeekRequest | null>(null);
     const [musicStopRequestId, setMusicStopRequestId] = useState<number | null>(null);
     const [musicPlayPauseRequestId, setMusicPlayPauseRequestId] = useState<number | null>(null);
+    const [stopAllRequestId, setStopAllRequestId] = useState<number | null>(null);
     const [sessionAudioEnabled, setSessionAudioEnabled] = useAudioSessionEnabled();
     const [channelVolumes, setChannelVolume] = useAudioChannelVolumes();
     const [hasRemoteAudioCue, setHasRemoteAudioCue] = useState(false);
@@ -125,6 +140,13 @@ export function AudioControlDock({ floatingEnabled = true, embeddedTargetId = nu
         if (!duration) return 0;
         return Math.max(0, Math.min(100, (currentTime / duration) * 100));
     }, [currentTime, duration]);
+    const hasMusicError = Boolean(musicStatus.error);
+    const musicTitle = hasMusicError
+        ? (musicStatus.title ?? 'Ошибка воспроизведения')
+        : (musicStatus.title ?? 'Ничего не играет');
+    const musicMeta = hasMusicError
+        ? (musicStatus.error ?? 'Ошибка воспроизведения')
+        : `${getDockChannelLabel(musicStatus.channel)} / ${getDockModeLabel(musicStatus.sessionMode)}`;
 
     const isEmbedded = !floatingEnabled && Boolean(embeddedRect);
     const rootClassName = isEmbedded
@@ -177,6 +199,7 @@ export function AudioControlDock({ floatingEnabled = true, embeddedTargetId = nu
                         musicSeekRequest={musicSeekRequest}
                         musicStopRequestId={musicStopRequestId}
                         musicPlayPauseRequestId={musicPlayPauseRequestId}
+                        stopAllRequestId={stopAllRequestId}
                     />
                 </div>
             </div>
@@ -249,19 +272,31 @@ export function AudioControlDock({ floatingEnabled = true, embeddedTargetId = nu
                             >
                                 <Square size={13} />
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => setStopAllRequestId(Date.now())}
+                                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--vibe-danger)_26%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_10%,transparent)] text-[var(--vibe-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)]"
+                                title="Остановить все каналы"
+                            >
+                                <VolumeX size={13} />
+                            </button>
                             <div className="min-w-0 flex-1">
                                 <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                    <span className="truncate text-[var(--vibe-text-muted)]">
-                                        {musicStatus.title ?? 'Музыка не запущена'}
+                                    <span className={`inline-flex min-w-0 items-center gap-1 truncate ${hasMusicError ? 'text-[var(--vibe-danger)]' : 'text-[var(--vibe-text-muted)]'}`}>
+                                        {hasMusicError && <AlertTriangle size={11} className="flex-shrink-0" />}
+                                        <span className="truncate">{musicTitle}</span>
                                     </span>
                                     <span className="flex-shrink-0 font-mono">
-                                        {formatPlayerTime(currentTime)} / {formatPlayerTime(musicStatus.duration)}
+                                        {hasMusicError ? 'ERROR' : `${formatPlayerTime(currentTime)} / ${formatPlayerTime(musicStatus.duration)}`}
                                     </span>
                                 </div>
-                                <div className="relative h-4">
+                                <div className={`mb-1 truncate text-[9px] font-bold uppercase tracking-wider ${hasMusicError ? 'text-[var(--vibe-danger)]' : 'text-[var(--vibe-text-faint)]'}`}>
+                                    {musicMeta}
+                                </div>
+                                <div className="relative h-3">
                                     <div className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-[var(--vibe-surface-input)]">
                                         <div
-                                            className="h-full rounded-full bg-[var(--vibe-accent)] shadow-[0_0_16px_color-mix(in_srgb,var(--vibe-accent)_24%,transparent)]"
+                                            className={`h-full rounded-full shadow-[0_0_16px_color-mix(in_srgb,var(--vibe-accent)_24%,transparent)] ${hasMusicError ? 'bg-[var(--vibe-danger)]' : 'bg-[var(--vibe-accent)]'}`}
                                             style={{ width: `${progressPercent}%` }}
                                         />
                                     </div>
@@ -302,14 +337,25 @@ export function AudioControlDock({ floatingEnabled = true, embeddedTargetId = nu
                             >
                                 {musicStatus.isPlaying ? <Pause size={12} /> : <Play size={12} />}
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => setStopAllRequestId(Date.now())}
+                                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--vibe-danger)_26%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_10%,transparent)] text-[var(--vibe-danger)] transition-colors"
+                                title="Остановить все каналы"
+                            >
+                                <VolumeX size={12} />
+                            </button>
                             <div className="min-w-0 flex-1">
-                                <div className="truncate text-[9px] font-bold text-[var(--vibe-text-muted)]">
-                                    {musicStatus.title ?? 'Музыка не запущена'}
+                                <div className={`truncate text-[9px] font-bold ${hasMusicError ? 'text-[var(--vibe-danger)]' : 'text-[var(--vibe-text-muted)]'}`}>
+                                    {musicTitle}
                                 </div>
-                                {duration > 0 && (
+                                <div className="truncate text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                    {musicMeta}
+                                </div>
+                                {(duration > 0 || hasMusicError) && (
                                     <div className="mt-1 h-0.5 w-full overflow-hidden rounded-full bg-[var(--vibe-surface-input)]">
                                         <div
-                                            className="h-full rounded-full bg-[var(--vibe-accent)]"
+                                            className={`h-full rounded-full ${hasMusicError ? 'bg-[var(--vibe-danger)]' : 'bg-[var(--vibe-accent)]'}`}
                                             style={{ width: `${progressPercent}%` }}
                                         />
                                     </div>
@@ -361,7 +407,7 @@ export function AudioControlDock({ floatingEnabled = true, embeddedTargetId = nu
                         <div className="hidden h-8 w-px bg-[var(--vibe-border-subtle)] sm:block" />
                         <div className="hidden min-w-0 items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] sm:flex">
                             <Volume2 size={13} />
-                            <span className="truncate">Сессионный аудио-модуль</span>
+                            <span className="truncate">{musicMeta}</span>
                         </div>
                         <button
                             type="button"

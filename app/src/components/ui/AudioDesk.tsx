@@ -41,6 +41,9 @@ export interface MusicPlaybackStatus {
     isPlaying: boolean;
     cueId?: string;
     title?: string;
+    channel?: AudioChannel;
+    sessionMode?: 'local' | 'session';
+    error?: string | null;
     currentTime: number;
     duration: number | null;
     loop: boolean;
@@ -57,15 +60,18 @@ interface AudioDeskProps {
     musicSeekRequest?: MusicSeekRequest | null;
     musicStopRequestId?: number | null;
     musicPlayPauseRequestId?: number | null;
+    stopAllRequestId?: number | null;
 }
 
 function getIdleMusicStatus(): MusicPlaybackStatus {
     return {
         isPlaying: false,
+        channel: 'music',
         currentTime: 0,
         duration: null,
         loop: false,
         volume: 0,
+        error: null,
     };
 }
 
@@ -127,7 +133,7 @@ function getCueModeLabel(mode: AudioCueMode): string {
     return 'Разово';
 }
 
-export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRequestId, musicPlayPauseRequestId }: AudioDeskProps = {}) {
+export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRequestId, musicPlayPauseRequestId, stopAllRequestId }: AudioDeskProps = {}) {
     const isHost = getIsHost();
     const [assets, setAssets] = useState<AudioAsset[]>([]);
     const [deckState, setDeckState] = useState<AudioDeckState>(loadAudioDeckState);
@@ -144,6 +150,7 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
     const lastMusicSeekRequestIdRef = useRef<number | null>(null);
     const lastMusicStopRequestIdRef = useRef<number | null>(null);
     const lastMusicPlayPauseRequestIdRef = useRef<number | null>(null);
+    const lastStopAllRequestIdRef = useRef<number | null>(null);
     const hasLoadedFromServer = useRef(false);
     const [sessionAudioEnabled, setSessionAudioEnabled] = useAudioSessionEnabled();
     const [channelVolumes, setChannelVolume] = useAudioChannelVolumes();
@@ -236,6 +243,22 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
         setDeckState(current => normalizeAudioDeckState(updater(current)));
     }, []);
 
+    const publishIdleMusicStatus = useCallback(() => {
+        onMusicPlaybackChange?.({
+            ...getIdleMusicStatus(),
+            sessionMode: syncToPlayers ? 'session' : 'local',
+        });
+    }, [onMusicPlaybackChange, syncToPlayers]);
+
+    const publishMusicError = useCallback((title: string, message: string) => {
+        onMusicPlaybackChange?.({
+            ...getIdleMusicStatus(),
+            title,
+            sessionMode: syncToPlayers ? 'session' : 'local',
+            error: message,
+        });
+    }, [onMusicPlaybackChange, syncToPlayers]);
+
     const addCueFromAsset = useCallback((asset: AudioAsset) => {
         const cue = normalizeAudioCue({
             id: `cue-${Date.now()}-${asset.id}`,
@@ -327,6 +350,7 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
             delete playbackByChannelRef.current[channel];
         }
         setPlayingByChannel(current => ({ ...current, [channel]: undefined }));
+        if (channel === 'music') publishIdleMusicStatus();
 
         if (shouldBroadcast && syncToPlayers) {
             yjsStore.sendAudioCommand({
@@ -339,7 +363,7 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                 fadeMs,
             });
         }
-    }, [fadeMs, syncToPlayers]);
+    }, [fadeMs, publishIdleMusicStatus, syncToPlayers]);
 
     const stopAmbienceCue = useCallback((cue: AudioCue, shouldBroadcast = true) => {
         ambiencePlaybackByCueRef.current[cue.id]?.stop(fadeMs);
@@ -459,6 +483,12 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
     }, [fadeMs, stopChannel, syncToPlayers]);
 
     useEffect(() => {
+        if (stopAllRequestId == null || lastStopAllRequestIdRef.current === stopAllRequestId) return;
+        lastStopAllRequestIdRef.current = stopAllRequestId;
+        stopAll();
+    }, [stopAll, stopAllRequestId]);
+
+    useEffect(() => {
         if (!onMusicPlaybackChange) return;
 
         const cueId = playingByChannel.music;
@@ -466,7 +496,7 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
         const musicHandle = playbackByChannelRef.current.music;
 
         if (!musicCue || !isMediaPlaybackHandle(musicHandle)) {
-            onMusicPlaybackChange(getIdleMusicStatus());
+            publishIdleMusicStatus();
             return;
         }
 
@@ -478,6 +508,9 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                 isPlaying: !musicHandle.element.paused,
                 cueId: musicCue.id,
                 title: musicCue.label ?? musicCue.assetName,
+                channel: 'music',
+                sessionMode: syncToPlayers ? 'session' : 'local',
+                error: null,
                 currentTime: Math.max(0, musicHandle.element.currentTime || 0),
                 duration,
                 loop: musicCue.loop,
@@ -499,15 +532,18 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
             musicHandle.element.removeEventListener('pause', syncStatus);
             window.clearInterval(intervalId);
         };
-    }, [deckState.cues, onMusicPlaybackChange, playingByChannel.music]);
+    }, [deckState.cues, onMusicPlaybackChange, playingByChannel.music, publishIdleMusicStatus, syncToPlayers]);
 
     const playCue = useCallback((cue: AudioCue) => {
         const asset = audioAssetsById.get(cue.assetId);
         if (!asset) {
-            setError(`Файл не найден: ${cue.assetName}`);
+            const message = `Файл не найден: ${cue.assetName}`;
+            setError(message);
+            if (cue.channel === 'music') publishMusicError(cue.label ?? cue.assetName, message);
             return;
         }
 
+        setError(null);
         if (cue.channel === 'ambience') {
             ambiencePlaybackByCueRef.current[cue.id]?.stop(cue.fadeMs);
             delete ambiencePlaybackByCueRef.current[cue.id];
@@ -534,7 +570,9 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
             fadeInMs: cue.fadeMs,
             onEnded: clearCuePlayback,
             onError: () => {
-                setError(`Не удалось воспроизвести: ${cue.assetName}`);
+                const message = `Не удалось воспроизвести: ${cue.assetName}`;
+                setError(message);
+                if (cue.channel === 'music') publishMusicError(cue.label ?? cue.assetName, message);
                 clearCuePlayback();
             },
         };
@@ -566,7 +604,7 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
         }
 
         void handle.playPromise.catch(clearCuePlayback);
-    }, [audioAssetsById, stopChannel, syncToPlayers]);
+    }, [audioAssetsById, publishMusicError, stopChannel, syncToPlayers]);
 
     const toggleCue = useCallback((cue: AudioCue) => {
         if (cue.channel === 'ambience' && playingAmbienceCueIds.includes(cue.id)) {
