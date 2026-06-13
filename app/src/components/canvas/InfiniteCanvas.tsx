@@ -52,6 +52,10 @@ const CHARACTER_COMPACT_TABS: Array<{ id: CharacterCompactTab; label: string }> 
   { id: 'notes', label: 'Заметки' },
 ];
 
+const ENTITY_TOKEN_LABEL_MIN_WIDTH = 96;
+const ENTITY_TOKEN_LABEL_MAX_WIDTH = 180;
+const ENTITY_TOKEN_LABEL_HEIGHT = 26;
+
 interface CanvasImageTarget {
   canvasId: string;
   canvasX: number;
@@ -165,6 +169,20 @@ function getPlainEntityDescription(entity: Entity): string {
     .replace(/[#*_`>\-[\]()]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function getCanvasEntityTypeLabel(entity: Entity): string {
+  if (entity.type === 'character') return 'Персонаж';
+  if (entity.type === 'object') return 'Предмет';
+  if (entity.type === 'ability') return 'Способность';
+  if (entity.type === 'competency') return 'Компетенция';
+  if (entity.type === 'attack') return 'Атака';
+  if (entity.type === 'tag') return 'Тег';
+  if (entity.type === 'note') return 'Заметка';
+  if (entity.type === 'canvas') return 'Канвас';
+  if (entity.type === 'folder') return 'Папка';
+  if (entity.type === 'portal') return 'Портал';
+  return entity.type;
 }
 
 async function getEntityTokenCanvasSize(
@@ -861,6 +879,11 @@ const DrawElementNode = memo(function DrawElementNode({
     };
 
     if (mode === 'art') {
+      const cardHasCompactSummary = Boolean(characterArtSummary && linkedEntity);
+      const artCornerRadius = frame.id === 'plain' ? 4 : 8;
+      const artLabelHeight = Math.min(42, Math.max(30, eh * 0.2));
+      const artLabelY = ey + eh - artLabelHeight;
+      const artLabelFontSize = Math.min(13, Math.max(10, ew / 18));
       return (
         <Group {...commonProps} onDblClick={openLinkedEntity}>
           {isSelected && (
@@ -881,7 +904,7 @@ const DrawElementNode = memo(function DrawElementNode({
             width={ew}
             height={eh}
             fill="rgba(15,23,42,0.86)"
-            cornerRadius={frame.id === 'plain' ? 4 : 8}
+            cornerRadius={artCornerRadius}
             listening={false}
           />
           {imageSource ? (
@@ -909,7 +932,7 @@ const DrawElementNode = memo(function DrawElementNode({
             strokeWidth={entityStrokeWidth}
             dash={entityDash}
             opacity={strokeOpacity}
-            cornerRadius={frame.id === 'plain' ? 4 : 8}
+            cornerRadius={artCornerRadius}
             shadowColor={accentStroke}
             shadowBlur={glowBlur}
             shadowOpacity={frame.glowOpacity * strokeOpacity}
@@ -969,30 +992,47 @@ const DrawElementNode = memo(function DrawElementNode({
               width={ew}
               height={eh}
               entityName={linkedEntity.name}
+              entityTypeLabel={getCanvasEntityTypeLabel(linkedEntity)}
               summary={characterArtSummary}
               description={getPlainEntityDescription(linkedEntity)}
             />
           )}
-          {showEntityName && (
+          {showEntityName && !cardHasCompactSummary && (
             <>
               <Rect
                 x={ex}
-                y={ey + eh - 30}
+                y={artLabelY}
                 width={ew}
-                height={30}
+                height={artLabelHeight}
                 fill="rgba(2,6,23,0.72)"
-                cornerRadius={frame.id === 'plain' ? [0, 0, 4, 4] : [0, 0, 8, 8]}
+                cornerRadius={artCornerRadius === 4 ? [0, 0, 4, 4] : [0, 0, 8, 8]}
                 listening={false}
               />
               <Text
                 x={ex + 8}
-                y={ey + eh - 22}
+                y={artLabelY + 6}
                 width={ew - 16}
+                height={Math.max(12, artLabelHeight - 20)}
                 text={displayName}
-                fontSize={12}
+                fontSize={artLabelFontSize}
                 fontStyle="bold"
                 fill="rgba(241,245,249,0.9)"
                 align="center"
+                wrap="none"
+                ellipsis
+                listening={false}
+              />
+              <Text
+                x={ex + 8}
+                y={artLabelY + artLabelHeight - 13}
+                width={ew - 16}
+                height={9}
+                text={canViewLinked && linkedEntity ? getCanvasEntityTypeLabel(linkedEntity) : 'Скрыто'}
+                fontSize={8}
+                fill="rgba(203,213,225,0.55)"
+                align="center"
+                wrap="none"
+                ellipsis
                 listening={false}
               />
             </>
@@ -1055,10 +1095,15 @@ const DrawElementNode = memo(function DrawElementNode({
       );
     }
 
-    const tokenSize = Math.min(ew, Math.max(40, eh - 24));
+    const reservedTokenLabelHeight = showEntityName ? ENTITY_TOKEN_LABEL_HEIGHT + 9 : 0;
+    const tokenSize = Math.min(ew, Math.max(40, eh - reservedTokenLabelHeight));
     const radius = tokenSize / 2;
     const cxToken = ex + ew / 2;
     const cyToken = showEntityName ? ey + radius : ey + eh / 2;
+    const tokenLabelWidth = Math.min(ENTITY_TOKEN_LABEL_MAX_WIDTH, Math.max(ENTITY_TOKEN_LABEL_MIN_WIDTH, ew + 48));
+    const tokenLabelX = ex + ew / 2 - tokenLabelWidth / 2;
+    const tokenLabelY = ey + tokenSize + 7;
+    const tokenLabelFontSize = Math.min(12, Math.max(9, ew / 7));
 
     return (
       <Group {...commonProps} onDblClick={openLinkedEntity}>
@@ -1157,17 +1202,33 @@ const DrawElementNode = memo(function DrawElementNode({
           listening={false}
         />
         {showEntityName && (
-          <Text
-            text={displayName}
-            x={ex - 24}
-            y={ey + tokenSize + 7}
-            fill="rgba(203,213,225,0.88)"
-            fontSize={12}
-            fontStyle="bold"
-            align="center"
-            width={ew + 48}
-            listening={false}
-          />
+          <>
+            <Rect
+              x={tokenLabelX}
+              y={tokenLabelY - 4}
+              width={tokenLabelWidth}
+              height={ENTITY_TOKEN_LABEL_HEIGHT}
+              fill="rgba(2,6,23,0.74)"
+              stroke="rgba(148,163,184,0.16)"
+              strokeWidth={1}
+              cornerRadius={8}
+              listening={false}
+            />
+            <Text
+              text={displayName}
+              x={tokenLabelX + 7}
+              y={tokenLabelY + 2}
+              fill="rgba(226,232,240,0.9)"
+              fontSize={tokenLabelFontSize}
+              fontStyle="bold"
+              align="center"
+              width={tokenLabelWidth - 14}
+              height={ENTITY_TOKEN_LABEL_HEIGHT - 8}
+              wrap="none"
+              ellipsis
+              listening={false}
+            />
+          </>
         )}
         {canViewLinked && (
           <Group
@@ -1427,6 +1488,7 @@ function CharacterCanvasCardOverlay({
   width,
   height,
   entityName,
+  entityTypeLabel,
   summary,
   description,
 }: {
@@ -1435,6 +1497,7 @@ function CharacterCanvasCardOverlay({
   width: number;
   height: number;
   entityName: string;
+  entityTypeLabel: string;
   summary: CharacterCompactSummary;
   description: string;
 }) {
@@ -1451,19 +1514,22 @@ function CharacterCanvasCardOverlay({
         },
       }}
     >
-      <div className="h-full w-full overflow-hidden rounded-[8px] border border-[rgba(255,255,255,0.14)] bg-[rgba(2,6,23,0.78)] text-slate-100 shadow-[inset_0_0_36px_rgba(15,23,42,0.72)] backdrop-blur-sm">
+      <div className="h-full w-full overflow-hidden rounded-[8px] border border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-surface-window)_86%,rgba(2,6,23,0.92))] text-[var(--vibe-text-primary)] shadow-[inset_0_0_34px_rgba(2,6,23,0.72)] backdrop-blur-sm">
         <div className="flex h-full flex-col gap-1.5 overflow-y-auto p-2 custom-scrollbar">
-          <div className="min-w-0 border-b border-white/10 pb-1">
-            <div className="truncate text-[12px] font-black uppercase tracking-wide text-white">{entityName}</div>
-            <div className="text-[8px] font-bold uppercase tracking-widest text-white/42">Карточка персонажа</div>
+          <div className="min-w-0 border-b border-[var(--vibe-border-subtle)] pb-1.5">
+            <div className="truncate text-[12px] font-black text-[var(--vibe-text-primary)]">{entityName}</div>
+            <div className="mt-0.5 flex items-center justify-between gap-1 text-[8px] font-bold text-[var(--vibe-text-faint)]">
+              <span className="truncate">{entityTypeLabel}</span>
+              <span className="flex-shrink-0 font-mono">{summary.attackCount}/{summary.abilityCount}/{summary.inventoryCount}</span>
+            </div>
           </div>
 
           {summary.metrics.length > 0 && (
-            <div className="grid grid-cols-4 gap-1">
+            <div className="grid gap-1" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(42px, 1fr))' }}>
               {summary.metrics.map((metric) => (
-                <div key={metric.id} className="rounded border border-white/10 bg-white/[0.07] px-1 py-1 text-center">
-                  <div className="truncate text-[7px] font-black uppercase tracking-wide text-white/45">{metric.label}</div>
-                  <div className="font-mono text-[12px] font-black leading-none text-white">{metric.value}</div>
+                <div key={metric.id} className="min-w-0 rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1 py-1 text-center">
+                  <div className="truncate text-[7px] font-black text-[var(--vibe-text-faint)]">{metric.label}</div>
+                  <div className="font-mono text-[12px] font-black leading-none text-[var(--vibe-text-primary)]">{metric.value}</div>
                 </div>
               ))}
             </div>
@@ -1472,14 +1538,14 @@ function CharacterCanvasCardOverlay({
           {summary.resources.length > 0 && (
             <div className="space-y-1">
               {summary.resources.map((resource) => (
-                <div key={resource.id} className="rounded border border-white/10 bg-white/[0.06] px-1.5 py-1">
-                  <div className="mb-0.5 flex items-center justify-between gap-1 text-[8px] font-bold uppercase tracking-wide text-white/50">
+                <div key={resource.id} className="rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-1">
+                  <div className="mb-0.5 flex items-center justify-between gap-1 text-[8px] font-bold text-[var(--vibe-text-faint)]">
                     <span className="truncate">{resource.label}</span>
-                    <span className="font-mono text-white/70">{resource.current}/{resource.max || '∞'}</span>
+                    <span className="font-mono text-[var(--vibe-text-muted)]">{resource.current}/{resource.max || '∞'}</span>
                   </div>
-                  <div className="h-1 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-1 overflow-hidden rounded-full bg-[var(--vibe-surface-block)]">
                     <div
-                      className={resource.id === 'wounds' ? 'h-full rounded-full bg-rose-400' : 'h-full rounded-full bg-cyan-300'}
+                      className={resource.id === 'wounds' ? 'h-full rounded-full bg-[var(--vibe-danger)]' : 'h-full rounded-full bg-[var(--vibe-accent)]'}
                       style={{ width: `${Math.max(4, resource.ratio * 100)}%` }}
                     />
                   </div>
@@ -1490,14 +1556,14 @@ function CharacterCanvasCardOverlay({
 
           {summary.actions.length > 0 && (
             <div className="space-y-1">
-              <div className="text-[8px] font-black uppercase tracking-widest text-white/38">Действия</div>
+              <div className="text-[8px] font-black text-[var(--vibe-text-faint)]">Действия</div>
               {summary.actions.map((action) => (
-                <div key={action.id} className="grid grid-cols-[28px_1fr_auto] items-center gap-1 rounded border border-white/10 bg-white/[0.06] px-1.5 py-1">
-                  <span className="rounded bg-white/10 px-1 text-center text-[7px] font-black uppercase tracking-wide text-white/62">
+                <div key={action.id} className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-1 rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-1">
+                  <span className="rounded bg-[var(--vibe-accent-soft)] px-1 text-center text-[7px] font-black text-[var(--vibe-text-muted)]">
                     {action.kind === 'attack' ? 'АТК' : 'СП'}
                   </span>
-                  <span className="min-w-0 truncate text-[10px] font-bold text-white/88">{action.name}</span>
-                  <span className="max-w-[78px] truncate font-mono text-[9px] text-white/55">{action.formula || '-'}</span>
+                  <span className="min-w-0 truncate text-[10px] font-bold text-[var(--vibe-text-primary)]">{action.name}</span>
+                  <span className="max-w-[78px] truncate font-mono text-[9px] text-[var(--vibe-text-faint)]">{action.formula || '-'}</span>
                 </div>
               ))}
             </div>
@@ -1505,21 +1571,21 @@ function CharacterCanvasCardOverlay({
 
           {summary.inventory.length > 0 && (
             <div className="space-y-1">
-              <div className="text-[8px] font-black uppercase tracking-widest text-white/38">Инвентарь</div>
+              <div className="text-[8px] font-black text-[var(--vibe-text-faint)]">Инвентарь</div>
               {summary.inventory.map((item) => (
-                <div key={item.id} className="flex items-center justify-between gap-1 rounded border border-white/10 bg-white/[0.06] px-1.5 py-1">
+                <div key={item.id} className="flex items-center justify-between gap-1 rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-1">
                   <div className="min-w-0">
-                    <div className="truncate text-[10px] font-bold text-white/88">{item.name}</div>
-                    <div className="truncate text-[8px] text-white/45">{item.category}</div>
+                    <div className="truncate text-[10px] font-bold text-[var(--vibe-text-primary)]">{item.name}</div>
+                    <div className="truncate text-[8px] text-[var(--vibe-text-faint)]">{item.category}</div>
                   </div>
-                  {item.equipped && <span className="rounded bg-emerald-300/15 px-1 text-[7px] font-black uppercase text-emerald-200">Надето</span>}
+                  {item.equipped && <span className="rounded bg-[color-mix(in_srgb,var(--vibe-success)_18%,transparent)] px-1 text-[7px] font-black text-[var(--vibe-success)]">Надето</span>}
                 </div>
               ))}
             </div>
           )}
 
           {description && (
-            <div className="rounded border border-white/10 bg-white/[0.05] px-1.5 py-1 text-[9px] leading-snug text-white/62">
+            <div className="rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-1 text-[9px] leading-snug text-[var(--vibe-text-muted)]">
               {description}
             </div>
           )}

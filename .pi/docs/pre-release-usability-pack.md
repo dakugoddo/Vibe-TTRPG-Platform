@@ -97,6 +97,8 @@ Acceptance:
 
 ### 5. Canvas card readability
 
+Статус: implemented, automated QA passed; manual visual smoke на тестовом мире остаётся перед beta.
+
 Задача: сделать entity cards/tokens читаемыми на обычном zoom.
 
 Форма реализации:
@@ -104,6 +106,7 @@ Acceptance:
 - стабильные размеры и overflow rules;
 - имя, тип/иконка, ключевые параметры без превращения в Excel;
 - compact card остаётся информационной, без edit/roll controls.
+- подписи фишек должны помещаться в bbox токена; длинные имена резать через ellipsis, а не выпускать за элемент.
 
 Acceptance:
 
