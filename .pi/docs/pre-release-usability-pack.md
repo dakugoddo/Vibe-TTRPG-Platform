@@ -58,6 +58,8 @@ Acceptance:
 
 ### 3. Notes workspace discoverability polish
 
+Статус: implemented; automated QA passed, manual UI smoke pending.
+
 Задача: сделать режим заметок понятнее как рабочее пространство.
 
 Форма реализации:

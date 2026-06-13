@@ -1377,12 +1377,12 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
             }}
         >
             {dockDropTarget?.groupId === node.id && !visualDropZone && (
-                <div className="pointer-events-none absolute inset-0 z-20 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_8%,transparent)]" />
+                <div className="pointer-events-none absolute inset-0 z-20 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--vibe-accent)_34%,transparent),0_0_34px_color-mix(in_srgb,var(--vibe-accent)_18%,transparent)]" />
             )}
             {visualDropZone && (
-                <div className="pointer-events-none absolute inset-0 z-20 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_10%,transparent)]">
+                <div className="pointer-events-none absolute inset-0 z-20 rounded-[var(--vibe-radius-md)] border-2 border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--vibe-accent)_42%,transparent),0_0_36px_color-mix(in_srgb,var(--vibe-accent)_20%,transparent)]">
                     <div
-                        className={`absolute rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_22%,transparent)] shadow-[0_0_28px_color-mix(in_srgb,var(--vibe-accent)_28%,transparent)] ${
+                        className={`absolute rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_28%,transparent)] shadow-[0_0_34px_color-mix(in_srgb,var(--vibe-accent)_34%,transparent)] ${
                             visualDropZone === 'left'
                                 ? 'left-2 top-2 h-[calc(100%-16px)] w-[32%]'
                                 : visualDropZone === 'right'
@@ -1401,13 +1401,21 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                     event.stopPropagation();
                 }}
                 onPointerDown={startPanePointerDrag}
-                className={`flex min-h-10 select-none items-center justify-between gap-2 border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)] px-2.5 py-1.5 ${activeTab ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                className={`flex min-h-10 select-none items-center justify-between gap-2 border-b px-2.5 py-1.5 transition-colors ${
+                    isActiveGroup
+                        ? 'border-[var(--vibe-border-strong)] bg-[color-mix(in_srgb,var(--vibe-accent)_14%,var(--vibe-surface-header))] shadow-[inset_3px_0_0_var(--vibe-accent)]'
+                        : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)]'
+                } ${activeTab ? 'cursor-grab active:cursor-grabbing' : ''}`}
                 title={activeTab ? t('workspace.notes.dragPane') : undefined}
             >
                 <div
                     className="flex min-w-0 items-center gap-2"
                 >
-                    <span className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 font-mono text-[10px] text-[var(--vibe-text-muted)]">
+                    <span className={`rounded-[var(--vibe-radius-sm)] border px-2 py-1 font-mono text-[10px] ${
+                        isActiveGroup
+                            ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_16%,var(--vibe-surface-input))] text-[var(--vibe-text-primary)]'
+                            : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)]'
+                    }`}>
                         {t('workspace.notes.groupLabel', { index: groupIndex })}
                     </span>
                     {activeEntity && (
@@ -1502,7 +1510,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                             }}
                              className={`group flex h-7 max-w-[230px] shrink-0 select-none items-center gap-2 rounded-[var(--vibe-radius-sm)] border px-2 text-left text-xs transition-colors ${
                                 isActiveTab
-                                    ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-surface-hover)] text-[var(--vibe-text-primary)]'
+                                    ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_16%,var(--vibe-surface-hover))] text-[var(--vibe-text-primary)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--vibe-accent)_20%,transparent)]'
                                     : 'border-transparent text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-subtle)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                             }`}
                             title={entity?.name ?? tab.entityId}
@@ -1538,8 +1546,9 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
 
             {!activeTab || !activeEntity ? (
                 <div className="flex min-h-0 flex-1 items-center justify-center p-6">
-                    <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] px-6 py-5 text-center text-sm text-[var(--vibe-text-faint)]">
-                        {activeTab ? t('workspace.notes.missingEntity') : t('workspace.notes.emptyGroupHint')}
+                    <div className="flex min-w-[240px] flex-col items-center gap-3 rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-6 py-5 text-center text-sm text-[var(--vibe-text-faint)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                        <FileText size={20} className="text-[var(--vibe-accent)] opacity-75" />
+                        <span>{activeTab ? t('workspace.notes.missingEntity') : t('workspace.notes.emptyGroupHint')}</span>
                     </div>
                 </div>
             ) : (
@@ -1784,6 +1793,7 @@ export function NotesWorkspace({
         () => listNotesWorkspaceGroups(notesLayout.root),
         [notesLayout.root]
     );
+    const hasWorkspaceTabs = workspaceGroups.some((group) => group.tabs.length > 0);
 
     const activeGroup = workspaceGroups.find((group) => group.id === notesLayout.activeGroupId) ?? workspaceGroups[0] ?? null;
     const activeTab = activeGroup ? getActiveTab(activeGroup.tabs, activeGroup.activeTabId) : null;
@@ -2016,8 +2026,13 @@ export function NotesWorkspace({
                     <div className="border-t border-[var(--vibe-border-subtle)] py-2">
                         <button
                             type="button"
+                            disabled={!hasWorkspaceTabs}
                             onClick={resetWorkspaceLayout}
-                            className="mb-1 flex h-9 w-9 items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-text-faint)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                            className={`mb-1 flex h-9 w-9 items-center justify-center rounded-[var(--vibe-radius-sm)] transition-colors ${
+                                hasWorkspaceTabs
+                                    ? 'text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+                                    : 'cursor-not-allowed text-[var(--vibe-text-faint)] opacity-35'
+                            }`}
                             title={t('workspace.notes.resetTabs')}
                         >
                             <RotateCcw size={16} />
