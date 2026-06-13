@@ -101,14 +101,14 @@ assert.equal(groups[1].activeTabId, groups[1].tabs[0].id);
 
 layout = splitNotesWorkspaceGroupFromTab(layout, groups[1].id, groups[1].tabs[0].id, groups[0].id, 'column', 'before');
 groups = listNotesWorkspaceGroups(layout.root);
-assert.equal(groups.length, 3, 'Dragging a tab to an edge can create a new split group');
+assert.equal(groups.length, 2, 'Dragging the last tab out of a pane collapses the empty source pane');
 assert.equal(layout.activeGroupId, groups[0].id, 'New split group becomes active');
 assert.equal(groups[0].tabs.length, 1);
 
 const closedGroupId = groups[0].id;
 layout = closeNotesWorkspaceGroup(layout, closedGroupId);
 groups = listNotesWorkspaceGroups(layout.root);
-assert.equal(groups.length, 2, 'Closing a group collapses its parent split to the sibling');
+assert.equal(groups.length, 1, 'Closing a group collapses its parent split to the sibling');
 assert.notEqual(layout.activeGroupId, closedGroupId, 'Closed group cannot remain active');
 
 const beforeSingleClose = createEmptyNotesWorkspaceLayout();
@@ -130,5 +130,20 @@ selfSplitLayout = splitNotesWorkspaceGroupFromTab(
 groups = listNotesWorkspaceGroups(selfSplitLayout.root);
 assert.equal(groups.length, 2, 'Dragging a tab to the edge of its own pane creates a sibling pane');
 assert.deepEqual(groups.map((group) => group.tabs.map((tab) => tab.entityId)), [['self-note-1'], ['self-note-2']]);
+
+let singleSelfSplitLayout = createEmptyNotesWorkspaceLayout();
+singleSelfSplitLayout = openNotesWorkspaceTab(singleSelfSplitLayout, { entityId: 'single-self-note', view: 'source' });
+groups = listNotesWorkspaceGroups(singleSelfSplitLayout.root);
+singleSelfSplitLayout = splitNotesWorkspaceGroupFromTab(
+    singleSelfSplitLayout,
+    groups[0].id,
+    groups[0].tabs[0].id,
+    groups[0].id,
+    'row',
+    'after'
+);
+groups = listNotesWorkspaceGroups(singleSelfSplitLayout.root);
+assert.equal(groups.length, 1, 'Dragging the only tab to the edge of its own pane is a no-op');
+assert.deepEqual(groups[0].tabs.map((tab) => tab.entityId), ['single-self-note']);
 
 console.log('notes workspace layout tests passed');

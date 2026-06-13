@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2, Loader2, Users, Languages, RotateCcw } from 'lucide-react';
+import { FolderOpen, Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2, Loader2, Users, Languages, RotateCcw } from 'lucide-react';
 import { yjsStore } from '../../store/yjsStore';
 import { useCanvasDrawStore } from '../../store/canvasDrawStore';
 import { useNotesWorkspaceStore } from '../../store/notesWorkspaceStore';
@@ -17,6 +17,7 @@ import { listImplementedNotesShellModules } from '../../utils/notesWorkspaceModu
 import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, glass, interfaceDensityPresets, saveCustomThemeColors, themePresets, type CustomThemeColors } from '../../utils/theme';
 import { getDevPerformanceOverlayEnabled, setDevPerformanceOverlayEnabled } from '../../utils/devPerformanceOverlay';
 import type { AudioChannel, PlayerProfile } from '../../types';
+import { isDesktopRuntime, showTranslationsFolder } from '../../services/desktopBridge';
 import { listPlayerProfiles, updatePlayerProfileRole } from '../../services/fileApi';
 
 type SettingsTabId = 'interface' | 'audio' | 'canvas' | 'world' | 'roles';
@@ -27,20 +28,20 @@ interface SettingsWindowProps {
     onClose: () => void;
 }
 
-const AUDIO_CHANNELS: Array<{ id: AudioChannel; label: string }> = [
-    { id: 'music', label: 'Музыка' },
-    { id: 'ambience', label: 'Атмосфера' },
-    { id: 'sfx', label: 'SFX' },
-    { id: 'voice', label: 'Голос' },
+const AUDIO_CHANNELS: Array<{ id: AudioChannel; labelKey: string }> = [
+    { id: 'music', labelKey: 'settings.audio.channels.music' },
+    { id: 'ambience', labelKey: 'settings.audio.channels.ambience' },
+    { id: 'sfx', labelKey: 'settings.audio.channels.sfx' },
+    { id: 'voice', labelKey: 'settings.audio.channels.voice' },
 ];
 
-const ROLE_PERMISSION_LABELS: Array<{ key: PermissionKey; label: string }> = [
-    { key: 'viewGeneral', label: 'Видит общую' },
-    { key: 'editGeneral', label: 'Правит общую' },
-    { key: 'viewOwnUser', label: 'Видит своё' },
-    { key: 'editOwnUser', label: 'Правит своё' },
-    { key: 'viewGm', label: 'Видит GM' },
-    { key: 'broadcastAudio', label: 'Звук' },
+const ROLE_PERMISSION_LABELS: Array<{ key: PermissionKey; labelKey: string }> = [
+    { key: 'viewGeneral', labelKey: 'settings.roles.permissions.viewGeneral' },
+    { key: 'editGeneral', labelKey: 'settings.roles.permissions.editGeneral' },
+    { key: 'viewOwnUser', labelKey: 'settings.roles.permissions.viewOwnUser' },
+    { key: 'editOwnUser', labelKey: 'settings.roles.permissions.editOwnUser' },
+    { key: 'viewGm', labelKey: 'settings.roles.permissions.viewGm' },
+    { key: 'broadcastAudio', labelKey: 'settings.roles.permissions.broadcastAudio' },
 ];
 
 const ASSIGNABLE_PLAYER_ROLES: Array<{ id: Exclude<UserRole, 'gm'>; label: string }> = [
@@ -67,15 +68,15 @@ const activeControlClass = 'border-[var(--vibe-border-strong)] bg-[var(--vibe-ac
 const idleControlClass = 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
 
 function getSettingsTabs(isGM: boolean) {
-    const tabs: Array<{ id: SettingsTabId; label: string; icon: typeof Monitor; gmOnly?: boolean }> = [
-        { id: 'interface', label: 'Интерфейс', icon: Monitor },
-        { id: 'audio', label: 'Аудио', icon: Volume2 },
-        { id: 'canvas', label: 'Canvas', icon: Grid3X3 },
+    const tabs: Array<{ id: SettingsTabId; labelKey: string; icon: typeof Monitor; gmOnly?: boolean }> = [
+        { id: 'interface', labelKey: 'settings.tabs.interface', icon: Monitor },
+        { id: 'audio', labelKey: 'settings.tabs.audio', icon: Volume2 },
+        { id: 'canvas', labelKey: 'settings.tabs.canvas', icon: Grid3X3 },
     ];
     if (isGM) {
         tabs.push(
-            { id: 'world', label: 'Мир', icon: Globe2, gmOnly: true },
-            { id: 'roles', label: 'Роли', icon: Shield, gmOnly: true },
+            { id: 'world', labelKey: 'settings.tabs.world', icon: Globe2, gmOnly: true },
+            { id: 'roles', labelKey: 'settings.tabs.roles', icon: Shield, gmOnly: true },
         );
     }
     return tabs;
@@ -183,25 +184,25 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
         setCustomThemeColors(next);
         setThemeId(themePresets[0].id);
         setDensityId('balanced');
-        announceLocalReset('Тема, палитра и плотность сброшены локально.');
+        announceLocalReset(t('settings.reset.messages.themeDensity'));
     };
     const resetScreenWindowLayout = () => {
         resetCurrentWindowLayout();
-        announceLocalReset('Открытые экранные окна сброшены. Закреплённые объекты canvas не тронуты.');
+        announceLocalReset(t('settings.reset.messages.screenWindows'));
     };
     const resetNotesWorkspaceLayout = () => {
         resetNotesLayout();
-        announceLocalReset('Раскладка вкладок режима заметок сброшена.');
+        announceLocalReset(t('settings.reset.messages.notesLayout'));
     };
     const resetNotesWorkspaceShell = () => {
         resetNotesShell();
-        announceLocalReset('Модули режима заметок сброшены к значениям по умолчанию.');
+        announceLocalReset(t('settings.reset.messages.notesShell'));
     };
     const resetAudioSettings = () => {
         setAudioModuleEnabled(true);
         setAudioEnabled(false);
         AUDIO_CHANNELS.forEach((channel) => setChannelVolume(channel.id, 1));
-        announceLocalReset('Локальные настройки аудио сброшены.');
+        announceLocalReset(t('settings.reset.messages.audio'));
     };
     const resetAllLocalUi = () => {
         resetThemeAndDensity();
@@ -211,11 +212,21 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
         setAudioModuleEnabled(true);
         setAudioEnabled(false);
         AUDIO_CHANNELS.forEach((channel) => setChannelVolume(channel.id, 1));
-        announceLocalReset('Локальный интерфейс сброшен. Данные мира не изменялись.');
+        announceLocalReset(t('settings.reset.messages.all'));
     };
     const updateDevPerfOverlay = (enabled: boolean) => {
         setDevPerfOverlayEnabled(enabled);
         setDevPerformanceOverlayEnabled(enabled);
+    };
+    const handleShowTranslationsFolder = async () => {
+        try {
+            const folder = await showTranslationsFolder();
+            announceLocalReset(folder
+                ? t('settings.interface.language.openFolderSuccess')
+                : t('settings.interface.language.openFolderUnavailable'));
+        } catch (err) {
+            announceLocalReset(err instanceof Error ? err.message : String(err));
+        }
     };
 
     return (
@@ -227,7 +238,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                             <Settings size={16} />
                         </div>
                         <div className="min-w-0">
-                            <div className="truncate text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-primary)]">Настройки</div>
+                            <div className="truncate text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-primary)]">{t('settings.title')}</div>
                             <div className="truncate text-[10px] text-[var(--vibe-text-faint)]">{isGM ? 'GM' : 'Player'}</div>
                         </div>
                     </div>
@@ -248,7 +259,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                     }`}
                                 >
                                     <Icon size={14} />
-                                    {tab.label}
+                                    {t(tab.labelKey)}
                                     {tab.gmOnly && <span className="ml-auto rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-0.5 text-[8px] text-[var(--vibe-warning)]">GM</span>}
                                 </button>
                             );
@@ -259,14 +270,14 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                 <main className="flex min-w-0 flex-1 flex-col">
                     <header className="flex h-14 items-center justify-between border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)] px-5">
                         <div>
-                            <div className="text-sm font-bold text-[var(--vibe-text-primary)]">{tabs.find((tab) => tab.id === safeActiveTab)?.label}</div>
+                            <div className="text-sm font-bold text-[var(--vibe-text-primary)]">{t(tabs.find((tab) => tab.id === safeActiveTab)?.labelKey ?? 'settings.tabs.interface')}</div>
                             <div className="text-[10px] uppercase tracking-widest text-[var(--vibe-text-faint)]">{roomName}</div>
                         </div>
                         <button
                             type="button"
                             onClick={onClose}
                             className="flex h-8 w-8 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
-                            title="Закрыть"
+                            title={t('common.close')}
                         >
                             <X size={16} />
                         </button>
@@ -279,16 +290,16 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                     <div className="mb-3 flex items-center justify-between gap-3">
                                         <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
                                             <RotateCcw size={14} />
-                                            Сброс локального UI
+                                            {t('settings.reset.title')}
                                         </div>
                                         <button
                                             type="button"
                                             onClick={resetAllLocalUi}
                                             className="flex h-8 items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-warning)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-warning)_12%,transparent)] px-2.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-warning)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-warning)_20%,transparent)]"
-                                            title="Сбросить локальные настройки интерфейса без изменения файлов мира"
+                                            title={t('settings.reset.allTitle')}
                                         >
                                             <RotateCcw size={12} />
-                                            Всё локальное
+                                            {t('settings.reset.allButton')}
                                         </button>
                                     </div>
                                     {localResetMessage && (
@@ -302,31 +313,31 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                             onClick={resetThemeAndDensity}
                                             className={`${settingsCardClass} text-left transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]`}
                                         >
-                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Тема и плотность</div>
-                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">Preset, custom palette и density</div>
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.reset.themeDensityTitle')}</div>
+                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">{t('settings.reset.themeDensityDescription')}</div>
                                         </button>
                                         <button
                                             type="button"
                                             onClick={resetScreenWindowLayout}
                                             className={`${settingsCardClass} text-left transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]`}
                                         >
-                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Экранные окна</div>
-                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">Закрывает только незакреплённые окна</div>
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.reset.screenWindowsTitle')}</div>
+                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">{t('settings.reset.screenWindowsDescription')}</div>
                                         </button>
                                         <button
                                             type="button"
                                             onClick={resetNotesWorkspaceLayout}
                                             className={`${settingsCardClass} text-left transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]`}
                                         >
-                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Layout заметок</div>
-                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">Сбрасывает вкладки и split-панели</div>
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.reset.notesLayoutTitle')}</div>
+                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">{t('settings.reset.notesLayoutDescription')}</div>
                                         </button>
                                         <button
                                             type="button"
                                             onClick={resetNotesWorkspaceShell}
                                             className={`${settingsCardClass} text-left transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]`}
                                         >
-                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Shell-модули</div>
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.reset.notesShellTitle')}</div>
                                             <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">Vault, Context, Search, Graph, Audio</div>
                                         </button>
                                         <button
@@ -334,14 +345,14 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                             onClick={resetAudioSettings}
                                             className={`${settingsCardClass} text-left transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]`}
                                         >
-                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Аудио defaults</div>
-                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">Модуль включён, каналы 100%, session sound off</div>
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.reset.audioTitle')}</div>
+                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">{t('settings.reset.audioDescription')}</div>
                                         </button>
                                         {import.meta.env.DEV && (
                                             <label className={`${settingsCardClass} flex cursor-pointer items-center justify-between gap-3 transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]`}>
                                                 <span>
                                                     <span className="block text-xs font-bold text-[var(--vibe-text-primary)]">Dev performance overlay</span>
-                                                    <span className="mt-1 block text-[11px] text-[var(--vibe-text-faint)]">Показывается только в dev build</span>
+                                                    <span className="mt-1 block text-[11px] text-[var(--vibe-text-faint)]">{t('settings.reset.devPerfDescription')}</span>
                                                 </span>
                                                 <input
                                                     type="checkbox"
@@ -357,15 +368,15 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                 <div className="rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] p-4 shadow-[var(--vibe-shadow-block)]">
                                     <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
                                         <Monitor size={14} />
-                                        Локальный интерфейс
+                                        {t('settings.interface.localInterface')}
                                     </div>
                                     <div className="mb-3 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3">
                                         <div className="mb-3 flex items-end justify-between gap-3">
                                             <div>
-                                                <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Визуальная тема</div>
-                                                <div className="mt-1 text-[10px] text-[var(--vibe-text-faint)]">Меняет не только цвет, а характер рабочего стола.</div>
+                                                <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.interface.visualTheme')}</div>
+                                                <div className="mt-1 text-[10px] text-[var(--vibe-text-faint)]">{t('settings.interface.visualThemeDescription')}</div>
                                             </div>
-                                            <span className="rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">balanced default</span>
+                                            <span className="rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">{t('settings.interface.balancedDefault')}</span>
                                         </div>
                                         <div className="grid gap-2 sm:grid-cols-2">
                                             {themePresets.map((preset) => (
@@ -389,26 +400,32 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                         ))}
                                                     </div>
                                                     <div className="flex items-center justify-between gap-2">
-                                                        <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wider">{preset.label}</div>
+                                                        <div className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wider">
+                                                            {t(`settings.interface.themePresets.${preset.id}.label`, { defaultValue: preset.label })}
+                                                        </div>
                                                         <span className="rounded border border-[var(--vibe-border-subtle)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{preset.effectLevel}</span>
                                                     </div>
-                                                    <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-accent)]">{preset.tone}</div>
-                                                    <div className="mt-1 text-[10px] leading-snug text-[var(--vibe-text-faint)]">{preset.description}</div>
+                                                    <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-accent)]">
+                                                        {t(`settings.interface.themePresets.${preset.id}.tone`, { defaultValue: preset.tone })}
+                                                    </div>
+                                                    <div className="mt-1 text-[10px] leading-snug text-[var(--vibe-text-faint)]">
+                                                        {t(`settings.interface.themePresets.${preset.id}.description`, { defaultValue: preset.description })}
+                                                    </div>
                                                 </button>
                                             ))}
                                         </div>
                                         <div className="mt-3 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] p-3">
                                             <div className="mb-2 flex items-center justify-between gap-2">
                                                 <div>
-                                                    <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Custom palette</div>
-                                                    <div className="mt-0.5 text-[10px] text-[var(--vibe-text-faint)]">Временный редактор базовых цветов; полноценные темы мира будут отдельным срезом.</div>
+                                                    <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.interface.customPalette')}</div>
+                                                    <div className="mt-0.5 text-[10px] text-[var(--vibe-text-faint)]">{t('settings.interface.customPaletteDescription')}</div>
                                                 </div>
                                                 <button
                                                     type="button"
                                                     onClick={resetCustomTheme}
                                                     className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] transition-colors hover:border-[var(--vibe-border-strong)] hover:text-[var(--vibe-text-primary)]"
                                                 >
-                                                    Reset
+                                                    {t('common.reset')}
                                                 </button>
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -431,8 +448,8 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                         <div className="mt-3 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3">
                                             <div className="mb-3 flex items-end justify-between gap-3">
                                                 <div>
-                                                    <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Плотность интерфейса</div>
-                                                    <div className="mt-1 text-[10px] text-[var(--vibe-text-faint)]">Меняет отступы, высоту контролов и общий ритм панелей без смены визуальной темы.</div>
+                                                    <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.interface.density')}</div>
+                                                    <div className="mt-1 text-[10px] text-[var(--vibe-text-faint)]">{t('settings.interface.densityDescription')}</div>
                                                 </div>
                                                 <SlidersHorizontal size={15} className="text-[var(--vibe-text-faint)]" />
                                             </div>
@@ -451,15 +468,21 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                             }`}
                                                         >
                                                             <div className="flex items-center justify-between gap-2">
-                                                                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--vibe-text-primary)]">{preset.label}</span>
-                                                                <span className="rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{preset.tone}</span>
+                                                                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--vibe-text-primary)]">
+                                                                    {t(`settings.interface.densityPresets.${preset.id}.label`, { defaultValue: preset.label })}
+                                                                </span>
+                                                                <span className="rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                                                    {t(`settings.interface.densityPresets.${preset.id}.tone`, { defaultValue: preset.tone })}
+                                                                </span>
                                                             </div>
                                                             <div className="mt-2 flex items-end gap-1.5 text-[var(--vibe-accent)]">
                                                                 <span className="h-3 w-2 rounded-sm bg-current opacity-45" />
                                                                 <span className="h-4 w-2 rounded-sm bg-current opacity-65" />
                                                                 <span className="h-5 w-2 rounded-sm bg-current opacity-85" />
                                                             </div>
-                                                            <div className="mt-2 text-[10px] leading-snug text-[var(--vibe-text-faint)]">{preset.description}</div>
+                                                            <div className="mt-2 text-[10px] leading-snug text-[var(--vibe-text-faint)]">
+                                                                {t(`settings.interface.densityPresets.${preset.id}.description`, { defaultValue: preset.description })}
+                                                            </div>
                                                         </button>
                                                     );
                                                 })}
@@ -468,12 +491,12 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                     </div>
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3">
-                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Тема</div>
-                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">Визуальный preset + semantic tokens</div>
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.interface.themeCardTitle')}</div>
+                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">{t('settings.interface.themeCardDescription')}</div>
                                         </div>
                                         <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3">
-                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Доступ</div>
-                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">{isGM ? 'Полный GM-контроль' : 'Личные настройки игрока'}</div>
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.interface.accessCardTitle')}</div>
+                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">{isGM ? t('settings.interface.accessGm') : t('settings.interface.accessPlayer')}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -497,9 +520,12 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                     <div className="grid gap-2 sm:grid-cols-2">
                                         {notesShellModules.map((module) => {
                                             const isEnabled = notesShell.modules[module.id];
-                                            const areaLabel = module.defaultArea === 'left'
+                                            const moduleArea = notesShell.moduleAreas[module.id] ?? module.defaultArea;
+                                            const areaLabel = moduleArea === 'left'
                                                 ? t('settings.interface.notesModules.areas.left')
-                                                : module.defaultArea === 'right'
+                                                : moduleArea === 'center'
+                                                    ? t('settings.interface.notesModules.areas.center')
+                                                    : moduleArea === 'right'
                                                     ? t('settings.interface.notesModules.areas.right')
                                                     : t('settings.interface.notesModules.areas.bottom');
 
@@ -559,6 +585,23 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                         })}
                                     </div>
 
+                                    <button
+                                        type="button"
+                                        disabled={!isDesktopRuntime()}
+                                        onClick={handleShowTranslationsFolder}
+                                        className={`mt-3 flex h-8 items-center gap-2 rounded-[var(--vibe-radius-sm)] border px-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                                            isDesktopRuntime()
+                                                ? 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+                                                : 'cursor-not-allowed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] opacity-45'
+                                        }`}
+                                        title={isDesktopRuntime()
+                                            ? t('settings.interface.language.openFolderTitle')
+                                            : t('settings.interface.language.openFolderUnavailable')}
+                                    >
+                                        <FolderOpen size={13} />
+                                        {t('settings.interface.language.openFolder')}
+                                    </button>
+
                                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
                                         <div className={settingsCardClass}>
                                             <div className="mb-1 flex items-center justify-between gap-2">
@@ -587,8 +630,8 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                             <section className="space-y-3">
                                 <label className={toggleOptionClass}>
                                     <span>
-                                        <span className="block text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-primary)]">Аудио-модуль</span>
-                                        <span className={`mt-1 block text-[11px] ${settingsMutedTextClass}`}>Нижний плеер, пульт звука и приём сессионных audio-команд</span>
+                                        <span className="block text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-primary)]">{t('settings.audio.moduleTitle')}</span>
+                                        <span className={`mt-1 block text-[11px] ${settingsMutedTextClass}`}>{t('settings.audio.moduleDescription')}</span>
                                     </span>
                                     <input
                                         type="checkbox"
@@ -600,8 +643,8 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
 
                                 <label className={toggleOptionClass}>
                                     <span>
-                                        <span className="block text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-primary)]">Звук сессии</span>
-                                        <span className={`mt-1 block text-[11px] ${settingsMutedTextClass}`}>Воспроизведение команд Host/GM на этом клиенте</span>
+                                        <span className="block text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-primary)]">{t('settings.audio.sessionSoundTitle')}</span>
+                                        <span className={`mt-1 block text-[11px] ${settingsMutedTextClass}`}>{t('settings.audio.sessionSoundDescription')}</span>
                                     </span>
                                     <input
                                         type="checkbox"
@@ -615,13 +658,13 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                 <div className={settingsPanelClass}>
                                     <div className={settingsSectionTitleClass}>
                                         <SlidersHorizontal size={14} />
-                                        Микшер каналов
+                                        {t('settings.audio.mixerTitle')}
                                     </div>
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         {AUDIO_CHANNELS.map((channel) => (
                                             <label key={channel.id} className={settingsCardClass}>
                                                 <div className="mb-2 flex items-center justify-between gap-2 text-xs font-bold text-[var(--vibe-text-muted)]">
-                                                    <span>{channel.label}</span>
+                                                    <span>{t(channel.labelKey)}</span>
                                                     <span className="font-mono text-[var(--vibe-text-faint)]">{Math.round(channelVolumes[channel.id] * 100)}</span>
                                                 </div>
                                                 <input
@@ -646,7 +689,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                 <div className={settingsPanelClass}>
                                     <div className={settingsSectionTitleClass}>
                                         <Grid3X3 size={14} />
-                                        Сетка и snap
+                                        {t('settings.canvas.gridSnapTitle')}
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2">
                                         <button
@@ -658,7 +701,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                     : idleControlClass
                                             }`}
                                         >
-                                            {gridEnabled ? 'Сетка включена' : 'Сетка выключена'}
+                                            {gridEnabled ? t('settings.canvas.gridEnabled') : t('settings.canvas.gridDisabled')}
                                         </button>
                                         {(['square', 'hex'] as const).map((type) => (
                                             <button
@@ -671,13 +714,13 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                         : idleControlClass
                                                 }`}
                                             >
-                                                {type === 'square' ? 'Квадраты' : 'Гексы'}
+                                                {type === 'square' ? t('settings.canvas.squareGrid') : t('settings.canvas.hexGrid')}
                                             </button>
                                         ))}
                                     </div>
                                     <label className="mt-4 block max-w-xs">
                                         <div className="mb-2 flex items-center justify-between text-xs font-bold text-[var(--vibe-text-muted)]">
-                                            <span>Шаг сетки</span>
+                                            <span>{t('settings.canvas.gridStep')}</span>
                                             <span className="font-mono text-[var(--vibe-text-faint)]">{gridSpacing}</span>
                                         </div>
                                         <input
@@ -699,16 +742,16 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                 <div className={settingsPanelClass}>
                                     <div className={settingsSectionTitleClass}>
                                         <Globe2 size={14} />
-                                        Мир
+                                        {t('settings.world.title')}
                                     </div>
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         <div className={settingsCardClass}>
-                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Комната</div>
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.world.room')}</div>
                                             <div className={`mt-1 truncate text-[11px] ${settingsMutedTextClass}`}>{roomName}</div>
                                         </div>
                                         <div className={settingsCardClass}>
-                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Хранилище</div>
-                                            <div className={`mt-1 text-[11px] ${settingsMutedTextClass}`}>Файлы мира на Host-диске</div>
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{t('settings.world.storage')}</div>
+                                            <div className={`mt-1 text-[11px] ${settingsMutedTextClass}`}>{t('settings.world.storageDescription')}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -720,7 +763,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                 <div className={settingsPanelClass}>
                                     <div className={settingsSectionTitleClass}>
                                         <Shield size={14} />
-                                        Роли
+                                        {t('settings.roles.title')}
                                     </div>
                                     <div className="grid gap-3">
                                         {DEFAULT_ROLE_DEFINITIONS.map((role) => {
@@ -733,16 +776,16 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                     <div className="text-xs font-bold text-[var(--vibe-text-primary)]">{role.label}</div>
                                                     {role.locked && (
                                                         <span className="rounded border border-[color-mix(in_srgb,var(--vibe-warning)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-warning)_12%,transparent)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-warning)]">
-                                                            База
+                                                            {t('settings.roles.baseBadge')}
                                                         </span>
                                                     )}
                                                 </div>
                                                 <div className={`mb-2 text-[11px] ${settingsMutedTextClass}`}>
                                                     {role.id === 'base-player'
-                                                        ? 'Неснимаемая роль, которая ограничивает все обычные роли.'
+                                                        ? t('settings.roles.descriptions.basePlayer')
                                                         : role.id === 'gm'
-                                                            ? 'Полный host/workbench контроль.'
-                                                            : 'Эффективные права после ограничений Base Player.'}
+                                                            ? t('settings.roles.descriptions.gm')
+                                                            : t('settings.roles.descriptions.effective')}
                                                 </div>
                                                 <div className="flex flex-wrap gap-1">
                                                     {ROLE_PERMISSION_LABELS.map((permission) => (
@@ -754,7 +797,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                                     : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] text-[var(--vibe-text-faint)]'
                                                             }`}
                                                         >
-                                                            {permission.label}
+                                                            {t(permission.labelKey)}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -768,7 +811,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                     <div className="mb-3 flex items-center justify-between gap-3">
                                         <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
                                             <Users size={14} />
-                                            Игроки
+                                            {t('settings.roles.players')}
                                         </div>
                                         {loadingPlayerProfiles && <Loader2 size={14} className="animate-spin text-[var(--vibe-text-faint)]" />}
                                     </div>
@@ -799,7 +842,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                         </div>
                                                         {profile.legacy && (
                                                             <div className="mt-1 text-[10px] text-[var(--vibe-text-faint)]">
-                                                                Профиль появится после входа игрока с этим именем.
+                                                                {t('settings.roles.legacyHint')}
                                                             </div>
                                                         )}
                                                     </div>
@@ -827,7 +870,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
 
                                         {!loadingPlayerProfiles && playerProfiles.length === 0 && (
                                             <div className={`${settingsCardClass} text-[11px] text-[var(--vibe-text-faint)]`}>
-                                                Профилей пока нет. Они создаются при подключении игрока к открытому миру.
+                                                {t('settings.roles.noProfiles')}
                                             </div>
                                         )}
                                     </div>

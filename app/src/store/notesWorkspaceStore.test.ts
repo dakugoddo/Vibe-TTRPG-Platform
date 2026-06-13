@@ -60,16 +60,16 @@ assert.equal(groups[1].tabs[0].entityId, 'character-1');
 useNotesWorkspaceStore.getState().moveTab(groups[0].id, groups[0].tabs[0].id, groups[1].id, groups[1].tabs[0].id);
 layout = useNotesWorkspaceStore.getState().layout;
 groups = listNotesWorkspaceGroups(layout.root);
-assert.equal(groups[0].tabs.length, 0);
-assert.deepEqual(groups[1].tabs.map((tab) => tab.entityId), ['note-1', 'character-1']);
+assert.equal(groups.length, 1, 'Moving the last tab out of a pane collapses the empty source pane');
+assert.deepEqual(groups[0].tabs.map((tab) => tab.entityId), ['note-1', 'character-1']);
 
 useNotesWorkspaceStore.getState().setActiveTab(groups[0].id, 'missing-tab');
 layout = useNotesWorkspaceStore.getState().layout;
-assert.equal(layout.activeGroupId, groups[1].id, 'Missing source tab cannot steal focus');
+assert.equal(layout.activeGroupId, groups[0].id, 'Missing source tab cannot steal focus');
 
-useNotesWorkspaceStore.getState().closeTab(groups[1].id, groups[1].tabs[0].id);
+useNotesWorkspaceStore.getState().closeTab(groups[0].id, groups[0].tabs[0].id);
 groups = listNotesWorkspaceGroups(useNotesWorkspaceStore.getState().layout.root);
-assert.equal(groups[1].tabs.length, 1);
+assert.equal(groups[0].tabs.length, 1);
 
 const persistedLayout = globalThis.localStorage.getItem(NOTES_WORKSPACE_LAYOUT_STORAGE_KEY);
 assert.ok(persistedLayout);
@@ -98,8 +98,8 @@ assert.equal(useNotesWorkspaceStore.getState().shell.audioHeight, 520);
 
 useNotesWorkspaceStore.getState().resetShell();
 groups = listNotesWorkspaceGroups(useNotesWorkspaceStore.getState().layout.root);
-assert.equal(groups.length, 2);
-assert.deepEqual(groups[1].tabs.map((tab) => tab.entityId), ['character-1']);
+assert.equal(groups.length, 1);
+assert.deepEqual(groups[0].tabs.map((tab) => tab.entityId), ['character-1']);
 assert.equal(useNotesWorkspaceStore.getState().shell.vaultWidth, 300);
 assert.equal(useNotesWorkspaceStore.getState().shell.contextWidth, 320);
 assert.equal(useNotesWorkspaceStore.getState().shell.audioHeight, 300);
@@ -109,14 +109,20 @@ assert.equal(useNotesWorkspaceStore.getState().shell.modules.notifications, true
 assert.equal(useNotesWorkspaceStore.getState().shell.modules.search, false);
 assert.equal(useNotesWorkspaceStore.getState().shell.modules.graph, false);
 assert.equal(useNotesWorkspaceStore.getState().shell.modules.audio, false);
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.vault, 'left');
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.context, 'right');
 
 useNotesWorkspaceStore.getState().toggleShellModule('audio');
 useNotesWorkspaceStore.getState().setShellAudioHeight(900);
+useNotesWorkspaceStore.getState().moveShellModule('search', 'left', 'vault');
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.search, 'left');
+assert(useNotesWorkspaceStore.getState().shell.moduleOrder.search < useNotesWorkspaceStore.getState().shell.moduleOrder.vault);
 
 const persistedShell = globalThis.localStorage.getItem(NOTES_WORKSPACE_SHELL_STORAGE_KEY);
 assert.ok(persistedShell);
 assert.ok(persistedShell.includes('"contextWidth":320'));
 assert.ok(persistedShell.includes('"audioHeight":520'));
 assert.ok(persistedShell.includes('"audio":true'));
+assert.ok(persistedShell.includes('"moduleAreas"'));
 
 console.log('notes workspace store tests passed');

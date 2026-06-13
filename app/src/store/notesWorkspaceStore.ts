@@ -20,8 +20,14 @@ import {
     type NotesWorkspaceView,
 } from '../utils/notesWorkspaceLayout';
 import {
+    getDefaultNotesShellModuleAreas,
+    getDefaultNotesShellModuleOrder,
+    isNotesWorkspaceDockArea,
     listImplementedNotesShellModules,
+    type NotesWorkspaceDockArea,
+    type NotesWorkspaceShellModuleAreas,
     type NotesWorkspaceShellModuleId,
+    type NotesWorkspaceShellModuleOrder,
     type NotesWorkspaceShellVisibility,
 } from '../utils/notesWorkspaceModules';
 
@@ -33,6 +39,8 @@ export interface NotesWorkspaceShellState {
     contextWidth: number;
     audioHeight: number;
     modules: NotesWorkspaceShellVisibility;
+    moduleAreas: NotesWorkspaceShellModuleAreas;
+    moduleOrder: NotesWorkspaceShellModuleOrder;
 }
 
 interface NotesWorkspaceStoreState {
@@ -56,6 +64,7 @@ interface NotesWorkspaceStoreState {
     splitActiveGroup: (direction: NotesWorkspaceSplitNode['direction']) => void;
     setShellModuleVisible: (moduleId: NotesWorkspaceShellModuleId, isVisible: boolean) => void;
     toggleShellModule: (moduleId: NotesWorkspaceShellModuleId) => void;
+    moveShellModule: (moduleId: NotesWorkspaceShellModuleId, area: NotesWorkspaceDockArea, beforeModuleId?: NotesWorkspaceShellModuleId | null) => void;
     setShellModuleWidth: (moduleId: 'vault' | 'context', width: number) => void;
     setShellAudioHeight: (height: number) => void;
     resetShell: () => void;
@@ -75,6 +84,8 @@ const DEFAULT_NOTES_WORKSPACE_SHELL: NotesWorkspaceShellState = {
     modules: Object.fromEntries(
         listImplementedNotesShellModules().map((module) => [module.id, module.defaultVisible])
     ) as NotesWorkspaceShellVisibility,
+    moduleAreas: getDefaultNotesShellModuleAreas(),
+    moduleOrder: getDefaultNotesShellModuleOrder(),
 };
 
 function createDefaultNotesWorkspaceShell(): NotesWorkspaceShellState {
@@ -194,11 +205,21 @@ function readStoredNotesWorkspaceShell(): NotesWorkspaceShellState {
         if (!isRecord(parsed) || !isRecord(parsed.modules)) return createDefaultNotesWorkspaceShell();
 
         const modules = { ...DEFAULT_NOTES_WORKSPACE_SHELL.modules };
+        const moduleAreas = { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleAreas };
+        const moduleOrder = { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleOrder };
         for (const module of listImplementedNotesShellModules()) {
             const storedVisibility = parsed.modules[module.id];
             modules[module.id] = typeof storedVisibility === 'boolean'
                 ? storedVisibility
                 : module.defaultVisible;
+
+            const storedArea = isRecord(parsed.moduleAreas) ? parsed.moduleAreas[module.id] : undefined;
+            moduleAreas[module.id] = isNotesWorkspaceDockArea(storedArea) ? storedArea : module.defaultArea;
+
+            const storedOrder = isRecord(parsed.moduleOrder) ? parsed.moduleOrder[module.id] : undefined;
+            moduleOrder[module.id] = typeof storedOrder === 'number' && Number.isFinite(storedOrder)
+                ? storedOrder
+                : module.order;
         }
 
         return {
@@ -206,6 +227,8 @@ function readStoredNotesWorkspaceShell(): NotesWorkspaceShellState {
             contextWidth: clampShellModuleWidth(parsed.contextWidth, DEFAULT_NOTES_WORKSPACE_SHELL.contextWidth),
             audioHeight: clampAudioModuleHeight(parsed.audioHeight, DEFAULT_NOTES_WORKSPACE_SHELL.audioHeight),
             modules,
+            moduleAreas,
+            moduleOrder,
         };
     } catch {
         return createDefaultNotesWorkspaceShell();
@@ -283,6 +306,30 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
             },
         },
     })),
+
+    moveShellModule: (moduleId, area, beforeModuleId) => set((state) => {
+        const nextAreas = { ...state.shell.moduleAreas, [moduleId]: area };
+        const modulesInArea = listImplementedNotesShellModules()
+            .map((module) => module.id)
+            .filter((id) => id !== moduleId && nextAreas[id] === area)
+            .sort((left, right) => state.shell.moduleOrder[left] - state.shell.moduleOrder[right]);
+        const insertIndex = beforeModuleId ? modulesInArea.indexOf(beforeModuleId) : -1;
+        const nextIds = insertIndex >= 0
+            ? [...modulesInArea.slice(0, insertIndex), moduleId, ...modulesInArea.slice(insertIndex)]
+            : [...modulesInArea, moduleId];
+        const nextOrder = { ...state.shell.moduleOrder };
+        nextIds.forEach((id, index) => {
+            nextOrder[id] = (index + 1) * 10;
+        });
+
+        return {
+            shell: {
+                ...state.shell,
+                moduleAreas: nextAreas,
+                moduleOrder: nextOrder,
+            },
+        };
+    }),
 
     setShellModuleWidth: (moduleId, width) => set((state) => ({
         shell: {

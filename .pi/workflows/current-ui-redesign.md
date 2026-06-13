@@ -19,7 +19,7 @@
 - Canvas compact card не содержит roll/edit/add/delete controls; действия остаются в entity window.
 - Screen entity window — один личный unpinned экземпляр. Canvas pinned windows/cards/tokens — отдельные placements, их можно иметь много.
 - Window layouts локальные. GM показывает игрокам нужное через canvas placements, а не shared screen windows.
-- Notes workspace должен идти к Obsidian-like workflow: vault tree, editor tabs/splits, source/preview/split modes, entity data и linked panes вокруг активной сущности. Native multi-window идёт после Electron gate.
+- Notes workspace должен идти к Obsidian-like workflow: vault tree, editor tabs/splits, source/preview/split modes, entity data, linked panes вокруг активной сущности и movable shell modules. Native multi-window идёт после Electron gate.
 - Electron migration приоритетнее полного Notes workspace/multi-window.
 
 ## Реализовано
@@ -28,9 +28,9 @@
 - App shell/drawers/HUD/toolbar/audio/notifications переведены на semantic tokens.
 - EntityWindow, CharacterSheet notes, MarkdownRenderer, core entity blocks, ObjectSheet, AttackSheet, InventoryBlock, StatTooltip, TagPickerPopup, EntityImageBlock переведены на semantic tokens.
 - SettingsWindow, AssetBrowser, AudioDesk переведены на semantic tokens.
-- i18n foundation: RU/EN switch, localStorage preference, i18next initialization.
+- i18n foundation: RU/EN switch, localStorage preference, i18next initialization, Settings/Notes shell EN-pass и Electron button для открытия встроенной папки `locales`.
 - Compact character card: all-info derived summary, tabbed read-only overlay, edit-access gate, no `properties.compactCard`.
-- Workspace foundation: screen singleton windows, local layouts/snapshots, canvas pinned window instances, Obsidian-like local Notes workspace tab/split editor, source/preview/split modes, entity data, children and linked views.
+- Workspace foundation: screen singleton windows, local layouts/snapshots, canvas pinned window instances, Obsidian-like local Notes workspace tab/split editor, source/preview/split modes, entity data, children/linked views and pointer-drag shell modules between left/center/right.
 - Electron foundation: main/preload, native world folder dialog, native asset reveal, desktop dev script, embedded server build path, package/dist scripts, build artifact metadata, player delivery baseline, packaged smoke path.
 - Canvas performance regression fix: middle-button pan uses compositor-first preview; Stage overscan removed and must not be reintroduced without profiling.
 
@@ -51,6 +51,7 @@
    - packaged app smoke QA.
 2. UI polish только по конкретным найденным дефектам:
    - hardcoded surfaces;
+   - remaining i18n hardcoded canvas/hotkey/notification strings;
    - compact card readability;
    - theme/density consistency.
 3. Custom world locale editor — только после design-doc формата и server endpoints.

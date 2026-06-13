@@ -438,6 +438,13 @@ t('hud.activeElements') // → "Объекты на канвасе"
 
 ---
 
+## 14.1 Notes Workspace DnD guardrails
+
+- `NotesWorkspace.tsx` tab/pane HTML DnD must only read/write the internal `application/vnd.vibe-notes-workspace-tab` MIME. Do not add `text/plain` fallback: selected text, images and external drags must not show workspace drop previews.
+- Pane drag that moves the last tab out of a group must collapse the now-empty source group via `notesWorkspaceLayout.ts`; keep `notesWorkspaceLayout.test.ts` and `notesWorkspaceStore.test.ts` aligned with that contract.
+- Notes shell modules (`Vault`, `Context`, `Notifications`, `Search`, `Graph`, `Audio`) are pointer-dragged by module headers and persisted through `notesWorkspaceStore.shell.moduleAreas/moduleOrder`. Do not implement shell module movement with browser HTML DnD.
+- Stable UI labels go through i18n locale files. Entity names/descriptions/properties are world content and must not be translated by UI render code.
+
 ## 15. ЛОГИН И МУЛЬТИПЛЕЕР
 
 ### LoginScreen (`LoginScreen.tsx`)

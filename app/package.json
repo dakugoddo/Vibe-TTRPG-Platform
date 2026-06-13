@@ -94,6 +94,10 @@
       {
         "from": "../server/node_modules",
         "to": "server/node_modules"
+      },
+      {
+        "from": "src/locales",
+        "to": "locales"
       }
     ],
     "win": {

@@ -28,6 +28,7 @@ declare global {
         platform: string;
         selectWorldFolder: () => Promise<string | null>;
         showAssetInFolder: (assetPath: string) => Promise<boolean>;
+        showTranslationsFolder: () => Promise<string>;
     }
 
     interface Window {

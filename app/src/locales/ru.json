@@ -4,6 +4,10 @@
     "directoryPlaceholder": "ИДЕНТИФИКАТОР КОМНАТЫ",
     "connectBtn": "ИНИЦИАЛИЗИРОВАТЬ ПОДКЛЮЧЕНИЕ"
   },
+  "common": {
+    "close": "Закрыть",
+    "reset": "Сброс"
+  },
   "hud": {
     "activeElements": "Объекты на канвасе",
     "pinnedWindows": "Закрепленные окна",
@@ -61,9 +65,13 @@
       "resetTabs": "Сбросить вкладки",
       "emptyGroup": "Нет вкладок",
       "emptyGroupHint": "Откройте сущность из vault слева.",
+      "createRootEntity": "Создать в общем хранилище",
+      "createRootEntityUnavailable": "Нет права создавать в общем хранилище",
       "closeTab": "Закрыть вкладку",
       "closePane": "Закрыть панель",
       "dragPane": "Перетащить активную вкладку панели",
+      "dragModule": "Перетащить модуль",
+      "dropModuleHere": "Переместить модуль сюда",
       "missingEntity": "Сущность недоступна",
       "readOnly": "только чтение",
       "openParent": "Показать родителя",
@@ -146,11 +154,103 @@
     }
   },
   "settings": {
+    "title": "Настройки",
+    "tabs": {
+      "interface": "Интерфейс",
+      "audio": "Аудио",
+      "canvas": "Канвас",
+      "world": "Мир",
+      "roles": "Роли"
+    },
+    "reset": {
+      "title": "Сброс локального UI",
+      "allTitle": "Сбросить локальные настройки интерфейса без изменения файлов мира",
+      "allButton": "Все локальное",
+      "themeDensityTitle": "Тема и плотность",
+      "themeDensityDescription": "Preset, custom palette и density",
+      "screenWindowsTitle": "Экранные окна",
+      "screenWindowsDescription": "Закрывает только незакрепленные окна",
+      "notesLayoutTitle": "Layout заметок",
+      "notesLayoutDescription": "Сбрасывает вкладки и split-панели",
+      "notesShellTitle": "Shell-модули",
+      "audioTitle": "Аудио defaults",
+      "audioDescription": "Модуль включен, каналы 100%, session sound off",
+      "devPerfDescription": "Показывается только в dev build",
+      "messages": {
+        "themeDensity": "Тема, палитра и плотность сброшены локально.",
+        "screenWindows": "Открытые экранные окна сброшены. Закрепленные объекты canvas не тронуты.",
+        "notesLayout": "Раскладка вкладок режима заметок сброшена.",
+        "notesShell": "Модули режима заметок сброшены к значениям по умолчанию.",
+        "audio": "Локальные настройки аудио сброшены.",
+        "all": "Локальный интерфейс сброшен. Данные мира не изменялись."
+      }
+    },
     "interface": {
+      "localInterface": "Локальный интерфейс",
+      "visualTheme": "Визуальная тема",
+      "visualThemeDescription": "Меняет не только цвет, а характер рабочего стола.",
+      "balancedDefault": "balanced default",
+      "customPalette": "Custom palette",
+      "customPaletteDescription": "Временный редактор базовых цветов; полноценные темы мира будут отдельным срезом.",
+      "density": "Плотность интерфейса",
+      "densityDescription": "Меняет отступы, высоту контролов и общий ритм панелей без смены визуальной темы.",
+      "themeCardTitle": "Тема",
+      "themeCardDescription": "Визуальный preset + semantic tokens",
+      "accessCardTitle": "Доступ",
+      "accessGm": "Полный GM-контроль",
+      "accessPlayer": "Личные настройки игрока",
+      "themePresets": {
+        "universalGlass": {
+          "label": "Universal Glass",
+          "tone": "Glass workspace",
+          "description": "Главный ориентир: мягкое универсальное стекло, читаемые панели и спокойные пастельные акценты."
+        },
+        "woodenTable": {
+          "label": "Wooden Tabletop",
+          "tone": "Tabletop desk",
+          "description": "Теплый игровой стол: дерево, бронза, пергаментные акценты без ухода в светлый режим."
+        },
+        "arcaneControl": {
+          "label": "Arcane Control",
+          "tone": "Arcane console",
+          "description": "Сдержанный маготехнический пульт: темный cockpit, янтарные линии, бирюзовые сигналы."
+        },
+        "rgbGameDesk": {
+          "label": "RGB Game Desk",
+          "tone": "Game desk",
+          "description": "Игровой стол с неоновыми ребрами и RGB-акцентами, но без вырвиглазной кислотности."
+        },
+        "lowLoad": {
+          "label": "Low Load",
+          "tone": "Performance",
+          "description": "Спокойная тема для слабых машин: меньше blur, теней и визуального шума."
+        }
+      },
+      "densityPresets": {
+        "compact": {
+          "label": "Compact",
+          "tone": "Больше данных",
+          "description": "Плотные панели для больших списков и экранов с большим количеством чисел."
+        },
+        "balanced": {
+          "label": "Balanced",
+          "tone": "По умолчанию",
+          "description": "Баланс читаемости и плотности для обычной партии и подготовки мира."
+        },
+        "spacious": {
+          "label": "Spacious",
+          "tone": "Больше воздуха",
+          "description": "Крупнее клики и спокойнее чтение, когда важнее обзор одного окна."
+        }
+      },
       "language": {
         "title": "Язык и переводы",
         "localeRu": "Основной язык интерфейса и разработки мира.",
         "localeEn": "Английский fallback для будущих модов и внешних пакетов.",
+        "openFolder": "Открыть папку переводов",
+        "openFolderTitle": "Открыть app/src/locales в проводнике",
+        "openFolderUnavailable": "Доступно только в Electron desktop-приложении.",
+        "openFolderSuccess": "Папка переводов открыта.",
         "appBundlesTitle": "Встроенные переводы",
         "appBundlesDescription": "Сейчас клиент загружает ru/en из приложения и хранит выбранный язык локально.",
         "worldLocalesTitle": "Переводы мира",
@@ -165,9 +265,57 @@
         "resizable": "размер",
         "areas": {
           "left": "Левая панель",
+          "center": "Центральная область",
           "right": "Правая панель",
           "bottom": "Нижний dock"
         }
+      }
+    },
+    "audio": {
+      "moduleTitle": "Аудио-модуль",
+      "moduleDescription": "Нижний плеер, пульт звука и прием сессионных audio-команд",
+      "sessionSoundTitle": "Звук сессии",
+      "sessionSoundDescription": "Воспроизведение команд Host/GM на этом клиенте",
+      "mixerTitle": "Микшер каналов",
+      "channels": {
+        "music": "Музыка",
+        "ambience": "Атмосфера",
+        "sfx": "SFX",
+        "voice": "Голос"
+      }
+    },
+    "canvas": {
+      "gridSnapTitle": "Сетка и snap",
+      "gridEnabled": "Сетка включена",
+      "gridDisabled": "Сетка выключена",
+      "squareGrid": "Квадраты",
+      "hexGrid": "Гексы",
+      "gridStep": "Шаг сетки"
+    },
+    "world": {
+      "title": "Мир",
+      "room": "Комната",
+      "storage": "Хранилище",
+      "storageDescription": "Файлы мира на Host-диске"
+    },
+    "roles": {
+      "title": "Роли",
+      "baseBadge": "База",
+      "players": "Игроки",
+      "legacyHint": "Профиль появится после входа игрока с этим именем.",
+      "noProfiles": "Профилей пока нет. Они создаются при подключении игрока к открытому миру.",
+      "descriptions": {
+        "basePlayer": "Неснимаемая роль, которая ограничивает все обычные роли.",
+        "gm": "Полный host/workbench контроль.",
+        "effective": "Эффективные права после ограничений Base Player."
+      },
+      "permissions": {
+        "viewGeneral": "Видит общую",
+        "editGeneral": "Правит общую",
+        "viewOwnUser": "Видит свое",
+        "editOwnUser": "Правит свое",
+        "viewGm": "Видит GM",
+        "broadcastAudio": "Звук"
       }
     }
   }

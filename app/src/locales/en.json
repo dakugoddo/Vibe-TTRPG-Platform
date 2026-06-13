@@ -4,6 +4,10 @@
         "directoryPlaceholder": "ROOM DIRECTORY",
         "connectBtn": "INITIALIZE CONNECTION"
     },
+    "common": {
+        "close": "Close",
+        "reset": "Reset"
+    },
     "hud": {
         "activeElements": "Active Elements",
         "pinnedWindows": "Pinned Windows",
@@ -61,9 +65,13 @@
             "resetTabs": "Reset tabs",
             "emptyGroup": "No tabs",
             "emptyGroupHint": "Open an entity from the vault on the left.",
+            "createRootEntity": "Create in general storage",
+            "createRootEntityUnavailable": "No permission to create in general storage",
             "closeTab": "Close tab",
             "closePane": "Close pane",
             "dragPane": "Drag active pane tab",
+            "dragModule": "Drag module",
+            "dropModuleHere": "Drop module here",
             "missingEntity": "Entity unavailable",
             "readOnly": "read only",
             "openParent": "Open parent",
@@ -146,11 +154,103 @@
         }
     },
     "settings": {
+        "title": "Settings",
+        "tabs": {
+            "interface": "Interface",
+            "audio": "Audio",
+            "canvas": "Canvas",
+            "world": "World",
+            "roles": "Roles"
+        },
+        "reset": {
+            "title": "Local UI reset",
+            "allTitle": "Reset local interface settings without changing world files",
+            "allButton": "All local",
+            "themeDensityTitle": "Theme and density",
+            "themeDensityDescription": "Preset, custom palette, and density",
+            "screenWindowsTitle": "Screen windows",
+            "screenWindowsDescription": "Closes only unpinned windows",
+            "notesLayoutTitle": "Notes layout",
+            "notesLayoutDescription": "Resets tabs and split panes",
+            "notesShellTitle": "Shell modules",
+            "audioTitle": "Audio defaults",
+            "audioDescription": "Module on, channels 100%, session sound off",
+            "devPerfDescription": "Shown only in dev builds",
+            "messages": {
+                "themeDensity": "Theme, palette, and density were reset locally.",
+                "screenWindows": "Open screen windows were reset. Pinned canvas objects were not touched.",
+                "notesLayout": "Notes workspace tab layout was reset.",
+                "notesShell": "Notes workspace modules were reset to defaults.",
+                "audio": "Local audio settings were reset.",
+                "all": "Local interface was reset. World data was not changed."
+            }
+        },
         "interface": {
+            "localInterface": "Local interface",
+            "visualTheme": "Visual theme",
+            "visualThemeDescription": "Changes the whole desk character, not just colors.",
+            "balancedDefault": "balanced default",
+            "customPalette": "Custom palette",
+            "customPaletteDescription": "Temporary editor for base colors; full world themes are a separate slice.",
+            "density": "Interface density",
+            "densityDescription": "Changes spacing, control height, and panel rhythm without switching visual theme.",
+            "themeCardTitle": "Theme",
+            "themeCardDescription": "Visual preset + semantic tokens",
+            "accessCardTitle": "Access",
+            "accessGm": "Full GM control",
+            "accessPlayer": "Player-local settings",
+            "themePresets": {
+                "universalGlass": {
+                    "label": "Universal Glass",
+                    "tone": "Glass workspace",
+                    "description": "Primary direction: soft universal glass, readable panels, and calm pastel accents."
+                },
+                "woodenTable": {
+                    "label": "Wooden Tabletop",
+                    "tone": "Tabletop desk",
+                    "description": "Warm game table: wood, bronze, and parchment accents without turning into a light theme."
+                },
+                "arcaneControl": {
+                    "label": "Arcane Control",
+                    "tone": "Arcane console",
+                    "description": "Restrained magitech console: dark cockpit, amber lines, and cyan signals."
+                },
+                "rgbGameDesk": {
+                    "label": "RGB Game Desk",
+                    "tone": "Game desk",
+                    "description": "Neon-edged gaming desk with RGB accents, kept readable instead of eye-burning."
+                },
+                "lowLoad": {
+                    "label": "Low Load",
+                    "tone": "Performance",
+                    "description": "Calm theme for weaker machines: less blur, fewer shadows, less visual noise."
+                }
+            },
+            "densityPresets": {
+                "compact": {
+                    "label": "Compact",
+                    "tone": "More data",
+                    "description": "Dense panels for long lists and data-heavy screens."
+                },
+                "balanced": {
+                    "label": "Balanced",
+                    "tone": "Default",
+                    "description": "Readable density for regular play and world preparation."
+                },
+                "spacious": {
+                    "label": "Spacious",
+                    "tone": "More air",
+                    "description": "Larger clicks and calmer reading when one window matters more than density."
+                }
+            },
             "language": {
                 "title": "Language and Translations",
                 "localeRu": "Primary language for the interface and worldbuilding.",
                 "localeEn": "English fallback for future mods and external packs.",
+                "openFolder": "Open translation folder",
+                "openFolderTitle": "Open app/src/locales in the system file manager",
+                "openFolderUnavailable": "Available only in the Electron desktop app.",
+                "openFolderSuccess": "Translation folder opened.",
                 "appBundlesTitle": "Built-in translations",
                 "appBundlesDescription": "The client currently loads ru/en from the app and stores the selected language locally.",
                 "worldLocalesTitle": "World translations",
@@ -165,9 +265,57 @@
                 "resizable": "resize",
                 "areas": {
                     "left": "Left panel",
+                    "center": "Center workspace",
                     "right": "Right panel",
                     "bottom": "Bottom dock"
                 }
+            }
+        },
+        "audio": {
+            "moduleTitle": "Audio module",
+            "moduleDescription": "Bottom player, sound desk, and session audio command receiver.",
+            "sessionSoundTitle": "Session sound",
+            "sessionSoundDescription": "Playback of Host/GM commands on this client.",
+            "mixerTitle": "Channel mixer",
+            "channels": {
+                "music": "Music",
+                "ambience": "Ambience",
+                "sfx": "SFX",
+                "voice": "Voice"
+            }
+        },
+        "canvas": {
+            "gridSnapTitle": "Grid and snap",
+            "gridEnabled": "Grid enabled",
+            "gridDisabled": "Grid disabled",
+            "squareGrid": "Squares",
+            "hexGrid": "Hexes",
+            "gridStep": "Grid step"
+        },
+        "world": {
+            "title": "World",
+            "room": "Room",
+            "storage": "Storage",
+            "storageDescription": "World files on the Host disk"
+        },
+        "roles": {
+            "title": "Roles",
+            "baseBadge": "Base",
+            "players": "Players",
+            "legacyHint": "The profile will appear after a player logs in with this name.",
+            "noProfiles": "No profiles yet. They are created when players connect to an open world.",
+            "descriptions": {
+                "basePlayer": "Permanent role that limits all regular roles.",
+                "gm": "Full host/workbench control.",
+                "effective": "Effective permissions after Base Player restrictions."
+            },
+            "permissions": {
+                "viewGeneral": "View general",
+                "editGeneral": "Edit general",
+                "viewOwnUser": "View own",
+                "editOwnUser": "Edit own",
+                "viewGm": "View GM",
+                "broadcastAudio": "Audio"
             }
         }
     }

@@ -23,6 +23,8 @@
 | `BUG-CANVAS-006B` | `P2` | CanvasModule / Asset Library | Fixed, manual QA pending | GIF на canvas переведены на DOM overlay вместо Konva redraw. | Проверить animated GIF selection/drag/playback. |
 | `BUG-NOTES-001` | `P2` | NotesWorkspace / EntityDatabase | Fixed, owner QA pending | Notes mode panes/splits были неинтуитивны: не было закрытия pane, drag выделял текст, split-down мог выглядеть неполным, EntityDatabase по клику то раскрывал, то открывал окно. | Проверить single-click open/focus, раскрытие только стрелкой, split down на всю высоту, drag/drop pane zones и встроенные notifications. |
 | `BUG-NOTES-002` | `P2` | NotesWorkspace / Theme System | Fixed, owner QA pending | Agent-induced follow-up: central editor wrapper duplicated pane headers, pane drag was blocked by `preventDefault`, vault row hit area did not match visual row, Universal Glass notes shell lost rounded glass corners, Arcane Control radii were too round. | Проверить pane/tab drag, full-row vault clicks, отсутствие внешней шапки `Редактор`, округленный Universal Glass и более квадратный Arcane Control. |
+| `BUG-NOTES-003` | `P2` | NotesWorkspace / DnD | Fixed, owner QA pending | Agent-induced regression: HTML drag fallback accepted arbitrary `text/plain`/image drags, drop preview could hang, moving the last tab out of a pane left an empty pane, and shell modules were not movable between left/center/right areas. | Проверить: pane/header drag не создает пустые panes; drag выделенного текста/картинок не показывает workspace preview; Vault/Search/Context/Graph/Notifications/Audio переносятся между left/center/right. |
+| `BUG-I18N-003` | `P2` | Localization / Settings | Fixed, owner QA pending | English locale did not cover stable Settings/Notes shell UI enough; user also needed a desktop button to open translation files. | Проверить English mode: Settings tabs/sections, Notes storage names/module labels/search fields are English; Electron button opens built-in locales folder. |
 
 ## Regression notes
 
@@ -31,6 +33,8 @@
 - `BUG-CANVAS-009`: не расширять Konva Stage ради “запаса рендера” без измерений. Увеличение canvas-площади напрямую бьёт по FPS.
 - `BUG-UI-006`: compact character card не является настройкой полей в entity window. Это canvas-card представление всей доступной информации персонажа в компактном read-only виде.
 - `BUG-NOTES-002`: в draggable NotesWorkspace headers/tabs не ставить `preventDefault()` на `mousedown`, иначе браузер может не запустить native drag. Для дерева сущностей row click должен покрывать всю визуальную строку, а раскрытие детей должно быть только на chevron. Радиусы notes shell/panes должны идти через `--vibe-radius-*`, чтобы темы реально меняли форму интерфейса.
+- `BUG-NOTES-003`: NotesWorkspace pane DnD must be gated by the internal MIME `application/vnd.vibe-notes-workspace-tab`; never fall back to `text/plain`, otherwise selected text/images can trigger stale drop previews. Moving/splitting the last tab out of a pane must collapse the empty source group. Shell module moves should use pointer-driven module headers and `notesWorkspaceStore.moveShellModule()`, not browser HTML DnD.
+- `BUG-I18N-003`: stable application chrome belongs in `ru/en.json`; entity names/descriptions/properties are user/world content and must not be translated at render time. Desktop-only folder buttons must go through the typed Electron preload bridge.
 - Для agent-induced regression всегда обновлять релевантный `.pi/rules/*`, `.pi/docs/*` или `.pi/skills/*/SKILL.md`, а не только точечно фиксить код.
 
 ## Ручные QA сценарии
@@ -44,3 +48,4 @@
 | Multiplayer через Radmin/Hamachi | Pending | Проверить sync, cursors, отсутствие crash на больших мирах. |
 | GIF canvas overlay | Pending | Проверить playback, drag, selection, resize. |
 | Notes workspace panes and entity clicks | Pending owner QA | Проверить single-click entity open/focus в canvas/notes, стрелку раскрытия, группировку vault, split down, pane drag/drop и close pane. |
+| Notes workspace module drag and i18n | Pending owner QA | Проверить module header drag между left/center/right, отсутствие preview при drag текста/картинок, English Settings/Notes labels и кнопку открытия `app/src/locales`. |

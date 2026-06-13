@@ -55,6 +55,13 @@
 | Canvas persistence filter/cleanup | `app/src/utils/canvasPersistence.ts` |
 | Persistent draw/fog sync | `app/src/store/canvasSyncStore.ts` |
 
+### Notes workspace regression guardrails
+
+- Tab/pane DnD: `NotesWorkspace.tsx` must accept only the internal `NOTES_WORKSPACE_TAB_MIME`; do not fall back to `text/plain`, because selected text and dragged images can otherwise trigger stale drop previews.
+- Empty panes: `notesWorkspaceLayout.ts` must collapse a source tabs group when its last tab is moved or split into another group; focused coverage lives in `notesWorkspaceLayout.test.ts` and `notesWorkspaceStore.test.ts`.
+- Shell modules: `notesWorkspaceModules.ts` owns module definitions, `notesWorkspaceStore.ts` owns persisted visibility/area/order/size, and `NotesWorkspace.tsx` owns pointer-driven module-header drag between left/center/right. Do not use browser HTML DnD for shell modules.
+- i18n boundary: stable UI labels belong in `app/src/locales/ru.json` and `app/src/locales/en.json`; entity names/descriptions/properties are world content and should not be translated at render time.
+
 ## Entity and knowledge base
 
 | Задача | Начинать с |

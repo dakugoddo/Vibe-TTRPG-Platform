@@ -2,7 +2,7 @@ export const IMPLEMENTED_NOTES_SHELL_MODULE_IDS = ['vault', 'context', 'notifica
 
 export type NotesWorkspaceShellModuleId = typeof IMPLEMENTED_NOTES_SHELL_MODULE_IDS[number];
 export type NotesWorkspaceModuleId = NotesWorkspaceShellModuleId | 'audio';
-export type NotesWorkspaceDockArea = 'left' | 'right' | 'bottom';
+export type NotesWorkspaceDockArea = 'left' | 'center' | 'right' | 'bottom';
 export type NotesWorkspaceModuleStatus = 'implemented' | 'planned';
 
 export interface NotesWorkspaceModuleDefinition {
@@ -23,6 +23,8 @@ export type NotesWorkspaceShellModuleDefinition = NotesWorkspaceModuleDefinition
 };
 
 export type NotesWorkspaceShellVisibility = Record<NotesWorkspaceShellModuleId, boolean>;
+export type NotesWorkspaceShellModuleAreas = Record<NotesWorkspaceShellModuleId, NotesWorkspaceDockArea>;
+export type NotesWorkspaceShellModuleOrder = Record<NotesWorkspaceShellModuleId, number>;
 
 export const NOTES_WORKSPACE_MODULES: NotesWorkspaceModuleDefinition[] = [
     {
@@ -111,15 +113,51 @@ export function listImplementedNotesShellModules(area?: NotesWorkspaceDockArea):
 
 export function listVisibleNotesShellModules(
     modules: NotesWorkspaceShellVisibility,
-    area?: NotesWorkspaceDockArea
+    area?: NotesWorkspaceDockArea,
+    moduleAreas?: NotesWorkspaceShellModuleAreas,
+    moduleOrder?: NotesWorkspaceShellModuleOrder
 ): NotesWorkspaceShellModuleDefinition[] {
-    return listImplementedNotesShellModules(area)
-        .filter((module) => modules[module.id]);
+    return listImplementedNotesShellModules()
+        .filter((module) => modules[module.id])
+        .filter((module) => !area || getNotesShellModuleArea(module.id, moduleAreas) === area)
+        .sort((left, right) => getNotesShellModuleOrder(left.id, moduleOrder) - getNotesShellModuleOrder(right.id, moduleOrder));
 }
 
 export function hasVisibleNotesShellModule(
     modules: NotesWorkspaceShellVisibility,
-    area: NotesWorkspaceDockArea
+    area: NotesWorkspaceDockArea,
+    moduleAreas?: NotesWorkspaceShellModuleAreas,
+    moduleOrder?: NotesWorkspaceShellModuleOrder
 ): boolean {
-    return listVisibleNotesShellModules(modules, area).length > 0;
+    return listVisibleNotesShellModules(modules, area, moduleAreas, moduleOrder).length > 0;
+}
+
+export function getDefaultNotesShellModuleAreas(): NotesWorkspaceShellModuleAreas {
+    return Object.fromEntries(
+        listImplementedNotesShellModules().map((module) => [module.id, module.defaultArea])
+    ) as NotesWorkspaceShellModuleAreas;
+}
+
+export function getDefaultNotesShellModuleOrder(): NotesWorkspaceShellModuleOrder {
+    return Object.fromEntries(
+        listImplementedNotesShellModules().map((module) => [module.id, module.order])
+    ) as NotesWorkspaceShellModuleOrder;
+}
+
+export function getNotesShellModuleArea(
+    moduleId: NotesWorkspaceShellModuleId,
+    moduleAreas: NotesWorkspaceShellModuleAreas | undefined
+): NotesWorkspaceDockArea {
+    return moduleAreas?.[moduleId] ?? NOTES_WORKSPACE_MODULES.find((module) => module.id === moduleId)?.defaultArea ?? 'right';
+}
+
+export function getNotesShellModuleOrder(
+    moduleId: NotesWorkspaceShellModuleId,
+    moduleOrder: NotesWorkspaceShellModuleOrder | undefined
+): number {
+    return moduleOrder?.[moduleId] ?? NOTES_WORKSPACE_MODULES.find((module) => module.id === moduleId)?.order ?? 999;
+}
+
+export function isNotesWorkspaceDockArea(value: unknown): value is NotesWorkspaceDockArea {
+    return value === 'left' || value === 'center' || value === 'right' || value === 'bottom';
 }

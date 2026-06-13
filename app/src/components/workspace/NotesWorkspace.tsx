@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, DragEvent, PointerEvent as ReactPointerEvent } from 'react';
+import type { CSSProperties, DragEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -60,14 +60,17 @@ import { TagEditor } from '../windows/blocks/TagEditor';
 import { buildNotesWorkspaceLinkedViews, type NotesWorkspaceLinkedViews } from '../../utils/notesWorkspaceLinks';
 import { listNotesWorkspaceGroups, type NotesWorkspaceNode, type NotesWorkspaceSplitPlacement, type NotesWorkspaceTab, type NotesWorkspaceView } from '../../utils/notesWorkspaceLayout';
 import {
-    hasVisibleNotesShellModule,
     listImplementedNotesShellModules,
     listVisibleNotesShellModules,
+    type NotesWorkspaceDockArea,
     type NotesWorkspaceModuleDefinition,
+    type NotesWorkspaceShellModuleDefinition,
+    type NotesWorkspaceShellModuleId,
 } from '../../utils/notesWorkspaceModules';
 import { getEntitySearchResult, getEntitySearchTerms, type EntitySearchMatchField, type EntitySearchResult } from '../../utils/entitySearch';
 import { canModifyEntity, canViewEntity } from '../../utils/permissions';
 import { writeClipboardText } from '../../utils/clipboard';
+import { generateEntityId } from '../../utils/entityId';
 import {
     CANVAS_WINDOW_INSTANCES_PROPERTY,
     createCanvasWindowInstance,
@@ -128,6 +131,8 @@ const VAULT_GROUP_TYPES: EntityType[] = [
     'portal',
 ];
 
+const ROOT_CREATE_TYPES: EntityType[] = ['note', 'character', 'object', 'ability', 'competency', 'canvas', 'folder'];
+
 const NOTES_SHELL_MODULE_ICONS: Record<NotesWorkspaceModuleDefinition['iconKey'], LucideIcon> = {
     vault: Database,
     context: GitFork,
@@ -140,14 +145,19 @@ const NOTES_SHELL_MODULE_ICONS: Record<NotesWorkspaceModuleDefinition['iconKey']
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 const NOTES_WORKSPACE_TAB_MIME = 'application/vnd.vibe-notes-workspace-tab';
-
 type NotesWorkspaceDropZone = 'left' | 'right' | 'top' | 'bottom';
 type VaultScope = 'all' | DatabaseType | `user:${string}`;
 type NotesShellResizeTarget = 'vault' | 'context' | 'audio';
+type NotesShellInteractiveArea = Extract<NotesWorkspaceDockArea, 'left' | 'center' | 'right'>;
 
 interface NotesDockDropTarget {
     groupId: string;
     zone: NotesWorkspaceDropZone | null;
+}
+
+interface NotesShellModuleDropTarget {
+    area: NotesShellInteractiveArea;
+    beforeModuleId: NotesWorkspaceShellModuleId | null;
 }
 
 interface VaultScopeOption {
@@ -169,9 +179,49 @@ interface NotesWorkspaceTabDragPayload {
     tabId: string;
 }
 
+function createRootEntityDraft(type: EntityType, id: string): Entity {
+    const base: Entity = {
+        id,
+        parentId: null,
+        type,
+        database: 'general',
+        name: type,
+        description: '',
+        tags: [],
+        properties: {},
+    };
+
+    if (type === 'character') {
+        return { ...base, name: 'character', description: 'Новый персонаж.', properties: { strength: { base: 14 }, dexterity: { base: 12 } } };
+    }
+    if (type === 'object') {
+        return { ...base, name: 'object', description: 'Новый предмет.', properties: { 'фигура': 1, 'прочность': 1, 'нагрузка': 1, 'редкость': 0, 'цена': 0 } };
+    }
+    if (type === 'ability') {
+        return { ...base, name: 'ability', description: 'Новая способность.', properties: { cost: { base: 0 }, diceFormula: '' } };
+    }
+    if (type === 'competency') {
+        return { ...base, name: 'competency', description: 'Новая компетенция.', properties: { rank: 0 } };
+    }
+    if (type === 'canvas') {
+        return { ...base, name: 'canvas', description: 'Новое рабочее пространство.', properties: { x: 100, y: 100 } };
+    }
+    if (type === 'folder') {
+        return { ...base, name: 'folder', description: 'Папка.', properties: { folderType: 'note' } };
+    }
+    if (type === 'tag') {
+        return { ...base, name: 'tag', description: 'Новый тег.', properties: { modifiers: [] } };
+    }
+    if (type === 'attack') {
+        return { ...base, name: 'attack', description: 'Новая атака.', properties: { 'урон': 1, 'масштаб': 1, 'попадание': 1, 'дистанция': 'ближняя' } };
+    }
+
+    return { ...base, name: 'note', description: '# Новая заметка' };
+}
+
 function readTabDragPayload(event: DragEvent): NotesWorkspaceTabDragPayload | null {
     try {
-        const data = event.dataTransfer.getData(NOTES_WORKSPACE_TAB_MIME) || event.dataTransfer.getData('text/plain');
+        const data = event.dataTransfer.getData(NOTES_WORKSPACE_TAB_MIME);
         if (!data) return null;
 
         const parsed = JSON.parse(data);
@@ -183,13 +233,42 @@ function readTabDragPayload(event: DragEvent): NotesWorkspaceTabDragPayload | nu
 }
 
 function hasTabDragPayload(event: DragEvent): boolean {
-    return event.dataTransfer.types.includes(NOTES_WORKSPACE_TAB_MIME)
-        || event.dataTransfer.types.includes('text/plain');
+    return event.dataTransfer.types.includes(NOTES_WORKSPACE_TAB_MIME);
+}
+
+function isNotesShellInteractiveArea(value: unknown): value is NotesShellInteractiveArea {
+    return value === 'left' || value === 'center' || value === 'right';
 }
 
 function findDockGroupElement(clientX: number, clientY: number): HTMLElement | null {
     const element = document.elementFromPoint(clientX, clientY);
     return element?.closest<HTMLElement>('[data-notes-group-id]') ?? null;
+}
+
+function getShellModuleDropTarget(
+    clientX: number,
+    clientY: number,
+    sourceModuleId: NotesWorkspaceShellModuleId
+): NotesShellModuleDropTarget | null {
+    const element = document.elementFromPoint(clientX, clientY);
+    const areaElement = element?.closest<HTMLElement>('[data-notes-shell-area]');
+    const area = areaElement?.dataset.notesShellArea;
+    if (!areaElement || !isNotesShellInteractiveArea(area)) return null;
+
+    const moduleElements = Array.from(areaElement.querySelectorAll<HTMLElement>('[data-notes-shell-module-id]'))
+        .filter((moduleElement) => moduleElement.dataset.notesShellModuleId !== sourceModuleId);
+
+    for (const moduleElement of moduleElements) {
+        const moduleId = moduleElement.dataset.notesShellModuleId;
+        if (!moduleId) continue;
+
+        const rect = moduleElement.getBoundingClientRect();
+        if (clientY < rect.top + rect.height / 2) {
+            return { area, beforeModuleId: moduleId as NotesWorkspaceShellModuleId };
+        }
+    }
+
+    return { area, beforeModuleId: null };
 }
 
 function getNotesDockDropZone(element: HTMLElement, clientX: number, clientY: number): NotesWorkspaceDropZone | null {
@@ -318,7 +397,7 @@ function formatSearchFields(fields: EntitySearchMatchField[], t: Translate): str
     return fields
         .map((field) => t(`workspace.notes.searchFields.${field}`))
         .filter(Boolean)
-        .join(' · ');
+        .join(' / ');
 }
 
 function getVaultGroupType(entity: Entity): EntityType {
@@ -1105,10 +1184,79 @@ interface NotesWorkspaceNodeViewProps {
     onCopyEntityWikiLink: (entityId: string) => void;
     onCopyEntityId: (entityId: string) => void;
     onPinEntityToCanvas: (entityId: string) => void;
+    onCreateRootEntity: (type: EntityType) => void;
+    canCreateRootEntity: boolean;
+    hasWorkspaceTabs: boolean;
     canPinToCanvas: boolean;
     dockDropTarget: NotesDockDropTarget | null;
     onDockDropTargetChange: (target: NotesDockDropTarget | null) => void;
     t: Translate;
+}
+
+interface NotesShellModuleFrameProps {
+    module: NotesWorkspaceShellModuleDefinition;
+    subtitle?: string;
+    isDragging: boolean;
+    showDropBefore: boolean;
+    showDropAfter: boolean;
+    onHeaderPointerDown: (moduleId: NotesWorkspaceShellModuleId, event: ReactPointerEvent<HTMLDivElement>) => void;
+    children: ReactNode;
+    t: Translate;
+}
+
+function NotesShellDropIndicator() {
+    return (
+        <div className="mx-2 h-2 shrink-0 rounded-full bg-[color-mix(in_srgb,var(--vibe-accent)_55%,transparent)] shadow-[0_0_22px_color-mix(in_srgb,var(--vibe-accent)_42%,transparent)]" />
+    );
+}
+
+function NotesShellModuleFrame({
+    module,
+    subtitle,
+    isDragging,
+    showDropBefore,
+    showDropAfter,
+    onHeaderPointerDown,
+    children,
+    t,
+}: NotesShellModuleFrameProps) {
+    const Icon = NOTES_SHELL_MODULE_ICONS[module.iconKey];
+
+    return (
+        <>
+            {showDropBefore && <NotesShellDropIndicator />}
+            <section
+                data-notes-shell-module-id={module.id}
+                className={`relative flex min-h-[220px] min-w-0 flex-col overflow-hidden rounded-[var(--vibe-radius-md)] border bg-[var(--vibe-surface-block)] shadow-[var(--vibe-shadow-block)] transition-opacity ${
+                    isDragging ? 'opacity-55' : 'opacity-100'
+                } border-[var(--vibe-border-subtle)]`}
+            >
+                <div
+                    onPointerDown={(event) => onHeaderPointerDown(module.id, event)}
+                    className={`${glass.panelHeader} flex min-h-10 cursor-grab select-none items-center justify-between gap-2 p-2.5 active:cursor-grabbing`}
+                    title={t('workspace.notes.dragModule')}
+                >
+                    <div className="flex min-w-0 items-center gap-2">
+                        <Icon size={16} className="shrink-0 text-[var(--vibe-accent)]" />
+                        <div className="min-w-0">
+                            <p className="truncate text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-accent)]">
+                                {t(module.labelKey)}
+                            </p>
+                            {subtitle && (
+                                <h2 className="truncate text-sm font-black text-[var(--vibe-text-primary)]">
+                                    {subtitle}
+                                </h2>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                <div className="min-h-0 flex-1 overflow-hidden">
+                    {children}
+                </div>
+            </section>
+            {showDropAfter && <NotesShellDropIndicator />}
+        </>
+    );
 }
 
 function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
@@ -1200,6 +1348,9 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
         onCopyEntityWikiLink,
         onCopyEntityId,
         onPinEntityToCanvas,
+        onCreateRootEntity,
+        canCreateRootEntity,
+        hasWorkspaceTabs,
         canPinToCanvas,
         onSetActiveGroup,
         onSetActiveTab,
@@ -1352,12 +1503,18 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                 if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
                 updateDropZone(null);
             }}
+            onDragEndCapture={() => {
+                updateDropZone(null);
+            }}
             onDropCapture={(event) => {
                 const payload = readTabDragPayload(event);
                 if (!payload) return;
 
                 const zone = dropZoneRef.current ?? getDropZone(event);
-                if (!zone) return;
+                if (!zone) {
+                    updateDropZone(null);
+                    return;
+                }
 
                 event.preventDefault();
                 event.stopPropagation();
@@ -1492,7 +1649,6 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                                 event.dataTransfer.effectAllowed = 'move';
                                 const payload = JSON.stringify({ groupId: node.id, tabId: tab.id });
                                 event.dataTransfer.setData(NOTES_WORKSPACE_TAB_MIME, payload);
-                                event.dataTransfer.setData('text/plain', payload);
                             }}
                             onDragOver={(event) => {
                                 if (hasTabDragPayload(event)) {
@@ -1549,6 +1705,36 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                     <div className="flex min-w-[240px] flex-col items-center gap-3 rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-6 py-5 text-center text-sm text-[var(--vibe-text-faint)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                         <FileText size={20} className="text-[var(--vibe-accent)] opacity-75" />
                         <span>{activeTab ? t('workspace.notes.missingEntity') : t('workspace.notes.emptyGroupHint')}</span>
+                        {!hasWorkspaceTabs && (
+                            <div className="mt-1 w-full min-w-[300px] max-w-[460px]">
+                                <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
+                                    {canCreateRootEntity
+                                        ? t('workspace.notes.createRootEntity')
+                                        : t('workspace.notes.createRootEntityUnavailable')}
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                                    {ROOT_CREATE_TYPES.map((type) => {
+                                        const Icon = ENTITY_TYPE_ICONS[type] ?? FileText;
+                                        return (
+                                            <button
+                                                key={type}
+                                                type="button"
+                                                disabled={!canCreateRootEntity}
+                                                onClick={() => onCreateRootEntity(type)}
+                                                className={`flex h-8 items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border px-2 text-left text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                                                    canCreateRootEntity
+                                                        ? 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+                                                        : 'cursor-not-allowed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] text-[var(--vibe-text-faint)] opacity-45'
+                                                }`}
+                                            >
+                                                <Icon size={12} className="shrink-0 text-[var(--vibe-accent)]" />
+                                                <span className="min-w-0 truncate">{t(`workspace.notes.entityTypes.${type}`)}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             ) : (
@@ -1679,6 +1865,8 @@ export function NotesWorkspace({
     const [expandedEntityIds, setExpandedEntityIds] = useState<Set<string>>(() => new Set());
     const [collapsedVaultGroups, setCollapsedVaultGroups] = useState<Set<EntityType>>(() => new Set());
     const [dockDropTarget, setDockDropTarget] = useState<NotesDockDropTarget | null>(null);
+    const [shellModuleDropTarget, setShellModuleDropTarget] = useState<NotesShellModuleDropTarget | null>(null);
+    const [draggingShellModuleId, setDraggingShellModuleId] = useState<NotesWorkspaceShellModuleId | null>(null);
     const entities = useEntities();
     const activeCanvasId = useCanvasStore((state) => state.activeCanvasId);
     const stageScale = useCanvasStore((state) => state.scale);
@@ -1696,6 +1884,7 @@ export function NotesWorkspace({
     const setWorkspaceTabView = useNotesWorkspaceStore((state) => state.setTabView);
     const splitActiveWorkspaceGroup = useNotesWorkspaceStore((state) => state.splitActiveGroup);
     const toggleShellModule = useNotesWorkspaceStore((state) => state.toggleShellModule);
+    const moveShellModule = useNotesWorkspaceStore((state) => state.moveShellModule);
     const setShellModuleWidth = useNotesWorkspaceStore((state) => state.setShellModuleWidth);
     const setShellAudioHeight = useNotesWorkspaceStore((state) => state.setShellAudioHeight);
     const resetWorkspaceLayout = useNotesWorkspaceStore((state) => state.resetLayout);
@@ -1705,19 +1894,23 @@ export function NotesWorkspace({
             .filter((module) => module.id !== 'audio' || audioModuleEnabled),
         [audioModuleEnabled]
     );
+    const visibleLeftModules = useMemo(
+        () => listVisibleNotesShellModules(notesShell.modules, 'left', notesShell.moduleAreas, notesShell.moduleOrder),
+        [notesShell.moduleAreas, notesShell.moduleOrder, notesShell.modules]
+    );
     const visibleRightModules = useMemo(
-        () => listVisibleNotesShellModules(notesShell.modules, 'right'),
-        [notesShell.modules]
+        () => listVisibleNotesShellModules(notesShell.modules, 'right', notesShell.moduleAreas, notesShell.moduleOrder),
+        [notesShell.moduleAreas, notesShell.moduleOrder, notesShell.modules]
+    );
+    const visibleCenterModules = useMemo(
+        () => listVisibleNotesShellModules(notesShell.modules, 'center', notesShell.moduleAreas, notesShell.moduleOrder),
+        [notesShell.moduleAreas, notesShell.moduleOrder, notesShell.modules]
     );
     const visibleBottomModules = useMemo(
-        () => audioModuleEnabled ? listVisibleNotesShellModules(notesShell.modules, 'bottom') : [],
-        [audioModuleEnabled, notesShell.modules]
+        () => audioModuleEnabled ? listVisibleNotesShellModules(notesShell.modules, 'bottom', notesShell.moduleAreas, notesShell.moduleOrder) : [],
+        [audioModuleEnabled, notesShell.moduleAreas, notesShell.moduleOrder, notesShell.modules]
     );
-    const isVaultVisible = hasVisibleNotesShellModule(notesShell.modules, 'left');
-    const isContextVisible = visibleRightModules.some((module) => module.id === 'context');
-    const isNotificationsVisible = visibleRightModules.some((module) => module.id === 'notifications');
-    const isSearchVisible = visibleRightModules.some((module) => module.id === 'search');
-    const isGraphVisible = visibleRightModules.some((module) => module.id === 'graph');
+    const isLeftModuleVisible = visibleLeftModules.length > 0;
     const isAudioVisible = visibleBottomModules.some((module) => module.id === 'audio');
     const isRightModuleVisible = visibleRightModules.length > 0;
 
@@ -1800,6 +1993,7 @@ export function NotesWorkspace({
     const activeEntity = activeTab ? entitiesById.get(activeTab.entityId) ?? null : null;
     const activeLinkedViews = activeEntity ? buildNotesWorkspaceLinkedViews(activeEntity, visibleEntities) : null;
     const activeChildren = activeEntity ? childrenByParent.get(activeEntity.id) ?? [] : [];
+    const canCreateRootEntity = yjsStore.canModify('general');
 
     const workspaceGroupOrder = useMemo(
         () => new Map(workspaceGroups.map((group, index) => [group.id, index + 1])),
@@ -1914,6 +2108,15 @@ export function NotesWorkspace({
         });
     }, [activeCanvasEntity, entitiesById, stageOffset.x, stageOffset.y, stageScale]);
 
+    const handleCreateRootEntity = useCallback((type: EntityType) => {
+        if (!yjsStore.canModify('general')) return;
+        const id = generateEntityId(entities.map((entity) => entity.id));
+        const draft = createRootEntityDraft(type, id);
+        if (!yjsStore.addEntity(draft)) return;
+        openWorkspaceTab(id, 'source');
+        expandEntityAncestors(id);
+    }, [entities, expandEntityAncestors, openWorkspaceTab]);
+
     const handleSplitWorkspaceGroup = (groupId: string, direction: 'row' | 'column') => {
         setActiveWorkspaceGroup(groupId);
         splitActiveWorkspaceGroup(direction);
@@ -1960,9 +2163,361 @@ export function NotesWorkspace({
         window.addEventListener('pointercancel', handlePointerUp, { once: true });
     };
 
+    const handleShellModuleDragStart = (
+        moduleId: NotesWorkspaceShellModuleId,
+        event: ReactPointerEvent<HTMLDivElement>
+    ) => {
+        if (event.button !== 0) return;
+        if ((event.target as HTMLElement | null)?.closest('[data-no-shell-module-drag]')) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const previousCursor = document.body.style.cursor;
+        const previousUserSelect = document.body.style.userSelect;
+        let isDragging = false;
+        let latestTarget: NotesShellModuleDropTarget | null = null;
+
+        const setLatestTarget = (target: NotesShellModuleDropTarget | null) => {
+            const unchanged = latestTarget?.area === target?.area && latestTarget?.beforeModuleId === target?.beforeModuleId;
+            if (unchanged) return;
+            latestTarget = target;
+            setShellModuleDropTarget(target);
+        };
+
+        const handlePointerMove = (moveEvent: PointerEvent) => {
+            const distance = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);
+            if (!isDragging && distance < 6) return;
+
+            if (!isDragging) {
+                isDragging = true;
+                setDraggingShellModuleId(moduleId);
+                document.body.style.cursor = 'grabbing';
+                document.body.style.userSelect = 'none';
+            }
+
+            moveEvent.preventDefault();
+            setLatestTarget(getShellModuleDropTarget(moveEvent.clientX, moveEvent.clientY, moduleId));
+        };
+
+        const finishDrag = (upEvent: PointerEvent) => {
+            document.body.style.cursor = previousCursor;
+            document.body.style.userSelect = previousUserSelect;
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', finishDrag);
+            window.removeEventListener('pointercancel', cancelDrag);
+
+            const target = latestTarget;
+            setLatestTarget(null);
+            setDraggingShellModuleId(null);
+            if (!isDragging || !target) return;
+
+            upEvent.preventDefault();
+            moveShellModule(moduleId, target.area, target.beforeModuleId);
+        };
+
+        const cancelDrag = () => {
+            document.body.style.cursor = previousCursor;
+            document.body.style.userSelect = previousUserSelect;
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', finishDrag);
+            window.removeEventListener('pointercancel', cancelDrag);
+            setLatestTarget(null);
+            setDraggingShellModuleId(null);
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', finishDrag, { once: true });
+        window.addEventListener('pointercancel', cancelDrag, { once: true });
+    };
+
+    const renderVaultModuleBody = () => (
+        <div className="flex h-full min-h-0 flex-col">
+            <div className="border-b border-[var(--vibe-border-subtle)] p-2.5">
+                <div className="flex min-w-0 items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--vibe-success)] shadow-[0_0_8px_var(--vibe-success)]" />
+                    <span className="truncate">{t('hud.room')} {roomName}</span>
+                </div>
+                <label className="mt-3 block" data-no-shell-module-drag>
+                    <span className="mb-1 block text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
+                        {t('workspace.notes.storageScope')}
+                    </span>
+                    <select
+                        value={vaultScope}
+                        onChange={(event) => setVaultScope(event.target.value as VaultScope)}
+                        className="h-8 w-full rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 text-xs font-bold text-[var(--vibe-text-primary)] outline-none transition-colors focus:border-[var(--vibe-border-strong)]"
+                    >
+                        {vaultScopeOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                                {option.label} ({option.count})
+                            </option>
+                        ))}
+                    </select>
+                </label>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                    {(['general', 'user', 'gm'] as DatabaseType[]).map((database) => (
+                        <span
+                            key={database}
+                            className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]"
+                        >
+                            {t(`workspace.notes.databases.${database}`)} {visibleCounts[database]}
+                        </span>
+                    ))}
+                </div>
+            </div>
+
+            <div className="border-b border-[var(--vibe-border-subtle)] p-2.5">
+                <label className="flex h-8 items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2.5 text-xs text-[var(--vibe-text-muted)] focus-within:border-[var(--vibe-border-strong)]" data-no-shell-module-drag>
+                    <Search size={14} className="shrink-0 text-[var(--vibe-text-faint)]" />
+                    <input
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                        className="min-w-0 flex-1 bg-transparent text-[var(--vibe-text-primary)] outline-none placeholder:text-[var(--vibe-text-faint)]"
+                        placeholder={t('workspace.notes.searchPlaceholder')}
+                    />
+                </label>
+                {searchQuery.trim() && (
+                    <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-[var(--vibe-text-faint)]">
+                        <span className="truncate">
+                            {t('workspace.notes.searchSummary', { count: filteredEntities.length })}
+                        </span>
+                        {searchTerms.length > 0 && (
+                            <span className="truncate font-mono">
+                                {searchTerms.slice(0, 4).join(', ')}
+                            </span>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                {searchQuery.trim() ? (
+                    <div className="space-y-1.5">
+                        {filteredEntities.length ? filteredEntities.map(({ entity, result }) => (
+                            <EntitySearchResultButton key={entity.id} entity={entity} result={result} onOpenEntity={handleOpenEntity} t={t} />
+                        )) : (
+                            <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] p-4 text-center text-xs text-[var(--vibe-text-faint)]">
+                                {t('workspace.notes.noSearchResults')}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {vaultGroups.map((group) => {
+                            const Icon = ENTITY_TYPE_ICONS[group.type] ?? FileText;
+                            const isCollapsed = collapsedVaultGroups.has(group.type);
+
+                            return (
+                                <section
+                                    key={group.type}
+                                    className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)]"
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => handleToggleVaultGroup(group.type)}
+                                        className="flex h-8 w-full items-center gap-2 border-b border-[var(--vibe-border-subtle)] px-2 text-left text-[10px] font-black uppercase tracking-wider text-[var(--vibe-text-muted)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                                        data-no-shell-module-drag
+                                    >
+                                        <ChevronRight size={13} className={`shrink-0 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+                                        <Icon size={13} className="shrink-0 text-[var(--vibe-accent)]" />
+                                        <span className="min-w-0 flex-1 truncate">{t(`workspace.notes.entityTypes.${group.type}`)}</span>
+                                        <span className="font-mono text-[9px] text-[var(--vibe-text-faint)]">{group.totalCount}</span>
+                                    </button>
+                                    {!isCollapsed && (
+                                        <div className="space-y-0.5 p-1.5">
+                                            {group.rootItems.map((entity) => (
+                                                <EntityTreeItem
+                                                    key={entity.id}
+                                                    entity={entity}
+                                                    activeEntityId={activeEntity?.id}
+                                                    childrenByParent={childrenByParent}
+                                                    depth={0}
+                                                    expandedEntityIds={expandedEntityIds}
+                                                    onOpenEntity={handleOpenEntity}
+                                                    onToggleExpanded={handleToggleExpanded}
+                                                    t={t}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </section>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
+    const renderSearchModuleBody = () => (
+        <div className="flex h-full min-h-0 flex-col p-3">
+            <label className="mb-3 flex h-8 items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2.5 text-xs text-[var(--vibe-text-muted)] focus-within:border-[var(--vibe-border-strong)]" data-no-shell-module-drag>
+                <Search size={14} className="shrink-0 text-[var(--vibe-text-faint)]" />
+                <input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    className="min-w-0 flex-1 bg-transparent text-[var(--vibe-text-primary)] outline-none placeholder:text-[var(--vibe-text-faint)]"
+                    placeholder={t('workspace.notes.searchPlaceholder')}
+                />
+            </label>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+                {searchQuery.trim() ? (
+                    <div className="space-y-1.5">
+                        {filteredEntities.length ? filteredEntities.map(({ entity, result }) => (
+                            <EntitySearchResultButton key={entity.id} entity={entity} result={result} onOpenEntity={handleOpenEntity} t={t} />
+                        )) : (
+                            <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] p-4 text-center text-xs text-[var(--vibe-text-faint)]">
+                                {t('workspace.notes.noSearchResults')}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] p-4 text-center text-xs text-[var(--vibe-text-faint)]">
+                        {t('workspace.notes.searchHint')}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
+    const renderGraphModuleBody = () => (
+        <div className="h-full min-h-0 overflow-y-auto p-3">
+            {activeEntity ? (
+                <GraphDockPanel
+                    entity={activeEntity}
+                    linkedViews={activeLinkedViews}
+                    entitiesById={entitiesById}
+                    onOpenEntity={handleOpenEntity}
+                    t={t}
+                />
+            ) : (
+                <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] p-5 text-center text-xs text-[var(--vibe-text-faint)]">
+                    {t('workspace.notes.noActiveEntityHint')}
+                </div>
+            )}
+        </div>
+    );
+
+    const renderContextModuleBody = () => (
+        <div className="h-full min-h-0 overflow-y-auto p-3">
+            {activeEntity ? (
+                <div className="space-y-4">
+                    <section>
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
+                                {t('workspace.notes.entity')}
+                            </span>
+                            <span className={`text-[10px] font-bold uppercase tracking-widest ${getDatabaseTone(activeEntity.database)}`}>
+                                {t(`workspace.notes.databases.${activeEntity.database ?? 'general'}`)}
+                            </span>
+                        </div>
+                        <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3">
+                            <p className="truncate text-sm font-black text-[var(--vibe-text-primary)]">{activeEntity.name}</p>
+                            <p className="mt-1 truncate text-[10px] uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                {t(`workspace.notes.entityTypes.${activeEntity.type}`)}
+                            </p>
+                        </div>
+                    </section>
+
+                    <section>
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
+                                {t('workspace.notes.attachedEntities')}
+                            </span>
+                            <span className="font-mono text-[10px] text-[var(--vibe-text-faint)]">{activeChildren.length}</span>
+                        </div>
+                        {activeChildren.length ? (
+                            <div className="space-y-1.5">
+                                {activeChildren.slice(0, 12).map((child) => (
+                                    <EntityListButton key={child.id} entity={child} onOpenEntity={handleOpenEntity} t={t} />
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-[var(--vibe-text-faint)]">{t('workspace.notes.noAttachedEntities')}</p>
+                        )}
+                    </section>
+
+                    <LinkedViewsPanel linkedViews={activeLinkedViews} entitiesById={entitiesById} onOpenEntity={handleOpenEntity} t={t} />
+                </div>
+            ) : (
+                <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] p-5 text-center text-xs text-[var(--vibe-text-faint)]">
+                    {t('workspace.notes.noActiveEntityHint')}
+                </div>
+            )}
+        </div>
+    );
+
+    const renderNotificationsModuleBody = () => (
+        <div className="h-full min-h-0 overflow-y-auto p-3">
+            <NotificationCenter surface="embedded" />
+        </div>
+    );
+
+    const renderAudioModuleBody = () => (
+        <div id={NOTES_AUDIO_DOCK_HOST_ID} className="h-full min-h-[180px] overflow-hidden" />
+    );
+
+    const renderShellModuleBody = (moduleId: NotesWorkspaceShellModuleId): ReactNode => {
+        if (moduleId === 'vault') return renderVaultModuleBody();
+        if (moduleId === 'search') return renderSearchModuleBody();
+        if (moduleId === 'graph') return renderGraphModuleBody();
+        if (moduleId === 'context') return renderContextModuleBody();
+        if (moduleId === 'notifications') return renderNotificationsModuleBody();
+        return renderAudioModuleBody();
+    };
+
+    const getShellModuleSubtitle = (module: NotesWorkspaceShellModuleDefinition): string => {
+        if (module.id === 'vault') return t('workspace.notes.title');
+        if (module.id === 'search') {
+            return searchQuery.trim()
+                ? t('workspace.notes.searchSummary', { count: filteredEntities.length })
+                : t('workspace.notes.searchPlaceholder');
+        }
+        if (module.id === 'graph' || module.id === 'context') return activeEntity?.name ?? t('workspace.notes.noActiveEntity');
+        return t(module.labelKey);
+    };
+
+    const renderShellModule = (module: NotesWorkspaceShellModuleDefinition, area: NotesShellInteractiveArea, isLast: boolean) => (
+        <NotesShellModuleFrame
+            key={module.id}
+            module={module}
+            subtitle={getShellModuleSubtitle(module)}
+            isDragging={draggingShellModuleId === module.id}
+            showDropBefore={shellModuleDropTarget?.area === area && shellModuleDropTarget.beforeModuleId === module.id}
+            showDropAfter={isLast && shellModuleDropTarget?.area === area && shellModuleDropTarget.beforeModuleId === null}
+            onHeaderPointerDown={handleShellModuleDragStart}
+            t={t}
+        >
+            {renderShellModuleBody(module.id)}
+        </NotesShellModuleFrame>
+    );
+
+    const renderShellDockArea = (
+        area: NotesShellInteractiveArea,
+        modules: NotesWorkspaceShellModuleDefinition[],
+        className = ''
+    ) => (
+        <aside
+            data-notes-shell-area={area}
+            className={`flex min-h-0 flex-col gap-2 overflow-hidden ${className}`}
+        >
+            {modules.length > 0 ? modules.map((module, index) => renderShellModule(module, area, index === modules.length - 1)) : (
+                <div className={`flex min-h-[180px] flex-1 items-center justify-center rounded-[var(--vibe-radius-md)] border border-dashed p-4 text-center text-xs ${
+                    shellModuleDropTarget?.area === area
+                        ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] text-[var(--vibe-text-primary)]'
+                        : 'border-transparent text-transparent'
+                }`}>
+                    {shellModuleDropTarget?.area === area ? t('workspace.notes.dropModuleHere') : ''}
+                </div>
+            )}
+        </aside>
+    );
+
     const shellGridStyle = {
-        '--notes-vault-width': isVaultVisible ? `${notesShell.vaultWidth}px` : '0px',
-        '--notes-vault-separator-width': isVaultVisible ? '8px' : '0px',
+        '--notes-vault-width': isLeftModuleVisible ? `${notesShell.vaultWidth}px` : '0px',
+        '--notes-vault-separator-width': isLeftModuleVisible ? '8px' : '0px',
         '--notes-context-width': isRightModuleVisible ? `${notesShell.contextWidth}px` : '0px',
         '--notes-context-separator-width': isRightModuleVisible ? '8px' : '0px',
     } as CSSProperties;
@@ -2048,135 +2603,10 @@ export function NotesWorkspace({
                     </div>
                 </aside>
 
-                {isVaultVisible && (
-                <aside className={`ml-2 flex min-h-0 flex-col overflow-hidden ${glass.panel}`}>
-                    <div className={`${glass.panelHeader} p-2.5`}>
-                        <div className="flex items-center gap-2">
-                            <Database size={16} className="text-[var(--vibe-accent)]" />
-                            <div className="min-w-0">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-accent)]">
-                                    {t('workspace.notes.vault')}
-                                </p>
-                                <h2 className="truncate text-sm font-black text-[var(--vibe-text-primary)]">
-                                    {t('workspace.notes.title')}
-                                </h2>
-                            </div>
-                        </div>
-                        <div className="mt-2 flex min-w-0 items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                            <span className="h-1.5 w-1.5 rounded-full bg-[var(--vibe-success)] shadow-[0_0_8px_var(--vibe-success)]" />
-                            <span className="truncate">{t('hud.room')} {roomName}</span>
-                        </div>
-                        <label className="mt-3 block">
-                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
-                                {t('workspace.notes.storageScope')}
-                            </span>
-                            <select
-                                value={vaultScope}
-                                onChange={(event) => setVaultScope(event.target.value as VaultScope)}
-                                className="h-8 w-full rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 text-xs font-bold text-[var(--vibe-text-primary)] outline-none transition-colors focus:border-[var(--vibe-border-strong)]"
-                            >
-                                {vaultScopeOptions.map((option) => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.label} ({option.count})
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <div className="mt-3 flex gap-1.5">
-                            {(['general', 'user', 'gm'] as DatabaseType[]).map((database) => (
-                                <span
-                                    key={database}
-                                    className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]"
-                                >
-                                    {t(`workspace.notes.databases.${database}`)} {visibleCounts[database]}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
+                {isLeftModuleVisible && renderShellDockArea('left', visibleLeftModules, 'ml-2')}
 
-                    <div className="border-b border-[var(--vibe-border-subtle)] p-2.5">
-                        <label className="flex h-8 items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2.5 text-xs text-[var(--vibe-text-muted)] focus-within:border-[var(--vibe-border-strong)]">
-                            <Search size={14} className="shrink-0 text-[var(--vibe-text-faint)]" />
-                            <input
-                                value={searchQuery}
-                                onChange={(event) => setSearchQuery(event.target.value)}
-                                className="min-w-0 flex-1 bg-transparent text-[var(--vibe-text-primary)] outline-none placeholder:text-[var(--vibe-text-faint)]"
-                                placeholder={t('workspace.notes.searchPlaceholder')}
-                            />
-                        </label>
-                        {searchQuery.trim() && (
-                            <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-[var(--vibe-text-faint)]">
-                                <span className="truncate">
-                                    {t('workspace.notes.searchSummary', { count: filteredEntities.length })}
-                                </span>
-                                {searchTerms.length > 0 && (
-                                    <span className="truncate font-mono">
-                                        {searchTerms.slice(0, 4).join(', ')}
-                                    </span>
-                                )}
-                            </div>
-                        )}
-                    </div>
 
-                    <div className="min-h-0 flex-1 overflow-y-auto p-2">
-                        {searchQuery.trim() ? (
-                            <div className="space-y-1.5">
-                                {filteredEntities.length ? filteredEntities.map(({ entity, result }) => (
-                                    <EntitySearchResultButton key={entity.id} entity={entity} result={result} onOpenEntity={handleOpenEntity} t={t} />
-                                )) : (
-                                    <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] p-4 text-center text-xs text-[var(--vibe-text-faint)]">
-                                        {t('workspace.notes.noSearchResults')}
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                {vaultGroups.map((group) => {
-                                    const Icon = ENTITY_TYPE_ICONS[group.type] ?? FileText;
-                                    const isCollapsed = collapsedVaultGroups.has(group.type);
-
-                                    return (
-                                        <section
-                                            key={group.type}
-                                            className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)]"
-                                        >
-                                            <button
-                                                type="button"
-                                                onClick={() => handleToggleVaultGroup(group.type)}
-                                                className="flex h-8 w-full items-center gap-2 border-b border-[var(--vibe-border-subtle)] px-2 text-left text-[10px] font-black uppercase tracking-wider text-[var(--vibe-text-muted)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
-                                            >
-                                                <ChevronRight size={13} className={`shrink-0 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
-                                                <Icon size={13} className="shrink-0 text-[var(--vibe-accent)]" />
-                                                <span className="min-w-0 flex-1 truncate">{t(`workspace.notes.entityTypes.${group.type}`)}</span>
-                                                <span className="font-mono text-[9px] text-[var(--vibe-text-faint)]">{group.totalCount}</span>
-                                            </button>
-                                            {!isCollapsed && (
-                                                <div className="space-y-0.5 p-1.5">
-                                                    {group.rootItems.map((entity) => (
-                                                        <EntityTreeItem
-                                                            key={entity.id}
-                                                            entity={entity}
-                                                            activeEntityId={activeEntity?.id}
-                                                            childrenByParent={childrenByParent}
-                                                            depth={0}
-                                                            expandedEntityIds={expandedEntityIds}
-                                                            onOpenEntity={handleOpenEntity}
-                                                            onToggleExpanded={handleToggleExpanded}
-                                                            t={t}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </section>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </aside>
-                )}
-
-                {isVaultVisible && (
+                {isLeftModuleVisible && (
                 <div
                     role="separator"
                     aria-orientation="vertical"
@@ -2188,7 +2618,17 @@ export function NotesWorkspace({
                 </div>
                 )}
 
-                <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+                <section data-notes-shell-area="center" className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+                    {visibleCenterModules.length > 0 && (
+                        <div className="mb-2 max-h-[38%] min-h-[220px] min-w-0 overflow-hidden">
+                            {renderShellDockArea('center', visibleCenterModules)}
+                        </div>
+                    )}
+                    {visibleCenterModules.length === 0 && shellModuleDropTarget?.area === 'center' && (
+                        <div className="mb-2 flex h-12 shrink-0 items-center justify-center rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-primary)]">
+                            {t('workspace.notes.dropModuleHere')}
+                        </div>
+                    )}
                     <div className="min-h-0 flex-1">
                         <NotesWorkspaceNodeView
                             node={notesLayout.root}
@@ -2210,6 +2650,9 @@ export function NotesWorkspace({
                             onCopyEntityWikiLink={handleCopyEntityWikiLink}
                             onCopyEntityId={handleCopyEntityId}
                             onPinEntityToCanvas={handlePinEntityToCanvas}
+                            onCreateRootEntity={handleCreateRootEntity}
+                            canCreateRootEntity={canCreateRootEntity}
+                            hasWorkspaceTabs={hasWorkspaceTabs}
                             canPinToCanvas={canPinToActiveCanvas}
                             dockDropTarget={dockDropTarget}
                             onDockDropTargetChange={setDockDropTarget}
@@ -2228,11 +2671,22 @@ export function NotesWorkspace({
                         </div>
                     )}
                     {isAudioVisible && (
-                        <section
-                            id={NOTES_AUDIO_DOCK_HOST_ID}
-                            className={`min-h-0 flex-shrink-0 overflow-hidden ${glass.panel}`}
-                            style={{ height: `${notesShell.audioHeight}px` }}
-                        />
+                        <div className="min-h-0 flex-shrink-0 overflow-hidden" style={{ height: `${notesShell.audioHeight}px` }}>
+                            {visibleBottomModules.map((module) => (
+                                <NotesShellModuleFrame
+                                    key={module.id}
+                                    module={module}
+                                    subtitle={getShellModuleSubtitle(module)}
+                                    isDragging={draggingShellModuleId === module.id}
+                                    showDropBefore={false}
+                                    showDropAfter={false}
+                                    onHeaderPointerDown={handleShellModuleDragStart}
+                                    t={t}
+                                >
+                                    {renderShellModuleBody(module.id)}
+                                </NotesShellModuleFrame>
+                            ))}
+                        </div>
                     )}
                 </section>
 
@@ -2248,174 +2702,8 @@ export function NotesWorkspace({
                 </div>
                 )}
 
-                {isRightModuleVisible && (
-                    <aside className={`flex min-h-0 flex-col gap-2 overflow-hidden max-xl:hidden ${glass.panel}`}>
-                        {isSearchVisible && (
-                            <section className={`${isContextVisible || isNotificationsVisible || isGraphVisible ? 'max-h-[34%] min-h-[220px] border-b border-[var(--vibe-border-subtle)]' : 'min-h-0 flex-1'} flex flex-col overflow-hidden`}>
-                                <div className={`${glass.panelHeader} p-2.5`}>
-                                    <div className="flex items-center gap-2">
-                                        <Search size={16} className="text-[var(--vibe-accent)]" />
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-accent)]">
-                                                {t('workspace.notes.modules.search')}
-                                            </p>
-                                            <h2 className="truncate text-sm font-black text-[var(--vibe-text-primary)]">
-                                                {searchQuery.trim()
-                                                    ? t('workspace.notes.searchSummary', { count: filteredEntities.length })
-                                                    : t('workspace.notes.searchPlaceholder')}
-                                            </h2>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                                    <label className="mb-3 flex h-8 items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2.5 text-xs text-[var(--vibe-text-muted)] focus-within:border-[var(--vibe-border-strong)]">
-                                        <Search size={14} className="shrink-0 text-[var(--vibe-text-faint)]" />
-                                        <input
-                                            value={searchQuery}
-                                            onChange={(event) => setSearchQuery(event.target.value)}
-                                            className="min-w-0 flex-1 bg-transparent text-[var(--vibe-text-primary)] outline-none placeholder:text-[var(--vibe-text-faint)]"
-                                            placeholder={t('workspace.notes.searchPlaceholder')}
-                                        />
-                                    </label>
-                                    {searchQuery.trim() ? (
-                                        <div className="space-y-1.5">
-                                            {filteredEntities.length ? filteredEntities.map(({ entity, result }) => (
-                                                <EntitySearchResultButton key={entity.id} entity={entity} result={result} onOpenEntity={handleOpenEntity} t={t} />
-                                            )) : (
-                                                <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] p-4 text-center text-xs text-[var(--vibe-text-faint)]">
-                                                    {t('workspace.notes.noSearchResults')}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] p-4 text-center text-xs text-[var(--vibe-text-faint)]">
-                                            {t('workspace.notes.searchHint')}
-                                        </div>
-                                    )}
-                                </div>
-                            </section>
-                        )}
+                {isRightModuleVisible && renderShellDockArea('right', visibleRightModules, 'max-xl:hidden')}
 
-                        {isGraphVisible && (
-                            <section className={`${isContextVisible || isNotificationsVisible ? 'max-h-[42%] min-h-[260px] border-b border-[var(--vibe-border-subtle)]' : 'min-h-0 flex-1'} flex flex-col overflow-hidden`}>
-                                <div className={`${glass.panelHeader} p-2.5`}>
-                                    <div className="flex items-center gap-2">
-                                        <Network size={16} className="text-[var(--vibe-accent)]" />
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-accent)]">
-                                                {t('workspace.notes.modules.graph')}
-                                            </p>
-                                            <h2 className="truncate text-sm font-black text-[var(--vibe-text-primary)]">
-                                                {activeEntity?.name ?? t('workspace.notes.noActiveEntity')}
-                                            </h2>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                                    {activeEntity ? (
-                                        <GraphDockPanel
-                                            entity={activeEntity}
-                                            linkedViews={activeLinkedViews}
-                                            entitiesById={entitiesById}
-                                            onOpenEntity={handleOpenEntity}
-                                            t={t}
-                                        />
-                                    ) : (
-                                        <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] p-5 text-center text-xs text-[var(--vibe-text-faint)]">
-                                            {t('workspace.notes.noActiveEntityHint')}
-                                        </div>
-                                    )}
-                                </div>
-                            </section>
-                        )}
-
-                        {isContextVisible && (
-                            <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                                <div className={`${glass.panelHeader} p-2.5`}>
-                                    <div className="flex items-center gap-2">
-                                        <GitFork size={16} className="text-[var(--vibe-accent)]" />
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-accent)]">
-                                                {t('workspace.notes.context')}
-                                            </p>
-                                            <h2 className="truncate text-sm font-black text-[var(--vibe-text-primary)]">
-                                                {activeEntity?.name ?? t('workspace.notes.noActiveEntity')}
-                                            </h2>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                                    {activeEntity ? (
-                                        <div className="space-y-4">
-                                            <section>
-                                                <div className="mb-2 flex items-center justify-between gap-2">
-                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
-                                                        {t('workspace.notes.entity')}
-                                                    </span>
-                                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${getDatabaseTone(activeEntity.database)}`}>
-                                                        {t(`workspace.notes.databases.${activeEntity.database ?? 'general'}`)}
-                                                    </span>
-                                                </div>
-                                                <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3">
-                                                    <p className="truncate text-sm font-black text-[var(--vibe-text-primary)]">{activeEntity.name}</p>
-                                                    <p className="mt-1 truncate text-[10px] uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                                        {t(`workspace.notes.entityTypes.${activeEntity.type}`)}
-                                                    </p>
-                                                </div>
-                                            </section>
-
-                                            <section>
-                                                <div className="mb-2 flex items-center justify-between gap-2">
-                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
-                                                        {t('workspace.notes.attachedEntities')}
-                                                    </span>
-                                                    <span className="font-mono text-[10px] text-[var(--vibe-text-faint)]">{activeChildren.length}</span>
-                                                </div>
-                                                {activeChildren.length ? (
-                                                    <div className="space-y-1.5">
-                                                        {activeChildren.slice(0, 12).map((child) => (
-                                                            <EntityListButton key={child.id} entity={child} onOpenEntity={handleOpenEntity} t={t} />
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-xs text-[var(--vibe-text-faint)]">{t('workspace.notes.noAttachedEntities')}</p>
-                                                )}
-                                            </section>
-
-                                            <LinkedViewsPanel linkedViews={activeLinkedViews} entitiesById={entitiesById} onOpenEntity={handleOpenEntity} t={t} />
-                                        </div>
-                                    ) : (
-                                        <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] p-5 text-center text-xs text-[var(--vibe-text-faint)]">
-                                            {t('workspace.notes.noActiveEntityHint')}
-                                        </div>
-                                    )}
-                                </div>
-                            </section>
-                        )}
-
-                        {isNotificationsVisible && (
-                            <section className={`${isContextVisible ? 'max-h-[42%] min-h-[220px] border-t border-[var(--vibe-border-subtle)]' : 'min-h-0 flex-1'} flex flex-col overflow-hidden`}>
-                                <div className={`${glass.panelHeader} p-2.5`}>
-                                    <div className="flex items-center gap-2">
-                                        <Bell size={16} className="text-[var(--vibe-accent)]" />
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-accent)]">
-                                                {t('workspace.notes.modules.notifications')}
-                                            </p>
-                                            <h2 className="truncate text-sm font-black text-[var(--vibe-text-primary)]">
-                                                {t('workspace.notes.modules.notifications')}
-                                            </h2>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                                    <NotificationCenter surface="embedded" />
-                                </div>
-                            </section>
-                        )}
-                    </aside>
-                )}
             </main>
         </div>
     );

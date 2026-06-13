@@ -99,6 +99,25 @@ function resolveAssetPath(assetsDir, requestedPath) {
   return filePath;
 }
 
+function resolveTranslationsFolderPath() {
+  const candidates = [
+    path.join(__dirname, '..', 'src', 'locales'),
+    path.join(app.getAppPath(), 'src', 'locales'),
+    path.join(process.cwd(), 'src', 'locales'),
+    ...(process.resourcesPath ? [path.join(process.resourcesPath, 'locales')] : []),
+    path.join(__dirname, '..', 'locales'),
+    path.join(__dirname, '..', 'dist', 'locales'),
+  ];
+
+  return candidates.find((candidate) => {
+    try {
+      return fs.existsSync(candidate) && fs.statSync(candidate).isDirectory();
+    } catch {
+      return false;
+    }
+  }) || null;
+}
+
 function startFileServer() {
   if (process.env.VIBE_ELECTRON_SKIP_SERVER === '1') return null;
 
@@ -245,6 +264,20 @@ ipcMain.handle('vibe:show-asset-in-folder', async (_event, assetPath) => {
 
   shell.showItemInFolder(filePath);
   return true;
+});
+
+ipcMain.handle('vibe:show-translations-folder', async () => {
+  const folderPath = resolveTranslationsFolderPath();
+  if (!folderPath) {
+    throw new Error('Translations folder was not found');
+  }
+
+  const errorMessage = await shell.openPath(folderPath);
+  if (errorMessage) {
+    throw new Error(errorMessage);
+  }
+
+  return folderPath;
 });
 
 const hasLock = app.requestSingleInstanceLock();

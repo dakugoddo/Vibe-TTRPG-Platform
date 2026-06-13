@@ -203,6 +203,30 @@ function removeTabsNode(
     return { node, removed: false };
 }
 
+function removeEmptyTabsGroup(
+    layout: NotesWorkspaceLayout,
+    groupId: string,
+    preferredActiveGroupId: string
+): NotesWorkspaceLayout {
+    const groups = listNotesWorkspaceGroups(layout.root);
+    const group = groups.find((candidate) => candidate.id === groupId);
+    if (!group || group.tabs.length > 0 || groups.length <= 1) return layout;
+
+    const result = removeTabsNode(layout.root, groupId);
+    if (!result.removed || !result.node) return layout;
+
+    const nextGroups = listNotesWorkspaceGroups(result.node);
+    const nextActiveGroupId = nextGroups.some((candidate) => candidate.id === preferredActiveGroupId)
+        ? preferredActiveGroupId
+        : nextGroups[0]?.id ?? layout.activeGroupId;
+
+    return {
+        ...layout,
+        root: result.node,
+        activeGroupId: nextActiveGroupId,
+    };
+}
+
 export function setActiveNotesWorkspaceTab(
     layout: NotesWorkspaceLayout,
     groupId: string,
@@ -295,6 +319,7 @@ export function splitNotesWorkspaceGroupFromTab(
     const targetGroup = findTabsNode(layout.root, targetGroupId);
     const movingTab = sourceGroup?.tabs.find((tab) => tab.id === tabId);
     if (!sourceGroup || !targetGroup || !movingTab) return layout;
+    if (sourceGroupId === targetGroupId && sourceGroup.tabs.length <= 1) return layout;
 
     const newGroup: NotesWorkspaceTabsNode = {
         type: 'tabs',
@@ -303,7 +328,7 @@ export function splitNotesWorkspaceGroupFromTab(
         tabs: [movingTab],
     };
 
-    return {
+    const nextLayout = {
         ...layout,
         activeGroupId: newGroup.id,
         root: mapNode(layout.root, (node) => {
@@ -333,6 +358,8 @@ export function splitNotesWorkspaceGroupFromTab(
             };
         }),
     };
+
+    return removeEmptyTabsGroup(nextLayout, sourceGroupId, newGroup.id);
 }
 
 export function setNotesWorkspaceSplitRatio(
@@ -437,7 +464,7 @@ export function moveNotesWorkspaceTab(
     if (!sourceGroup || !targetGroup || !movingTab) return layout;
     if (sourceGroupId === targetGroupId && beforeTabId === tabId) return layout;
 
-    return {
+    const nextLayout = {
         ...layout,
         activeGroupId: targetGroupId,
         root: mapNode(layout.root, (node) => {
@@ -473,6 +500,10 @@ export function moveNotesWorkspaceTab(
             return node;
         }),
     };
+
+    return sourceGroupId === targetGroupId
+        ? nextLayout
+        : removeEmptyTabsGroup(nextLayout, sourceGroupId, targetGroupId);
 }
 
 export function listNotesWorkspaceGroups(node: NotesWorkspaceNode): NotesWorkspaceTabsNode[] {
