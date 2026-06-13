@@ -3,6 +3,7 @@ import {
     deleteNamedWindowLayoutSnapshot,
     listNamedWindowLayoutSnapshots,
     loadWindowLayout,
+    resetCurrentWindowLayout,
     restoreNamedWindowLayoutSnapshot,
     saveNamedWindowLayoutSnapshot,
     useWindowStore,
@@ -17,6 +18,10 @@ class MemoryStorage {
 
     setItem(key: string, value: string): void {
         this.data.set(key, value);
+    }
+
+    removeItem(key: string): void {
+        this.data.delete(key);
     }
 }
 
@@ -112,5 +117,44 @@ assert.equal(Object.values(useWindowStore.getState().windows).filter((win) => !w
 
 assert.equal(deleteNamedWindowLayoutSnapshot(savedSnapshot.id), true);
 assert.equal(listNamedWindowLayoutSnapshots().length, 0);
+
+loadWindowLayout('window-store-reset-test');
+resetWindowStore();
+useWindowStore.setState({
+    windows: {
+        screen: {
+            id: 'screen',
+            entityId: 'screen-entity',
+            mode: 'compact',
+            x: 10,
+            y: 20,
+            width: 320,
+            height: 240,
+            zIndex: 12,
+            isPinned: false,
+        },
+        pinned: {
+            id: 'pinned',
+            entityId: 'pinned-entity',
+            mode: 'compact',
+            x: 40,
+            y: 50,
+            width: 320,
+            height: 240,
+            zIndex: 18,
+            isPinned: true,
+            canvasId: 'canvas-1',
+        },
+    },
+    focusedWindowId: 'screen',
+    highestZIndex: 18,
+});
+localStorage.setItem('vibe-ttrpg-windows-window-store-reset-test', '{"windows":{}}');
+resetCurrentWindowLayout();
+state = useWindowStore.getState();
+assert.deepEqual(Object.keys(state.windows), ['pinned']);
+assert.equal(state.focusedWindowId, null);
+assert.equal(state.highestZIndex, 18);
+assert.equal(localStorage.getItem('vibe-ttrpg-windows-window-store-reset-test'), null);
 
 console.log('window store tests passed');

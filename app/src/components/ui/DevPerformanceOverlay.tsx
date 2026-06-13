@@ -3,6 +3,7 @@ import { useCanvasStore } from '../../store/canvasStore';
 import { useCanvasSyncStore } from '../../store/canvasSyncStore';
 import { getEntitiesSnapshot } from '../../store/entityStore';
 import { useWindowStore } from '../../store/windowStore';
+import { DEV_PERFORMANCE_OVERLAY_EVENT, getDevPerformanceOverlayEnabled } from '../../utils/devPerformanceOverlay';
 
 interface PerformanceMemory {
   usedJSHeapSize: number;
@@ -87,8 +88,21 @@ function formatNumber(value: number, digits = 0): string {
 
 export function DevPerformanceOverlay() {
   const [snapshot, setSnapshot] = useState<DevPerfSnapshot>(() => readSnapshot(0, 0, 0, 0, 0, 0, 0));
+  const [enabled, setEnabled] = useState(getDevPerformanceOverlayEnabled);
 
   useEffect(() => {
+    const handleChange = () => setEnabled(getDevPerformanceOverlayEnabled());
+    window.addEventListener(DEV_PERFORMANCE_OVERLAY_EVENT, handleChange);
+    window.addEventListener('storage', handleChange);
+    return () => {
+      window.removeEventListener(DEV_PERFORMANCE_OVERLAY_EVENT, handleChange);
+      window.removeEventListener('storage', handleChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV || !enabled) return;
+
     let rafId = 0;
     let lastFrame = performance.now();
     let windowStart = lastFrame;
@@ -144,9 +158,9 @@ export function DevPerformanceOverlay() {
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, []);
+  }, [enabled]);
 
-  if (!import.meta.env.DEV) return null;
+  if (!import.meta.env.DEV || !enabled) return null;
 
   const fpsTone =
     snapshot.fps >= 55

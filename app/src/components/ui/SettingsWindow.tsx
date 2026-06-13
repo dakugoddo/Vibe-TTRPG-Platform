@@ -4,6 +4,7 @@ import { Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Glob
 import { yjsStore } from '../../store/yjsStore';
 import { useCanvasDrawStore } from '../../store/canvasDrawStore';
 import { useNotesWorkspaceStore } from '../../store/notesWorkspaceStore';
+import { resetCurrentWindowLayout } from '../../store/windowStore';
 import { useAudioChannelVolumes } from '../../hooks/useAudioChannelVolumes';
 import { useAudioSessionEnabled } from '../../hooks/useAudioSessionEnabled';
 import { useAppModuleEnabled } from '../../hooks/useAppModuleEnablement';
@@ -14,6 +15,7 @@ import { DEFAULT_ROLE_DEFINITIONS, getEffectivePermissions, type PermissionKey, 
 import { SUPPORTED_LOCALES } from '../../utils/localization';
 import { listImplementedNotesShellModules } from '../../utils/notesWorkspaceModules';
 import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, glass, interfaceDensityPresets, saveCustomThemeColors, themePresets, type CustomThemeColors } from '../../utils/theme';
+import { getDevPerformanceOverlayEnabled, setDevPerformanceOverlayEnabled } from '../../utils/devPerformanceOverlay';
 import type { AudioChannel, PlayerProfile } from '../../types';
 import { listPlayerProfiles, updatePlayerProfileRole } from '../../services/fileApi';
 
@@ -91,6 +93,8 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const [themeId, setThemeId] = useThemePreset();
     const [densityId, setDensityId] = useInterfaceDensity();
     const [customThemeColors, setCustomThemeColors] = useState<CustomThemeColors>(getStoredCustomThemeColors);
+    const [localResetMessage, setLocalResetMessage] = useState('');
+    const [devPerfOverlayEnabled, setDevPerfOverlayEnabled] = useState(getDevPerformanceOverlayEnabled);
     const gridEnabled = useCanvasDrawStore((state) => state.gridEnabled);
     const gridType = useCanvasDrawStore((state) => state.gridType);
     const gridSpacing = useCanvasDrawStore((state) => state.gridSpacing);
@@ -100,6 +104,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const notesShell = useNotesWorkspaceStore((state) => state.shell);
     const toggleNotesShellModule = useNotesWorkspaceStore((state) => state.toggleShellModule);
     const resetNotesShell = useNotesWorkspaceStore((state) => state.resetShell);
+    const resetNotesLayout = useNotesWorkspaceStore((state) => state.resetLayout);
     const notesShellModules = useMemo(
         () => listImplementedNotesShellModules()
             .filter((module) => module.id !== 'audio' || audioModuleEnabled),
@@ -134,6 +139,12 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
         };
     }, [activeTab, isGM, isOpen]);
 
+    useEffect(() => {
+        if (!localResetMessage) return;
+        const timeoutId = window.setTimeout(() => setLocalResetMessage(''), 2400);
+        return () => window.clearTimeout(timeoutId);
+    }, [localResetMessage]);
+
     const handleUpdatePlayerRole = async (profile: PlayerProfile, role: Exclude<UserRole, 'gm'>) => {
         if (profile.legacy) return;
         try {
@@ -163,6 +174,48 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
         const next = saveCustomThemeColors(DEFAULT_CUSTOM_THEME_COLORS);
         setCustomThemeColors(next);
         setThemeId('custom');
+    };
+    const announceLocalReset = (message: string) => {
+        setLocalResetMessage(message);
+    };
+    const resetThemeAndDensity = () => {
+        const next = saveCustomThemeColors(DEFAULT_CUSTOM_THEME_COLORS);
+        setCustomThemeColors(next);
+        setThemeId(themePresets[0].id);
+        setDensityId('balanced');
+        announceLocalReset('Тема, палитра и плотность сброшены локально.');
+    };
+    const resetScreenWindowLayout = () => {
+        resetCurrentWindowLayout();
+        announceLocalReset('Открытые экранные окна сброшены. Закреплённые объекты canvas не тронуты.');
+    };
+    const resetNotesWorkspaceLayout = () => {
+        resetNotesLayout();
+        announceLocalReset('Раскладка вкладок режима заметок сброшена.');
+    };
+    const resetNotesWorkspaceShell = () => {
+        resetNotesShell();
+        announceLocalReset('Модули режима заметок сброшены к значениям по умолчанию.');
+    };
+    const resetAudioSettings = () => {
+        setAudioModuleEnabled(true);
+        setAudioEnabled(false);
+        AUDIO_CHANNELS.forEach((channel) => setChannelVolume(channel.id, 1));
+        announceLocalReset('Локальные настройки аудио сброшены.');
+    };
+    const resetAllLocalUi = () => {
+        resetThemeAndDensity();
+        resetCurrentWindowLayout();
+        resetNotesLayout();
+        resetNotesShell();
+        setAudioModuleEnabled(true);
+        setAudioEnabled(false);
+        AUDIO_CHANNELS.forEach((channel) => setChannelVolume(channel.id, 1));
+        announceLocalReset('Локальный интерфейс сброшен. Данные мира не изменялись.');
+    };
+    const updateDevPerfOverlay = (enabled: boolean) => {
+        setDevPerfOverlayEnabled(enabled);
+        setDevPerformanceOverlayEnabled(enabled);
     };
 
     return (
@@ -222,6 +275,85 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                     <div className="min-h-0 flex-1 overflow-y-auto p-5 custom-scrollbar">
                         {safeActiveTab === 'interface' && (
                             <section className="space-y-3">
+                                <div className={settingsPanelClass}>
+                                    <div className="mb-3 flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
+                                            <RotateCcw size={14} />
+                                            Сброс локального UI
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={resetAllLocalUi}
+                                            className="flex h-8 items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-warning)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-warning)_12%,transparent)] px-2.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-warning)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-warning)_20%,transparent)]"
+                                            title="Сбросить локальные настройки интерфейса без изменения файлов мира"
+                                        >
+                                            <RotateCcw size={12} />
+                                            Всё локальное
+                                        </button>
+                                    </div>
+                                    {localResetMessage && (
+                                        <div className="mb-3 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-success)_30%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_12%,transparent)] px-3 py-2 text-[11px] text-[var(--vibe-success)]">
+                                            {localResetMessage}
+                                        </div>
+                                    )}
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        <button
+                                            type="button"
+                                            onClick={resetThemeAndDensity}
+                                            className={`${settingsCardClass} text-left transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]`}
+                                        >
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Тема и плотность</div>
+                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">Preset, custom palette и density</div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={resetScreenWindowLayout}
+                                            className={`${settingsCardClass} text-left transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]`}
+                                        >
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Экранные окна</div>
+                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">Закрывает только незакреплённые окна</div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={resetNotesWorkspaceLayout}
+                                            className={`${settingsCardClass} text-left transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]`}
+                                        >
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Layout заметок</div>
+                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">Сбрасывает вкладки и split-панели</div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={resetNotesWorkspaceShell}
+                                            className={`${settingsCardClass} text-left transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]`}
+                                        >
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Shell-модули</div>
+                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">Vault, Context, Search, Graph, Audio</div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={resetAudioSettings}
+                                            className={`${settingsCardClass} text-left transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]`}
+                                        >
+                                            <div className="text-xs font-bold text-[var(--vibe-text-primary)]">Аудио defaults</div>
+                                            <div className="mt-1 text-[11px] text-[var(--vibe-text-faint)]">Модуль включён, каналы 100%, session sound off</div>
+                                        </button>
+                                        {import.meta.env.DEV && (
+                                            <label className={`${settingsCardClass} flex cursor-pointer items-center justify-between gap-3 transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]`}>
+                                                <span>
+                                                    <span className="block text-xs font-bold text-[var(--vibe-text-primary)]">Dev performance overlay</span>
+                                                    <span className="mt-1 block text-[11px] text-[var(--vibe-text-faint)]">Показывается только в dev build</span>
+                                                </span>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={devPerfOverlayEnabled}
+                                                    onChange={(event) => updateDevPerfOverlay(event.target.checked)}
+                                                    className="h-4 w-4 shrink-0 accent-[var(--vibe-accent)]"
+                                                />
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
+
                                 <div className="rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] p-4 shadow-[var(--vibe-shadow-block)]">
                                     <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
                                         <Monitor size={14} />

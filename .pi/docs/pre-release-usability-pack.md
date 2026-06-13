@@ -136,6 +136,8 @@ Acceptance:
 
 ### 7. Settings as control center
 
+Статус: implemented, automated QA passed; manual reset smoke остаётся перед beta.
+
 Задача: собрать локальные UX-переключатели и reset-действия в одном месте.
 
 Форма реализации:
@@ -144,6 +146,7 @@ Acceptance:
 - reset theme/custom palette;
 - app module toggles с понятным статусом;
 - dev overlay controls только в dev build.
+- reset экранных окон закрывает только незакреплённые окна и чистит localStorage layout текущей комнаты; canvas-pinned объекты и world data не трогать.
 
 Acceptance:
 

@@ -299,6 +299,36 @@ export function clearWindowLayout(): void {
     }
 }
 
+export function resetCurrentWindowLayout(): void {
+    if (_saveTimer) {
+        clearTimeout(_saveTimer);
+        _saveTimer = null;
+    }
+
+    const { windows } = useWindowStore.getState();
+    const pinnedWindows = Object.fromEntries(
+        Object.entries(windows).filter(([, win]) => win.isPinned)
+    );
+    const highestPinnedZIndex = Object.values(pinnedWindows).reduce(
+        (highest, win) => Math.max(highest, win.zIndex || 10),
+        10,
+    );
+
+    useWindowStore.setState({
+        windows: pinnedWindows,
+        focusedWindowId: null,
+        highestZIndex: highestPinnedZIndex,
+    });
+
+    if (_currentRoom) {
+        try {
+            localStorage.removeItem(WINDOW_STORAGE_PREFIX + _currentRoom);
+        } catch {
+            // Local UI reset must not fail when storage is unavailable.
+        }
+    }
+}
+
 function getWindowSnapshotStorageKey(): string {
     return `${WINDOW_STORAGE_PREFIX}${_currentRoom ?? 'local'}-screen-snapshot`;
 }
