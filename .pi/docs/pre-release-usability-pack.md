@@ -116,6 +116,8 @@ Acceptance:
 
 ### 6. Startup and first-run flow
 
+Статус: implemented, automated QA passed; manual Electron/browser startup smoke остаётся перед beta.
+
 Задача: уменьшить потребность помнить инструкцию запуска.
 
 Форма реализации:
@@ -124,6 +126,7 @@ Acceptance:
 - статус локального сервера и комнаты;
 - понятное сообщение, если server unavailable;
 - desktop/browser flows должны использовать один язык и одну терминологию.
+- host screen проверяет `/api/world/status`; ошибки должны различать server offline, папку мира и "ГМ ещё не открыл мир".
 
 Acceptance:
 
