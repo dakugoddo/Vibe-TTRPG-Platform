@@ -3,6 +3,8 @@ import { listNotesWorkspaceGroups } from '../utils/notesWorkspaceLayout';
 import {
     NOTES_WORKSPACE_LAYOUT_STORAGE_KEY,
     NOTES_WORKSPACE_SHELL_STORAGE_KEY,
+    NOTES_WORKSPACE_SHELL_STORAGE_VERSION,
+    normalizeStoredNotesWorkspaceShell,
     useNotesWorkspaceStore,
 } from './notesWorkspaceStore';
 
@@ -132,9 +134,87 @@ assert(useNotesWorkspaceStore.getState().shell.moduleOrder.search < useNotesWork
 
 const persistedShell = globalThis.localStorage.getItem(NOTES_WORKSPACE_SHELL_STORAGE_KEY);
 assert.ok(persistedShell);
+assert.ok(persistedShell.includes(`"version":${NOTES_WORKSPACE_SHELL_STORAGE_VERSION}`));
 assert.ok(persistedShell.includes('"contextWidth":320'));
 assert.ok(persistedShell.includes('"audioHeight":520'));
 assert.ok(persistedShell.includes('"audio":true'));
 assert.ok(persistedShell.includes('"moduleAreas"'));
+
+const migratedLegacyShell = normalizeStoredNotesWorkspaceShell({
+    modules: {
+        editor: false,
+        vault: false,
+        context: true,
+        notifications: false,
+        search: true,
+        graph: true,
+        audio: true,
+    },
+    moduleAreas: {
+        editor: 'right',
+        vault: 'right',
+        context: 'left',
+        notifications: 'center',
+        search: 'center',
+        graph: 'left',
+        audio: 'center',
+    },
+    moduleOrder: {
+        editor: 900,
+        vault: 10,
+        context: 20,
+        notifications: 30,
+        search: 40,
+        graph: 50,
+        audio: 60,
+    },
+    vaultWidth: 120,
+    contextWidth: 900,
+    audioHeight: 900,
+});
+assert.equal(migratedLegacyShell.modules.editor, true, 'Legacy storage cannot disable the required editor');
+assert.equal(migratedLegacyShell.modules.vault, false, 'Legacy storage keeps toggleable module visibility');
+assert.equal(migratedLegacyShell.modules.search, true, 'Legacy storage keeps enabled optional modules');
+assert.equal(migratedLegacyShell.moduleAreas.editor, 'center', 'Legacy storage resets broken editor area');
+assert.equal(migratedLegacyShell.moduleAreas.vault, 'left', 'Legacy storage resets broken vault area');
+assert.equal(migratedLegacyShell.moduleAreas.context, 'right', 'Legacy storage resets broken context area');
+assert.equal(migratedLegacyShell.moduleAreas.audio, 'bottom', 'Legacy storage resets broken bottom module area');
+assert.equal(migratedLegacyShell.vaultWidth, 220);
+assert.equal(migratedLegacyShell.contextWidth, 460);
+assert.equal(migratedLegacyShell.audioHeight, 520);
+
+const restoredVersionedShell = normalizeStoredNotesWorkspaceShell({
+    version: NOTES_WORKSPACE_SHELL_STORAGE_VERSION,
+    modules: {
+        editor: true,
+        vault: true,
+        context: true,
+        notifications: true,
+        search: true,
+        graph: false,
+        audio: false,
+    },
+    moduleAreas: {
+        editor: 'right',
+        vault: 'center',
+        context: 'left',
+        notifications: 'right',
+        search: 'center',
+        graph: 'right',
+        audio: 'bottom',
+    },
+    moduleOrder: {
+        editor: 10,
+        vault: 20,
+        context: 30,
+        notifications: 40,
+        search: 50,
+        graph: 60,
+        audio: 70,
+    },
+});
+assert.equal(restoredVersionedShell.moduleAreas.editor, 'right', 'Current storage keeps intentional editor moves');
+assert.equal(restoredVersionedShell.moduleAreas.vault, 'center', 'Current storage keeps intentional vault moves');
+assert.equal(restoredVersionedShell.moduleAreas.context, 'left', 'Current storage keeps intentional context moves');
 
 console.log('notes workspace store tests passed');

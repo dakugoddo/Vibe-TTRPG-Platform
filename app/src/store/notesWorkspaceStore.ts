@@ -34,6 +34,7 @@ import {
 
 export const NOTES_WORKSPACE_LAYOUT_STORAGE_KEY = 'vibe-ttrpg-notes-workspace-layout-v1';
 export const NOTES_WORKSPACE_SHELL_STORAGE_KEY = 'vibe-ttrpg-notes-workspace-shell-v1';
+export const NOTES_WORKSPACE_SHELL_STORAGE_VERSION = 2;
 
 export interface NotesWorkspaceShellState {
     vaultWidth: number;
@@ -199,40 +200,48 @@ function clampAudioModuleHeight(height: unknown, fallback: number): number {
     return Math.min(MAX_AUDIO_MODULE_HEIGHT, Math.max(MIN_AUDIO_MODULE_HEIGHT, height));
 }
 
+export function normalizeStoredNotesWorkspaceShell(parsed: unknown): NotesWorkspaceShellState {
+    if (!isRecord(parsed) || !isRecord(parsed.modules)) return createDefaultNotesWorkspaceShell();
+
+    const shouldUseStoredModuleLayout = parsed.version === NOTES_WORKSPACE_SHELL_STORAGE_VERSION;
+    const modules = { ...DEFAULT_NOTES_WORKSPACE_SHELL.modules };
+    const moduleAreas = { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleAreas };
+    const moduleOrder = { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleOrder };
+    for (const module of listImplementedNotesShellModules()) {
+        const storedVisibility = parsed.modules[module.id];
+        modules[module.id] = module.canToggle && typeof storedVisibility === 'boolean'
+            ? storedVisibility
+            : module.defaultVisible;
+
+        const storedArea = shouldUseStoredModuleLayout && isRecord(parsed.moduleAreas)
+            ? parsed.moduleAreas[module.id]
+            : undefined;
+        moduleAreas[module.id] = isNotesWorkspaceDockArea(storedArea) ? storedArea : module.defaultArea;
+
+        const storedOrder = shouldUseStoredModuleLayout && isRecord(parsed.moduleOrder)
+            ? parsed.moduleOrder[module.id]
+            : undefined;
+        moduleOrder[module.id] = typeof storedOrder === 'number' && Number.isFinite(storedOrder)
+            ? storedOrder
+            : module.order;
+    }
+
+    return {
+        vaultWidth: clampShellModuleWidth(parsed.vaultWidth, DEFAULT_NOTES_WORKSPACE_SHELL.vaultWidth),
+        contextWidth: clampShellModuleWidth(parsed.contextWidth, DEFAULT_NOTES_WORKSPACE_SHELL.contextWidth),
+        audioHeight: clampAudioModuleHeight(parsed.audioHeight, DEFAULT_NOTES_WORKSPACE_SHELL.audioHeight),
+        modules,
+        moduleAreas,
+        moduleOrder,
+    };
+}
+
 function readStoredNotesWorkspaceShell(): NotesWorkspaceShellState {
     try {
         const data = globalThis.localStorage?.getItem(NOTES_WORKSPACE_SHELL_STORAGE_KEY);
         if (!data) return createDefaultNotesWorkspaceShell();
 
-        const parsed = JSON.parse(data);
-        if (!isRecord(parsed) || !isRecord(parsed.modules)) return createDefaultNotesWorkspaceShell();
-
-        const modules = { ...DEFAULT_NOTES_WORKSPACE_SHELL.modules };
-        const moduleAreas = { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleAreas };
-        const moduleOrder = { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleOrder };
-        for (const module of listImplementedNotesShellModules()) {
-            const storedVisibility = parsed.modules[module.id];
-            modules[module.id] = module.canToggle && typeof storedVisibility === 'boolean'
-                ? storedVisibility
-                : module.defaultVisible;
-
-            const storedArea = isRecord(parsed.moduleAreas) ? parsed.moduleAreas[module.id] : undefined;
-            moduleAreas[module.id] = isNotesWorkspaceDockArea(storedArea) ? storedArea : module.defaultArea;
-
-            const storedOrder = isRecord(parsed.moduleOrder) ? parsed.moduleOrder[module.id] : undefined;
-            moduleOrder[module.id] = typeof storedOrder === 'number' && Number.isFinite(storedOrder)
-                ? storedOrder
-                : module.order;
-        }
-
-        return {
-            vaultWidth: clampShellModuleWidth(parsed.vaultWidth, DEFAULT_NOTES_WORKSPACE_SHELL.vaultWidth),
-            contextWidth: clampShellModuleWidth(parsed.contextWidth, DEFAULT_NOTES_WORKSPACE_SHELL.contextWidth),
-            audioHeight: clampAudioModuleHeight(parsed.audioHeight, DEFAULT_NOTES_WORKSPACE_SHELL.audioHeight),
-            modules,
-            moduleAreas,
-            moduleOrder,
-        };
+        return normalizeStoredNotesWorkspaceShell(JSON.parse(data));
     } catch {
         return createDefaultNotesWorkspaceShell();
     }
@@ -240,7 +249,10 @@ function readStoredNotesWorkspaceShell(): NotesWorkspaceShellState {
 
 function writeStoredNotesWorkspaceShell(shell: NotesWorkspaceShellState): void {
     try {
-        globalThis.localStorage?.setItem(NOTES_WORKSPACE_SHELL_STORAGE_KEY, JSON.stringify(shell));
+        globalThis.localStorage?.setItem(
+            NOTES_WORKSPACE_SHELL_STORAGE_KEY,
+            JSON.stringify({ version: NOTES_WORKSPACE_SHELL_STORAGE_VERSION, ...shell })
+        );
     } catch {
         // Local UI state should not break the workspace if storage is unavailable.
     }
