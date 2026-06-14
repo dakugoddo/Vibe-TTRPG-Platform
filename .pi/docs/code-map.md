@@ -60,6 +60,7 @@
 - Tab/pane DnD: `NotesWorkspace.tsx` must accept only the internal `NOTES_WORKSPACE_TAB_MIME`; do not fall back to `text/plain`, because selected text and dragged images can otherwise trigger stale drop previews.
 - Empty panes: `notesWorkspaceLayout.ts` must collapse a source tabs group when its last tab is moved or split into another group; focused coverage lives in `notesWorkspaceLayout.test.ts` and `notesWorkspaceStore.test.ts`.
 - Shell modules: `notesWorkspaceModules.ts` owns module definitions, `notesWorkspaceStore.ts` owns persisted visibility/area/order/size, and `NotesWorkspace.tsx` owns pointer-driven module-header drag between left/center/right. The main notes editor is the required `Editor` shell module, not a separate central JSX branch. Do not use browser HTML DnD for shell modules.
+- Shell dock areas: `left`, `center` and `right` are persistent drop targets in `NotesWorkspace.tsx`. Do not conditionally unmount an area or set side-area width to `0px` just because it has no modules; empty side areas should collapse to a narrow visible drop rail.
 - Shell storage migrations: `NOTES_WORKSPACE_SHELL_STORAGE_VERSION` must change when old `localStorage` placement/order can corrupt the UI. Legacy storage should keep safe values such as size and toggleable visibility, but reset unsafe `moduleAreas/moduleOrder` to registry defaults.
 - i18n boundary: stable UI labels belong in `app/src/locales/ru.json` and `app/src/locales/en.json`; entity names/descriptions/properties are world content and should not be translated at render time.
 

@@ -143,6 +143,9 @@ const NOTES_SHELL_MODULE_ICONS: Record<NotesWorkspaceModuleDefinition['iconKey']
     audio: Volume2,
 };
 
+const NOTES_SHELL_EMPTY_SIDE_WIDTH = 44;
+const NOTES_SHELL_SEPARATOR_WIDTH = 8;
+
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 const NOTES_WORKSPACE_TAB_MIME = 'application/vnd.vibe-notes-workspace-tab';
@@ -2536,35 +2539,40 @@ export function NotesWorkspace({
         area: NotesShellInteractiveArea,
         modules: NotesWorkspaceShellModuleDefinition[],
         className = ''
-    ) => (
-        <aside
-            data-notes-shell-area={area}
-            className={`flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden ${className}`}
-        >
-            {modules.length > 0 ? modules.map((module, index) => renderShellModule(module, area, index === modules.length - 1)) : (
-                <div className={`flex min-h-[180px] flex-1 items-center justify-center rounded-[var(--vibe-radius-md)] border border-dashed p-4 text-center text-xs ${
-                    shellModuleDropTarget?.area === area
-                        ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] text-[var(--vibe-text-primary)]'
-                        : 'border-transparent text-transparent'
-                }`}>
-                    {shellModuleDropTarget?.area === area ? t('workspace.notes.dropModuleHere') : ''}
-                </div>
-            )}
-        </aside>
-    );
+    ) => {
+        const isActiveDropArea = shellModuleDropTarget?.area === area;
+        const isSideArea = area !== 'center';
+
+        return (
+            <aside
+                data-notes-shell-area={area}
+                className={`flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden ${className}`}
+            >
+                {modules.length > 0 ? modules.map((module, index) => renderShellModule(module, area, index === modules.length - 1)) : (
+                    <div className={`flex min-h-[180px] flex-1 items-center justify-center rounded-[var(--vibe-radius-md)] border border-dashed p-2 text-center text-xs transition-colors ${
+                        isActiveDropArea
+                            ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] text-[var(--vibe-text-primary)]'
+                            : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] opacity-45'
+                    }`}>
+                        {isActiveDropArea ? (isSideArea ? '+' : t('workspace.notes.dropModuleHere')) : ''}
+                    </div>
+                )}
+            </aside>
+        );
+    };
 
     const shellGridStyle = {
-        '--notes-vault-width': isLeftModuleVisible ? `${notesShell.vaultWidth}px` : '0px',
-        '--notes-vault-separator-width': isLeftModuleVisible ? '8px' : '0px',
-        '--notes-context-width': isRightModuleVisible ? `${notesShell.contextWidth}px` : '0px',
-        '--notes-context-separator-width': isRightModuleVisible ? '8px' : '0px',
+        '--notes-vault-width': `${isLeftModuleVisible ? notesShell.vaultWidth : NOTES_SHELL_EMPTY_SIDE_WIDTH}px`,
+        '--notes-vault-separator-width': `${NOTES_SHELL_SEPARATOR_WIDTH}px`,
+        '--notes-context-width': `${isRightModuleVisible ? notesShell.contextWidth : NOTES_SHELL_EMPTY_SIDE_WIDTH}px`,
+        '--notes-context-separator-width': `${NOTES_SHELL_SEPARATOR_WIDTH}px`,
     } as CSSProperties;
 
     return (
         <div className={`absolute inset-0 overflow-hidden ${glass.bg}`}>
             <main
                 style={shellGridStyle}
-                className="relative z-[1] grid h-full min-h-0 grid-cols-[48px_var(--notes-vault-width)_var(--notes-vault-separator-width)_minmax(0,1fr)_var(--notes-context-separator-width)_var(--notes-context-width)] gap-0 p-2 max-xl:grid-cols-[48px_var(--notes-vault-width)_var(--notes-vault-separator-width)_minmax(0,1fr)]"
+                className="relative z-[1] grid h-full min-h-0 grid-cols-[48px_var(--notes-vault-width)_var(--notes-vault-separator-width)_minmax(0,1fr)_var(--notes-context-separator-width)_var(--notes-context-width)] gap-0 p-2"
             >
                 <aside className={`flex min-h-0 flex-col items-center overflow-hidden ${glass.panel}`}>
                     <div className="flex h-12 w-full items-center justify-center border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)]">
@@ -2641,20 +2649,21 @@ export function NotesWorkspace({
                     </div>
                 </aside>
 
-                {isLeftModuleVisible && renderShellDockArea('left', visibleLeftModules, 'ml-2')}
+                {renderShellDockArea('left', visibleLeftModules, 'ml-2')}
 
 
-                {isLeftModuleVisible && (
                 <div
                     role="separator"
                     aria-orientation="vertical"
-                    onPointerDown={(event) => handleShellResizeStart('vault', event)}
-                    className="group flex cursor-col-resize items-center justify-center"
-                    title={t('workspace.notes.resizeModule')}
+                    aria-disabled={!isLeftModuleVisible}
+                    onPointerDown={isLeftModuleVisible ? (event) => handleShellResizeStart('vault', event) : undefined}
+                    className={`group flex items-center justify-center ${isLeftModuleVisible ? 'cursor-col-resize' : 'cursor-default'}`}
+                    title={isLeftModuleVisible ? t('workspace.notes.resizeModule') : undefined}
                 >
-                    <div className="h-14 w-px rounded-full bg-[var(--vibe-border-subtle)] transition-colors group-hover:bg-[var(--vibe-accent)]" />
+                    <div className={`h-14 w-px rounded-full bg-[var(--vibe-border-subtle)] transition-colors ${
+                        isLeftModuleVisible ? 'group-hover:bg-[var(--vibe-accent)]' : 'opacity-40'
+                    }`} />
                 </div>
-                )}
 
                 <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
                     <div className="min-h-0 flex-1">
@@ -2691,19 +2700,20 @@ export function NotesWorkspace({
                     )}
                 </section>
 
-                {isRightModuleVisible && (
                 <div
                     role="separator"
                     aria-orientation="vertical"
-                    onPointerDown={(event) => handleShellResizeStart('context', event)}
-                    className="group flex cursor-col-resize items-center justify-center max-xl:hidden"
-                    title={t('workspace.notes.resizeModule')}
+                    aria-disabled={!isRightModuleVisible}
+                    onPointerDown={isRightModuleVisible ? (event) => handleShellResizeStart('context', event) : undefined}
+                    className={`group flex items-center justify-center ${isRightModuleVisible ? 'cursor-col-resize' : 'cursor-default'}`}
+                    title={isRightModuleVisible ? t('workspace.notes.resizeModule') : undefined}
                 >
-                    <div className="h-14 w-px rounded-full bg-[var(--vibe-border-subtle)] transition-colors group-hover:bg-[var(--vibe-accent)]" />
+                    <div className={`h-14 w-px rounded-full bg-[var(--vibe-border-subtle)] transition-colors ${
+                        isRightModuleVisible ? 'group-hover:bg-[var(--vibe-accent)]' : 'opacity-40'
+                    }`} />
                 </div>
-                )}
 
-                {isRightModuleVisible && renderShellDockArea('right', visibleRightModules, 'max-xl:hidden')}
+                {renderShellDockArea('right', visibleRightModules)}
 
             </main>
         </div>
