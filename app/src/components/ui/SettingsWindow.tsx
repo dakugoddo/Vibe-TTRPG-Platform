@@ -108,6 +108,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const resetNotesLayout = useNotesWorkspaceStore((state) => state.resetLayout);
     const notesShellModules = useMemo(
         () => listImplementedNotesShellModules()
+            .filter((module) => module.canToggle)
             .filter((module) => module.id !== 'audio' || audioModuleEnabled),
         [audioModuleEnabled]
     );

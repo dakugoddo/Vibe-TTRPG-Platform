@@ -103,14 +103,26 @@ assert.deepEqual(groups[0].tabs.map((tab) => tab.entityId), ['character-1']);
 assert.equal(useNotesWorkspaceStore.getState().shell.vaultWidth, 300);
 assert.equal(useNotesWorkspaceStore.getState().shell.contextWidth, 320);
 assert.equal(useNotesWorkspaceStore.getState().shell.audioHeight, 300);
+assert.equal(useNotesWorkspaceStore.getState().shell.modules.editor, true);
 assert.equal(useNotesWorkspaceStore.getState().shell.modules.vault, true);
 assert.equal(useNotesWorkspaceStore.getState().shell.modules.context, true);
 assert.equal(useNotesWorkspaceStore.getState().shell.modules.notifications, true);
 assert.equal(useNotesWorkspaceStore.getState().shell.modules.search, false);
 assert.equal(useNotesWorkspaceStore.getState().shell.modules.graph, false);
 assert.equal(useNotesWorkspaceStore.getState().shell.modules.audio, false);
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.editor, 'center');
 assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.vault, 'left');
 assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.context, 'right');
+
+useNotesWorkspaceStore.getState().toggleShellModule('editor');
+assert.equal(useNotesWorkspaceStore.getState().shell.modules.editor, true, 'Editor module is required and cannot be disabled');
+useNotesWorkspaceStore.getState().setShellModuleVisible('editor', false);
+assert.equal(useNotesWorkspaceStore.getState().shell.modules.editor, true, 'Editor visibility ignores shell toggle calls');
+useNotesWorkspaceStore.getState().moveShellModule('editor', 'right', 'context');
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.editor, 'right');
+assert(useNotesWorkspaceStore.getState().shell.moduleOrder.editor < useNotesWorkspaceStore.getState().shell.moduleOrder.context);
+useNotesWorkspaceStore.getState().moveShellModule('editor', 'center');
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.editor, 'center');
 
 useNotesWorkspaceStore.getState().toggleShellModule('audio');
 useNotesWorkspaceStore.getState().setShellAudioHeight(900);

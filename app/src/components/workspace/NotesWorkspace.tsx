@@ -134,6 +134,7 @@ const VAULT_GROUP_TYPES: EntityType[] = [
 const ROOT_CREATE_TYPES: EntityType[] = ['note', 'character', 'object', 'ability', 'competency', 'canvas', 'folder'];
 
 const NOTES_SHELL_MODULE_ICONS: Record<NotesWorkspaceModuleDefinition['iconKey'], LucideIcon> = {
+    editor: FileText,
     vault: Database,
     context: GitFork,
     notifications: Bell,
@@ -1221,6 +1222,7 @@ function NotesShellModuleFrame({
     t,
 }: NotesShellModuleFrameProps) {
     const Icon = NOTES_SHELL_MODULE_ICONS[module.iconKey];
+    const isEditorModule = module.id === 'editor';
 
     return (
         <>
@@ -1228,6 +1230,8 @@ function NotesShellModuleFrame({
             <section
                 data-notes-shell-module-id={module.id}
                 className={`relative flex min-h-[220px] min-w-0 flex-col overflow-hidden rounded-[var(--vibe-radius-md)] border bg-[var(--vibe-surface-block)] shadow-[var(--vibe-shadow-block)] transition-opacity ${
+                    isEditorModule ? 'flex-1' : 'shrink-0'
+                } ${
                     isDragging ? 'opacity-55' : 'opacity-100'
                 } border-[var(--vibe-border-subtle)]`}
             >
@@ -1891,6 +1895,7 @@ export function NotesWorkspace({
     const [audioModuleEnabled] = useAppModuleEnabled('audio');
     const shellRibbonModules = useMemo(
         () => listImplementedNotesShellModules()
+            .filter((module) => module.canToggle)
             .filter((module) => module.id !== 'audio' || audioModuleEnabled),
         [audioModuleEnabled]
     );
@@ -2459,7 +2464,39 @@ export function NotesWorkspace({
         <div id={NOTES_AUDIO_DOCK_HOST_ID} className="h-full min-h-[180px] overflow-hidden" />
     );
 
+    const renderEditorModuleBody = () => (
+        <NotesWorkspaceNodeView
+            node={notesLayout.root}
+            activeGroupId={notesLayout.activeGroupId}
+            groupOrder={workspaceGroupOrder}
+            entitiesById={entitiesById}
+            visibleEntities={visibleEntities}
+            childrenByParent={childrenByParent}
+            onSetActiveGroup={setActiveWorkspaceGroup}
+            onSetActiveTab={setActiveWorkspaceTab}
+            onSetTabView={setWorkspaceTabView}
+            onCloseTab={closeWorkspaceTab}
+            onCloseGroup={closeWorkspaceGroup}
+            onSplitGroup={handleSplitWorkspaceGroup}
+            onSplitTabToGroup={splitWorkspaceTabToGroup}
+            onResizeSplit={resizeWorkspaceSplit}
+            onMoveTab={moveWorkspaceTab}
+            onOpenEntity={handleOpenEntity}
+            onCopyEntityWikiLink={handleCopyEntityWikiLink}
+            onCopyEntityId={handleCopyEntityId}
+            onPinEntityToCanvas={handlePinEntityToCanvas}
+            onCreateRootEntity={handleCreateRootEntity}
+            canCreateRootEntity={canCreateRootEntity}
+            hasWorkspaceTabs={hasWorkspaceTabs}
+            canPinToCanvas={canPinToActiveCanvas}
+            dockDropTarget={dockDropTarget}
+            onDockDropTargetChange={setDockDropTarget}
+            t={t}
+        />
+    );
+
     const renderShellModuleBody = (moduleId: NotesWorkspaceShellModuleId): ReactNode => {
+        if (moduleId === 'editor') return renderEditorModuleBody();
         if (moduleId === 'vault') return renderVaultModuleBody();
         if (moduleId === 'search') return renderSearchModuleBody();
         if (moduleId === 'graph') return renderGraphModuleBody();
@@ -2469,6 +2506,7 @@ export function NotesWorkspace({
     };
 
     const getShellModuleSubtitle = (module: NotesWorkspaceShellModuleDefinition): string => {
+        if (module.id === 'editor') return activeEntity?.name ?? t('workspace.notes.noActiveEntity');
         if (module.id === 'vault') return t('workspace.notes.title');
         if (module.id === 'search') {
             return searchQuery.trim()
@@ -2501,7 +2539,7 @@ export function NotesWorkspace({
     ) => (
         <aside
             data-notes-shell-area={area}
-            className={`flex min-h-0 flex-col gap-2 overflow-hidden ${className}`}
+            className={`flex min-h-0 flex-col gap-2 overflow-y-auto overflow-x-hidden ${className}`}
         >
             {modules.length > 0 ? modules.map((module, index) => renderShellModule(module, area, index === modules.length - 1)) : (
                 <div className={`flex min-h-[180px] flex-1 items-center justify-center rounded-[var(--vibe-radius-md)] border border-dashed p-4 text-center text-xs ${
@@ -2618,46 +2656,9 @@ export function NotesWorkspace({
                 </div>
                 )}
 
-                <section data-notes-shell-area="center" className="flex min-h-0 min-w-0 flex-col overflow-hidden">
-                    {visibleCenterModules.length > 0 && (
-                        <div className="mb-2 max-h-[38%] min-h-[220px] min-w-0 overflow-hidden">
-                            {renderShellDockArea('center', visibleCenterModules)}
-                        </div>
-                    )}
-                    {visibleCenterModules.length === 0 && shellModuleDropTarget?.area === 'center' && (
-                        <div className="mb-2 flex h-12 shrink-0 items-center justify-center rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-primary)]">
-                            {t('workspace.notes.dropModuleHere')}
-                        </div>
-                    )}
+                <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
                     <div className="min-h-0 flex-1">
-                        <NotesWorkspaceNodeView
-                            node={notesLayout.root}
-                            activeGroupId={notesLayout.activeGroupId}
-                            groupOrder={workspaceGroupOrder}
-                            entitiesById={entitiesById}
-                            visibleEntities={visibleEntities}
-                            childrenByParent={childrenByParent}
-                            onSetActiveGroup={setActiveWorkspaceGroup}
-                            onSetActiveTab={setActiveWorkspaceTab}
-                            onSetTabView={setWorkspaceTabView}
-                            onCloseTab={closeWorkspaceTab}
-                            onCloseGroup={closeWorkspaceGroup}
-                            onSplitGroup={handleSplitWorkspaceGroup}
-                            onSplitTabToGroup={splitWorkspaceTabToGroup}
-                            onResizeSplit={resizeWorkspaceSplit}
-                            onMoveTab={moveWorkspaceTab}
-                            onOpenEntity={handleOpenEntity}
-                            onCopyEntityWikiLink={handleCopyEntityWikiLink}
-                            onCopyEntityId={handleCopyEntityId}
-                            onPinEntityToCanvas={handlePinEntityToCanvas}
-                            onCreateRootEntity={handleCreateRootEntity}
-                            canCreateRootEntity={canCreateRootEntity}
-                            hasWorkspaceTabs={hasWorkspaceTabs}
-                            canPinToCanvas={canPinToActiveCanvas}
-                            dockDropTarget={dockDropTarget}
-                            onDockDropTargetChange={setDockDropTarget}
-                            t={t}
-                        />
+                        {renderShellDockArea('center', visibleCenterModules, 'h-full min-w-0')}
                     </div>
                     {isAudioVisible && (
                         <div

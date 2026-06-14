@@ -20,6 +20,7 @@ import {
     type NotesWorkspaceView,
 } from '../utils/notesWorkspaceLayout';
 import {
+    canToggleNotesShellModule,
     getDefaultNotesShellModuleAreas,
     getDefaultNotesShellModuleOrder,
     isNotesWorkspaceDockArea,
@@ -92,6 +93,8 @@ function createDefaultNotesWorkspaceShell(): NotesWorkspaceShellState {
     return {
         ...DEFAULT_NOTES_WORKSPACE_SHELL,
         modules: { ...DEFAULT_NOTES_WORKSPACE_SHELL.modules },
+        moduleAreas: { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleAreas },
+        moduleOrder: { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleOrder },
     };
 }
 
@@ -209,7 +212,7 @@ function readStoredNotesWorkspaceShell(): NotesWorkspaceShellState {
         const moduleOrder = { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleOrder };
         for (const module of listImplementedNotesShellModules()) {
             const storedVisibility = parsed.modules[module.id];
-            modules[module.id] = typeof storedVisibility === 'boolean'
+            modules[module.id] = module.canToggle && typeof storedVisibility === 'boolean'
                 ? storedVisibility
                 : module.defaultVisible;
 
@@ -287,25 +290,33 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
         layout: splitActiveNotesWorkspaceGroup(state.layout, direction),
     })),
 
-    setShellModuleVisible: (moduleId, isVisible) => set((state) => ({
-        shell: {
-            ...state.shell,
-            modules: {
-                ...state.shell.modules,
-                [moduleId]: isVisible,
-            },
-        },
-    })),
+    setShellModuleVisible: (moduleId, isVisible) => set((state) => {
+        if (!canToggleNotesShellModule(moduleId)) return state;
 
-    toggleShellModule: (moduleId) => set((state) => ({
-        shell: {
-            ...state.shell,
-            modules: {
-                ...state.shell.modules,
-                [moduleId]: !state.shell.modules[moduleId],
+        return {
+            shell: {
+                ...state.shell,
+                modules: {
+                    ...state.shell.modules,
+                    [moduleId]: isVisible,
+                },
             },
-        },
-    })),
+        };
+    }),
+
+    toggleShellModule: (moduleId) => set((state) => {
+        if (!canToggleNotesShellModule(moduleId)) return state;
+
+        return {
+            shell: {
+                ...state.shell,
+                modules: {
+                    ...state.shell.modules,
+                    [moduleId]: !state.shell.modules[moduleId],
+                },
+            },
+        };
+    }),
 
     moveShellModule: (moduleId, area, beforeModuleId) => set((state) => {
         const nextAreas = { ...state.shell.moduleAreas, [moduleId]: area };

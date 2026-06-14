@@ -1,4 +1,4 @@
-export const IMPLEMENTED_NOTES_SHELL_MODULE_IDS = ['vault', 'context', 'notifications', 'search', 'graph', 'audio'] as const;
+export const IMPLEMENTED_NOTES_SHELL_MODULE_IDS = ['editor', 'vault', 'context', 'notifications', 'search', 'graph', 'audio'] as const;
 
 export type NotesWorkspaceShellModuleId = typeof IMPLEMENTED_NOTES_SHELL_MODULE_IDS[number];
 export type NotesWorkspaceModuleId = NotesWorkspaceShellModuleId | 'audio';
@@ -8,7 +8,7 @@ export type NotesWorkspaceModuleStatus = 'implemented' | 'planned';
 export interface NotesWorkspaceModuleDefinition {
     id: NotesWorkspaceModuleId;
     labelKey: string;
-    iconKey: 'vault' | 'context' | 'notifications' | 'search' | 'graph' | 'audio';
+    iconKey: 'editor' | 'vault' | 'context' | 'notifications' | 'search' | 'graph' | 'audio';
     defaultArea: NotesWorkspaceDockArea;
     defaultVisible: boolean;
     canToggle: boolean;
@@ -28,6 +28,17 @@ export type NotesWorkspaceShellModuleOrder = Record<NotesWorkspaceShellModuleId,
 
 export const NOTES_WORKSPACE_MODULES: NotesWorkspaceModuleDefinition[] = [
     {
+        id: 'editor',
+        labelKey: 'workspace.notes.modules.editor',
+        iconKey: 'editor',
+        defaultArea: 'center',
+        defaultVisible: true,
+        canToggle: false,
+        canResize: true,
+        order: 10,
+        status: 'implemented',
+    },
+    {
         id: 'vault',
         labelKey: 'workspace.notes.modules.vault',
         iconKey: 'vault',
@@ -35,7 +46,7 @@ export const NOTES_WORKSPACE_MODULES: NotesWorkspaceModuleDefinition[] = [
         defaultVisible: true,
         canToggle: true,
         canResize: true,
-        order: 10,
+        order: 20,
         status: 'implemented',
     },
     {
@@ -46,7 +57,7 @@ export const NOTES_WORKSPACE_MODULES: NotesWorkspaceModuleDefinition[] = [
         defaultVisible: true,
         canToggle: true,
         canResize: true,
-        order: 20,
+        order: 30,
         status: 'implemented',
     },
     {
@@ -57,7 +68,7 @@ export const NOTES_WORKSPACE_MODULES: NotesWorkspaceModuleDefinition[] = [
         defaultVisible: true,
         canToggle: true,
         canResize: false,
-        order: 30,
+        order: 40,
         status: 'implemented',
     },
     {
@@ -68,7 +79,7 @@ export const NOTES_WORKSPACE_MODULES: NotesWorkspaceModuleDefinition[] = [
         defaultVisible: false,
         canToggle: true,
         canResize: false,
-        order: 40,
+        order: 50,
         status: 'implemented',
     },
     {
@@ -79,7 +90,7 @@ export const NOTES_WORKSPACE_MODULES: NotesWorkspaceModuleDefinition[] = [
         defaultVisible: false,
         canToggle: true,
         canResize: false,
-        order: 50,
+        order: 60,
         status: 'implemented',
     },
     {
@@ -90,7 +101,7 @@ export const NOTES_WORKSPACE_MODULES: NotesWorkspaceModuleDefinition[] = [
         defaultVisible: false,
         canToggle: true,
         canResize: true,
-        order: 60,
+        order: 70,
         status: 'implemented',
     },
 ];
@@ -156,6 +167,10 @@ export function getNotesShellModuleOrder(
     moduleOrder: NotesWorkspaceShellModuleOrder | undefined
 ): number {
     return moduleOrder?.[moduleId] ?? NOTES_WORKSPACE_MODULES.find((module) => module.id === moduleId)?.order ?? 999;
+}
+
+export function canToggleNotesShellModule(moduleId: NotesWorkspaceShellModuleId): boolean {
+    return NOTES_WORKSPACE_MODULES.find((module) => module.id === moduleId)?.canToggle ?? false;
 }
 
 export function isNotesWorkspaceDockArea(value: unknown): value is NotesWorkspaceDockArea {

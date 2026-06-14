@@ -38,6 +38,7 @@
             "editor": "Editor",
             "context": "Context",
             "modules": {
+                "editor": "Editor",
                 "vault": "Vault",
                 "context": "Context",
                 "notifications": "Notifications",
