@@ -1926,7 +1926,7 @@ export function NotesWorkspace({
     const stageOffset = useCanvasStore((state) => state.offset);
     const notesLayout = useNotesWorkspaceStore((state) => state.layout);
     const notesShell = useNotesWorkspaceStore((state) => state.shell);
-    const openWorkspaceTab = useNotesWorkspaceStore((state) => state.openTab);
+    const openWorkspaceLeaf = useNotesWorkspaceStore((state) => state.openTabInNewLeaf);
     const closeWorkspaceTab = useNotesWorkspaceStore((state) => state.closeTab);
     const closeWorkspaceGroup = useNotesWorkspaceStore((state) => state.closeGroup);
     const moveWorkspaceTab = useNotesWorkspaceStore((state) => state.moveTab);
@@ -2127,7 +2127,7 @@ export function NotesWorkspace({
     const handleOpenEntity = (entityId: string, view: NotesWorkspaceView = 'source') => {
         if (!entitiesById.has(entityId)) return;
         expandEntityAncestors(entityId);
-        openWorkspaceTab(entityId, view);
+        openWorkspaceLeaf(entityId, view);
     };
 
     const handleCopyEntityWikiLink = useCallback((entityId: string) => {
@@ -2167,9 +2167,9 @@ export function NotesWorkspace({
         const id = generateEntityId(entities.map((entity) => entity.id));
         const draft = createRootEntityDraft(type, id);
         if (!yjsStore.addEntity(draft)) return;
-        openWorkspaceTab(id, 'source');
+        openWorkspaceLeaf(id, 'source');
         expandEntityAncestors(id);
-    }, [entities, expandEntityAncestors, openWorkspaceTab]);
+    }, [entities, expandEntityAncestors, openWorkspaceLeaf]);
 
     const handleSplitWorkspaceGroup = (groupId: string, direction: 'row' | 'column') => {
         setActiveWorkspaceGroup(groupId);

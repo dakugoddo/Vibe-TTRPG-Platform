@@ -16,7 +16,7 @@
 
 - UI/theme/i18n foundation реализован: semantic theme tokens, visual workspace presets, density registry, RU/EN switch, основные shell/entity/settings/assets/audio поверхности переведены на токены. Settings/Notes shell UI закрыт дополнительным EN-pass; Electron умеет открывать встроенную папку `locales`.
 - Compact character card foundation реализован по уточнённому контракту: карточка на canvas информационная, без roll/edit/add/delete controls, detailed info показывается только при edit access к entity.
-- Workspace foundation реализован локально: screen-window singleton, canvas pinned window instances, local window layouts, Obsidian-like Notes workspace с vault tree, tab/split editor, source/preview/split modes, entity data, linked context и unified movable Notes shell modules, включая обязательный `Editor`. Native multi-window отложен до desktop gate.
+- Workspace foundation реализован локально: screen-window singleton, canvas pinned window instances, local window layouts, Obsidian-like Notes workspace с vault tree, tab/split editor, source/preview/split modes, entity data, linked context и unified movable Notes shell modules, включая обязательный `Editor`. Первый leaf-open срез для Notes panes реализован: новая сущность открывается отдельным editor leaf рядом с активным, повторное открытие фокусирует существующий leaf. Native multi-window отложен до desktop gate.
 - Electron desktop foundation реализован: shell, preload IPC, native folder dialog, native asset reveal, embedded server path, build artifact metadata, custom app icon, lazy-loaded app shell chunks, player delivery baseline, `desktop:dev`, `desktop:pack`, `desktop:dist`, dev performance overlay.
 - Beta 0.1 preparation started: product name `Eternity Table`, GitHub README and release checklist created.
 - Canvas middle-button pan стабилизирован: compositor-first preview, small commit threshold, global listeners. Stage overscan отменён из-за FPS regression; Konva Stage должен оставаться размером viewport.
@@ -45,7 +45,7 @@
    - import/export/rollback policy.
 6. Notes workspace polish и native multi-window после Electron gate:
    - ручная QA shell modules/settings/reset/audio dock, включая перенос `Editor`/`Vault`/`Context` между left/center/right;
-   - следующий архитектурный срез: заменить временный `Editor` с внутренними вкладками на Obsidian-like editor leaf model, где каждая сущность открывается как отдельное окно/leaf, center-drop объединяет leaf в tab group, edge-drop создает split;
+   - текущий архитектурный срез: проверить первый Obsidian-like editor leaf model pass, где новая сущность открывается отдельным leaf, center-drop объединяет leaf в tab group, edge-drop создает split;
    - polish будущих shell-расширений после owner QA.
 
 ## Активные проверки
@@ -56,6 +56,7 @@
 - Manual QA: pre-release usability pack должен проверяться по `.pi/docs/pre-release-usability-pack.md` после каждого completed slice.
 - Manual QA: pinned entity windows должны разделять права на canvas placement и права на содержимое entity.
 - Manual QA: Notes shell modules должны после reload восстановить нормальные области из legacy storage, переключаться через ribbon/settings, обязательный `Editor` не должен выключаться, все module frames должны перетаскиваться за шапку между left/center/right, left/right edge drop должен ставить окна рядом по горизонтали внутри области, top/bottom edge drop должен возвращать вертикальную стопку, пустые left/center/right drop-области должны оставаться доступными после переноса последнего модуля, editor не должен показывать лишнюю `G1`-шапку над вкладками, shell-сегменты не должны скроллиться вместо самих модулей, reset не должен закрывать вкладки, Audio dock не должен останавливать playback при Canvas/Notes switch.
+- Manual QA: Notes editor leaves должны открываться из Vault/Search/ссылок как отдельные окна внутри `Editor`, повторный клик по уже открытой сущности должен только фокусировать её, drop в центр другого leaf должен объединять сущности во вкладки, drop на края должен создавать row/column split без пустых окон.
 - Manual QA: Notes embedded Audio должен показывать одну шапку модуля без внутренних повторов `Пульт звука`; Canvas floating Audio должен сохранить нижний player и обычный popup.
 
 ## Не трогать без отдельного решения

@@ -59,7 +59,7 @@
 | Assets preview/audio/video | Pending | Проверить host/player origin и пути с пробелами/кириллицей. |
 | Multiplayer через Radmin/Hamachi | Pending | Проверить sync, cursors, отсутствие crash на больших мирах. |
 | GIF canvas overlay | Pending | Проверить playback, drag, selection, resize. |
-| Notes workspace panes and entity clicks | Pending owner QA | Проверить single-click entity open/focus в canvas/notes, стрелку раскрытия, группировку vault, split down, pane drag/drop и close pane. |
+| Notes workspace panes and entity clicks | Pending owner QA | Проверить single-click entity open/focus в canvas/notes, стрелку раскрытия, группировку vault, leaf-open для разных сущностей, center-drop merge во вкладки, edge-drop split и close pane. |
 | Notes workspace module drag and i18n | Pending owner QA | Проверить module header drag между left/center/right для `Editor`, `Vault`, `Context`, `Notifications`, `Search`, `Graph`, `Audio`; отсутствие preview при drag текста/картинок, English Settings/Notes labels и кнопку открытия `app/src/locales`. |
 | Notes workspace empty shell areas | Pending owner QA | Перенести единственный модуль из left в center и из right в center: пустая область должна остаться узкой drop-рельсой, принимать обратный перенос и не ломать сетку. |
 | Notes workspace pane chrome | Pending owner QA | Проверить, что editor не показывает лишнюю `G1`-шапку над вкладками, split/close доступны в строке вкладок, а `Хранилище` скроллится внутри собственного окна. |

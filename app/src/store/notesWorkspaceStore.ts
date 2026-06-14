@@ -6,6 +6,7 @@ import {
     listNotesWorkspaceGroups,
     moveNotesWorkspaceTab,
     openNotesWorkspaceTab,
+    openNotesWorkspaceTabInNewLeaf,
     setActiveNotesWorkspaceGroup,
     setActiveNotesWorkspaceTab,
     setNotesWorkspaceSplitRatio,
@@ -54,6 +55,7 @@ interface NotesWorkspaceStoreState {
     layout: NotesWorkspaceLayout;
     shell: NotesWorkspaceShellState;
     openTab: (entityId: string, view?: NotesWorkspaceView) => void;
+    openTabInNewLeaf: (entityId: string, view?: NotesWorkspaceView) => void;
     closeTab: (groupId: string, tabId: string) => void;
     closeGroup: (groupId: string) => void;
     moveTab: (sourceGroupId: string, tabId: string, targetGroupId: string, beforeTabId?: string | null) => void;
@@ -281,6 +283,10 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
 
     openTab: (entityId, view = 'source') => set((state) => ({
         layout: openNotesWorkspaceTab(state.layout, { entityId, view }),
+    })),
+
+    openTabInNewLeaf: (entityId, view = 'source') => set((state) => ({
+        layout: openNotesWorkspaceTabInNewLeaf(state.layout, { entityId, view }),
     })),
 
     closeTab: (groupId, tabId) => set((state) => ({

@@ -6,6 +6,7 @@ import {
     listNotesWorkspaceGroups,
     moveNotesWorkspaceTab,
     openNotesWorkspaceTab,
+    openNotesWorkspaceTabInNewLeaf,
     setActiveNotesWorkspaceGroup,
     setActiveNotesWorkspaceTab,
     setNotesWorkspaceSplitRatio,
@@ -49,6 +50,26 @@ layout = openNotesWorkspaceTab(layout, { entityId: 'note-1', view: 'graph' });
 groups = listNotesWorkspaceGroups(layout.root);
 assert.equal(groups[0].tabs.length, 2, 'Opening an already-open entity reuses the existing tab regardless of current view');
 assert.equal(groups[0].tabs[0].view, 'graph', 'Reopening an entity can switch the existing tab to the requested view');
+
+let leafOpenLayout = createEmptyNotesWorkspaceLayout();
+leafOpenLayout = openNotesWorkspaceTabInNewLeaf(leafOpenLayout, { entityId: 'leaf-note-1', view: 'source' });
+groups = listNotesWorkspaceGroups(leafOpenLayout.root);
+assert.equal(groups.length, 1, 'Opening into an empty workspace uses the empty leaf');
+assert.deepEqual(groups[0].tabs.map((tab) => tab.entityId), ['leaf-note-1']);
+
+leafOpenLayout = openNotesWorkspaceTabInNewLeaf(leafOpenLayout, { entityId: 'leaf-note-2', view: 'preview' });
+groups = listNotesWorkspaceGroups(leafOpenLayout.root);
+assert.equal(groups.length, 2, 'Opening another entity creates a sibling editor leaf');
+assert.equal(leafOpenLayout.root.type, 'split');
+assert.equal(leafOpenLayout.root.direction, 'row');
+assert.equal(leafOpenLayout.activeGroupId, groups[1].id);
+assert.deepEqual(groups.map((group) => group.tabs.map((tab) => tab.entityId)), [['leaf-note-1'], ['leaf-note-2']]);
+
+leafOpenLayout = openNotesWorkspaceTabInNewLeaf(leafOpenLayout, { entityId: 'leaf-note-1', view: 'ui' });
+groups = listNotesWorkspaceGroups(leafOpenLayout.root);
+assert.equal(groups.length, 2, 'Reopening an existing entity focuses it without creating another leaf');
+assert.equal(leafOpenLayout.activeGroupId, groups[0].id);
+assert.equal(groups[0].tabs[0].view, 'ui');
 
 layout = splitActiveNotesWorkspaceGroup(layout, 'row');
 groups = listNotesWorkspaceGroups(layout.root);

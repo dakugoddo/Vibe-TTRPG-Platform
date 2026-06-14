@@ -28,9 +28,34 @@ Object.defineProperty(globalThis, 'localStorage', {
 const store = useNotesWorkspaceStore.getState();
 store.resetLayout();
 
-useNotesWorkspaceStore.getState().openTab('note-1');
+useNotesWorkspaceStore.getState().openTabInNewLeaf('leaf-note-1');
 let layout = useNotesWorkspaceStore.getState().layout;
 let groups = listNotesWorkspaceGroups(layout.root);
+assert.equal(groups.length, 1);
+assert.deepEqual(groups[0].tabs.map((tab) => tab.entityId), ['leaf-note-1']);
+
+useNotesWorkspaceStore.getState().openTabInNewLeaf('leaf-note-2', 'preview');
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
+assert.equal(groups.length, 2, 'Store leaf-open creates a sibling editor pane');
+assert.equal(layout.root.type, 'split');
+assert.equal(layout.root.direction, 'row');
+assert.equal(layout.activeGroupId, groups[1].id);
+assert.deepEqual(groups.map((group) => group.tabs.map((tab) => tab.entityId)), [['leaf-note-1'], ['leaf-note-2']]);
+assert.equal(groups[1].tabs[0].view, 'preview');
+
+useNotesWorkspaceStore.getState().openTabInNewLeaf('leaf-note-1', 'ui');
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
+assert.equal(groups.length, 2, 'Store leaf-open reuses an existing entity tab');
+assert.equal(layout.activeGroupId, groups[0].id);
+assert.equal(groups[0].tabs[0].view, 'ui');
+
+store.resetLayout();
+
+useNotesWorkspaceStore.getState().openTab('note-1');
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
 assert.equal(groups.length, 1);
 assert.equal(groups[0].tabs.length, 1);
 assert.equal(groups[0].tabs[0].entityId, 'note-1');
