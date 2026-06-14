@@ -1225,16 +1225,13 @@ function NotesShellModuleFrame({
     t,
 }: NotesShellModuleFrameProps) {
     const Icon = NOTES_SHELL_MODULE_ICONS[module.iconKey];
-    const isEditorModule = module.id === 'editor';
 
     return (
         <>
             {showDropBefore && <NotesShellDropIndicator />}
             <section
                 data-notes-shell-module-id={module.id}
-                className={`relative flex min-h-[220px] min-w-0 flex-col overflow-hidden rounded-[var(--vibe-radius-md)] border bg-[var(--vibe-surface-block)] shadow-[var(--vibe-shadow-block)] transition-opacity ${
-                    isEditorModule ? 'flex-1' : 'shrink-0'
-                } ${
+                className={`relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden rounded-[var(--vibe-radius-md)] border bg-[var(--vibe-surface-block)] shadow-[var(--vibe-shadow-block)] transition-opacity ${
                     isDragging ? 'opacity-55' : 'opacity-100'
                 } border-[var(--vibe-border-subtle)]`}
             >
@@ -1372,7 +1369,6 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
     const isActiveGroup = node.id === activeGroupId;
     const activeTab = getActiveTab(node.tabs, node.activeTabId);
     const activeEntity = activeTab ? entitiesById.get(activeTab.entityId) : null;
-    const groupIndex = groupOrder.get(node.id) ?? 1;
     const linkedViews = activeEntity ? buildNotesWorkspaceLinkedViews(activeEntity, visibleEntities) : null;
     const childEntities = activeEntity ? childrenByParent.get(activeEntity.id) ?? [] : [];
     const canEditActiveEntity = activeEntity ? canEditEntityInWorkspace(activeEntity) : false;
@@ -1560,96 +1556,32 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
             )}
             <div
                 onMouseDown={(event) => {
-                    if (!activeTab) return;
                     onSetActiveGroup(node.id);
                     event.stopPropagation();
                 }}
-                onPointerDown={startPanePointerDrag}
-                className={`flex min-h-10 select-none items-center justify-between gap-2 border-b px-2.5 py-1.5 transition-colors ${
+                onPointerDown={(event) => {
+                    const target = event.target as HTMLElement | null;
+                    if (target?.closest('[data-no-pane-drag], [data-notes-tab]')) return;
+                    startPanePointerDrag(event);
+                }}
+                className={`flex min-h-9 shrink-0 items-center gap-1 border-b px-2 py-1 transition-colors ${
                     isActiveGroup
-                        ? 'border-[var(--vibe-border-strong)] bg-[color-mix(in_srgb,var(--vibe-accent)_14%,var(--vibe-surface-header))] shadow-[inset_3px_0_0_var(--vibe-accent)]'
-                        : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)]'
-                } ${activeTab ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                title={activeTab ? t('workspace.notes.dragPane') : undefined}
+                        ? 'border-[var(--vibe-border-strong)] bg-[color-mix(in_srgb,var(--vibe-accent)_10%,var(--vibe-surface-input))]'
+                        : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)]'
+                }`}
             >
-                <div
-                    className="flex min-w-0 items-center gap-2"
-                >
-                    <span className={`rounded-[var(--vibe-radius-sm)] border px-2 py-1 font-mono text-[10px] ${
-                        isActiveGroup
-                            ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_16%,var(--vibe-surface-input))] text-[var(--vibe-text-primary)]'
-                            : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)]'
-                    }`}>
-                        {t('workspace.notes.groupLabel', { index: groupIndex })}
-                    </span>
-                    {activeEntity && (
-                        <span className="min-w-0 truncate text-xs font-bold text-[var(--vibe-text-primary)]">
-                            {activeEntity.name}
+                <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+                    {node.tabs.length === 0 ? (
+                        <span className="flex items-center px-2 text-xs text-[var(--vibe-text-faint)]">
+                            {t('workspace.notes.emptyGroup')}
                         </span>
-                    )}
-                    {activeEntity && !canEditActiveEntity && (
-                        <span className="flex shrink-0 items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-warning)]">
-                            <Lock size={11} />
-                            {t('workspace.notes.readOnly')}
-                        </span>
-                    )}
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                    <button
-                        type="button"
-                        data-no-pane-drag
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            onSplitGroup(node.id, 'row');
-                        }}
-                        draggable={false}
-                        className={`flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`}
-                        title={t('workspace.notes.splitRow')}
-                    >
-                        <PanelLeft size={14} />
-                    </button>
-                    <button
-                        type="button"
-                        data-no-pane-drag
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            onSplitGroup(node.id, 'column');
-                        }}
-                        draggable={false}
-                        className={`flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`}
-                        title={t('workspace.notes.splitColumn')}
-                    >
-                        <PanelRight size={14} />
-                    </button>
-                    {canCloseGroup && (
-                        <button
-                            type="button"
-                            data-no-pane-drag
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                onCloseGroup(node.id);
-                            }}
-                            draggable={false}
-                            className="flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_16%,transparent)] hover:text-[var(--vibe-danger)]"
-                            title={t('workspace.notes.closePane')}
-                        >
-                            <X size={14} />
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            <div className="flex min-h-9 shrink-0 gap-1 overflow-x-auto border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1">
-                {node.tabs.length === 0 ? (
-                    <span className="flex items-center px-2 text-xs text-[var(--vibe-text-faint)]">
-                        {t('workspace.notes.emptyGroup')}
-                    </span>
-                ) : node.tabs.map((tab) => {
+                    ) : node.tabs.map((tab) => {
                     const entity = entitiesById.get(tab.entityId);
                     const isActiveTab = tab.id === activeTab?.id;
                     return (
                         <div
                             key={tab.id}
+                            data-notes-tab
                             draggable
                             onDragStart={(event) => {
                                 event.stopPropagation();
@@ -1704,7 +1636,57 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                             </button>
                         </div>
                     );
-                })}
+                    })}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                    {activeEntity && !canEditActiveEntity && (
+                        <span className="flex shrink-0 items-center gap-1 px-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-warning)]">
+                            <Lock size={11} />
+                            {t('workspace.notes.readOnly')}
+                        </span>
+                    )}
+                    <button
+                        type="button"
+                        data-no-pane-drag
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onSplitGroup(node.id, 'row');
+                        }}
+                        draggable={false}
+                        className={`flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`}
+                        title={t('workspace.notes.splitRow')}
+                    >
+                        <PanelLeft size={14} />
+                    </button>
+                    <button
+                        type="button"
+                        data-no-pane-drag
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onSplitGroup(node.id, 'column');
+                        }}
+                        draggable={false}
+                        className={`flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`}
+                        title={t('workspace.notes.splitColumn')}
+                    >
+                        <PanelRight size={14} />
+                    </button>
+                    {canCloseGroup && (
+                        <button
+                            type="button"
+                            data-no-pane-drag
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onCloseGroup(node.id);
+                            }}
+                            draggable={false}
+                            className="flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_16%,transparent)] hover:text-[var(--vibe-danger)]"
+                            title={t('workspace.notes.closePane')}
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
+                </div>
             </div>
 
             {!activeTab || !activeEntity ? (
@@ -2546,7 +2528,7 @@ export function NotesWorkspace({
         return (
             <aside
                 data-notes-shell-area={area}
-                className={`flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden ${className}`}
+                className={`flex min-h-0 min-w-0 flex-col gap-2 overflow-hidden ${className}`}
             >
                 {modules.length > 0 ? modules.map((module, index) => renderShellModule(module, area, index === modules.length - 1)) : (
                     <div className={`flex min-h-[180px] flex-1 items-center justify-center rounded-[var(--vibe-radius-md)] border border-dashed p-2 text-center text-xs transition-colors ${
