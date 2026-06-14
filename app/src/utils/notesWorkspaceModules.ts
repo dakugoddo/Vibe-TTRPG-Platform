@@ -25,6 +25,11 @@ export type NotesWorkspaceShellModuleDefinition = NotesWorkspaceModuleDefinition
 export type NotesWorkspaceShellVisibility = Record<NotesWorkspaceShellModuleId, boolean>;
 export type NotesWorkspaceShellModuleAreas = Record<NotesWorkspaceShellModuleId, NotesWorkspaceDockArea>;
 export type NotesWorkspaceShellModuleOrder = Record<NotesWorkspaceShellModuleId, number>;
+export type NotesWorkspaceShellLayoutArea = Extract<NotesWorkspaceDockArea, 'left' | 'center' | 'right'>;
+export type NotesWorkspaceShellAreaLayout = 'column' | 'row';
+export type NotesWorkspaceShellAreaLayouts = Record<NotesWorkspaceShellLayoutArea, NotesWorkspaceShellAreaLayout>;
+
+const NOTES_WORKSPACE_SHELL_LAYOUT_AREAS: NotesWorkspaceShellLayoutArea[] = ['left', 'center', 'right'];
 
 export const NOTES_WORKSPACE_MODULES: NotesWorkspaceModuleDefinition[] = [
     {
@@ -155,6 +160,12 @@ export function getDefaultNotesShellModuleOrder(): NotesWorkspaceShellModuleOrde
     ) as NotesWorkspaceShellModuleOrder;
 }
 
+export function getDefaultNotesShellAreaLayouts(): NotesWorkspaceShellAreaLayouts {
+    return Object.fromEntries(
+        NOTES_WORKSPACE_SHELL_LAYOUT_AREAS.map((area) => [area, 'column'])
+    ) as NotesWorkspaceShellAreaLayouts;
+}
+
 export function getNotesShellModuleArea(
     moduleId: NotesWorkspaceShellModuleId,
     moduleAreas: NotesWorkspaceShellModuleAreas | undefined
@@ -175,4 +186,8 @@ export function canToggleNotesShellModule(moduleId: NotesWorkspaceShellModuleId)
 
 export function isNotesWorkspaceDockArea(value: unknown): value is NotesWorkspaceDockArea {
     return value === 'left' || value === 'center' || value === 'right' || value === 'bottom';
+}
+
+export function isNotesWorkspaceShellAreaLayout(value: unknown): value is NotesWorkspaceShellAreaLayout {
+    return value === 'column' || value === 'row';
 }

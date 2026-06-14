@@ -64,6 +64,8 @@ import {
     listVisibleNotesShellModules,
     type NotesWorkspaceDockArea,
     type NotesWorkspaceModuleDefinition,
+    type NotesWorkspaceShellAreaLayout,
+    type NotesWorkspaceShellAreaLayouts,
     type NotesWorkspaceShellModuleDefinition,
     type NotesWorkspaceShellModuleId,
 } from '../../utils/notesWorkspaceModules';
@@ -162,6 +164,8 @@ interface NotesDockDropTarget {
 interface NotesShellModuleDropTarget {
     area: NotesShellInteractiveArea;
     beforeModuleId: NotesWorkspaceShellModuleId | null;
+    placement: NotesWorkspaceDropZone | null;
+    layout: NotesWorkspaceShellAreaLayout;
 }
 
 interface VaultScopeOption {
@@ -249,30 +253,84 @@ function findDockGroupElement(clientX: number, clientY: number): HTMLElement | n
     return element?.closest<HTMLElement>('[data-notes-group-id]') ?? null;
 }
 
+function getShellLayoutFromDropZone(zone: NotesWorkspaceDropZone): NotesWorkspaceShellAreaLayout {
+    return zone === 'left' || zone === 'right' ? 'row' : 'column';
+}
+
+function getFallbackShellDropZone(
+    rect: DOMRect,
+    clientX: number,
+    clientY: number,
+    currentLayout: NotesWorkspaceShellAreaLayout
+): NotesWorkspaceDropZone {
+    if (currentLayout === 'row') {
+        return clientX < rect.left + rect.width / 2 ? 'left' : 'right';
+    }
+
+    return clientY < rect.top + rect.height / 2 ? 'top' : 'bottom';
+}
+
+function getBeforeModuleIdForShellDrop(
+    moduleElements: HTMLElement[],
+    targetIndex: number,
+    placement: NotesWorkspaceDropZone
+): NotesWorkspaceShellModuleId | null {
+    if (placement === 'left' || placement === 'top') {
+        const moduleId = moduleElements[targetIndex]?.dataset.notesShellModuleId;
+        return moduleId ? moduleId as NotesWorkspaceShellModuleId : null;
+    }
+
+    const moduleId = moduleElements[targetIndex + 1]?.dataset.notesShellModuleId;
+    return moduleId ? moduleId as NotesWorkspaceShellModuleId : null;
+}
+
 function getShellModuleDropTarget(
     clientX: number,
     clientY: number,
-    sourceModuleId: NotesWorkspaceShellModuleId
+    sourceModuleId: NotesWorkspaceShellModuleId,
+    moduleLayouts: NotesWorkspaceShellAreaLayouts
 ): NotesShellModuleDropTarget | null {
     const element = document.elementFromPoint(clientX, clientY);
     const areaElement = element?.closest<HTMLElement>('[data-notes-shell-area]');
     const area = areaElement?.dataset.notesShellArea;
     if (!areaElement || !isNotesShellInteractiveArea(area)) return null;
+    const currentLayout = moduleLayouts[area] ?? 'column';
 
     const moduleElements = Array.from(areaElement.querySelectorAll<HTMLElement>('[data-notes-shell-module-id]'))
         .filter((moduleElement) => moduleElement.dataset.notesShellModuleId !== sourceModuleId);
 
-    for (const moduleElement of moduleElements) {
+    if (moduleElements.length === 0) {
+        return { area, beforeModuleId: null, placement: null, layout: currentLayout };
+    }
+
+    for (const [index, moduleElement] of moduleElements.entries()) {
         const moduleId = moduleElement.dataset.notesShellModuleId;
         if (!moduleId) continue;
 
         const rect = moduleElement.getBoundingClientRect();
-        if (clientY < rect.top + rect.height / 2) {
-            return { area, beforeModuleId: moduleId as NotesWorkspaceShellModuleId };
+        const isInsideModule = clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+        if (isInsideModule) {
+            const placement = getNotesDockDropZone(moduleElement, clientX, clientY)
+                ?? getFallbackShellDropZone(rect, clientX, clientY, currentLayout);
+            return {
+                area,
+                beforeModuleId: getBeforeModuleIdForShellDrop(moduleElements, index, placement),
+                placement,
+                layout: getShellLayoutFromDropZone(placement),
+            };
+        }
+
+        const shouldInsertBefore = currentLayout === 'row'
+            ? clientX < rect.left + rect.width / 2
+            : clientY < rect.top + rect.height / 2;
+        if (shouldInsertBefore) {
+            const placement = currentLayout === 'row' ? 'left' : 'top';
+            return { area, beforeModuleId: moduleId as NotesWorkspaceShellModuleId, placement, layout: currentLayout };
         }
     }
 
-    return { area, beforeModuleId: null };
+    const placement = currentLayout === 'row' ? 'right' : 'bottom';
+    return { area, beforeModuleId: null, placement, layout: currentLayout };
 }
 
 function getNotesDockDropZone(element: HTMLElement, clientX: number, clientY: number): NotesWorkspaceDropZone | null {
@@ -1203,14 +1261,19 @@ interface NotesShellModuleFrameProps {
     isDragging: boolean;
     showDropBefore: boolean;
     showDropAfter: boolean;
+    dropLayout: NotesWorkspaceShellAreaLayout;
     onHeaderPointerDown: (moduleId: NotesWorkspaceShellModuleId, event: ReactPointerEvent<HTMLDivElement>) => void;
     children: ReactNode;
     t: Translate;
 }
 
-function NotesShellDropIndicator() {
+function NotesShellDropIndicator({ layout }: { layout: NotesWorkspaceShellAreaLayout }) {
     return (
-        <div className="mx-2 h-2 shrink-0 rounded-full bg-[color-mix(in_srgb,var(--vibe-accent)_55%,transparent)] shadow-[0_0_22px_color-mix(in_srgb,var(--vibe-accent)_42%,transparent)]" />
+        <div
+            className={`shrink-0 rounded-full bg-[color-mix(in_srgb,var(--vibe-accent)_55%,transparent)] shadow-[0_0_22px_color-mix(in_srgb,var(--vibe-accent)_42%,transparent)] ${
+                layout === 'row' ? 'my-2 w-2 self-stretch' : 'mx-2 h-2'
+            }`}
+        />
     );
 }
 
@@ -1220,6 +1283,7 @@ function NotesShellModuleFrame({
     isDragging,
     showDropBefore,
     showDropAfter,
+    dropLayout,
     onHeaderPointerDown,
     children,
     t,
@@ -1228,7 +1292,7 @@ function NotesShellModuleFrame({
 
     return (
         <>
-            {showDropBefore && <NotesShellDropIndicator />}
+            {showDropBefore && <NotesShellDropIndicator layout={dropLayout} />}
             <section
                 data-notes-shell-module-id={module.id}
                 className={`relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden rounded-[var(--vibe-radius-md)] border bg-[var(--vibe-surface-block)] shadow-[var(--vibe-shadow-block)] transition-opacity ${
@@ -1258,7 +1322,7 @@ function NotesShellModuleFrame({
                     {children}
                 </div>
             </section>
-            {showDropAfter && <NotesShellDropIndicator />}
+            {showDropAfter && <NotesShellDropIndicator layout={dropLayout} />}
         </>
     );
 }
@@ -2171,7 +2235,10 @@ export function NotesWorkspace({
         let latestTarget: NotesShellModuleDropTarget | null = null;
 
         const setLatestTarget = (target: NotesShellModuleDropTarget | null) => {
-            const unchanged = latestTarget?.area === target?.area && latestTarget?.beforeModuleId === target?.beforeModuleId;
+            const unchanged = latestTarget?.area === target?.area
+                && latestTarget?.beforeModuleId === target?.beforeModuleId
+                && latestTarget?.placement === target?.placement
+                && latestTarget?.layout === target?.layout;
             if (unchanged) return;
             latestTarget = target;
             setShellModuleDropTarget(target);
@@ -2189,7 +2256,7 @@ export function NotesWorkspace({
             }
 
             moveEvent.preventDefault();
-            setLatestTarget(getShellModuleDropTarget(moveEvent.clientX, moveEvent.clientY, moduleId));
+            setLatestTarget(getShellModuleDropTarget(moveEvent.clientX, moveEvent.clientY, moduleId, notesShell.moduleLayouts));
         };
 
         const finishDrag = (upEvent: PointerEvent) => {
@@ -2205,7 +2272,7 @@ export function NotesWorkspace({
             if (!isDragging || !target) return;
 
             upEvent.preventDefault();
-            moveShellModule(moduleId, target.area, target.beforeModuleId);
+            moveShellModule(moduleId, target.area, target.beforeModuleId, target.layout);
         };
 
         const cancelDrag = () => {
@@ -2502,7 +2569,12 @@ export function NotesWorkspace({
         return t(module.labelKey);
     };
 
-    const renderShellModule = (module: NotesWorkspaceShellModuleDefinition, area: NotesShellInteractiveArea, isLast: boolean) => (
+    const renderShellModule = (
+        module: NotesWorkspaceShellModuleDefinition,
+        area: NotesShellInteractiveArea,
+        isLast: boolean,
+        areaLayout: NotesWorkspaceShellAreaLayout
+    ) => (
         <NotesShellModuleFrame
             key={module.id}
             module={module}
@@ -2510,6 +2582,7 @@ export function NotesWorkspace({
             isDragging={draggingShellModuleId === module.id}
             showDropBefore={shellModuleDropTarget?.area === area && shellModuleDropTarget.beforeModuleId === module.id}
             showDropAfter={isLast && shellModuleDropTarget?.area === area && shellModuleDropTarget.beforeModuleId === null}
+            dropLayout={areaLayout}
             onHeaderPointerDown={handleShellModuleDragStart}
             t={t}
         >
@@ -2523,14 +2596,19 @@ export function NotesWorkspace({
         className = ''
     ) => {
         const isActiveDropArea = shellModuleDropTarget?.area === area;
+        const areaLayout = isActiveDropArea
+            ? shellModuleDropTarget.layout
+            : notesShell.moduleLayouts[area] ?? 'column';
         const isSideArea = area !== 'center';
 
         return (
             <aside
                 data-notes-shell-area={area}
-                className={`flex min-h-0 min-w-0 flex-col gap-2 overflow-hidden ${className}`}
+                className={`flex min-h-0 min-w-0 gap-2 overflow-hidden ${
+                    areaLayout === 'row' ? 'flex-row' : 'flex-col'
+                } ${className}`}
             >
-                {modules.length > 0 ? modules.map((module, index) => renderShellModule(module, area, index === modules.length - 1)) : (
+                {modules.length > 0 ? modules.map((module, index) => renderShellModule(module, area, index === modules.length - 1, areaLayout)) : (
                     <div className={`flex min-h-[180px] flex-1 items-center justify-center rounded-[var(--vibe-radius-md)] border border-dashed p-2 text-center text-xs transition-colors ${
                         isActiveDropArea
                             ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] text-[var(--vibe-text-primary)]'
@@ -2672,6 +2750,7 @@ export function NotesWorkspace({
                                     isDragging={draggingShellModuleId === module.id}
                                     showDropBefore={false}
                                     showDropAfter={false}
+                                    dropLayout="column"
                                     onHeaderPointerDown={handleShellModuleDragStart}
                                     t={t}
                                 >

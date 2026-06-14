@@ -21,10 +21,14 @@ import {
 } from '../utils/notesWorkspaceLayout';
 import {
     canToggleNotesShellModule,
+    getDefaultNotesShellAreaLayouts,
     getDefaultNotesShellModuleAreas,
     getDefaultNotesShellModuleOrder,
     isNotesWorkspaceDockArea,
+    isNotesWorkspaceShellAreaLayout,
     listImplementedNotesShellModules,
+    type NotesWorkspaceShellAreaLayout,
+    type NotesWorkspaceShellAreaLayouts,
     type NotesWorkspaceDockArea,
     type NotesWorkspaceShellModuleAreas,
     type NotesWorkspaceShellModuleId,
@@ -34,7 +38,7 @@ import {
 
 export const NOTES_WORKSPACE_LAYOUT_STORAGE_KEY = 'vibe-ttrpg-notes-workspace-layout-v1';
 export const NOTES_WORKSPACE_SHELL_STORAGE_KEY = 'vibe-ttrpg-notes-workspace-shell-v1';
-export const NOTES_WORKSPACE_SHELL_STORAGE_VERSION = 2;
+export const NOTES_WORKSPACE_SHELL_STORAGE_VERSION = 3;
 
 export interface NotesWorkspaceShellState {
     vaultWidth: number;
@@ -43,6 +47,7 @@ export interface NotesWorkspaceShellState {
     modules: NotesWorkspaceShellVisibility;
     moduleAreas: NotesWorkspaceShellModuleAreas;
     moduleOrder: NotesWorkspaceShellModuleOrder;
+    moduleLayouts: NotesWorkspaceShellAreaLayouts;
 }
 
 interface NotesWorkspaceStoreState {
@@ -66,7 +71,7 @@ interface NotesWorkspaceStoreState {
     splitActiveGroup: (direction: NotesWorkspaceSplitNode['direction']) => void;
     setShellModuleVisible: (moduleId: NotesWorkspaceShellModuleId, isVisible: boolean) => void;
     toggleShellModule: (moduleId: NotesWorkspaceShellModuleId) => void;
-    moveShellModule: (moduleId: NotesWorkspaceShellModuleId, area: NotesWorkspaceDockArea, beforeModuleId?: NotesWorkspaceShellModuleId | null) => void;
+    moveShellModule: (moduleId: NotesWorkspaceShellModuleId, area: NotesWorkspaceDockArea, beforeModuleId?: NotesWorkspaceShellModuleId | null, layout?: NotesWorkspaceShellAreaLayout) => void;
     setShellModuleWidth: (moduleId: 'vault' | 'context', width: number) => void;
     setShellAudioHeight: (height: number) => void;
     resetShell: () => void;
@@ -88,6 +93,7 @@ const DEFAULT_NOTES_WORKSPACE_SHELL: NotesWorkspaceShellState = {
     ) as NotesWorkspaceShellVisibility,
     moduleAreas: getDefaultNotesShellModuleAreas(),
     moduleOrder: getDefaultNotesShellModuleOrder(),
+    moduleLayouts: getDefaultNotesShellAreaLayouts(),
 };
 
 function createDefaultNotesWorkspaceShell(): NotesWorkspaceShellState {
@@ -96,6 +102,7 @@ function createDefaultNotesWorkspaceShell(): NotesWorkspaceShellState {
         modules: { ...DEFAULT_NOTES_WORKSPACE_SHELL.modules },
         moduleAreas: { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleAreas },
         moduleOrder: { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleOrder },
+        moduleLayouts: { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleLayouts },
     };
 }
 
@@ -203,27 +210,36 @@ function clampAudioModuleHeight(height: unknown, fallback: number): number {
 export function normalizeStoredNotesWorkspaceShell(parsed: unknown): NotesWorkspaceShellState {
     if (!isRecord(parsed) || !isRecord(parsed.modules)) return createDefaultNotesWorkspaceShell();
 
-    const shouldUseStoredModuleLayout = parsed.version === NOTES_WORKSPACE_SHELL_STORAGE_VERSION;
+    const shouldUseStoredModulePlacement = parsed.version === NOTES_WORKSPACE_SHELL_STORAGE_VERSION || parsed.version === 2;
+    const shouldUseStoredAreaLayouts = parsed.version === NOTES_WORKSPACE_SHELL_STORAGE_VERSION;
     const modules = { ...DEFAULT_NOTES_WORKSPACE_SHELL.modules };
     const moduleAreas = { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleAreas };
     const moduleOrder = { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleOrder };
+    const moduleLayouts = { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleLayouts };
     for (const module of listImplementedNotesShellModules()) {
         const storedVisibility = parsed.modules[module.id];
         modules[module.id] = module.canToggle && typeof storedVisibility === 'boolean'
             ? storedVisibility
             : module.defaultVisible;
 
-        const storedArea = shouldUseStoredModuleLayout && isRecord(parsed.moduleAreas)
+        const storedArea = shouldUseStoredModulePlacement && isRecord(parsed.moduleAreas)
             ? parsed.moduleAreas[module.id]
             : undefined;
         moduleAreas[module.id] = isNotesWorkspaceDockArea(storedArea) ? storedArea : module.defaultArea;
 
-        const storedOrder = shouldUseStoredModuleLayout && isRecord(parsed.moduleOrder)
+        const storedOrder = shouldUseStoredModulePlacement && isRecord(parsed.moduleOrder)
             ? parsed.moduleOrder[module.id]
             : undefined;
         moduleOrder[module.id] = typeof storedOrder === 'number' && Number.isFinite(storedOrder)
             ? storedOrder
             : module.order;
+    }
+
+    if (shouldUseStoredAreaLayouts && isRecord(parsed.moduleLayouts)) {
+        for (const area of Object.keys(moduleLayouts) as Array<keyof NotesWorkspaceShellAreaLayouts>) {
+            const storedLayout = parsed.moduleLayouts[area];
+            moduleLayouts[area] = isNotesWorkspaceShellAreaLayout(storedLayout) ? storedLayout : moduleLayouts[area];
+        }
     }
 
     return {
@@ -233,6 +249,7 @@ export function normalizeStoredNotesWorkspaceShell(parsed: unknown): NotesWorksp
         modules,
         moduleAreas,
         moduleOrder,
+        moduleLayouts,
     };
 }
 
@@ -330,7 +347,7 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
         };
     }),
 
-    moveShellModule: (moduleId, area, beforeModuleId) => set((state) => {
+    moveShellModule: (moduleId, area, beforeModuleId, layout) => set((state) => {
         const nextAreas = { ...state.shell.moduleAreas, [moduleId]: area };
         const modulesInArea = listImplementedNotesShellModules()
             .map((module) => module.id)
@@ -350,6 +367,9 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
                 ...state.shell,
                 moduleAreas: nextAreas,
                 moduleOrder: nextOrder,
+                moduleLayouts: area !== 'bottom' && layout
+                    ? { ...state.shell.moduleLayouts, [area]: layout }
+                    : state.shell.moduleLayouts,
             },
         };
     }),

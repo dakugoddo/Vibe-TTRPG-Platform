@@ -115,6 +115,9 @@ assert.equal(useNotesWorkspaceStore.getState().shell.modules.audio, false);
 assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.editor, 'center');
 assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.vault, 'left');
 assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.context, 'right');
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleLayouts.left, 'column');
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleLayouts.center, 'column');
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleLayouts.right, 'column');
 
 useNotesWorkspaceStore.getState().toggleShellModule('editor');
 assert.equal(useNotesWorkspaceStore.getState().shell.modules.editor, true, 'Editor module is required and cannot be disabled');
@@ -131,6 +134,10 @@ useNotesWorkspaceStore.getState().setShellAudioHeight(900);
 useNotesWorkspaceStore.getState().moveShellModule('search', 'left', 'vault');
 assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.search, 'left');
 assert(useNotesWorkspaceStore.getState().shell.moduleOrder.search < useNotesWorkspaceStore.getState().shell.moduleOrder.vault);
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleLayouts.left, 'column');
+useNotesWorkspaceStore.getState().moveShellModule('search', 'center', null, 'row');
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.search, 'center');
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleLayouts.center, 'row');
 
 const persistedShell = globalThis.localStorage.getItem(NOTES_WORKSPACE_SHELL_STORAGE_KEY);
 assert.ok(persistedShell);
@@ -139,6 +146,7 @@ assert.ok(persistedShell.includes('"contextWidth":320'));
 assert.ok(persistedShell.includes('"audioHeight":520'));
 assert.ok(persistedShell.includes('"audio":true'));
 assert.ok(persistedShell.includes('"moduleAreas"'));
+assert.ok(persistedShell.includes('"moduleLayouts"'));
 
 const migratedLegacyShell = normalizeStoredNotesWorkspaceShell({
     modules: {
@@ -179,9 +187,52 @@ assert.equal(migratedLegacyShell.moduleAreas.editor, 'center', 'Legacy storage r
 assert.equal(migratedLegacyShell.moduleAreas.vault, 'left', 'Legacy storage resets broken vault area');
 assert.equal(migratedLegacyShell.moduleAreas.context, 'right', 'Legacy storage resets broken context area');
 assert.equal(migratedLegacyShell.moduleAreas.audio, 'bottom', 'Legacy storage resets broken bottom module area');
+assert.equal(migratedLegacyShell.moduleLayouts.left, 'column');
+assert.equal(migratedLegacyShell.moduleLayouts.center, 'column');
+assert.equal(migratedLegacyShell.moduleLayouts.right, 'column');
 assert.equal(migratedLegacyShell.vaultWidth, 220);
 assert.equal(migratedLegacyShell.contextWidth, 460);
 assert.equal(migratedLegacyShell.audioHeight, 520);
+
+const migratedV2Shell = normalizeStoredNotesWorkspaceShell({
+    version: 2,
+    modules: {
+        editor: true,
+        vault: true,
+        context: true,
+        notifications: true,
+        search: true,
+        graph: false,
+        audio: false,
+    },
+    moduleAreas: {
+        editor: 'right',
+        vault: 'center',
+        context: 'left',
+        notifications: 'right',
+        search: 'center',
+        graph: 'right',
+        audio: 'bottom',
+    },
+    moduleOrder: {
+        editor: 10,
+        vault: 20,
+        context: 30,
+        notifications: 40,
+        search: 50,
+        graph: 60,
+        audio: 70,
+    },
+    moduleLayouts: {
+        left: 'row',
+        center: 'row',
+        right: 'row',
+    },
+});
+assert.equal(migratedV2Shell.moduleAreas.editor, 'right', 'v2 storage keeps intentional shell placement');
+assert.equal(migratedV2Shell.moduleLayouts.left, 'column', 'v2 storage defaults shell area layout');
+assert.equal(migratedV2Shell.moduleLayouts.center, 'column', 'v2 storage defaults shell area layout');
+assert.equal(migratedV2Shell.moduleLayouts.right, 'column', 'v2 storage defaults shell area layout');
 
 const restoredVersionedShell = normalizeStoredNotesWorkspaceShell({
     version: NOTES_WORKSPACE_SHELL_STORAGE_VERSION,
@@ -212,9 +263,17 @@ const restoredVersionedShell = normalizeStoredNotesWorkspaceShell({
         graph: 60,
         audio: 70,
     },
+    moduleLayouts: {
+        left: 'row',
+        center: 'column',
+        right: 'row',
+    },
 });
 assert.equal(restoredVersionedShell.moduleAreas.editor, 'right', 'Current storage keeps intentional editor moves');
 assert.equal(restoredVersionedShell.moduleAreas.vault, 'center', 'Current storage keeps intentional vault moves');
 assert.equal(restoredVersionedShell.moduleAreas.context, 'left', 'Current storage keeps intentional context moves');
+assert.equal(restoredVersionedShell.moduleLayouts.left, 'row', 'Current storage keeps intentional side-by-side shell layout');
+assert.equal(restoredVersionedShell.moduleLayouts.center, 'column');
+assert.equal(restoredVersionedShell.moduleLayouts.right, 'row');
 
 console.log('notes workspace store tests passed');
