@@ -45,6 +45,7 @@
    - import/export/rollback policy.
 6. Notes workspace polish и native multi-window после Electron gate:
    - ручная QA shell modules/settings/reset/audio dock, включая перенос `Editor`/`Vault`/`Context` между left/center/right;
+   - следующий архитектурный срез: заменить временный `Editor` с внутренними вкладками на Obsidian-like editor leaf model, где каждая сущность открывается как отдельное окно/leaf, center-drop объединяет leaf в tab group, edge-drop создает split;
    - polish будущих shell-расширений после owner QA.
 
 ## Активные проверки
@@ -55,6 +56,7 @@
 - Manual QA: pre-release usability pack должен проверяться по `.pi/docs/pre-release-usability-pack.md` после каждого completed slice.
 - Manual QA: pinned entity windows должны разделять права на canvas placement и права на содержимое entity.
 - Manual QA: Notes shell modules должны после reload восстановить нормальные области из legacy storage, переключаться через ribbon/settings, обязательный `Editor` не должен выключаться, все module frames должны перетаскиваться за шапку между left/center/right, left/right edge drop должен ставить окна рядом по горизонтали внутри области, top/bottom edge drop должен возвращать вертикальную стопку, пустые left/center/right drop-области должны оставаться доступными после переноса последнего модуля, editor не должен показывать лишнюю `G1`-шапку над вкладками, shell-сегменты не должны скроллиться вместо самих модулей, reset не должен закрывать вкладки, Audio dock не должен останавливать playback при Canvas/Notes switch.
+- Manual QA: Notes embedded Audio должен показывать одну шапку модуля без внутренних повторов `Пульт звука`; Canvas floating Audio должен сохранить нижний player и обычный popup.
 
 ## Не трогать без отдельного решения
 

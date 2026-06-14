@@ -296,6 +296,7 @@ function App() {
             <AudioControlDock
               floatingEnabled={workspaceMode === 'canvas'}
               embeddedTargetId={notesAudioEmbeddedTargetId}
+              embeddedChrome={workspaceMode === 'notes' ? 'compact' : 'full'}
             />
           </Suspense>
         </>

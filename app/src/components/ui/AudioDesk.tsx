@@ -61,6 +61,7 @@ interface AudioDeskProps {
     musicStopRequestId?: number | null;
     musicPlayPauseRequestId?: number | null;
     stopAllRequestId?: number | null;
+    chrome?: 'full' | 'compact';
 }
 
 function getIdleMusicStatus(): MusicPlaybackStatus {
@@ -133,7 +134,14 @@ function getCueModeLabel(mode: AudioCueMode): string {
     return 'Разово';
 }
 
-export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRequestId, musicPlayPauseRequestId, stopAllRequestId }: AudioDeskProps = {}) {
+export function AudioDesk({
+    onMusicPlaybackChange,
+    musicSeekRequest,
+    musicStopRequestId,
+    musicPlayPauseRequestId,
+    stopAllRequestId,
+    chrome = 'full',
+}: AudioDeskProps = {}) {
     const isHost = getIsHost();
     const [assets, setAssets] = useState<AudioAsset[]>([]);
     const [deckState, setDeckState] = useState<AudioDeckState>(loadAudioDeckState);
@@ -157,6 +165,7 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
     const addNotification = useNotificationStore((state) => state.addNotification);
     const updateNotification = useNotificationStore((state) => state.updateNotification);
     const updateNotificationProgress = useNotificationStore((state) => state.updateProgress);
+    const isCompactChrome = chrome === 'compact';
 
     const loadAssets = useCallback(async (): Promise<AudioAsset[]> => {
         if (!isHost) return [];
@@ -621,17 +630,19 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
     if (!isHost) {
         return (
             <div className={audioShellClass}>
-                <div className="border-b border-[var(--vibe-border-subtle)] p-4">
-                    <div className="flex items-center gap-3">
-                        <div className={audioIconClass}>
-                            <Headphones size={18} />
-                        </div>
-                        <div className="min-w-0">
-                            <div className="text-sm font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Звук сессии</div>
-                            <div className="truncate text-[11px] text-[var(--vibe-text-faint)]">Локальные настройки игрока</div>
+                {!isCompactChrome && (
+                    <div className="border-b border-[var(--vibe-border-subtle)] p-4">
+                        <div className="flex items-center gap-3">
+                            <div className={audioIconClass}>
+                                <Headphones size={18} />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="text-sm font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Звук сессии</div>
+                                <div className="truncate text-[11px] text-[var(--vibe-text-faint)]">Локальные настройки игрока</div>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
                 <div className="space-y-4 p-4">
                     <label className="hidden">
                         <span className="text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">Принимать звук</span>
@@ -673,37 +684,39 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
             onDrop={handleAudioDrop}
         >
             <div className="border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)] p-3">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                        <div className={audioIconClass}>
-                            <SlidersHorizontal size={17} />
-                        </div>
-                        <div className="min-w-0">
-                            <div className="truncate text-sm font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Пульт звука</div>
-                            <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                {deckState.cues.length} кнопок / {assets.length} аудио
+                {!isCompactChrome && (
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                            <div className={audioIconClass}>
+                                <SlidersHorizontal size={17} />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="truncate text-sm font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Пульт звука</div>
+                                <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                    {deckState.cues.length} кнопок / {assets.length} аудио
+                                </div>
                             </div>
                         </div>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => void loadAssets()}
+                                className={`${audioButtonClass} h-8 w-8`}
+                                title="Обновить аудио ассеты"
+                            >
+                                <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={stopAll}
+                                className={`${audioButtonClass} ${audioDangerButtonClass} h-8 w-8`}
+                                title="Остановить все каналы"
+                            >
+                                <VolumeX size={14} />
+                            </button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <button
-                            type="button"
-                            onClick={() => void loadAssets()}
-                            className={`${audioButtonClass} h-8 w-8`}
-                            title="Обновить аудио ассеты"
-                        >
-                            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={stopAll}
-                            className={`${audioButtonClass} ${audioDangerButtonClass} h-8 w-8`}
-                            title="Остановить все каналы"
-                        >
-                            <VolumeX size={14} />
-                        </button>
-                    </div>
-                </div>
+                )}
 
                 <div className="grid grid-cols-4 gap-1">
                     {CHANNELS.map(channel => {
@@ -744,6 +757,26 @@ export function AudioDesk({ onMusicPlaybackChange, musicSeekRequest, musicStopRe
                             className="h-3.5 w-3.5 accent-[var(--vibe-success)]"
                         />
                     </label>
+                    {isCompactChrome && (
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => void loadAssets()}
+                                className={`${audioButtonClass} h-8 w-8`}
+                                title="Обновить аудио ассеты"
+                            >
+                                <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={stopAll}
+                                className={`${audioButtonClass} ${audioDangerButtonClass} h-8 w-8`}
+                                title="Остановить все каналы"
+                            >
+                                <VolumeX size={14} />
+                            </button>
+                        </div>
+                    )}
                     <div className="flex items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5" title="Fade in/out для запуска и остановки звука">
                         <span className="text-[9px] font-black uppercase tracking-wider text-[var(--vibe-text-faint)]">Fade</span>
                         {[0, 1000, 3000].map(value => (

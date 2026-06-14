@@ -22,6 +22,7 @@ const IDLE_MUSIC_STATUS: MusicPlaybackStatus = {
 interface AudioControlDockProps {
     floatingEnabled?: boolean;
     embeddedTargetId?: string | null;
+    embeddedChrome?: 'full' | 'compact';
 }
 
 interface AudioDockRect {
@@ -58,7 +59,11 @@ function getDockModeLabel(sessionMode: MusicPlaybackStatus['sessionMode']): stri
     return sessionMode === 'session' ? 'Сессия' : 'Локально';
 }
 
-export function AudioControlDock({ floatingEnabled = true, embeddedTargetId = null }: AudioControlDockProps = {}) {
+export function AudioControlDock({
+    floatingEnabled = true,
+    embeddedTargetId = null,
+    embeddedChrome = 'full',
+}: AudioControlDockProps = {}) {
     const isHost = getIsHost();
     const [isOpen, setIsOpen] = useState(false);
     const [isCompact, setIsCompact] = useState(true);
@@ -149,6 +154,7 @@ export function AudioControlDock({ floatingEnabled = true, embeddedTargetId = nu
         : `${getDockChannelLabel(musicStatus.channel)} / ${getDockModeLabel(musicStatus.sessionMode)}`;
 
     const isEmbedded = !floatingEnabled && Boolean(embeddedRect);
+    const useCompactEmbeddedChrome = isEmbedded && embeddedChrome === 'compact';
     const rootClassName = isEmbedded
         ? 'pointer-events-none fixed z-[45]'
         : floatingEnabled
@@ -172,27 +178,29 @@ export function AudioControlDock({ floatingEnabled = true, embeddedTargetId = nu
                         : `w-[min(920px,calc(100vw-32px))] ${floatingEnabled && isOpen ? 'block' : 'hidden'}`
                 }`}
             >
-                <div className={`flex items-center justify-between gap-3 px-3 py-2.5 ${glass.panelHeader}`}>
-                    <div className="flex min-w-0 items-center gap-2">
-                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)]">
-                            <SlidersHorizontal size={16} />
-                        </div>
-                        <div className="min-w-0">
-                            <div className="truncate text-xs font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Пульт звука</div>
-                            <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                Отдельный модуль: музыка, атмосфера, SFX
+                {!useCompactEmbeddedChrome && (
+                    <div className={`flex items-center justify-between gap-3 px-3 py-2.5 ${glass.panelHeader}`}>
+                        <div className="flex min-w-0 items-center gap-2">
+                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)]">
+                                <SlidersHorizontal size={16} />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="truncate text-xs font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Пульт звука</div>
+                                <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                    Отдельный модуль: музыка, атмосфера, SFX
+                                </div>
                             </div>
                         </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsOpen(false)}
+                            className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`}
+                            title="Свернуть пульт"
+                        >
+                            <X size={15} />
+                        </button>
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => setIsOpen(false)}
-                        className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`}
-                        title="Свернуть пульт"
-                    >
-                        <X size={15} />
-                    </button>
-                </div>
+                )}
                 <div className={isEmbedded ? 'min-h-0 flex-1' : 'h-[min(72vh,720px)] min-h-[320px] sm:min-h-[420px]'}>
                     <AudioDesk
                         onMusicPlaybackChange={setMusicStatus}
@@ -200,6 +208,7 @@ export function AudioControlDock({ floatingEnabled = true, embeddedTargetId = nu
                         musicStopRequestId={musicStopRequestId}
                         musicPlayPauseRequestId={musicPlayPauseRequestId}
                         stopAllRequestId={stopAllRequestId}
+                        chrome={useCompactEmbeddedChrome ? 'compact' : 'full'}
                     />
                 </div>
             </div>
