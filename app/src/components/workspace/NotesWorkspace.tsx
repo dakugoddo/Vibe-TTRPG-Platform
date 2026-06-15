@@ -1242,12 +1242,18 @@ interface NotesShellModuleFrameProps {
     t: Translate;
 }
 
-function NotesShellDropIndicator({ layout }: { layout: NotesWorkspaceShellAreaLayout }) {
+function NotesWorkspaceDropIndicator({
+    layout,
+    className = '',
+}: {
+    layout: NotesWorkspaceShellAreaLayout;
+    className?: string;
+}) {
     return (
         <div
             className={`shrink-0 rounded-full bg-[color-mix(in_srgb,var(--vibe-accent)_55%,transparent)] shadow-[0_0_22px_color-mix(in_srgb,var(--vibe-accent)_42%,transparent)] ${
-                layout === 'row' ? 'my-2 w-2 self-stretch' : 'mx-2 h-2'
-            }`}
+                layout === 'row' ? 'w-2' : 'h-2'
+            } ${className}`}
         />
     );
 }
@@ -1268,7 +1274,12 @@ function NotesShellModuleFrame({
 
     return (
         <>
-            {showDropBefore && <NotesShellDropIndicator layout={dropLayout} />}
+            {showDropBefore && (
+                <NotesWorkspaceDropIndicator
+                    layout={dropLayout}
+                    className={dropLayout === 'row' ? 'my-2 self-stretch' : 'mx-2'}
+                />
+            )}
             <section
                 data-notes-shell-module-id={module.id}
                 className={`relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden rounded-[var(--vibe-radius-md)] border bg-[var(--vibe-surface-block)] shadow-[var(--vibe-shadow-block)] transition-opacity ${
@@ -1300,7 +1311,12 @@ function NotesShellModuleFrame({
                     {children}
                 </div>
             </section>
-            {showDropAfter && <NotesShellDropIndicator layout={dropLayout} />}
+            {showDropAfter && (
+                <NotesWorkspaceDropIndicator
+                    layout={dropLayout}
+                    className={dropLayout === 'row' ? 'my-2 self-stretch' : 'mx-2'}
+                />
+            )}
         </>
     );
 }
@@ -1413,6 +1429,16 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
     const activeParentEntity = activeEntity?.parentId ? entitiesById.get(activeEntity.parentId) ?? null : null;
     const canCloseGroup = groupOrder.size > 1;
     const visualDropZone = dockDropTarget?.groupId === node.id ? dockDropTarget.zone : null;
+    const editorDropIndicatorLayout = visualDropZone ? getShellLayoutFromDropZone(visualDropZone) : 'column';
+    const editorDropIndicatorClass = visualDropZone === 'left'
+        ? 'pointer-events-none absolute bottom-2 left-1 top-2 z-20'
+        : visualDropZone === 'right'
+            ? 'pointer-events-none absolute bottom-2 right-1 top-2 z-20'
+            : visualDropZone === 'top'
+                ? 'pointer-events-none absolute left-2 right-2 top-1 z-20'
+                : visualDropZone === 'bottom'
+                    ? 'pointer-events-none absolute bottom-1 left-2 right-2 z-20'
+                    : 'pointer-events-none absolute left-3 right-3 top-2 z-20';
 
     const getSplitFromDropZone = (zone: NotesWorkspaceDropZone): { direction: 'row' | 'column'; placement: NotesWorkspaceSplitPlacement } => {
         if (zone === 'left') return { direction: 'row', placement: 'before' };
@@ -1521,23 +1547,11 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
             }`}
             onMouseDown={() => onSetActiveGroup(node.id)}
         >
-            {dockDropTarget?.groupId === node.id && !visualDropZone && (
-                <div className="pointer-events-none absolute inset-0 z-20 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--vibe-accent)_34%,transparent),0_0_34px_color-mix(in_srgb,var(--vibe-accent)_18%,transparent)]" />
-            )}
-            {visualDropZone && (
-                <div className="pointer-events-none absolute inset-0 z-20 rounded-[var(--vibe-radius-md)] border-2 border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--vibe-accent)_42%,transparent),0_0_36px_color-mix(in_srgb,var(--vibe-accent)_20%,transparent)]">
-                    <div
-                        className={`absolute rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_28%,transparent)] shadow-[0_0_34px_color-mix(in_srgb,var(--vibe-accent)_34%,transparent)] ${
-                            visualDropZone === 'left'
-                                ? 'left-2 top-2 h-[calc(100%-16px)] w-[32%]'
-                                : visualDropZone === 'right'
-                                    ? 'right-2 top-2 h-[calc(100%-16px)] w-[32%]'
-                                    : visualDropZone === 'top'
-                                        ? 'left-2 top-2 h-[32%] w-[calc(100%-16px)]'
-                                        : 'bottom-2 left-2 h-[32%] w-[calc(100%-16px)]'
-                        }`}
-                    />
-                </div>
+            {dockDropTarget?.groupId === node.id && (
+                <NotesWorkspaceDropIndicator
+                    layout={editorDropIndicatorLayout}
+                    className={editorDropIndicatorClass}
+                />
             )}
             <div
                 onMouseDown={(event) => {

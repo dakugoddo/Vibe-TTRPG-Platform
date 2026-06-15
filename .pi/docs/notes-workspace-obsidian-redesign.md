@@ -28,6 +28,7 @@
 
 ## Текущий контракт реализации
 
+- В контексте режима заметок "окно", "модуль" и "вкладка" являются одним пользовательским понятием: рабочая вкладка. `Audio`, `Vault`, `Search`, `Context`, `Graph`, `Notifications` и вкладки сущностей отличаются контентом, но должны одинаково открываться, фокусироваться, закрываться, перетаскиваться, объединяться во вкладки и делиться edge-drop.
 - `NotesWorkspace.tsx` рендерит три зоны: vault/entity tree слева, tab/split editor в центре, linked context справа.
 - `notesWorkspaceLayout.ts` хранит чистую локальную модель editor leaves: tab groups, split-панели, resize ratios и leaf-open поведение.
 - `notesWorkspaceStore.ts` сохраняет layout в localStorage и мигрирует legacy `markdown` view в `preview`.
@@ -41,7 +42,7 @@
 - Режим `graph` в этом срезе является локальной сводкой связей активной сущности: входящие ссылки, текущая сущность, исходящие ссылки. Полноценный canvas-like graph view остается отдельным будущим срезом.
 - Notes mode использует собственный dock shell: left ribbon, vault pane, editor pane и context pane занимают экран без внешних canvas/HUD отступов. Глобальные canvas-кнопки, `HudBar`, `RightDrawer` и canvas-only hotkey help не должны рендериться поверх режима заметок.
 - Split-панели должны быть обратимыми: у каждой панели, кроме последней оставшейся, есть `closePane`, который удаляет только локальную панель layout и не трогает entity-файлы.
-- Drag/drop вкладок и заголовка editor leaf должен быть pointer-driven и показывать только проектную визуальную drop-зону, без browser HTML ghost preview. Перетаскивание на левый/правый/верхний/нижний край другого leaf создает split в этой стороне; drop в центр переносит сущность в существующую tab group. Split-кнопки в шапке leaf не нужны.
+- Drag/drop рабочих вкладок должен быть pointer-driven и показывать единый тонкий индикатор вставки, без browser HTML ghost preview и без full-pane overlay. Перетаскивание на левый/правый/верхний/нижний край другой рабочей вкладки создает split в этой стороне; drop в центр переносит вкладку в существующую tab group. Split-кнопки в шапке leaf не нужны.
 - Vault в notes mode обязан сохранять группировку сущностей по типам, как database drawer в canvas mode, но single-click по строке всегда открывает/фокусирует сущность. Раскрытие детей делается только отдельной стрелкой, а не кликом по строке.
 - Notifications в notes mode не должны рендериться floating-кнопкой поверх редактора. Они показываются как встроенный context-pane блок; глобальный floating notification center остается canvas-only.
 

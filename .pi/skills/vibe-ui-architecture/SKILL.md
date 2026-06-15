@@ -440,7 +440,9 @@ t('hud.activeElements') // → "Объекты на канвасе"
 
 ## 14.1 Notes Workspace DnD guardrails
 
+- In Notes mode, "окно", "модуль" and "вкладка" are the same user-facing concept: a movable working tab. Entity leaves, `Audio`, `Vault`, `Search`, `Context`, `Graph` and `Notifications` may have different content renderers, but open/focus/close/merge/split/drag preview behavior should feel shared.
 - `NotesWorkspace.tsx` editor tab/leaf drag must be pointer-driven, not browser HTML `draggable`. Do not add `text/plain` fallback or native HTML drag previews: selected text/images must not show workspace drop previews, and editor tabs must not show browser ghost visuals.
+- Editor tab/leaf drop preview must reuse the same thin insertion indicator as shell modules. Do not use full-pane blue fill/border overlays (`absolute inset-0`) for tab drag feedback.
 - Pane drag that moves the last tab out of a group must collapse the now-empty source group via `notesWorkspaceLayout.ts`; keep `notesWorkspaceLayout.test.ts` and `notesWorkspaceStore.test.ts` aligned with that contract.
 - Notes shell modules (`Editor`, `Vault`, `Context`, `Notifications`, `Search`, `Graph`, `Audio`) are pointer-dragged by module headers and persisted through `notesWorkspaceStore.shell.moduleAreas/moduleOrder`. `Editor` is required and non-toggleable, but still movable between left/center/right through the same module-frame contract. Do not implement shell module movement with browser HTML DnD or render the editor outside this registry.
 - Notes shell dock areas `left`, `center` and `right` are permanent drop targets. Never unmount an empty area or shrink side areas to `0px`; empty side areas should remain as narrow visible rails so the user can drag modules back into them.
