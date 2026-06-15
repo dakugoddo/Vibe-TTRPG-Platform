@@ -57,7 +57,7 @@
 
 ### Notes workspace regression guardrails
 
-- Tab/pane DnD: `NotesWorkspace.tsx` must accept only the internal `NOTES_WORKSPACE_TAB_MIME`; do not fall back to `text/plain`, because selected text and dragged images can otherwise trigger stale drop previews.
+- Tab/pane DnD: editor tabs/leaves in `NotesWorkspace.tsx` use pointer-driven drag, not browser HTML `draggable`; do not reintroduce `text/plain`/image drag fallback or native drag ghosts.
 - Empty panes: `notesWorkspaceLayout.ts` must collapse a source tabs group when its last tab is moved or split into another group; focused coverage lives in `notesWorkspaceLayout.test.ts` and `notesWorkspaceStore.test.ts`.
 - Shell modules: `notesWorkspaceModules.ts` owns module definitions, `notesWorkspaceStore.ts` owns persisted visibility/area/order/size, and `NotesWorkspace.tsx` owns pointer-driven module-header drag between left/center/right. The main notes editor is the required `Editor` shell module, not a separate central JSX branch. Do not use browser HTML DnD for shell modules.
 - Shell module side-by-side drops: `notesWorkspaceStore.shell.moduleLayouts` owns whether each permanent shell area is a vertical stack or horizontal row. `NotesWorkspace.tsx` must derive the layout from the actual edge zone: left/right means `row`, top/bottom means `column`; do not infer layout from order alone.
@@ -65,7 +65,7 @@
 - Shell scroll/chrome: dock areas are layout/drop containers, not scroll containers. Each module/window owns its own header, flex height and inner scroll. The editor tab bar is the group chrome; do not add a duplicate `G1/entity` masthead above it.
 - Embedded Audio chrome: Notes mode should show one shell module header only. Keep `AudioControlDock` mounted once and pass compact chrome into `AudioDesk`; do not mount a second audio owner or stack inner `Пульт звука` headers inside the `Audio` module.
 - Editor leaf opening: Notes entity open from Vault/Search/links should call `openTabInNewLeaf()`. It must reuse/focus an already-open entity, but a new entity should become a sibling editor leaf instead of silently becoming another tab inside the active group.
-- Editor leaf DnD: entity editor leaves merge into tab groups by center-drop through `moveNotesWorkspaceTab()` and split by edge-drop through `splitNotesWorkspaceGroupFromTab()`. Do not mark `FEAT-WORKSPACE-004` done by only adding more buttons to the existing tab strip.
+- Editor leaf DnD: entity editor leaves merge into tab groups by center-drop through `moveNotesWorkspaceTab()` and split by edge-drop through `splitNotesWorkspaceGroupFromTab()`. Do not reintroduce header split buttons; split is an edge-drop interaction.
 - Shell storage migrations: `NOTES_WORKSPACE_SHELL_STORAGE_VERSION` must change when old `localStorage` placement/order can corrupt the UI. Legacy storage should keep safe values such as size and toggleable visibility, but reset unsafe `moduleAreas/moduleOrder` to registry defaults.
 - i18n boundary: stable UI labels belong in `app/src/locales/ru.json` and `app/src/locales/en.json`; entity names/descriptions/properties are world content and should not be translated at render time.
 

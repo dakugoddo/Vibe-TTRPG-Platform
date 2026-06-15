@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, DragEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -28,8 +28,6 @@ import {
     LogOut,
     Map as MapIcon,
     Network,
-    PanelLeft,
-    PanelRight,
     Pin,
     PencilLine,
     Quote,
@@ -150,7 +148,6 @@ const NOTES_SHELL_SEPARATOR_WIDTH = 8;
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
-const NOTES_WORKSPACE_TAB_MIME = 'application/vnd.vibe-notes-workspace-tab';
 type NotesWorkspaceDropZone = 'left' | 'right' | 'top' | 'bottom';
 type VaultScope = 'all' | DatabaseType | `user:${string}`;
 type NotesShellResizeTarget = 'vault' | 'context' | 'audio';
@@ -180,11 +177,6 @@ interface NotesWorkspaceProps {
     onOpenInventory: () => void;
     onOpenSettings: () => void;
     onWorkspaceModeChange: (mode: WorkspaceMode) => void;
-}
-
-interface NotesWorkspaceTabDragPayload {
-    groupId: string;
-    tabId: string;
 }
 
 function createRootEntityDraft(type: EntityType, id: string): Entity {
@@ -225,23 +217,6 @@ function createRootEntityDraft(type: EntityType, id: string): Entity {
     }
 
     return { ...base, name: 'note', description: '# Новая заметка' };
-}
-
-function readTabDragPayload(event: DragEvent): NotesWorkspaceTabDragPayload | null {
-    try {
-        const data = event.dataTransfer.getData(NOTES_WORKSPACE_TAB_MIME);
-        if (!data) return null;
-
-        const parsed = JSON.parse(data);
-        if (!parsed || typeof parsed.groupId !== 'string' || typeof parsed.tabId !== 'string') return null;
-        return parsed;
-    } catch {
-        return null;
-    }
-}
-
-function hasTabDragPayload(event: DragEvent): boolean {
-    return event.dataTransfer.types.includes(NOTES_WORKSPACE_TAB_MIME);
 }
 
 function isNotesShellInteractiveArea(value: unknown): value is NotesShellInteractiveArea {
@@ -1232,7 +1207,6 @@ interface NotesWorkspaceNodeViewProps {
     onSetTabView: (groupId: string, tabId: string, view: NotesWorkspaceView) => void;
     onCloseTab: (groupId: string, tabId: string) => void;
     onCloseGroup: (groupId: string) => void;
-    onSplitGroup: (groupId: string, direction: 'row' | 'column') => void;
     onSplitTabToGroup: (
         sourceGroupId: string,
         tabId: string,
@@ -1262,6 +1236,7 @@ interface NotesShellModuleFrameProps {
     showDropBefore: boolean;
     showDropAfter: boolean;
     dropLayout: NotesWorkspaceShellAreaLayout;
+    hideHeader?: boolean;
     onHeaderPointerDown: (moduleId: NotesWorkspaceShellModuleId, event: ReactPointerEvent<HTMLDivElement>) => void;
     children: ReactNode;
     t: Translate;
@@ -1284,6 +1259,7 @@ function NotesShellModuleFrame({
     showDropBefore,
     showDropAfter,
     dropLayout,
+    hideHeader = false,
     onHeaderPointerDown,
     children,
     t,
@@ -1299,25 +1275,27 @@ function NotesShellModuleFrame({
                     isDragging ? 'opacity-55' : 'opacity-100'
                 } border-[var(--vibe-border-subtle)]`}
             >
-                <div
-                    onPointerDown={(event) => onHeaderPointerDown(module.id, event)}
-                    className={`${glass.panelHeader} flex min-h-10 cursor-grab select-none items-center justify-between gap-2 p-2.5 active:cursor-grabbing`}
-                    title={t('workspace.notes.dragModule')}
-                >
-                    <div className="flex min-w-0 items-center gap-2">
-                        <Icon size={16} className="shrink-0 text-[var(--vibe-accent)]" />
-                        <div className="min-w-0">
-                            <p className="truncate text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-accent)]">
-                                {t(module.labelKey)}
-                            </p>
-                            {subtitle && (
-                                <h2 className="truncate text-sm font-black text-[var(--vibe-text-primary)]">
-                                    {subtitle}
-                                </h2>
-                            )}
+                {!hideHeader && (
+                    <div
+                        onPointerDown={(event) => onHeaderPointerDown(module.id, event)}
+                        className={`${glass.panelHeader} flex min-h-10 cursor-grab select-none items-center justify-between gap-2 p-2.5 active:cursor-grabbing`}
+                        title={t('workspace.notes.dragModule')}
+                    >
+                        <div className="flex min-w-0 items-center gap-2">
+                            <Icon size={16} className="shrink-0 text-[var(--vibe-accent)]" />
+                            <div className="min-w-0">
+                                <p className="truncate text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-accent)]">
+                                    {t(module.labelKey)}
+                                </p>
+                                {subtitle && (
+                                    <h2 className="truncate text-sm font-black text-[var(--vibe-text-primary)]">
+                                        {subtitle}
+                                    </h2>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
                 <div className="min-h-0 flex-1 overflow-hidden">
                     {children}
                 </div>
@@ -1330,9 +1308,6 @@ function NotesShellModuleFrame({
 function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
     const { node } = props;
     const splitContainerRef = useRef<HTMLDivElement | null>(null);
-    const tabsNodeRef = useRef<HTMLDivElement | null>(null);
-    const dropZoneRef = useRef<NotesWorkspaceDropZone | null>(null);
-    const [dropZone, setDropZone] = useState<NotesWorkspaceDropZone | null>(null);
     const handleSplitResizeStart = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
         if (node.type !== 'split') return;
 
@@ -1423,7 +1398,6 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
         onSetActiveGroup,
         onSetActiveTab,
         onSetTabView,
-        onSplitGroup,
         onSplitTabToGroup,
         dockDropTarget,
         onDockDropTargetChange,
@@ -1438,14 +1412,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
     const canEditActiveEntity = activeEntity ? canEditEntityInWorkspace(activeEntity) : false;
     const activeParentEntity = activeEntity?.parentId ? entitiesById.get(activeEntity.parentId) ?? null : null;
     const canCloseGroup = groupOrder.size > 1;
-    const visualDropZone = dockDropTarget?.groupId === node.id ? dockDropTarget.zone : dropZone;
-
-    const getDropZone = (event: DragEvent<HTMLDivElement>): NotesWorkspaceDropZone | null => {
-        const element = tabsNodeRef.current;
-        if (!element) return null;
-
-        return getNotesDockDropZone(element, event.clientX, event.clientY);
-    };
+    const visualDropZone = dockDropTarget?.groupId === node.id ? dockDropTarget.zone : null;
 
     const getSplitFromDropZone = (zone: NotesWorkspaceDropZone): { direction: 'row' | 'column'; placement: NotesWorkspaceSplitPlacement } => {
         if (zone === 'left') return { direction: 'row', placement: 'before' };
@@ -1454,16 +1421,16 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
         return { direction: 'column', placement: 'after' };
     };
 
-    const startPanePointerDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-        if (!activeTab || event.button !== 0) return;
+    const startTabPointerDrag = (event: ReactPointerEvent<HTMLElement>, tabId: string) => {
+        if (event.button !== 0) return;
+        if (!node.tabs.some((tab) => tab.id === tabId)) return;
         if ((event.target as HTMLElement | null)?.closest('[data-no-pane-drag]')) return;
 
         event.preventDefault();
         event.stopPropagation();
-        onSetActiveGroup(node.id);
+        onSetActiveTab(node.id, tabId);
 
         const sourceGroupId = node.id;
-        const tabId = activeTab.id;
         const startX = event.clientX;
         const startY = event.clientY;
         const previousCursor = document.body.style.cursor;
@@ -1537,12 +1504,6 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
         window.addEventListener('pointercancel', cancelDrag, { once: true });
     };
 
-    const updateDropZone = (zone: NotesWorkspaceDropZone | null) => {
-        if (dropZoneRef.current === zone) return;
-        dropZoneRef.current = zone;
-        setDropZone(zone);
-    };
-
     const viewButtonClass = (view: NotesWorkspaceView) => `flex h-8 items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border px-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
         activeTab?.view === view
             ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-surface-hover)] text-[var(--vibe-text-primary)]'
@@ -1552,7 +1513,6 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
 
     return (
         <div
-            ref={tabsNodeRef}
             data-notes-group-id={node.id}
             className={`relative flex h-full min-h-[220px] min-w-0 flex-col overflow-hidden rounded-[var(--vibe-radius-md)] border bg-[var(--vibe-surface-block)] transition-colors ${
                 isActiveGroup
@@ -1560,45 +1520,6 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                     : 'border-[var(--vibe-border-subtle)]'
             }`}
             onMouseDown={() => onSetActiveGroup(node.id)}
-            onDragOverCapture={(event) => {
-                if (!hasTabDragPayload(event)) return;
-                event.preventDefault();
-                event.dataTransfer.dropEffect = 'move';
-                updateDropZone(getDropZone(event));
-            }}
-            onDragLeave={(event) => {
-                if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-                updateDropZone(null);
-            }}
-            onDragEndCapture={() => {
-                updateDropZone(null);
-            }}
-            onDropCapture={(event) => {
-                const payload = readTabDragPayload(event);
-                if (!payload) return;
-
-                const zone = dropZoneRef.current ?? getDropZone(event);
-                if (!zone) {
-                    updateDropZone(null);
-                    return;
-                }
-
-                event.preventDefault();
-                event.stopPropagation();
-                updateDropZone(null);
-
-                const split = getSplitFromDropZone(zone);
-                onSplitTabToGroup(payload.groupId, payload.tabId, node.id, split.direction, split.placement);
-            }}
-            onDrop={(event) => {
-                const payload = readTabDragPayload(event);
-                if (!payload) return;
-
-                event.preventDefault();
-                event.stopPropagation();
-                updateDropZone(null);
-                onMoveTab(payload.groupId, payload.tabId, node.id, null);
-            }}
         >
             {dockDropTarget?.groupId === node.id && !visualDropZone && (
                 <div className="pointer-events-none absolute inset-0 z-20 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--vibe-accent)_34%,transparent),0_0_34px_color-mix(in_srgb,var(--vibe-accent)_18%,transparent)]" />
@@ -1626,9 +1547,9 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                 onPointerDown={(event) => {
                     const target = event.target as HTMLElement | null;
                     if (target?.closest('[data-no-pane-drag], [data-notes-tab]')) return;
-                    startPanePointerDrag(event);
+                    if (activeTab) startTabPointerDrag(event, activeTab.id);
                 }}
-                className={`flex min-h-9 shrink-0 items-center gap-1 border-b px-2 py-1 transition-colors ${
+                className={`flex min-h-10 shrink-0 cursor-grab items-center gap-1 border-b px-2 py-1 transition-colors active:cursor-grabbing ${
                     isActiveGroup
                         ? 'border-[var(--vibe-border-strong)] bg-[color-mix(in_srgb,var(--vibe-accent)_10%,var(--vibe-surface-input))]'
                         : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)]'
@@ -1646,28 +1567,10 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                         <div
                             key={tab.id}
                             data-notes-tab
-                            draggable
-                            onDragStart={(event) => {
-                                event.stopPropagation();
-                                event.dataTransfer.effectAllowed = 'move';
-                                const payload = JSON.stringify({ groupId: node.id, tabId: tab.id });
-                                event.dataTransfer.setData(NOTES_WORKSPACE_TAB_MIME, payload);
+                            onPointerDown={(event) => {
+                                startTabPointerDrag(event, tab.id);
                             }}
-                            onDragOver={(event) => {
-                                if (hasTabDragPayload(event)) {
-                                    event.preventDefault();
-                                    event.dataTransfer.dropEffect = 'move';
-                                }
-                            }}
-                            onDrop={(event) => {
-                                const payload = readTabDragPayload(event);
-                                if (!payload) return;
-
-                                event.preventDefault();
-                                event.stopPropagation();
-                                onMoveTab(payload.groupId, payload.tabId, node.id, tab.id);
-                            }}
-                             className={`group flex h-7 max-w-[230px] shrink-0 select-none items-center gap-2 rounded-[var(--vibe-radius-sm)] border px-2 text-left text-xs transition-colors ${
+                            className={`group flex h-8 max-w-[260px] shrink-0 select-none items-center gap-2 rounded-[var(--vibe-radius-sm)] border px-2 text-left text-xs transition-colors ${
                                 isActiveTab
                                     ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_16%,var(--vibe-surface-hover))] text-[var(--vibe-text-primary)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--vibe-accent)_20%,transparent)]'
                                     : 'border-transparent text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-subtle)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
@@ -1689,6 +1592,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                             </button>
                             <button
                                 type="button"
+                                data-no-pane-drag
                                 onClick={(event) => {
                                     event.stopPropagation();
                                     onCloseTab(node.id, tab.id);
@@ -1709,32 +1613,6 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                             {t('workspace.notes.readOnly')}
                         </span>
                     )}
-                    <button
-                        type="button"
-                        data-no-pane-drag
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            onSplitGroup(node.id, 'row');
-                        }}
-                        draggable={false}
-                        className={`flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`}
-                        title={t('workspace.notes.splitRow')}
-                    >
-                        <PanelLeft size={14} />
-                    </button>
-                    <button
-                        type="button"
-                        data-no-pane-drag
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            onSplitGroup(node.id, 'column');
-                        }}
-                        draggable={false}
-                        className={`flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`}
-                        title={t('workspace.notes.splitColumn')}
-                    >
-                        <PanelRight size={14} />
-                    </button>
                     {canCloseGroup && (
                         <button
                             type="button"
@@ -1743,7 +1621,6 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                                 event.stopPropagation();
                                 onCloseGroup(node.id);
                             }}
-                            draggable={false}
                             className="flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_16%,transparent)] hover:text-[var(--vibe-danger)]"
                             title={t('workspace.notes.closePane')}
                         >
@@ -1935,7 +1812,6 @@ export function NotesWorkspace({
     const setActiveWorkspaceGroup = useNotesWorkspaceStore((state) => state.setActiveGroup);
     const setActiveWorkspaceTab = useNotesWorkspaceStore((state) => state.setActiveTab);
     const setWorkspaceTabView = useNotesWorkspaceStore((state) => state.setTabView);
-    const splitActiveWorkspaceGroup = useNotesWorkspaceStore((state) => state.splitActiveGroup);
     const toggleShellModule = useNotesWorkspaceStore((state) => state.toggleShellModule);
     const moveShellModule = useNotesWorkspaceStore((state) => state.moveShellModule);
     const setShellModuleWidth = useNotesWorkspaceStore((state) => state.setShellModuleWidth);
@@ -2170,11 +2046,6 @@ export function NotesWorkspace({
         openWorkspaceLeaf(id, 'source');
         expandEntityAncestors(id);
     }, [entities, expandEntityAncestors, openWorkspaceLeaf]);
-
-    const handleSplitWorkspaceGroup = (groupId: string, direction: 'row' | 'column') => {
-        setActiveWorkspaceGroup(groupId);
-        splitActiveWorkspaceGroup(direction);
-    };
 
     const handleShellResizeStart = (target: NotesShellResizeTarget, event: ReactPointerEvent<HTMLDivElement>) => {
         event.preventDefault();
@@ -2529,7 +2400,6 @@ export function NotesWorkspace({
             onSetTabView={setWorkspaceTabView}
             onCloseTab={closeWorkspaceTab}
             onCloseGroup={closeWorkspaceGroup}
-            onSplitGroup={handleSplitWorkspaceGroup}
             onSplitTabToGroup={splitWorkspaceTabToGroup}
             onResizeSplit={resizeWorkspaceSplit}
             onMoveTab={moveWorkspaceTab}
@@ -2583,6 +2453,7 @@ export function NotesWorkspace({
             showDropBefore={shellModuleDropTarget?.area === area && shellModuleDropTarget.beforeModuleId === module.id}
             showDropAfter={isLast && shellModuleDropTarget?.area === area && shellModuleDropTarget.beforeModuleId === null}
             dropLayout={areaLayout}
+            hideHeader={module.id === 'editor'}
             onHeaderPointerDown={handleShellModuleDragStart}
             t={t}
         >

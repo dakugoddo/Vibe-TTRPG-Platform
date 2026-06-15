@@ -59,8 +59,6 @@
       "expandBranch": "Раскрыть ветку",
       "collapseBranch": "Свернуть ветку",
       "groupLabel": "G{{index}}",
-      "splitRow": "Разделить вправо",
-      "splitColumn": "Разделить вниз",
       "resizeSplit": "Изменить размер панелей",
       "resizeModule": "Изменить размер модуля",
       "resetTabs": "Сбросить вкладки",

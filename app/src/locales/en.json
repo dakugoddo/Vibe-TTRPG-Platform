@@ -59,8 +59,6 @@
             "expandBranch": "Expand branch",
             "collapseBranch": "Collapse branch",
             "groupLabel": "G{{index}}",
-            "splitRow": "Split right",
-            "splitColumn": "Split down",
             "resizeSplit": "Resize panes",
             "resizeModule": "Resize module",
             "resetTabs": "Reset tabs",
