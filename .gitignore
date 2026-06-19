@@ -14,7 +14,11 @@ app/release/
 !.env.example
 
 # Local Codex desktop/runtime metadata
-.codex/
+.codex/*
+!.codex/hooks.json
+!.codex/skills/
+!.codex/skills/graphify/
+!.codex/skills/graphify/**
 .continue/
 .pi/settings.json
 .pi/skills/frontend-design/

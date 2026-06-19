@@ -1,7 +1,7 @@
-# Проверка Graphify
+# Проверка и установка Graphify
 
 > Дата: 2026-06-19
-> Статус: не внедрять как always-on замену `context-mode`
+> Статус: установлен project-scoped для Codex, первый полный граф ещё не построен
 
 ## Что проверено
 
@@ -9,27 +9,48 @@
 - Обычный shim `graphify` в текущей Codex/PowerShell среде падает с `Failed to canonicalize script path`.
 - Прямой запуск работает:
   `C:\Users\GOD\AppData\Roaming\uv\tools\graphifyy\Scripts\python.exe -m graphify`.
-- `graphify hook status` показывает, что post-commit/post-checkout hooks не установлены.
 - Пробный code-only extract по `app/src/components` прошёл:
   `417 nodes`, `1522 edges`, без clustering.
+- Project-scoped Codex install выполнен через:
+  `python -m graphify install --project --platform codex`.
 
-## Результат
+## Что установлено
 
-Graphify полезен как ручной архитектурный инструмент для верхнеуровневых связей между файлами и экспортируемыми функциями.
-Для текущей разработки он не заменяет `context-mode`, `.pi/docs/code-map.md` и `rg`, потому что:
+- `.codex/skills/graphify/SKILL.md`
+- `.codex/skills/graphify/references/`
+- `.codex/hooks.json`
+- Graphify section в `AGENTS.md`
+- В `C:\Users\GOD\.codex\config.toml` добавлено `multi_agent = true` в `[features]`
+- `.gitignore` оставляет `.codex` локальным, но разрешает версионировать только `.codex/hooks.json` и `.codex/skills/graphify/**`
 
-- без LLM API key он не анализирует docs/images и останавливается, если в корпусе есть не-code файлы;
-- текущий graph по React/TSX не увидел важные вложенные обработчики `startTabPointerDrag` и `handleShellModuleDragStart`;
-- query по Notes DnD оказался менее точным, чем прямой поиск по коду и существующие `.pi` guardrails;
-- Codex integration изменяет агентские инструкции, а польза пока не доказана.
+Installer создал hook на `C:\Users\GOD\.local\bin\graphify.EXE`, но этот shim у нас не работает.
+Hook вручную исправлен на рабочий Python entrypoint:
+
+```powershell
+C:\Users\GOD\AppData\Roaming\uv\tools\graphifyy\Scripts\python.exe -m graphify hook-check
+```
 
 ## Решение
 
-Не включать Graphify hooks и не писать Graphify секцию в `AGENTS.md` сейчас.
-Оставить возможность ручного запуска через прямой Python entrypoint для редких архитектурных проверок.
+Graphify установлен как дополнительный project-scoped инструмент для Codex.
+Он не заменяет `context-mode`, потому что `context-mode` всё ещё нужен для session memory и обработки больших outputs.
 
-## Когда вернуться
+Полная польза Graphify начнётся после первого полноценного `graphify-out/graph.json`.
+Для Codex команда из README: `$graphify .`.
 
-- Если будет доступен LLM backend/API key для semantic extraction.
-- Если Graphify начнёт стабильно видеть вложенные React handlers и локальные callback-и.
-- Если понадобится отдельный HTML/JSON graph для большого release audit.
+## Следующий шаг после перезапуска Codex
+
+1. Перезапустить Codex, чтобы подхватились `.codex/skills/graphify` и `.codex/hooks.json`.
+2. После перезапуска проверить, что Graphify skill виден в списке навыков.
+3. Запустить в проекте:
+   `$graphify .`
+4. После построения графа использовать:
+   - `graphify query "<вопрос>"`
+   - `graphify explain "<узел>"`
+   - `graphify path "<A>" "<B>"`
+
+## Риски
+
+- Без LLM backend/API key или работающей host-agent semantic extraction первый полный граф может быть только code-heavy.
+- Большой full-project graph может занять заметное время и создать много файлов в `graphify-out/`.
+- `graphify-out/` нужно отдельно решить: коммитить как артефакт или держать локальным generated output.
