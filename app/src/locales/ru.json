@@ -2,11 +2,71 @@
   "login": {
     "title": "ETERNITY TABLE / ПОДКЛЮЧЕНИЕ",
     "directoryPlaceholder": "ИДЕНТИФИКАТОР КОМНАТЫ",
-    "connectBtn": "ИНИЦИАЛИЗИРОВАТЬ ПОДКЛЮЧЕНИЕ"
+    "connectBtn": "ИНИЦИАЛИЗИРОВАТЬ ПОДКЛЮЧЕНИЕ",
+    "runtime": {
+      "desktop": "Electron desktop",
+      "browser": "Браузерный клиент"
+    },
+    "errors": {
+      "desktopServerOffline": "Локальный сервер приложения не отвечает. Перезапусти Electron dev или проверь, что embedded server запустился на порту 3001.",
+      "fileServerOffline": "Локальный файловый сервер не отвечает. Запусти start.bat или server/npm run dev, затем повтори открытие мира.",
+      "createWorldPath": "Не удалось создать мир по этому пути. Проверь, что папка доступна для записи.",
+      "worldFolderMissing": "Папка мира не найдена. Проверь путь или выбери папку мира через кнопку.",
+      "openWorldFailed": "Не удалось открыть мир. Проверь путь к папке и состояние локального сервера.",
+      "joinServerNetwork": "Не удалось связаться с {{host}}:3001. Проверь IP, Radmin/Hamachi, Firewall Windows и что у ГМа запущен Eternity Table с открытым миром.",
+      "joinServerFallback": "{{error}}. Проверь адрес {{host}}:3001 и попроси ГМа открыть мир.",
+      "connectionError": "Ошибка подключения",
+      "enterPlayerName": "Пожалуйста, введите ваше имя перед подключением",
+      "fileServerHttp": "Файловый сервер ответил HTTP {{status}}",
+      "serverOnlineNoWorld": "Сервер онлайн, но ГМ ещё не открыл мир. Попроси ГМа открыть мир на хосте."
+    },
+    "status": {
+      "desktopServerPreparing": "Desktop runtime готовит локальный сервер.",
+      "serverProbeIdle": "Проверка локального сервера ещё не запускалась.",
+      "checkingLocalServer": "Проверяю http://localhost:3001...",
+      "serverOnlineWorld": "Сервер работает, открыт мир: {{worldName}}.",
+      "serverOnlineNoWorld": "Сервер работает. Выбери или создай мир, чтобы открыть комнату.",
+      "creatingWorld": "Создаю мир...",
+      "openingWorld": "Открываю мир...",
+      "worldOpenedPrefix": "Мир открыт:",
+      "worldOpened": "Мир открыт: {{name}}",
+      "checkingServer": "Проверяю сервер {{host}}...",
+      "connectingProfile": "Подключаю профиль к миру {{worldName}}..."
+    },
+    "gmName": "ГМ",
+    "hostWorldAsGm": "Вести мир как ГМ",
+    "joinAsPlayer": "Подключиться как игрок",
+    "uiDemo": "Демонстрация стилей UI",
+    "worlds": "Миры",
+    "localServer": "Локальный сервер",
+    "checkServer": "Проверить",
+    "openWorld": "Открыть мир",
+    "createWorld": "Создать мир",
+    "worldNamePlaceholder": "Название мира",
+    "worldPathPlaceholder": "Путь к папке мира",
+    "createAndOpenWorld": "Создать и открыть мир",
+    "connection": "Подключение",
+    "ipLabel": "IP",
+    "worldLabel": "Мир",
+    "localServerLabel": "Локальный",
+    "newConnection": "Новое подключение",
+    "playerNameLabel": "Ваше имя (будет видно в чате и ГМу)",
+    "playerNamePlaceholder": "Введите имя персонажа или ник",
+    "serverLabelName": "Название (для сохранения)",
+    "serverLabelPlaceholder": "Например: Сервер Влада",
+    "hostIpLabel": "IP-адрес хоста",
+    "hostIpPlaceholder": "Например: 26.54.12.3 (пусто для Local)",
+    "savedServerFallback": "Сервер ({{host}})",
+    "saveAndConnect": "Сохранить и подключиться",
+    "loadingEntities": "Загрузка сущностей: {{loaded}} / {{total}}",
+    "version": "v0.1.0 beta — local-first world files"
   },
   "common": {
     "close": "Закрыть",
-    "reset": "Сброс"
+    "reset": "Сброс",
+    "back": "↺ Назад",
+    "delete": "Удалить",
+    "select": "Выбрать"
   },
   "app": {
     "unsavedChangesConfirm": "Есть несохранённые данные. Уверены?"

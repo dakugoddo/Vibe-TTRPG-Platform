@@ -2,11 +2,71 @@
     "login": {
         "title": "ETERNITY TABLE / CONNECT",
         "directoryPlaceholder": "ROOM DIRECTORY",
-        "connectBtn": "INITIALIZE CONNECTION"
+        "connectBtn": "INITIALIZE CONNECTION",
+        "runtime": {
+            "desktop": "Electron desktop",
+            "browser": "Browser client"
+        },
+        "errors": {
+            "desktopServerOffline": "The local app server is not responding. Restart Electron dev or check that the embedded server started on port 3001.",
+            "fileServerOffline": "The local file server is not responding. Start start.bat or server/npm run dev, then try opening the world again.",
+            "createWorldPath": "Could not create a world at this path. Check that the folder is writable.",
+            "worldFolderMissing": "World folder not found. Check the path or choose a world folder with the button.",
+            "openWorldFailed": "Could not open the world. Check the folder path and the local server state.",
+            "joinServerNetwork": "Could not reach {{host}}:3001. Check the IP, Radmin/Hamachi, Windows Firewall, and that the GM has Eternity Table running with an open world.",
+            "joinServerFallback": "{{error}}. Check {{host}}:3001 and ask the GM to open the world.",
+            "connectionError": "Connection error",
+            "enterPlayerName": "Please enter your name before connecting",
+            "fileServerHttp": "File server returned HTTP {{status}}",
+            "serverOnlineNoWorld": "Server is online, but the GM has not opened a world yet. Ask the GM to open a world on the host."
+        },
+        "status": {
+            "desktopServerPreparing": "Desktop runtime is preparing the local server.",
+            "serverProbeIdle": "Local server check has not run yet.",
+            "checkingLocalServer": "Checking http://localhost:3001...",
+            "serverOnlineWorld": "Server is running, world open: {{worldName}}.",
+            "serverOnlineNoWorld": "Server is running. Choose or create a world to open a room.",
+            "creatingWorld": "Creating world...",
+            "openingWorld": "Opening world...",
+            "worldOpenedPrefix": "World opened:",
+            "worldOpened": "World opened: {{name}}",
+            "checkingServer": "Checking server {{host}}...",
+            "connectingProfile": "Connecting profile to {{worldName}}..."
+        },
+        "gmName": "GM",
+        "hostWorldAsGm": "Host world as GM",
+        "joinAsPlayer": "Join as player",
+        "uiDemo": "UI style demo",
+        "worlds": "Worlds",
+        "localServer": "Local server",
+        "checkServer": "Check",
+        "openWorld": "Open world",
+        "createWorld": "Create world",
+        "worldNamePlaceholder": "World name",
+        "worldPathPlaceholder": "Path to world folder",
+        "createAndOpenWorld": "Create and open world",
+        "connection": "Connection",
+        "ipLabel": "IP",
+        "worldLabel": "World",
+        "localServerLabel": "Local",
+        "newConnection": "New connection",
+        "playerNameLabel": "Your name (visible in chat and to the GM)",
+        "playerNamePlaceholder": "Enter character name or nickname",
+        "serverLabelName": "Name (for saving)",
+        "serverLabelPlaceholder": "Example: Vlad's server",
+        "hostIpLabel": "Host IP address",
+        "hostIpPlaceholder": "Example: 26.54.12.3 (empty for Local)",
+        "savedServerFallback": "Server ({{host}})",
+        "saveAndConnect": "Save and connect",
+        "loadingEntities": "Loading entities: {{loaded}} / {{total}}",
+        "version": "v0.1.0 beta — local-first world files"
     },
     "common": {
         "close": "Close",
-        "reset": "Reset"
+        "reset": "Reset",
+        "back": "↺ Back",
+        "delete": "Delete",
+        "select": "Select"
     },
     "app": {
         "unsavedChangesConfirm": "There may be unsaved data. Are you sure?"

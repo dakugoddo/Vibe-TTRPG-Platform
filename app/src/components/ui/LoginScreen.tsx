@@ -1,4 +1,6 @@
 import { useCallback, useState, useEffect } from 'react';
+import i18next from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, CheckCircle2, FolderOpen, Loader2, Monitor, PlugZap, Server, UserRound } from 'lucide-react';
 import { claimPlayerProfile, setIsHost, resetServerCache } from '../../services/fileApi';
 import { loadWorld, onSyncProgress, onSyncStatus } from '../../services/fileSyncService';
@@ -40,33 +42,37 @@ function getHostWorldErrorMessage(error: unknown, isCreate: boolean, desktopRunt
     const raw = readErrorMessage(error);
     if (/failed to fetch|network|abort|timeout|timed out/i.test(raw)) {
         return desktopRuntime
-            ? 'Локальный сервер приложения не отвечает. Перезапусти Electron dev или проверь, что embedded server запустился на порту 3001.'
-            : 'Локальный файловый сервер не отвечает. Запусти start.bat или server/npm run dev, затем повтори открытие мира.';
+            ? i18next.t('login.errors.desktopServerOffline')
+            : i18next.t('login.errors.fileServerOffline');
     }
     if (/enoent|not found|no such file|cannot find/i.test(raw)) {
         return isCreate
-            ? 'Не удалось создать мир по этому пути. Проверь, что папка доступна для записи.'
-            : 'Папка мира не найдена. Проверь путь или выбери папку мира через кнопку.';
+            ? i18next.t('login.errors.createWorldPath')
+            : i18next.t('login.errors.worldFolderMissing');
     }
-    return raw || 'Не удалось открыть мир. Проверь путь к папке и состояние локального сервера.';
+    return raw || i18next.t('login.errors.openWorldFailed');
 }
 
 function getJoinServerErrorMessage(error: unknown, host: string): string {
     const raw = readErrorMessage(error);
     if (/ГМ ещё не открыл мир|ГМ еще не открыл мир|мир/i.test(raw)) return raw;
     if (/failed to fetch|network|abort|timeout|timed out/i.test(raw)) {
-        return `Не удалось связаться с ${host}:3001. Проверь IP, Radmin/Hamachi, Firewall Windows и что у ГМа запущен Eternity Table с открытым миром.`;
+        return i18next.t('login.errors.joinServerNetwork', { host });
     }
-    return `${raw || 'Ошибка подключения'}. Проверь адрес ${host}:3001 и попроси ГМа открыть мир.`;
+    return i18next.t('login.errors.joinServerFallback', {
+        error: raw || i18next.t('login.errors.connectionError'),
+        host,
+    });
 }
 
 function translateLoadStatus(message: string): string {
-    if (/loading world/i.test(message)) return 'Открываю мир...';
-    if (/world loaded/i.test(message)) return message.replace(/World loaded:/i, 'Мир открыт:');
+    if (/loading world/i.test(message)) return i18next.t('login.status.openingWorld');
+    if (/world loaded/i.test(message)) return message.replace(/World loaded:/i, i18next.t('login.status.worldOpenedPrefix'));
     return message;
 }
 
 export function LoginScreen({ onJoin }: LoginScreenProps) {
+    const { t } = useTranslation();
     const [step, setStep] = useState<Step>('main');
 
     // Host States
@@ -89,7 +95,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
     const desktopRuntime = isDesktopRuntime();
     const [serverProbe, setServerProbe] = useState<ServerProbeState>({
         status: 'idle',
-        message: desktopRuntime ? 'Desktop runtime готовит локальный сервер.' : 'Проверка локального сервера ещё не запускалась.',
+        message: desktopRuntime ? t('login.status.desktopServerPreparing') : t('login.status.serverProbeIdle'),
     });
 
     useEffect(() => {
@@ -101,7 +107,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
     }, [savedServers]);
 
     const probeLocalServer = useCallback(async () => {
-        setServerProbe({ status: 'checking', message: 'Проверяю http://localhost:3001...' });
+        setServerProbe({ status: 'checking', message: t('login.status.checkingLocalServer') });
         try {
             const res = await fetch('http://localhost:3001/api/world/status', {
                 signal: AbortSignal.timeout(2500),
@@ -112,8 +118,8 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                 status: 'online',
                 worldName: data.worldName,
                 message: data.isOpen && data.worldName
-                    ? `Сервер работает, открыт мир: ${data.worldName}.`
-                    : 'Сервер работает. Выбери или создай мир, чтобы открыть комнату.',
+                    ? t('login.status.serverOnlineWorld', { worldName: data.worldName })
+                    : t('login.status.serverOnlineNoWorld'),
             });
         } catch (err) {
             setServerProbe({
@@ -121,7 +127,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                 message: getHostWorldErrorMessage(err, false, desktopRuntime),
             });
         }
-    }, [desktopRuntime]);
+    }, [desktopRuntime, t]);
 
     useEffect(() => {
         if (step !== 'host') return;
@@ -148,7 +154,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
 
         setError('');
         setStep('loading');
-        setLoadStatus(isCreate ? 'Создаю мир...' : 'Открываю мир...');
+        setLoadStatus(isCreate ? t('login.status.creatingWorld') : t('login.status.openingWorld'));
 
         onSyncProgress((loaded, total) => setLoadProgress({ loaded, total }));
         onSyncStatus((status, message) => {
@@ -174,13 +180,13 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                 
                 // Clear server API settings to ensure local override
                 localStorage.setItem('vibe_server_ip', '');
-                localStorage.setItem('vibe_player_name', 'ГМ');
+                localStorage.setItem('vibe_player_name', t('login.gmName'));
                 
                 // Auto-set room name from world name and connect
                 const room = meta.name.toLowerCase().replace(/\s+/g, '-');
-                setLoadStatus(`Мир открыт: ${meta.name}`);
+                setLoadStatus(t('login.status.worldOpened', { name: meta.name }));
                 void probeLocalServer();
-                setTimeout(() => onJoin(room, 'ГМ'), 500); // Give small delay for UI
+                setTimeout(() => onJoin(room, t('login.gmName')), 500); // Give small delay for UI
             }
         } catch (err) {
             setError(getHostWorldErrorMessage(err, isCreate, desktopRuntime));
@@ -206,13 +212,13 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
     const handleJoinServer = async (ip: string, serverIdToUpdate?: string) => {
         const displayName = playerName.trim();
         if (!displayName) {
-            setError('Пожалуйста, введите ваше имя перед подключением');
+            setError(t('login.errors.enterPlayerName'));
             return;
         }
         
         setError('');
         setStep('loading');
-        setLoadStatus(`Проверяю сервер ${ip || 'localhost'}...`);
+        setLoadStatus(t('login.status.checkingServer', { host: ip || t('login.localServerLabel') }));
 
         const host = ip.trim() || window.location.hostname;
         try {
@@ -221,14 +227,14 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                 signal: AbortSignal.timeout(4000), // 4 sec timeout
             });
 
-            if (!res.ok) throw new Error(`Файловый сервер ответил HTTP ${res.status}`);
+            if (!res.ok) throw new Error(t('login.errors.fileServerHttp', { status: res.status }));
             
             const data = await res.json();
             if (!data.isOpen || !data.worldName) {
-                throw new Error('Сервер онлайн, но ГМ ещё не открыл мир. Попроси ГМа открыть мир на хосте.');
+                throw new Error(t('login.errors.serverOnlineNoWorld'));
             }
 
-            setLoadStatus(`Подключаю профиль к миру ${data.worldName}...`);
+            setLoadStatus(t('login.status.connectingProfile', { worldName: data.worldName }));
             const roomName = data.worldName.toLowerCase().replace(/\s+/g, '-');
             const profile = await claimPlayerProfile(host, displayName, localStorage.getItem('vibe_player_id') || undefined);
 
@@ -252,13 +258,13 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
 
         const displayName = playerName.trim();
         if (!displayName) {
-            setError('Пожалуйста, введите ваше имя перед подключением');
+            setError(t('login.errors.enterPlayerName'));
             return;
         }
 
         const newServer: SavedServer = {
             id: Date.now().toString(),
-            label: newServerLabel.trim() || `Сервер (${newServerIp || 'Локальный'})`,
+            label: newServerLabel.trim() || t('login.savedServerFallback', { host: newServerIp || t('login.localServerLabel') }),
             ip: newServerIp.trim()
         };
 
@@ -290,7 +296,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                 <div className="mb-5 flex justify-center">
                     <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-bold text-white/45">
                         <Monitor size={12} />
-                        {desktopRuntime ? 'Electron desktop' : 'Browser client'}
+                        {desktopRuntime ? t('login.runtime.desktop') : t('login.runtime.browser')}
                     </span>
                 </div>
 
@@ -308,14 +314,14 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                             onClick={handleGoHost}
                             className="w-full bg-gradient-to-r from-emerald-600/60 to-cyan-600/60 hover:from-emerald-500/80 hover:to-cyan-500/80 text-white font-bold py-4 px-4 rounded-xl shadow-lg hover:shadow-emerald-500/25 transition-all outline-none flex items-center justify-center gap-3 border border-emerald-500/30"
                         >
-                            <Server size={18} /> Вести мир как ГМ
+                            <Server size={18} /> {t('login.hostWorldAsGm')}
                         </button>
 
                         <button
                             onClick={handleGoPlayer}
                             className="w-full bg-white/5 hover:bg-white/10 text-white/90 font-bold py-4 px-4 rounded-xl transition-all outline-none border border-white/10 flex items-center justify-center gap-3 shadow-inner hover:shadow-white/10"
                         >
-                            <UserRound size={18} /> Подключиться как игрок
+                            <UserRound size={18} /> {t('login.joinAsPlayer')}
                         </button>
 
                         <div className="my-2 border-t border-white/5 w-1/2 mx-auto"></div>
@@ -324,7 +330,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                             onClick={() => setShowDemo(true)}
                             className="w-full bg-transparent hover:bg-white/5 text-white/40 hover:text-white/70 font-medium py-3 px-4 rounded-xl transition-all border border-dashed border-white/20 text-sm flex items-center justify-center gap-2"
                         >
-                            Демонстрация стилей UI
+                            {t('login.uiDemo')}
                         </button>
                     </div>
                 )}
@@ -333,9 +339,9 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                 {step === 'host' && (
                     <div className="flex flex-col gap-5 animate-in slide-in-from-right-4 duration-300">
                         <div className="flex items-center justify-between mb-2">
-                            <h2 className="text-lg font-bold text-white/90">Миры</h2>
+                            <h2 className="text-lg font-bold text-white/90">{t('login.worlds')}</h2>
                             <button onClick={() => { setStep('main'); setError(''); }} className="text-white/40 hover:text-white/80 p-1">
-                                ↺ Назад
+                                {t('common.back')}
                             </button>
                         </div>
 
@@ -354,7 +360,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                                         : <PlugZap size={16} />}
                             </div>
                             <div className="min-w-0 flex-1">
-                                <div className="text-[10px] font-bold uppercase text-white/40">Локальный сервер</div>
+                                <div className="text-[10px] font-bold uppercase text-white/40">{t('login.localServer')}</div>
                                 <div className="truncate text-xs text-white/72" title={serverProbe.message}>{serverProbe.message}</div>
                             </div>
                             <button
@@ -362,7 +368,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                                 onClick={() => void probeLocalServer()}
                                 className="h-8 flex-shrink-0 rounded-lg border border-white/10 bg-white/5 px-2.5 text-[10px] font-bold text-white/55 transition-colors hover:bg-white/10 hover:text-white"
                             >
-                                Проверить
+                                {t('login.checkServer')}
                             </button>
                         </div>
 
@@ -381,7 +387,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                                         <button 
                                             onClick={(e) => handleDeleteSavedWorld(w.path, e)}
                                             className="w-10 bg-white/5 hover:bg-red-500/40 rounded-r-lg border-l border-white/5 flex items-center justify-center text-white/30 hover:text-white transition-colors"
-                                            title="Удалить"
+                                            title={t('common.delete')}
                                         >
                                             ✕
                                         </button>
@@ -395,8 +401,8 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                         {/* Create / Open New */}
                         <div className="bg-black/20 p-4 rounded-xl border border-white/5 shadow-inner">
                             <div className="flex gap-2 mb-4">
-                                <button onClick={() => setCreateMode(false)} className={`flex-1 py-1.5 text-xs rounded-lg transition-all ${!createMode ? 'bg-white/20 text-white' : 'text-white/40 hover:bg-white/10'}`}>Открыть мир</button>
-                                <button onClick={() => setCreateMode(true)} className={`flex-1 py-1.5 text-xs rounded-lg transition-all ${createMode ? 'bg-white/20 text-white' : 'text-white/40 hover:bg-white/10'}`}>Создать мир</button>
+                                <button onClick={() => setCreateMode(false)} className={`flex-1 py-1.5 text-xs rounded-lg transition-all ${!createMode ? 'bg-white/20 text-white' : 'text-white/40 hover:bg-white/10'}`}>{t('login.openWorld')}</button>
+                                <button onClick={() => setCreateMode(true)} className={`flex-1 py-1.5 text-xs rounded-lg transition-all ${createMode ? 'bg-white/20 text-white' : 'text-white/40 hover:bg-white/10'}`}>{t('login.createWorld')}</button>
                             </div>
                             
                             <form 
@@ -404,10 +410,10 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                                 className="flex flex-col gap-3"
                             >
                                 {createMode && (
-                                    <input type="text" value={worldName} onChange={e => setWorldName(e.target.value)} className={`${glass.input} w-full text-sm`} placeholder="Название мира" required />
+                                    <input type="text" value={worldName} onChange={e => setWorldName(e.target.value)} className={`${glass.input} w-full text-sm`} placeholder={t('login.worldNamePlaceholder')} required />
                                 )}
                                 <div className="flex gap-2">
-                                    <input type="text" value={worldPath} onChange={e => setWorldPath(e.target.value)} className={`${glass.input} min-w-0 flex-1 text-sm font-mono`} placeholder={createMode ? 'C:\\Games\\MyWorld' : 'Путь к папке мира'} required />
+                                    <input type="text" value={worldPath} onChange={e => setWorldPath(e.target.value)} className={`${glass.input} min-w-0 flex-1 text-sm font-mono`} placeholder={createMode ? 'C:\\Games\\MyWorld' : t('login.worldPathPlaceholder')} required />
                                     {desktopRuntime && (
                                         <button
                                             type="button"
@@ -415,12 +421,12 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                                             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-white/70 transition-colors hover:bg-white/15 hover:text-white"
                                         >
                                             <FolderOpen size={13} />
-                                            Выбрать
+                                            {t('common.select')}
                                         </button>
                                     )}
                                 </div>
                                 <button type="submit" className="w-full mt-2 bg-gradient-to-r from-emerald-600/80 to-emerald-500/80 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold py-2.5 rounded-lg shadow-lg transition-all text-sm">
-                                    {createMode ? 'Создать и открыть мир' : 'Открыть мир'}
+                                    {createMode ? t('login.createAndOpenWorld') : t('login.openWorld')}
                                 </button>
                             </form>
                         </div>
@@ -431,9 +437,9 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                 {step === 'join' && (
                     <div className="flex flex-col gap-5 animate-in slide-in-from-left-4 duration-300">
                         <div className="flex items-center justify-between mb-2">
-                            <h2 className="text-lg font-bold text-white/90">Подключение</h2>
+                            <h2 className="text-lg font-bold text-white/90">{t('login.connection')}</h2>
                             <button onClick={() => { setStep('main'); setError(''); }} className="text-white/40 hover:text-white/80 p-1">
-                                ↺ Назад
+                                {t('common.back')}
                             </button>
                         </div>
 
@@ -448,14 +454,14 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                                         >
                                             <div className="font-bold text-sm text-cyan-400 truncate">{s.label}</div>
                                             <div className="flex items-center gap-2 mt-0.5 text-white/40 text-[10px] font-mono">
-                                                <span className="bg-white/10 px-1 rounded">IP: {s.ip || 'Локальный'}</span>
-                                                {s.lastRoom && <span className="bg-white/10 px-1 rounded">Мир: {s.lastRoom}</span>}
+                                                <span className="bg-white/10 px-1 rounded">{t('login.ipLabel')}: {s.ip || t('login.localServerLabel')}</span>
+                                                {s.lastRoom && <span className="bg-white/10 px-1 rounded">{t('login.worldLabel')}: {s.lastRoom}</span>}
                                             </div>
                                         </button>
                                         <button 
                                             onClick={(e) => handleDeleteSavedServer(s.id, e)}
                                             className="w-10 bg-white/5 hover:bg-red-500/40 rounded-r-lg border-l border-white/5 flex items-center justify-center text-white/30 hover:text-white transition-colors"
-                                            title="Удалить"
+                                            title={t('common.delete')}
                                         >
                                             ✕
                                         </button>
@@ -468,22 +474,22 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
 
                         {/* Connect to New Server */}
                         <div className="bg-black/20 p-4 rounded-xl border border-white/5 shadow-inner">
-                            <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-3">Новое подключение</h3>
+                            <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-3">{t('login.newConnection')}</h3>
                             <div className="mb-3">
-                                <label className="text-[10px] text-white/40 mb-1 block px-1">Ваше имя (будет видно в чате и ГМу)</label>
-                                <input type="text" value={playerName} onChange={e => { setPlayerName(e.target.value); localStorage.setItem('vibe_player_name', e.target.value); }} className={`${glass.input} w-full text-sm`} placeholder="Введите имя персонажа или ник" />
+                                <label className="text-[10px] text-white/40 mb-1 block px-1">{t('login.playerNameLabel')}</label>
+                                <input type="text" value={playerName} onChange={e => { setPlayerName(e.target.value); localStorage.setItem('vibe_player_name', e.target.value); }} className={`${glass.input} w-full text-sm`} placeholder={t('login.playerNamePlaceholder')} />
                             </div>
                             <form onSubmit={handleSaveAndJoinServer} className="flex flex-col gap-3">
                                 <div>
-                                    <label className="text-[10px] text-white/40 mb-1 block px-1">Название (для сохранения)</label>
-                                    <input type="text" value={newServerLabel} onChange={e => setNewServerLabel(e.target.value)} className={`${glass.input} w-full text-sm`} placeholder="Например: Сервер Влада" />
+                                    <label className="text-[10px] text-white/40 mb-1 block px-1">{t('login.serverLabelName')}</label>
+                                    <input type="text" value={newServerLabel} onChange={e => setNewServerLabel(e.target.value)} className={`${glass.input} w-full text-sm`} placeholder={t('login.serverLabelPlaceholder')} />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] text-white/40 mb-1 block px-1">IP-адрес Хоста</label>
-                                    <input type="text" value={newServerIp} onChange={e => setNewServerIp(e.target.value)} className={`${glass.input} w-full text-sm font-mono`} placeholder="Например: 26.54.12.3 (пусто для Local)" />
+                                    <label className="text-[10px] text-white/40 mb-1 block px-1">{t('login.hostIpLabel')}</label>
+                                    <input type="text" value={newServerIp} onChange={e => setNewServerIp(e.target.value)} className={`${glass.input} w-full text-sm font-mono`} placeholder={t('login.hostIpPlaceholder')} />
                                 </div>
                                 <button type="submit" className="w-full mt-2 bg-gradient-to-r from-cyan-600/80 to-blue-600/80 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-2.5 rounded-lg shadow-lg transition-all text-sm">
-                                    Сохранить и подключиться
+                                    {t('login.saveAndConnect')}
                                 </button>
                             </form>
                         </div>
@@ -504,7 +510,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                                     ></div>
                                 </div>
                                 <p className="text-[10px] text-white/30 mt-2 text-center font-mono opacity-50">
-                                    Загрузка сущностей: {loadProgress.loaded} / {loadProgress.total}
+                                    {t('login.loadingEntities', { loaded: loadProgress.loaded, total: loadProgress.total })}
                                 </p>
                             </div>
                         )}
@@ -522,7 +528,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                 </div>
             )}
             {/* Version */}
-            <p className="text-white/20 text-[10px] mt-4 font-mono select-none">v0.1.0 beta — local-first world files</p>
+            <p className="text-white/20 text-[10px] mt-4 font-mono select-none">{t('login.version')}</p>
         </div>
     );
 }
