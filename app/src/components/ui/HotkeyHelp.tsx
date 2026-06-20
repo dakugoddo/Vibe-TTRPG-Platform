@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ReactDOM from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { HelpCircle, X, MousePointer2, Pencil, Minus, Square, Disc, MessageSquare, Type, Image, Hand, Grid3X3, type LucideIcon } from 'lucide-react';
 
 interface ShortcutItem {
@@ -13,59 +14,59 @@ interface ShortcutSection {
     items: ShortcutItem[];
 }
 
-const SHORTCUTS: ShortcutSection[] = [
-    { section: 'Инструменты канваса', items: [
-        { keys: ['H'], desc: 'Hand (панорама)', icon: Hand },
-        { keys: ['V'], desc: 'Select (выделение)', icon: MousePointer2 },
-        { keys: ['P'], desc: 'Pen (карандаш)', icon: Pencil },
-        { keys: ['L'], desc: 'Line (линия)', icon: Minus },
-        { keys: ['R'], desc: 'Rectangle', icon: Square },
-        { keys: ['O'], desc: 'Ellipse (овал)', icon: Disc },
-        { keys: ['F'], desc: 'Frame (фрейм)', icon: MessageSquare },
-        { keys: ['T'], desc: 'Text (текст)', icon: Type },
-        { keys: ['I'], desc: 'Image (изображение)', icon: Image },
-        { keys: ['1-9'], desc: 'Инструменты 1-9', icon: Grid3X3 },
-    ]},
-    { section: 'Редактирование', items: [
-        { keys: ['Ctrl+Z'], desc: 'Отменить' },
-        { keys: ['Ctrl+Shift+Z', 'Ctrl+Y'], desc: 'Повторить' },
-        { keys: ['Ctrl+C'], desc: 'Копировать' },
-        { keys: ['Ctrl+V'], desc: 'Вставить' },
-        { keys: ['Delete', 'Backspace'], desc: 'Удалить (с подтверждением)' },
-        { keys: ['Ctrl+A'], desc: 'Выделить всё' },
-        { keys: ['Esc'], desc: 'Снять выделение / Выйти из Fog режима' },
-    ]},
-    { section: 'Навигация', items: [
-        { keys: ['Колёсико мыши'], desc: 'Zoom' },
-        { keys: ['Средняя кнопка + drag'], desc: 'Панорама' },
-        { keys: ['Shift + drag'], desc: 'Движение по одной оси' },
-    ]},
-    { section: 'Мультиплеер', items: [
-        { keys: ['G + клик'], desc: 'Пинг на канвасе' },
-        { keys: ['ПКМ на портале'], desc: 'Контекстное меню портала' },
-    ]},
-    { section: 'Чат и кубы', items: [
-        { keys: ['/r 2d6'], desc: 'Бросок 2d6' },
-        { keys: ['/r 1d20+5'], desc: 'Бросок с модификатором' },
-        { keys: ['Enter'], desc: 'Отправить сообщение' },
-        { keys: ['👁️ (панель)'], desc: 'Режим редактирования тумана войны' },
-    ]},
-    { section: 'Окна', items: [
-        { keys: ['Двойной клик (иконка)'], desc: 'Развернуть окно' },
-        { keys: ['Двойной клик (база)'], desc: 'Открыть персонажа в окне' },
-        { keys: ['📌 (кнопка)'], desc: 'Закрепить окно на канвасе' },
-    ]},
-];
-
 export function HotkeyHelp() {
+    const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
+    const shortcuts: ShortcutSection[] = [
+        { section: t('hotkeys.sections.canvasTools'), items: [
+            { keys: ['H'], desc: t('hotkeys.items.hand'), icon: Hand },
+            { keys: ['V'], desc: t('hotkeys.items.select'), icon: MousePointer2 },
+            { keys: ['P'], desc: t('hotkeys.items.pen'), icon: Pencil },
+            { keys: ['L'], desc: t('hotkeys.items.line'), icon: Minus },
+            { keys: ['R'], desc: t('hotkeys.items.rectangle'), icon: Square },
+            { keys: ['O'], desc: t('hotkeys.items.ellipse'), icon: Disc },
+            { keys: ['F'], desc: t('hotkeys.items.frame'), icon: MessageSquare },
+            { keys: ['T'], desc: t('hotkeys.items.text'), icon: Type },
+            { keys: ['I'], desc: t('hotkeys.items.image'), icon: Image },
+            { keys: ['1-9'], desc: t('hotkeys.items.tools'), icon: Grid3X3 },
+        ]},
+        { section: t('hotkeys.sections.editing'), items: [
+            { keys: ['Ctrl+Z'], desc: t('hotkeys.items.undo') },
+            { keys: ['Ctrl+Shift+Z', 'Ctrl+Y'], desc: t('hotkeys.items.redo') },
+            { keys: ['Ctrl+C'], desc: t('hotkeys.items.copy') },
+            { keys: ['Ctrl+V'], desc: t('hotkeys.items.paste') },
+            { keys: ['Delete', 'Backspace'], desc: t('hotkeys.items.deleteConfirm') },
+            { keys: ['Ctrl+A'], desc: t('hotkeys.items.selectAll') },
+            { keys: ['Esc'], desc: t('hotkeys.items.clearSelection') },
+        ]},
+        { section: t('hotkeys.sections.navigation'), items: [
+            { keys: [t('hotkeys.keys.mouseWheel')], desc: t('hotkeys.items.zoom') },
+            { keys: [t('hotkeys.keys.middleDrag')], desc: t('hotkeys.items.pan') },
+            { keys: ['Shift + drag'], desc: t('hotkeys.items.axisMove') },
+        ]},
+        { section: t('hotkeys.sections.multiplayer'), items: [
+            { keys: [t('hotkeys.keys.gClick')], desc: t('hotkeys.items.ping') },
+            { keys: [t('hotkeys.keys.portalContext')], desc: t('hotkeys.items.portalContext') },
+        ]},
+        { section: t('hotkeys.sections.chatDice'), items: [
+            { keys: ['/r 2d6'], desc: t('hotkeys.items.roll2d6') },
+            { keys: ['/r 1d20+5'], desc: t('hotkeys.items.rollModifier') },
+            { keys: ['Enter'], desc: t('hotkeys.items.sendMessage') },
+            { keys: [t('hotkeys.keys.fogPanel')], desc: t('hotkeys.items.fogEdit') },
+        ]},
+        { section: t('hotkeys.sections.windows'), items: [
+            { keys: [t('hotkeys.keys.doubleIcon')], desc: t('hotkeys.items.expandWindow') },
+            { keys: [t('hotkeys.keys.doubleDatabase')], desc: t('hotkeys.items.openWindow') },
+            { keys: [t('hotkeys.keys.pinButton')], desc: t('hotkeys.items.pinWindow') },
+        ]},
+    ];
 
     if (!isOpen) {
         return (
             <button
                 onClick={() => setIsOpen(true)}
                 className="fixed bottom-4 right-4 z-30 w-10 h-10 rounded-xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center text-white/50 hover:text-white hover:bg-white/20 hover:border-white/30 transition-all shadow-lg"
-                title="Горячие клавиши"
+                title={t('hotkeys.title')}
             >
                 <HelpCircle size={18} />
             </button>
@@ -85,9 +86,9 @@ export function HotkeyHelp() {
                         <div>
                             <h3 className="text-sm font-bold text-white flex items-center gap-2">
                                 <HelpCircle size={16} className="text-violet-400" />
-                                Горячие клавиши
+                                {t('hotkeys.title')}
                             </h3>
-                            <p className="text-xs text-white/40 mt-0.5">Все сочетания клавиш и управления</p>
+                            <p className="text-xs text-white/40 mt-0.5">{t('hotkeys.subtitle')}</p>
                         </div>
                         <button
                             onClick={() => setIsOpen(false)}
@@ -99,7 +100,7 @@ export function HotkeyHelp() {
 
                     {/* Content */}
                     <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4">
-                        {SHORTCUTS.map((section) => (
+                        {shortcuts.map((section) => (
                             <div key={section.section}>
                                 <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2 border-b border-white/5 pb-1.5">
                                     {section.section}

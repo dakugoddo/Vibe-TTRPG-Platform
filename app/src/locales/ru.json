@@ -66,7 +66,73 @@
     "reset": "Сброс",
     "back": "↺ Назад",
     "delete": "Удалить",
-    "select": "Выбрать"
+    "select": "Выбрать",
+    "cancel": "Отмена"
+  },
+  "notifications": {
+    "title": "Уведомления",
+    "records": "{{count}} записей",
+    "clearCompleted": "Очистить завершённые",
+    "empty": "Пока тихо",
+    "activeProcesses": "есть активные процессы",
+    "hide": "Скрыть",
+    "done": "Готово",
+    "uploading": "Загрузка",
+    "actionNotAppliedTitle": "Действие не применилось",
+    "actionNotAppliedMessage": "Заявка уже обработана или у пользователя нет прав."
+  },
+  "hotkeys": {
+    "title": "Горячие клавиши",
+    "subtitle": "Все сочетания клавиш и управления",
+    "sections": {
+      "canvasTools": "Инструменты канваса",
+      "editing": "Редактирование",
+      "navigation": "Навигация",
+      "multiplayer": "Мультиплеер",
+      "chatDice": "Чат и кубы",
+      "windows": "Окна"
+    },
+    "keys": {
+      "mouseWheel": "Колёсико мыши",
+      "middleDrag": "Средняя кнопка + drag",
+      "gClick": "G + клик",
+      "portalContext": "ПКМ на портале",
+      "fogPanel": "глаз (панель)",
+      "doubleIcon": "Двойной клик (иконка)",
+      "doubleDatabase": "Двойной клик (база)",
+      "pinButton": "pin (кнопка)"
+    },
+    "items": {
+      "hand": "Hand (панорама)",
+      "select": "Select (выделение)",
+      "pen": "Pen (карандаш)",
+      "line": "Line (линия)",
+      "rectangle": "Rectangle",
+      "ellipse": "Ellipse (овал)",
+      "frame": "Frame (фрейм)",
+      "text": "Text (текст)",
+      "image": "Image (изображение)",
+      "tools": "Инструменты 1-9",
+      "undo": "Отменить",
+      "redo": "Повторить",
+      "copy": "Копировать",
+      "paste": "Вставить",
+      "deleteConfirm": "Удалить (с подтверждением)",
+      "selectAll": "Выделить всё",
+      "clearSelection": "Снять выделение / выйти из Fog режима",
+      "zoom": "Zoom",
+      "pan": "Панорама",
+      "axisMove": "Движение по одной оси",
+      "ping": "Пинг на канвасе",
+      "portalContext": "Контекстное меню портала",
+      "roll2d6": "Бросок 2d6",
+      "rollModifier": "Бросок с модификатором",
+      "sendMessage": "Отправить сообщение",
+      "fogEdit": "Режим редактирования тумана войны",
+      "expandWindow": "Развернуть окно",
+      "openWindow": "Открыть персонажа в окне",
+      "pinWindow": "Закрепить окно на канвасе"
+    }
   },
   "app": {
     "unsavedChangesConfirm": "Есть несохранённые данные. Уверены?"

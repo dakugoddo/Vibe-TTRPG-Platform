@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Bell, CheckCircle2, Clock3, FileWarning, Info, Loader2, Trash2, X } from 'lucide-react';
 import { useNotificationStore } from '../../store/notificationStore';
 import { yjsStore } from '../../store/yjsStore';
@@ -38,14 +39,15 @@ function NotificationIcon({
     return <Info size={15} className={className} />;
 }
 
-function formatNotificationTime(timestamp: number): string {
-    return new Date(timestamp).toLocaleTimeString('ru-RU', {
+function formatNotificationTime(timestamp: number, language: string): string {
+    return new Date(timestamp).toLocaleTimeString(language || undefined, {
         hour: '2-digit',
         minute: '2-digit',
     });
 }
 
 function NotificationRow({ notification, compact = false }: { notification: AppNotification; compact?: boolean }) {
+    const { t, i18n } = useTranslation();
     const updateNotification = useNotificationStore((state) => state.updateNotification);
     const dismissNotification = useNotificationStore((state) => state.dismissNotification);
     const triggerAbort = useNotificationStore((state) => state.triggerAbort);
@@ -74,8 +76,8 @@ function NotificationRow({ notification, compact = false }: { notification: AppN
                 updateNotification(notification.id, {
                     kind: 'error',
                     status: 'failed',
-                    title: 'Действие не применилось',
-                    message: 'Заявка уже обработана или у пользователя нет прав.',
+                    title: t('notifications.actionNotAppliedTitle'),
+                    message: t('notifications.actionNotAppliedMessage'),
                 });
             }
             return;
@@ -105,14 +107,14 @@ function NotificationRow({ notification, compact = false }: { notification: AppN
                             )}
                         </div>
                         <span className="flex-shrink-0 font-mono text-[9px] text-[var(--vibe-text-faint)]">
-                            {formatNotificationTime(notification.updatedAt ?? notification.createdAt)}
+                            {formatNotificationTime(notification.updatedAt ?? notification.createdAt, i18n.language)}
                         </span>
                     </div>
 
                     {typeof notification.progress === 'number' && (
                         <div className="mt-2">
                             <div className="mb-1 flex justify-between text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                <span>{notification.status === 'done' ? 'Готово' : 'Загрузка'}</span>
+                                <span>{notification.status === 'done' ? t('notifications.done') : t('notifications.uploading')}</span>
                                 <span>{notification.progress}%</span>
                             </div>
                             <div className="h-1.5 overflow-hidden rounded-full bg-[var(--vibe-surface-input)]">
@@ -149,7 +151,7 @@ function NotificationRow({ notification, compact = false }: { notification: AppN
                     type="button"
                     onClick={() => dismissNotification(notification.id)}
                     className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-text-faint)] opacity-0 transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] group-hover:opacity-100"
-                    title="Скрыть"
+                    title={t('notifications.hide')}
                 >
                     <X size={13} />
                 </button>
@@ -163,6 +165,7 @@ interface NotificationCenterProps {
 }
 
 export function NotificationCenter({ surface = 'floating' }: NotificationCenterProps) {
+    const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
     const [now, setNow] = useState(() => Date.now());
     const notifications = useNotificationStore((state) => state.notifications);
@@ -193,9 +196,9 @@ export function NotificationCenter({ surface = 'floating' }: NotificationCenterP
                             <Bell size={15} />
                         </div>
                         <div className="min-w-0">
-                            <div className="truncate text-xs font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Уведомления</div>
+                            <div className="truncate text-xs font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">{t('notifications.title')}</div>
                             <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                {notifications.length} записей
+                                {t('notifications.records', { count: notifications.length })}
                             </div>
                         </div>
                     </div>
@@ -203,7 +206,7 @@ export function NotificationCenter({ surface = 'floating' }: NotificationCenterP
                         type="button"
                         onClick={clearCompleted}
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`}
-                        title="Очистить завершённые"
+                        title={t('notifications.clearCompleted')}
                     >
                         <Trash2 size={14} />
                     </button>
@@ -212,7 +215,7 @@ export function NotificationCenter({ surface = 'floating' }: NotificationCenterP
                 <div className="max-h-72 space-y-2 overflow-y-auto p-2 custom-scrollbar">
                     {notifications.length === 0 ? (
                         <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-4 text-center text-xs italic text-[var(--vibe-text-faint)]">
-                            Пока тихо
+                            {t('notifications.empty')}
                         </div>
                     ) : (
                         notifications.slice(0, 8).map((notification) => (
@@ -235,7 +238,7 @@ export function NotificationCenter({ surface = 'floating' }: NotificationCenterP
                             ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] shadow-[var(--vibe-shadow-block)]'
                             : `${glass.iconButton}`
                     }`}
-                    title="Уведомления"
+                    title={t('notifications.title')}
                 >
                     <Bell size={18} />
                     {pendingCount > 0 && (
@@ -253,9 +256,9 @@ export function NotificationCenter({ surface = 'floating' }: NotificationCenterP
                                     <Bell size={15} />
                                 </div>
                                 <div>
-                                    <div className="text-xs font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Уведомления</div>
+                                    <div className="text-xs font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">{t('notifications.title')}</div>
                                     <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                        {notifications.length} записей
+                                        {t('notifications.records', { count: notifications.length })}
                                     </div>
                                 </div>
                             </div>
@@ -263,7 +266,7 @@ export function NotificationCenter({ surface = 'floating' }: NotificationCenterP
                                 type="button"
                                 onClick={clearCompleted}
                                 className={`flex h-8 w-8 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`}
-                                title="Очистить завершённые"
+                                title={t('notifications.clearCompleted')}
                             >
                                 <Trash2 size={14} />
                             </button>
@@ -272,7 +275,7 @@ export function NotificationCenter({ surface = 'floating' }: NotificationCenterP
                         <div className="max-h-[min(520px,calc(100vh-140px))] space-y-2 overflow-y-auto p-3 custom-scrollbar">
                             {notifications.length === 0 ? (
                                 <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-5 text-center text-xs italic text-[var(--vibe-text-faint)]">
-                                    Пока тихо
+                                    {t('notifications.empty')}
                                 </div>
                             ) : (
                                 notifications.map((notification) => (
@@ -295,7 +298,7 @@ export function NotificationCenter({ surface = 'floating' }: NotificationCenterP
             {activeNotifications.some((notification) => notification.status === 'pending') && !isOpen && (
                 <div className={`hidden h-11 items-center gap-2 rounded-[var(--vibe-radius-md)] px-3 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-accent)] md:flex ${glass.panel}`}>
                     <Clock3 size={13} />
-                    есть активные процессы
+                    {t('notifications.activeProcesses')}
                 </div>
             )}
         </div>
