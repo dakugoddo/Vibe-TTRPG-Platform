@@ -68,6 +68,8 @@
         "delete": "Delete",
         "select": "Select",
         "cancel": "Cancel",
+        "retry": "Retry",
+        "system": "System",
         "collapsePanel": "Collapse panel",
         "loading": "Loading..."
     },
@@ -107,6 +109,70 @@
         "hostOnlyHint": "Choosing from `assets/` is available on the Host. You can still insert a file by uploading it.",
         "loadingAssets": "Loading assets...",
         "noImages": "No images found"
+    },
+    "assetBrowser": {
+        "worldFiles": "World files",
+        "hostOnlyDescription": "The file browser is available on the Host/GM side because the source of truth lives on the host disk. Audio is handled by a separate module and is not managed from the files tab.",
+        "uploadOrRequest": "Upload / request",
+        "uploadHint": "Files up to 50 MB upload immediately. Larger files send a request to the GM, and transfer starts after approval.",
+        "headerSubtitle": "assets/ now, audio and 3D later",
+        "addFiles": "Add files",
+        "refreshList": "Refresh list",
+        "searchPlaceholder": "Search files...",
+        "sortLabel": "Sort",
+        "selectedCount": "Selected {{count}}",
+        "showInExplorer": "Show in Explorer",
+        "clearSelection": "Clear selection",
+        "loadingFiles": "Loading files...",
+        "filesNotFound": "No files found",
+        "dragToCanvas": "Drag to canvas",
+        "deleteFile": "Delete file",
+        "filters": {
+            "all": "All",
+            "image": "Images",
+            "audio": "Audio",
+            "model": "3D",
+            "video": "Video",
+            "other": "Other"
+        },
+        "sort": {
+            "name": "Name",
+            "modified": "Newest",
+            "size": "Size",
+            "type": "Type"
+        },
+        "preview": {
+            "loading": "Loading",
+            "failed": "Could not load preview"
+        },
+        "upload": {
+            "fileUploaded": "File uploaded",
+            "cancelled": "Upload cancelled",
+            "failed": "Upload failed",
+            "fileTooLarge": "File too large",
+            "fileTooLargeMessage": "{{file}} • {{size}}. Quick upload is currently limited to 250 MB.",
+            "fileUpload": "File upload",
+            "largeFile": "Large file",
+            "fastTooLargeError": "File \"{{file}}\" is too large for quick upload. Copy large audio/models directly into assets/."
+        },
+        "inline": {
+            "title": "Old canvas images",
+            "summary": "{{count}} inline file(s), about {{kb}} KB",
+            "migrateTitle": "Move old canvas images into assets/",
+            "migrating": "Moving",
+            "toAssets": "To assets",
+            "migratedMessage": "Moved canvas images into assets/: {{count}}"
+        },
+        "delete": {
+            "title": "Delete file",
+            "description": "Delete “{{name}}” from assets/? If the file is already used on the canvas or in an entity, its link will break."
+        },
+        "deleteSelected": {
+            "title": "Bulk file delete",
+            "description": "Delete selected files ({{count}}) from assets/? {{names}}{{hidden}}. If they are already used on canvas or in entities, their links will break.",
+            "hiddenSuffix": " and {{count}} more",
+            "confirm": "Delete selected"
+        }
     },
     "notifications": {
         "title": "Notifications",

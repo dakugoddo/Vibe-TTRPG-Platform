@@ -68,6 +68,8 @@
     "delete": "Удалить",
     "select": "Выбрать",
     "cancel": "Отмена",
+    "retry": "Повторить",
+    "system": "Система",
     "collapsePanel": "Свернуть панель",
     "loading": "Загрузка..."
   },
@@ -107,6 +109,70 @@
     "hostOnlyHint": "Выбор из `assets/` доступен на Host. Файл всё ещё можно вставить через загрузку.",
     "loadingAssets": "Загружаю assets...",
     "noImages": "Изображения не найдены"
+  },
+  "assetBrowser": {
+    "worldFiles": "Файлы мира",
+    "hostOnlyDescription": "Браузер файлов доступен на стороне Host/ГМа, потому что source of truth лежит на диске хоста. Звук вынесен в отдельный модуль и не управляется из вкладки файлов.",
+    "uploadOrRequest": "Загрузить / запросить",
+    "uploadHint": "До 50 MB файл загружается сразу. Больше 50 MB отправляется заявка ГМу, а передача начинается после одобрения.",
+    "headerSubtitle": "assets/ сейчас, аудио и 3D позже",
+    "addFiles": "Добавить файлы",
+    "refreshList": "Обновить список",
+    "searchPlaceholder": "Поиск файлов...",
+    "sortLabel": "Сорт",
+    "selectedCount": "Выбрано {{count}}",
+    "showInExplorer": "Показать в проводнике",
+    "clearSelection": "Сбросить выделение",
+    "loadingFiles": "Загружаю файлы...",
+    "filesNotFound": "Файлы не найдены",
+    "dragToCanvas": "Перетащить на канвас",
+    "deleteFile": "Удалить файл",
+    "filters": {
+      "all": "Все",
+      "image": "Фото",
+      "audio": "Аудио",
+      "model": "3D",
+      "video": "Видео",
+      "other": "Прочее"
+    },
+    "sort": {
+      "name": "Имя",
+      "modified": "Новые",
+      "size": "Размер",
+      "type": "Тип"
+    },
+    "preview": {
+      "loading": "Загрузка",
+      "failed": "Не удалось загрузить превью"
+    },
+    "upload": {
+      "fileUploaded": "Файл загружен",
+      "cancelled": "Загрузка отменена",
+      "failed": "Загрузка не удалась",
+      "fileTooLarge": "Файл слишком большой",
+      "fileTooLargeMessage": "{{file}} • {{size}}. Быстрая загрузка сейчас ограничена 250 MB.",
+      "fileUpload": "Загрузка файла",
+      "largeFile": "Крупный файл",
+      "fastTooLargeError": "Файл \"{{file}}\" слишком большой для быстрой загрузки. Скопируй крупные аудио/модели прямо в папку assets/."
+    },
+    "inline": {
+      "title": "Старые canvas-изображения",
+      "summary": "{{count}} inline-файл(ов), примерно {{kb}} KB",
+      "migrateTitle": "Перенести старые картинки из canvas в assets/",
+      "migrating": "Переношу",
+      "toAssets": "В assets",
+      "migratedMessage": "Перенесено canvas-изображений в assets/: {{count}}"
+    },
+    "delete": {
+      "title": "Удаление файла",
+      "description": "Удалить «{{name}}» из assets/? Если файл уже используется на канвасе или в сущности, ссылка на него станет битой."
+    },
+    "deleteSelected": {
+      "title": "Массовое удаление файлов",
+      "description": "Удалить выбранные файлы ({{count}}) из assets/? {{names}}{{hidden}}. Если они уже используются на canvas или в сущностях, ссылки станут битыми.",
+      "hiddenSuffix": " и ещё {{count}}",
+      "confirm": "Удалить выбранные"
+    }
   },
   "notifications": {
     "title": "Уведомления",
