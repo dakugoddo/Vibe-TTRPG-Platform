@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { yjsStore } from './store/yjsStore';
 import { initEntityStoreObserver, getEntitiesSnapshot } from './store/entityStore';
@@ -45,6 +46,7 @@ function WorkspaceLoadingFallback() {
 }
 
 function App() {
+  const { t } = useTranslation();
   useThemePreset();
   useInterfaceDensity();
   const [roomName, setRoomName] = useState('');
@@ -100,12 +102,12 @@ function App() {
       if (inRoom) {
         forceFlush(); // best-effort sync flush
         e.preventDefault();
-        e.returnValue = 'Есть несохранённые данные. Уверены?';
+        e.returnValue = t('app.unsavedChangesConfirm');
       }
     };
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [inRoom]);
+  }, [inRoom, t]);
 
   if (!inRoom) {
     return <LoginScreen onJoin={handleJoin} />;
@@ -152,7 +154,7 @@ function App() {
 
           if (draggedId === 'root') {
             isCanvas = true;
-            entityName = 'Корневое пространство';
+            entityName = t('hud.rootCanvas');
           }
 
           if (original || draggedId === 'root') {
@@ -263,14 +265,14 @@ function App() {
         <button
           onClick={() => setInventoryOpen(!inventoryOpen)}
           className={`pointer-events-auto flex h-14 w-14 items-center justify-center rounded-[var(--vibe-radius-lg)] ${glass.iconButton}`}
-          title="Личный Инвентарь"
+          title={t('workspace.notes.personalInventory')}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
         </button>
         <button
           onClick={() => setSettingsOpen(true)}
           className={`pointer-events-auto flex h-14 w-14 items-center justify-center rounded-[var(--vibe-radius-lg)] ${glass.iconButton}`}
-          title="Настройки"
+          title={t('workspace.notes.settings')}
         >
           <SettingsIcon size={22} />
         </button>

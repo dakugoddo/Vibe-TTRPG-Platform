@@ -8,6 +8,9 @@
     "close": "Закрыть",
     "reset": "Сброс"
   },
+  "app": {
+    "unsavedChangesConfirm": "Есть несохранённые данные. Уверены?"
+  },
   "hud": {
     "activeElements": "Объекты на канвасе",
     "pinnedWindows": "Закрепленные окна",

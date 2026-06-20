@@ -8,6 +8,9 @@
         "close": "Close",
         "reset": "Reset"
     },
+    "app": {
+        "unsavedChangesConfirm": "There may be unsaved data. Are you sure?"
+    },
     "hud": {
         "activeElements": "Active Elements",
         "pinnedWindows": "Pinned Windows",
