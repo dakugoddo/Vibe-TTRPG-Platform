@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useEntity, getEntitiesSnapshot } from '../../hooks/useEntities';
 import { useWindowStore } from '../../store/windowStore';
 import { useCanvasStore } from '../../store/canvasStore';
@@ -14,6 +15,7 @@ interface EntityLinkProps {
 }
 
 export const EntityLink: React.FC<EntityLinkProps> = ({ entityName, entityId, children, className = '', underline = true }) => {
+    const { t } = useTranslation();
     // Use granular selector when we have an ID (most common case)
     const entityById = useEntity(entityId || '');
     const { openWindow } = useWindowStore();
@@ -34,7 +36,7 @@ export const EntityLink: React.FC<EntityLinkProps> = ({ entityName, entityId, ch
 
     if (!target) {
         return (
-            <span className={`text-red-400 border-b border-dashed border-red-500/50 ${className}`} title={entityName ? `Сущность '${entityName}' не найдена` : 'Сущность не найдена'}>
+            <span className={`text-red-400 border-b border-dashed border-red-500/50 ${className}`} title={entityName ? t('entityLink.notFoundNamed', { name: entityName }) : t('entityLink.notFound')}>
                 {children || entityName || 'Unknown Entity'}
             </span>
         );
@@ -63,7 +65,7 @@ export const EntityLink: React.FC<EntityLinkProps> = ({ entityName, entityId, ch
                     {target.description}
                 </p>
             ) : (
-                <p className="text-xs text-white/30 italic mt-2">Нет описания</p>
+                <p className="text-xs text-white/30 italic mt-2">{t('entityLink.noDescription')}</p>
             )}
         </div>
     );

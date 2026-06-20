@@ -1,4 +1,5 @@
 import ReactDOM from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { Copy, MousePointer2, MoveRight, X } from 'lucide-react';
 
 export interface DragDropPromptData {
@@ -19,19 +20,20 @@ interface DragDropPopoverProps {
 }
 
 export function DragDropPopover({ data }: DragDropPopoverProps) {
+    const { t } = useTranslation();
     if (!data) return null;
 
     const actions = [
         data.canMove !== false ? {
             id: 'move',
-            label: data.moveLabel ?? 'Переместить',
+            label: data.moveLabel ?? t('dragDrop.move'),
             icon: MoveRight,
             onClick: data.onMove,
             className: 'border-amber-300/25 bg-amber-400/10 text-amber-100 hover:border-amber-200/45 hover:bg-amber-400/20',
         } : null,
         data.canCopy !== false ? {
             id: 'copy',
-            label: data.copyLabel ?? 'Копировать',
+            label: data.copyLabel ?? t('dragDrop.copy'),
             icon: Copy,
             onClick: data.onCopy,
             className: 'border-cyan-200/20 bg-cyan-300/10 text-cyan-100 hover:border-cyan-200/45 hover:bg-cyan-300/20',
@@ -72,7 +74,7 @@ export function DragDropPopover({ data }: DragDropPopoverProps) {
                             <MousePointer2 size={15} />
                         </div>
                         <div className="min-w-0">
-                            <div className="text-[10px] font-bold uppercase tracking-widest text-white/35">Действие с сущностью</div>
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-white/35">{t('dragDrop.title')}</div>
                             <div className="truncate text-sm font-bold text-white/90">{data.entityName}</div>
                         </div>
                     </div>
@@ -80,7 +82,7 @@ export function DragDropPopover({ data }: DragDropPopoverProps) {
                         type="button"
                         onClick={data.onCancel}
                         className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5 text-white/45 transition-colors hover:border-white/25 hover:text-white"
-                        aria-label="Закрыть меню"
+                        aria-label={t('dragDrop.closeMenu')}
                     >
                         <X size={14} />
                     </button>

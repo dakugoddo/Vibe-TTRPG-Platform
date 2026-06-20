@@ -319,6 +319,17 @@
       "toFront": "На передний план"
     }
   },
+  "dragDrop": {
+    "title": "Действие с сущностью",
+    "move": "Переместить",
+    "copy": "Копировать",
+    "closeMenu": "Закрыть меню"
+  },
+  "entityLink": {
+    "notFound": "Сущность не найдена",
+    "notFoundNamed": "Сущность '{{name}}' не найдена",
+    "noDescription": "Нет описания"
+  },
   "notifications": {
     "title": "Уведомления",
     "records": "{{count}} записей",

@@ -319,6 +319,17 @@
             "toFront": "Bring to front"
         }
     },
+    "dragDrop": {
+        "title": "Entity action",
+        "move": "Move",
+        "copy": "Copy",
+        "closeMenu": "Close menu"
+    },
+    "entityLink": {
+        "notFound": "Entity not found",
+        "notFoundNamed": "Entity '{{name}}' not found",
+        "noDescription": "No description"
+    },
     "notifications": {
         "title": "Notifications",
         "records": "{{count}} records",
