@@ -67,7 +67,37 @@
     "back": "↺ Назад",
     "delete": "Удалить",
     "select": "Выбрать",
-    "cancel": "Отмена"
+    "cancel": "Отмена",
+    "collapsePanel": "Свернуть панель",
+    "loading": "Загрузка..."
+  },
+  "leftDrawer": {
+    "personalInventory": "Личный инвентарь",
+    "inventoryForPlayer": "Инвентарь: {{player}}",
+    "selectedPlayerItems": "Предметы выбранного игрока",
+    "gmItems": "Мои предметы и инвентари игроков",
+    "playerItems": "Предметы, заметки и персонажи",
+    "myItems": "Мои предметы",
+    "noOtherPlayers": "Нет других игроков"
+  },
+  "rightDrawer": {
+    "tabs": {
+      "database": {
+        "label": "Хранилище",
+        "title": "База сущностей",
+        "subtitle": "Сущности, пространства и быстрые действия"
+      },
+      "assets": {
+        "label": "Файлы",
+        "title": "Файлы мира",
+        "subtitle": "Ассеты, изображения и SFX preview"
+      },
+      "chat": {
+        "label": "Чат и броски",
+        "title": "Журнал сессии",
+        "subtitle": "Чат, броски и системные события"
+      }
+    }
   },
   "notifications": {
     "title": "Уведомления",
@@ -151,6 +181,7 @@
     "rootCanvas": "Корневое пространство",
     "noSubtables": "Нет вложенных пространств",
     "database": "БАЗА ДАННЫХ",
+    "databaseHub": "База и Хаб",
     "globalDatabase": "ГЛОБАЛЬНАЯ БАЗА",
     "allEntities": "Все сущности на сервере",
     "newEntity": "+ НОВАЯ СУЩНОСТЬ",

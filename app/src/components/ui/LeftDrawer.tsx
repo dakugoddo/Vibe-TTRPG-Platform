@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { User, Users, X } from 'lucide-react';
 import { listPlayers } from '../../services/fileApi';
 import { getIsHost } from '../../services/fileApi';
@@ -12,6 +13,7 @@ interface LeftDrawerProps {
 }
 
 export function LeftDrawer({ isOpen, onClose }: LeftDrawerProps) {
+    const { t } = useTranslation();
     const isGM = getIsHost() || yjsStore.localRole === 'gm';
     const [players, setPlayers] = useState<string[]>([]);
     const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
@@ -44,12 +46,12 @@ export function LeftDrawer({ isOpen, onClose }: LeftDrawerProps) {
     };
 
     const ownerFilter = selectedPlayer || yjsStore.localPlayerName;
-    const drawerTitle = selectedPlayer ? `Инвентарь: ${selectedPlayer}` : 'Личный инвентарь';
+    const drawerTitle = selectedPlayer ? t('leftDrawer.inventoryForPlayer', { player: selectedPlayer }) : t('leftDrawer.personalInventory');
     const drawerSubtitle = selectedPlayer
-        ? 'Предметы выбранного игрока'
+        ? t('leftDrawer.selectedPlayerItems')
         : isGM
-            ? 'Мои предметы и инвентари игроков'
-            : 'Предметы, заметки и персонажи';
+            ? t('leftDrawer.gmItems')
+            : t('leftDrawer.playerItems');
 
     return (
         <div
@@ -65,7 +67,7 @@ export function LeftDrawer({ isOpen, onClose }: LeftDrawerProps) {
                         <p className="truncate text-xs text-[var(--vibe-text-faint)]">{drawerSubtitle}</p>
                     </div>
                 </div>
-                <button onClick={onClose} className="rounded-[var(--vibe-radius-sm)] bg-[var(--vibe-surface-input)] p-2 text-[var(--vibe-text-faint)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]" title="Свернуть панель">
+                <button onClick={onClose} className="rounded-[var(--vibe-radius-sm)] bg-[var(--vibe-surface-input)] p-2 text-[var(--vibe-text-faint)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]" title={t('common.collapsePanel')}>
                     <X size={18} />
                 </button>
             </div>
@@ -78,10 +80,10 @@ export function LeftDrawer({ isOpen, onClose }: LeftDrawerProps) {
                         className={`inline-flex items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border px-3 py-1.5 font-bold whitespace-nowrap transition-all ${!selectedPlayer ? glass.tabActive : glass.tabIdle}`}
                     >
                         <User size={12} className="flex-shrink-0" />
-                        Мои предметы
+                        {t('leftDrawer.myItems')}
                     </button>
                     {loadingPlayers ? (
-                        <span className="px-3 py-1.5 italic text-[var(--vibe-text-faint)]">Загрузка...</span>
+                        <span className="px-3 py-1.5 italic text-[var(--vibe-text-faint)]">{t('common.loading')}</span>
                     ) : (
                         players.map(playerName => (
                             <button
@@ -95,7 +97,7 @@ export function LeftDrawer({ isOpen, onClose }: LeftDrawerProps) {
                         ))
                     )}
                     {!loadingPlayers && players.length === 0 && (
-                        <span className="px-3 py-1.5 italic text-[var(--vibe-text-faint)]">Нет других игроков</span>
+                        <span className="px-3 py-1.5 italic text-[var(--vibe-text-faint)]">{t('leftDrawer.noOtherPlayers')}</span>
                     )}
                 </div>
             )}

@@ -67,7 +67,37 @@
         "back": "↺ Back",
         "delete": "Delete",
         "select": "Select",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "collapsePanel": "Collapse panel",
+        "loading": "Loading..."
+    },
+    "leftDrawer": {
+        "personalInventory": "Personal inventory",
+        "inventoryForPlayer": "Inventory: {{player}}",
+        "selectedPlayerItems": "Selected player's items",
+        "gmItems": "My items and player inventories",
+        "playerItems": "Items, notes, and characters",
+        "myItems": "My items",
+        "noOtherPlayers": "No other players"
+    },
+    "rightDrawer": {
+        "tabs": {
+            "database": {
+                "label": "Storage",
+                "title": "Entity database",
+                "subtitle": "Entities, spaces, and quick actions"
+            },
+            "assets": {
+                "label": "Files",
+                "title": "World files",
+                "subtitle": "Assets, images, and SFX preview"
+            },
+            "chat": {
+                "label": "Chat and rolls",
+                "title": "Session log",
+                "subtitle": "Chat, rolls, and system events"
+            }
+        }
     },
     "notifications": {
         "title": "Notifications",
@@ -151,6 +181,7 @@
         "rootCanvas": "Root Canvas",
         "noSubtables": "No subtables yet",
         "database": "DATABASE",
+        "databaseHub": "Database and Hub",
         "globalDatabase": "GLOBAL DATABASE",
         "allEntities": "All entities in the server",
         "newEntity": "+ NEW ENTITY",
