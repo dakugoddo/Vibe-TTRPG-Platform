@@ -99,6 +99,15 @@
       }
     }
   },
+  "assetPicker": {
+    "title": "Изображение",
+    "subtitle": "Загрузить файл или выбрать asset",
+    "newFile": "Новый файл",
+    "searchPlaceholder": "Поиск...",
+    "hostOnlyHint": "Выбор из `assets/` доступен на Host. Файл всё ещё можно вставить через загрузку.",
+    "loadingAssets": "Загружаю assets...",
+    "noImages": "Изображения не найдены"
+  },
   "notifications": {
     "title": "Уведомления",
     "records": "{{count}} записей",

@@ -99,6 +99,15 @@
             }
         }
     },
+    "assetPicker": {
+        "title": "Image",
+        "subtitle": "Upload a file or choose an asset",
+        "newFile": "New file",
+        "searchPlaceholder": "Search...",
+        "hostOnlyHint": "Choosing from `assets/` is available on the Host. You can still insert a file by uploading it.",
+        "loadingAssets": "Loading assets...",
+        "noImages": "No images found"
+    },
     "notifications": {
         "title": "Notifications",
         "records": "{{count}} records",

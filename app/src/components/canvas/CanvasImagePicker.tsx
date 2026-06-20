@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Image, Search, Upload, X } from 'lucide-react';
 import { getIsHost, listAssetRecords, type AssetRecord } from '../../services/fileApi';
 
@@ -15,6 +16,7 @@ function isImageAsset(asset: AssetRecord): boolean {
 }
 
 export function CanvasImagePicker({ x, y, onClose, onSelectAsset, onUploadFile }: CanvasImagePickerProps) {
+  const { t } = useTranslation();
   const isHost = getIsHost();
   const [assets, setAssets] = useState<AssetRecord[]>([]);
   const [query, setQuery] = useState('');
@@ -90,16 +92,16 @@ export function CanvasImagePicker({ x, y, onClose, onSelectAsset, onUploadFile }
               <Image size={16} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-bold text-white/90">Изображение</div>
+              <div className="text-sm font-bold text-white/90">{t('assetPicker.title')}</div>
               <div className="truncate text-[10px] font-semibold uppercase tracking-widest text-white/30">
-                Загрузить файл или выбрать asset
+                {t('assetPicker.subtitle')}
               </div>
             </div>
             <button
               type="button"
               onClick={onClose}
               className="flex h-7 w-7 items-center justify-center rounded-lg text-white/35 transition-colors hover:bg-white/10 hover:text-white/80"
-              title="Закрыть"
+              title={t('common.close')}
             >
               <X size={15} />
             </button>
@@ -119,14 +121,14 @@ export function CanvasImagePicker({ x, y, onClose, onSelectAsset, onUploadFile }
               className="flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.06] text-xs font-bold text-white/75 transition-colors hover:border-sky-300/30 hover:bg-sky-400/10 hover:text-sky-100"
             >
               <Upload size={14} />
-              Новый файл
+              {t('assetPicker.newFile')}
             </button>
             <div className="relative flex-1">
               <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-white/30" />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Поиск..."
+                placeholder={t('assetPicker.searchPlaceholder')}
                 className="h-9 w-full rounded-lg border border-white/10 bg-black/20 pl-8 pr-2 text-xs text-white/80 outline-none transition-colors placeholder:text-white/25 focus:border-white/25 focus:bg-black/30"
               />
             </div>
@@ -136,7 +138,7 @@ export function CanvasImagePicker({ x, y, onClose, onSelectAsset, onUploadFile }
         <div className="min-h-0 flex-1 overflow-y-auto p-3 custom-scrollbar">
           {!isHost ? (
             <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs leading-relaxed text-white/45">
-              Выбор из `assets/` доступен на Host. Файл всё ещё можно вставить через загрузку.
+              {t('assetPicker.hostOnlyHint')}
             </div>
           ) : error ? (
             <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-200">
@@ -144,11 +146,11 @@ export function CanvasImagePicker({ x, y, onClose, onSelectAsset, onUploadFile }
             </div>
           ) : isLoading ? (
             <div className="rounded-lg border border-dashed border-white/10 bg-black/20 p-4 text-center text-xs text-white/35">
-              Загружаю assets...
+              {t('assetPicker.loadingAssets')}
             </div>
           ) : visibleAssets.length === 0 ? (
             <div className="rounded-lg border border-dashed border-white/10 bg-black/20 p-4 text-center text-xs text-white/35">
-              Изображения не найдены
+              {t('assetPicker.noImages')}
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2">
