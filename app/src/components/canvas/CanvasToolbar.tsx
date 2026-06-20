@@ -31,7 +31,7 @@ import React from 'react';
 
 interface ToolDef {
   id: CanvasTool;
-  label: string;
+  labelKey: string;
   shortcut: string;
   icon: React.ReactNode;
 }
@@ -39,7 +39,7 @@ interface ToolDef {
 const tools: ToolDef[] = [
   {
     id: 'select',
-    label: 'Выбор',
+    labelKey: 'canvasToolbar.tools.select',
     shortcut: 'V',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -50,7 +50,7 @@ const tools: ToolDef[] = [
   },
   {
     id: 'pen',
-    label: 'Перо',
+    labelKey: 'canvasToolbar.tools.pen',
     shortcut: 'P',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -61,7 +61,7 @@ const tools: ToolDef[] = [
   },
   {
     id: 'line',
-    label: 'Линия',
+    labelKey: 'canvasToolbar.tools.line',
     shortcut: 'L',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -71,7 +71,7 @@ const tools: ToolDef[] = [
   },
   {
     id: 'rect',
-    label: 'Прямоугольник (2×клик → текст)',
+    labelKey: 'canvasToolbar.tools.rect',
     shortcut: 'R',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -82,7 +82,7 @@ const tools: ToolDef[] = [
   },
   {
     id: 'ellipse',
-    label: 'Эллипс',
+    labelKey: 'canvasToolbar.tools.ellipse',
     shortcut: 'O',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -92,7 +92,7 @@ const tools: ToolDef[] = [
   },
   {
     id: 'image',
-    label: 'Изображение',
+    labelKey: 'canvasToolbar.tools.image',
     shortcut: 'I',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -104,7 +104,7 @@ const tools: ToolDef[] = [
   },
   {
     id: 'frame',
-    label: 'Фрейм',
+    labelKey: 'canvasToolbar.tools.frame',
     shortcut: 'F',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -119,7 +119,7 @@ const tools: ToolDef[] = [
 const EXTRA_TOOLS: ToolDef[] = [
   {
     id: 'lasso',
-    label: 'Лассо',
+    labelKey: 'canvasToolbar.tools.lasso',
     shortcut: '',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -145,31 +145,31 @@ const FILL_COLORS = [
 
 const STROKE_WIDTHS = [1, 2, 4, 8];
 
-const STROKE_STYLES: { id: StrokeStyle; label: string; preview: string }[] = [
-  { id: 'solid', label: 'Сплошная', preview: '———' },
-  { id: 'dashed', label: 'Пунктир', preview: '– – –' },
-  { id: 'dotted', label: 'Точки', preview: '• • •' },
+const STROKE_STYLES: { id: StrokeStyle; labelKey: string; preview: string }[] = [
+  { id: 'solid', labelKey: 'canvasToolbar.strokeStyles.solid', preview: '———' },
+  { id: 'dashed', labelKey: 'canvasToolbar.strokeStyles.dashed', preview: '– – –' },
+  { id: 'dotted', labelKey: 'canvasToolbar.strokeStyles.dotted', preview: '• • •' },
 ];
 
-const LINE_CAPS: { id: LineCap; label: string; icon: React.ReactNode }[] = [
+const LINE_CAPS: { id: LineCap; labelKey: string; icon: React.ReactNode }[] = [
   {
     id: 'none',
-    label: 'Нет',
+    labelKey: 'canvasToolbar.lineCaps.none',
     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12" /></svg>,
   },
   {
     id: 'arrow',
-    label: 'Стрелка',
+    labelKey: 'canvasToolbar.lineCaps.arrow',
     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="15 8 19 12 15 16" /></svg>,
   },
   {
     id: 'circle',
-    label: 'Круг',
+    labelKey: 'canvasToolbar.lineCaps.circle',
     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="16" y2="12" /><circle cx="19" cy="12" r="3" fill="currentColor" /></svg>,
   },
   {
     id: 'diamond',
-    label: 'Ромб',
+    labelKey: 'canvasToolbar.lineCaps.diamond',
     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="15" y2="12" /><rect x="15" y="8" width="6" height="6" fill="currentColor" transform="rotate(45 18 11)" /></svg>,
   },
 ];
@@ -189,13 +189,13 @@ const TEXT_ALIGNS: { id: TextAlign; icon: React.ReactNode }[] = [
   { id: 'right', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="12" x2="9" y2="12"/><line x1="21" y1="18" x2="7" y2="18"/></svg> },
 ];
 
-const ALIGN_OPTIONS: { id: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom'; title: string; icon: React.ReactNode }[] = [
-  { id: 'left', title: 'По левому краю', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="4" x2="4" y2="20"/><rect x="8" y="10" width="12" height="4"/><rect x="8" y="4" width="8" height="4"/></svg> },
-  { id: 'center', title: 'По горизонтали', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="4" x2="12" y2="20"/><rect x="8" y="10" width="8" height="4"/><rect x="6" y="4" width="12" height="4"/></svg> },
-  { id: 'right', title: 'По правому краю', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="20" y1="4" x2="20" y2="20"/><rect x="4" y="10" width="12" height="4"/><rect x="8" y="4" width="8" height="4"/></svg> },
-  { id: 'top', title: 'По верхнему краю', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="4" x2="20" y2="4"/><rect x="10" y="8" width="4" height="12"/><rect x="4" y="8" width="4" height="8"/></svg> },
-  { id: 'middle', title: 'По вертикали', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="12" x2="20" y2="12"/><rect x="10" y="8" width="4" height="8"/><rect x="4" y="6" width="4" height="12"/></svg> },
-  { id: 'bottom', title: 'По нижнему краю', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="20" x2="20" y2="20"/><rect x="10" y="4" width="4" height="12"/><rect x="4" y="8" width="4" height="8"/></svg> },
+const ALIGN_OPTIONS: { id: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom'; titleKey: string; icon: React.ReactNode }[] = [
+  { id: 'left', titleKey: 'canvasToolbar.align.left', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="4" x2="4" y2="20"/><rect x="8" y="10" width="12" height="4"/><rect x="8" y="4" width="8" height="4"/></svg> },
+  { id: 'center', titleKey: 'canvasToolbar.align.center', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="4" x2="12" y2="20"/><rect x="8" y="10" width="8" height="4"/><rect x="6" y="4" width="12" height="4"/></svg> },
+  { id: 'right', titleKey: 'canvasToolbar.align.right', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="20" y1="4" x2="20" y2="20"/><rect x="4" y="10" width="12" height="4"/><rect x="8" y="4" width="8" height="4"/></svg> },
+  { id: 'top', titleKey: 'canvasToolbar.align.top', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="4" x2="20" y2="4"/><rect x="10" y="8" width="4" height="12"/><rect x="4" y="8" width="4" height="8"/></svg> },
+  { id: 'middle', titleKey: 'canvasToolbar.align.middle', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="12" x2="20" y2="12"/><rect x="10" y="8" width="4" height="8"/><rect x="4" y="6" width="4" height="12"/></svg> },
+  { id: 'bottom', titleKey: 'canvasToolbar.align.bottom', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="20" x2="20" y2="20"/><rect x="10" y="4" width="4" height="12"/><rect x="4" y="8" width="4" height="8"/></svg> },
 ];
 
 function clampPercent(value: number): number {
@@ -299,6 +299,7 @@ async function getEntityTokenModeSize(element: DrawElement, mode: EntityTokenMod
 
 export function CanvasToolbar() {
   const { t } = useTranslation();
+  const getToolLabel = useCallback((tool: ToolDef) => t(tool.labelKey), [t]);
   const {
     activeTool,
     setTool,
@@ -548,7 +549,7 @@ export function CanvasToolbar() {
               ? toolbarButtonDisabledClass
               : toolbarButtonEnabledClass
             }`}
-          title="Назад"
+          title={t('common.back')}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="m15 18-6-6 6-6" />
@@ -563,7 +564,7 @@ export function CanvasToolbar() {
               ? toolbarButtonDisabledClass
               : toolbarButtonEnabledClass
             }`}
-          title="Отменить (Ctrl+Z)"
+          title={t('canvasToolbar.undo')}
         >
           <Undo2 size={18} strokeWidth={2} />
         </button>
@@ -576,7 +577,7 @@ export function CanvasToolbar() {
               ? toolbarButtonDisabledClass
               : toolbarButtonEnabledClass
             }`}
-          title="Повторить (Ctrl+Shift+Z / Ctrl+Y)"
+          title={t('canvasToolbar.redo')}
         >
           <Redo2 size={18} strokeWidth={2} />
         </button>
@@ -594,7 +595,7 @@ export function CanvasToolbar() {
                   ? toolButtonActiveClass
                   : toolButtonIdleClass
                 }`}
-              title={`${tool.label} (${tool.shortcut})`}
+              title={`${getToolLabel(tool)} (${tool.shortcut})`}
             >
               {tool.icon}
             </button>
@@ -607,7 +608,7 @@ export function CanvasToolbar() {
           <button
             onClick={() => setExtraOpen(!extraOpen)}
             className={`${toolbarButtonClass} cursor-pointer text-lg ${extraOpen ? glass.iconButtonActive : ''}`}
-            title="Ещё инструменты"
+            title={t('canvasToolbar.moreTools')}
           >
             ⋯
           </button>
@@ -627,10 +628,10 @@ export function CanvasToolbar() {
                         ? toolButtonActiveClass
                         : toolButtonIdleClass
                       }`}
-                    title={tool.shortcut ? `${tool.label} (${tool.shortcut})` : tool.label}
+                    title={tool.shortcut ? `${getToolLabel(tool)} (${tool.shortcut})` : getToolLabel(tool)}
                   >
                     {tool.icon}
-                    <span className="whitespace-nowrap">{tool.label}</span>
+                    <span className="whitespace-nowrap">{getToolLabel(tool)}</span>
                     {tool.shortcut && (
                       <span className="ml-auto text-[10px] text-[var(--vibe-text-faint)]">{tool.shortcut}</span>
                     )}
@@ -651,7 +652,7 @@ export function CanvasToolbar() {
                 ? glass.iconButtonActive
                 : ''
               }`}
-            title={`Сетка (${gridType === 'square' ? 'квадраты' : 'гексы'}, ${gridSpacing}px)`}
+            title={t('canvasToolbar.grid.title', { type: t(gridType === 'square' ? 'canvasToolbar.grid.squareShort' : 'canvasToolbar.grid.hexShort'), spacing: gridSpacing })}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="7" height="7" rx="0.5" />
@@ -666,7 +667,7 @@ export function CanvasToolbar() {
               <div className={`absolute left-0 top-full mt-3 w-56 overflow-hidden ${popoverClass}`}>
                 {/* Grid On/Off */}
                 <label className="flex items-center justify-between mb-3 cursor-pointer">
-                  <span className="text-xs text-[var(--vibe-text-muted)]">Показать сетку</span>
+                  <span className="text-xs text-[var(--vibe-text-muted)]">{t('canvasToolbar.grid.show')}</span>
                   <button
                     onClick={toggleGrid}
                     className={`relative h-5 w-9 rounded-full transition-colors ${gridEnabled ? 'bg-[var(--vibe-accent)]' : 'bg-[var(--vibe-surface-hover)]'}`}
@@ -677,26 +678,26 @@ export function CanvasToolbar() {
 
                 {/* Grid Type */}
                 <div className="mb-3">
-                  <span className="mb-1.5 block text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">Тип сетки</span>
+                  <span className="mb-1.5 block text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">{t('canvasToolbar.grid.type')}</span>
                   <div className="flex gap-1">
                     <button
                       onClick={() => setGridType('square')}
                       className={`flex-1 cursor-pointer rounded-[var(--vibe-radius-sm)] border px-2 py-1.5 text-xs transition-all ${gridType === 'square' ? toolButtonActiveClass : toolButtonIdleClass}`}
                     >
-                      ◻ Квадраты
+                      ◻ {t('canvasToolbar.grid.square')}
                     </button>
                     <button
                       onClick={() => setGridType('hex')}
                       className={`flex-1 cursor-pointer rounded-[var(--vibe-radius-sm)] border px-2 py-1.5 text-xs transition-all ${gridType === 'hex' ? toolButtonActiveClass : toolButtonIdleClass}`}
                     >
-                      ⬡ Гексы
+                      ⬡ {t('canvasToolbar.grid.hex')}
                     </button>
                   </div>
                 </div>
 
                 {/* Grid Spacing */}
                 <div>
-                  <span className="mb-1.5 block text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">Шаг сетки (px)</span>
+                  <span className="mb-1.5 block text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">{t('canvasToolbar.grid.spacing')}</span>
                   <div className="flex gap-1 flex-wrap">
                     {[25, 50, 75, 100].map((s) => (
                       <button
@@ -730,7 +731,7 @@ export function CanvasToolbar() {
                   ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-surface-hover)] text-[var(--vibe-accent)]'
                   : ''
               }`}
-            title={fogEditMode ? 'Закрыть режим тумана' : 'Туман Войны'}
+            title={fogEditMode ? t('canvasToolbar.fog.closeMode') : t('canvasToolbar.fog.title')}
           >
             {fogEditMode ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -781,14 +782,19 @@ export function CanvasToolbar() {
                     text: '🔤', image: '🖼️', frame: '🔲',
                   };
                   const typeLabels: Record<string, string> = {
-                    line: 'Линия', arrow: 'Стрелка', rectangle: 'Прямоугольник',
-                    ellipse: 'Эллипс', text: 'Текст', image: 'Изображение', frame: 'Фрейм',
+                    line: t('canvasToolbar.elementTypes.line'),
+                    arrow: t('canvasToolbar.elementTypes.arrow'),
+                    rectangle: t('canvasToolbar.elementTypes.rectangle'),
+                    ellipse: t('canvasToolbar.elementTypes.ellipse'),
+                    text: t('canvasToolbar.elementTypes.text'),
+                    image: t('canvasToolbar.elementTypes.image'),
+                    frame: t('canvasToolbar.elementTypes.frame'),
                   };
 
                   return (
                     <>
                       <h4 className={`${menuHeadingClass} flex items-center justify-between`}>
-                        <span>Рисунки</span>
+                        <span>{t('canvasToolbar.sections.drawings')}</span>
                         <span className="text-[9px] font-normal text-[var(--vibe-text-faint)]">{elements.length}</span>
                       </h4>
                       {elements.map((el: DrawElement) => {
@@ -796,7 +802,7 @@ export function CanvasToolbar() {
                         const centerX = bounds.x + bounds.w / 2;
                         const centerY = bounds.y + bounds.h / 2;
                         const isSelected = selectedElementIds.includes(el.id);
-                        const displayName = el.type === 'frame' ? (el.frameLabel || 'Фрейм') 
+                        const displayName = el.type === 'frame' ? (el.frameLabel || t('canvasToolbar.elementTypes.frame')) 
                           : el.objectName ? el.objectName 
                           : (typeLabels[el.type] || el.type);
                         return (
@@ -837,7 +843,7 @@ export function CanvasToolbar() {
                     );
                   })
                 )}
-                <h4 className={`${menuHeadingClass} mt-3`}>Токены и Сущности</h4>
+                <h4 className={`${menuHeadingClass} mt-3`}>{t('canvasToolbar.sections.tokensEntities')}</h4>
                 {tokensOnCurrent.length === 0 ? <p className="px-2 text-xs italic text-[var(--vibe-text-faint)]">{t('hud.none')}</p> : (
                   tokensOnCurrent.map(tok => (
                     <div key={tok.id} onClick={() => centerOn(tok.properties.x || 0, tok.properties.y || 0)} className={`text-sm text-[var(--vibe-accent)] ${menuItemClass}`}>
@@ -871,7 +877,7 @@ export function CanvasToolbar() {
             window.__vibeSetStageCamera?.(scale, offsetX, offsetY);
           }}
           className={`${toolbarButtonClass} cursor-pointer`}
-          title="Рецентр"
+          title={t('canvasToolbar.recenter')}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
@@ -891,7 +897,7 @@ export function CanvasToolbar() {
                 ? 'bg-[color-mix(in_srgb,var(--vibe-success)_24%,transparent)] text-[var(--vibe-success)] shadow-sm'
                 : styleControlTextClass
               }`}
-            title="Просвет: Кисть"
+            title={t('canvasToolbar.fog.revealBrush')}
           >
             <span className="text-base">🖌️</span>
           </button>
@@ -904,7 +910,7 @@ export function CanvasToolbar() {
                 ? 'bg-[color-mix(in_srgb,var(--vibe-success)_24%,transparent)] text-[var(--vibe-success)] shadow-sm'
                 : styleControlTextClass
               }`}
-            title="Просвет: Область"
+            title={t('canvasToolbar.fog.revealRect')}
           >
             <span className="text-base">◻️</span>
           </button>
@@ -919,7 +925,7 @@ export function CanvasToolbar() {
                 ? 'bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] shadow-sm'
                 : styleControlTextClass
               }`}
-            title="Скрыть: Кисть"
+            title={t('canvasToolbar.fog.coverBrush')}
           >
             <span className="text-base">🖌️</span>
           </button>
@@ -932,7 +938,7 @@ export function CanvasToolbar() {
                 ? 'bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] shadow-sm'
                 : styleControlTextClass
               }`}
-            title="Скрыть: Область"
+            title={t('canvasToolbar.fog.coverRect')}
           >
             <span className="text-base">◻️</span>
           </button>
@@ -943,7 +949,7 @@ export function CanvasToolbar() {
           <button
             onClick={() => clearAllFog()}
             className={`h-9 w-9 cursor-pointer ${miniActionButtonClass}`}
-            title="Покрыть всё туманом"
+            title={t('canvasToolbar.fog.coverAll')}
           >
             <span className="text-sm">⬛</span>
           </button>
@@ -952,15 +958,15 @@ export function CanvasToolbar() {
           <button
             onClick={() => {
               openConfirm({
-                title: 'Очистить туман с канваса',
-                description: 'Это полностью уберёт туман войны с текущего канваса. Все игроки увидят карту целиком. Продолжить?',
-                confirmText: 'Очистить',
+                title: t('canvasToolbar.fog.clearTitle'),
+                description: t('canvasToolbar.fog.clearDescription'),
+                confirmText: t('canvasToolbar.fog.clearConfirm'),
                 isDestructive: true,
                 onConfirm: () => revealAll(),
               });
             }}
             className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-warning)] transition-all hover:bg-[color-mix(in_srgb,var(--vibe-warning)_14%,transparent)]"
-            title="Очистить туман с канваса"
+            title={t('canvasToolbar.fog.clearTitle')}
           >
             <span className="text-sm">🔓</span>
           </button>
@@ -972,7 +978,7 @@ export function CanvasToolbar() {
             onClick={toggleGmFog}
             className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-[var(--vibe-radius-sm)] transition-all
               ${gmFogVisible ? 'bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)]' : styleControlTextClass}`}
-            title={gmFogVisible ? 'Скрыть туман ГМа' : 'Показать туман ГМа'}
+            title={gmFogVisible ? t('canvasToolbar.fog.hideGmFog') : t('canvasToolbar.fog.showGmFog')}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 3c-7 0-10 9-10 9s3 9 10 9 10-9 10-9-3-9-10-9Z" />
@@ -985,11 +991,11 @@ export function CanvasToolbar() {
       {/* Current fog tool label */}
       {fogEditMode && isGM && canEditActiveCanvas && (
         <div className="select-none rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-window)] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)] backdrop-blur-[var(--vibe-backdrop-blur)]">
-          {fogTool === 'revealBrush' ? '🟢 Просвет: Кисть' :
-           fogTool === 'revealRect' ? '🟢 Просвет: Область' :
-           fogTool === 'coverBrush' ? '🟣 Скрыть: Кисть' :
-           fogTool === 'coverRect' ? '🟣 Скрыть: Область' :
-           'Выберите инструмент'}
+          {fogTool === 'revealBrush' ? `🟢 ${t('canvasToolbar.fog.revealBrush')}` :
+           fogTool === 'revealRect' ? `🟢 ${t('canvasToolbar.fog.revealRect')}` :
+           fogTool === 'coverBrush' ? `🟣 ${t('canvasToolbar.fog.coverBrush')}` :
+           fogTool === 'coverRect' ? `🟣 ${t('canvasToolbar.fog.coverRect')}` :
+           t('canvasToolbar.fog.chooseTool')}
         </div>
       )}
 
@@ -1004,7 +1010,7 @@ export function CanvasToolbar() {
               {/* Stroke Color */}
               {showStrokeColor && (
                 <div>
-                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">Обводка</span>
+                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">{t('canvasToolbar.style.stroke')}</span>
                   <div className="grid grid-cols-5 gap-1.5 w-max">
                     {PALETTE_COLORS.map((color) => (
                       <button
@@ -1026,7 +1032,7 @@ export function CanvasToolbar() {
               {/* Fill Color */}
               {showFillColor && (
                 <div>
-                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">Заливка</span>
+                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">{t('canvasToolbar.style.fill')}</span>
                   <div className="grid grid-cols-5 gap-1.5 w-max">
                     {FILL_COLORS.map((color) => (
                       <button
@@ -1049,7 +1055,7 @@ export function CanvasToolbar() {
               <div className="mt-1 flex flex-col gap-1">
                 {/* Stroke Opacity */}
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[7px] text-white/20 uppercase font-bold tracking-wide select-none w-6">Обв</span>
+                  <span className="text-[7px] text-white/20 uppercase font-bold tracking-wide select-none w-6">{t('canvasToolbar.style.strokeShort')}</span>
                   <input
                     type="range"
                     min="0"
@@ -1071,14 +1077,14 @@ export function CanvasToolbar() {
                     onFocus={(e) => e.currentTarget.select()}
                     onChange={(e) => handleStyleChange({ strokeOpacity: clampPercent(Number(e.target.value)) / 100 })}
                     className="h-5 w-10 rounded border border-white/10 bg-white/[0.04] px-1 text-right text-[9px] font-bold text-white/45 outline-none transition-colors focus:border-white/35 focus:text-white"
-                    title="Прозрачность обводки, %"
-                    aria-label="Прозрачность обводки в процентах"
+                    title={t('canvasToolbar.style.strokeOpacityTitle')}
+                    aria-label={t('canvasToolbar.style.strokeOpacityAria')}
                   />
                 </div>
                 {/* Fill Opacity (only for shapes) */}
                 {(showFillColor) && (
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[7px] text-white/20 uppercase font-bold tracking-wide select-none w-6">Зал</span>
+                    <span className="text-[7px] text-white/20 uppercase font-bold tracking-wide select-none w-6">{t('canvasToolbar.style.fillShort')}</span>
                     <input
                       type="range"
                       min="0"
@@ -1100,15 +1106,15 @@ export function CanvasToolbar() {
                       onFocus={(e) => e.currentTarget.select()}
                       onChange={(e) => handleStyleChange({ fillOpacity: clampPercent(Number(e.target.value)) / 100 })}
                       className="h-5 w-10 rounded border border-white/10 bg-white/[0.04] px-1 text-right text-[9px] font-bold text-white/45 outline-none transition-colors focus:border-white/35 focus:text-white"
-                      title="Прозрачность заливки, %"
-                      aria-label="Прозрачность заливки в процентах"
+                      title={t('canvasToolbar.style.fillOpacityTitle')}
+                      aria-label={t('canvasToolbar.style.fillOpacityAria')}
                     />
                   </div>
                 )}
                 {/* Text Opacity (only for text/shapes with text) */}
                 {showTextStyles && (
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[7px] text-white/20 uppercase font-bold tracking-wide select-none w-6">Ткст</span>
+                    <span className="text-[7px] text-white/20 uppercase font-bold tracking-wide select-none w-6">{t('canvasToolbar.style.textShort')}</span>
                     <input
                       type="range"
                       min="0"
@@ -1130,8 +1136,8 @@ export function CanvasToolbar() {
                       onFocus={(e) => e.currentTarget.select()}
                       onChange={(e) => handleStyleChange({ textOpacity: clampPercent(Number(e.target.value)) / 100 })}
                       className="h-5 w-10 rounded border border-white/10 bg-white/[0.04] px-1 text-right text-[9px] font-bold text-white/45 outline-none transition-colors focus:border-white/35 focus:text-white"
-                      title="Прозрачность текста, %"
-                      aria-label="Прозрачность текста в процентах"
+                      title={t('canvasToolbar.style.textOpacityTitle')}
+                      aria-label={t('canvasToolbar.style.textOpacityAria')}
                     />
                   </div>
                 )}
@@ -1145,7 +1151,7 @@ export function CanvasToolbar() {
               <>
                 <div className="flex flex-col gap-3">
                   <div>
-                    <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">Шрифт</span>
+                    <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">{t('canvasToolbar.style.font')}</span>
                     <div className="flex gap-1">
                       {TEXT_FONTS.map((f) => (
                         <button
@@ -1165,7 +1171,7 @@ export function CanvasToolbar() {
                   </div>
                   <div className="flex gap-4">
                     <div>
-                      <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">Размер</span>
+                      <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">{t('canvasToolbar.style.size')}</span>
                       <div className="flex gap-1">
                         {TEXT_SIZES.map((s) => (
                           <button
@@ -1183,7 +1189,7 @@ export function CanvasToolbar() {
                       </div>
                     </div>
                     <div>
-                      <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">Выравнивание</span>
+                      <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">{t('canvasToolbar.style.alignment')}</span>
                       <div className="flex gap-1">
                         {TEXT_ALIGNS.map((a) => (
                           <button
@@ -1202,7 +1208,7 @@ export function CanvasToolbar() {
                     </div>
                   </div>
                   <div>
-                    <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5 mt-1">Цвет текста</span>
+                    <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5 mt-1">{t('canvasToolbar.style.textColor')}</span>
                     <div className="grid grid-cols-5 gap-1.5 w-max">
                       {PALETTE_COLORS.map((color) => (
                         <button
@@ -1228,7 +1234,7 @@ export function CanvasToolbar() {
             {showStrokeStyles && (
               <div className="flex flex-col gap-3">
                 <div>
-                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">Толщина</span>
+                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">{t('canvasToolbar.style.width')}</span>
                   <div className="flex gap-1">
                     {STROKE_WIDTHS.map((w) => (
                       <button
@@ -1247,7 +1253,7 @@ export function CanvasToolbar() {
                 </div>
 
                 <div>
-                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">Стиль</span>
+                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">{t('canvasToolbar.style.strokeStyle')}</span>
                   <div className="flex gap-1">
                     {STROKE_STYLES.map((s) => (
                       <button
@@ -1258,7 +1264,7 @@ export function CanvasToolbar() {
                             ? 'bg-white/20 text-white shadow-sm'
                             : 'text-white/40 hover:bg-white/10 hover:text-white/70'
                           }`}
-                        title={s.label}
+                        title={t(s.labelKey)}
                       >
                         <span className="font-mono tracking-wider text-[9px]">{s.preview}</span>
                       </button>
@@ -1267,7 +1273,7 @@ export function CanvasToolbar() {
                 </div>
 
                 <div>
-                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">Вид</span>
+                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block mb-1.5">{t('canvasToolbar.style.visual')}</span>
                   <div className="flex gap-1 rounded-lg bg-white/[0.03] p-0.5">
                     {CANVAS_VISUAL_STYLE_OPTIONS.map((style) => (
                       <button
@@ -1278,9 +1284,9 @@ export function CanvasToolbar() {
                             ? 'bg-white/20 text-white shadow-sm'
                             : 'text-white/40 hover:bg-white/10 hover:text-white/70'
                           }`}
-                        title={style.description}
+                        title={t(`canvasToolbar.visualStyleDescriptions.${style.id}`)}
                       >
-                        {style.label}
+                        {t(`canvasToolbar.visualStyles.${style.id}`)}
                       </button>
                     ))}
                   </div>
@@ -1294,7 +1300,7 @@ export function CanvasToolbar() {
                 <div className="w-px self-stretch bg-white/10" />
                 <div className="flex flex-col gap-3 justify-center h-full pt-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[8px] text-white/25 uppercase font-bold w-12 select-none tracking-widest text-right">Линия</span>
+                    <span className="text-[8px] text-white/25 uppercase font-bold w-12 select-none tracking-widest text-right">{t('canvasToolbar.style.line')}</span>
                     <div className="flex gap-1 rounded-lg bg-white/[0.03] p-0.5">
                       {CANVAS_LINE_MODE_OPTIONS.map((mode) => (
                         <button
@@ -1305,9 +1311,9 @@ export function CanvasToolbar() {
                               ? 'bg-white/20 text-white shadow-sm'
                               : 'text-white/40 hover:bg-white/10 hover:text-white/70'
                             }`}
-                          title={mode.description}
+                          title={t(`canvasToolbar.lineModeDescriptions.${mode.id}`)}
                         >
-                          {mode.label}
+                          {t(`canvasToolbar.lineModes.${mode.id}`)}
                         </button>
                       ))}
                     </div>
@@ -1315,7 +1321,7 @@ export function CanvasToolbar() {
                   
                   {/* Start cap */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[8px] text-white/25 uppercase font-bold w-12 select-none tracking-widest text-right">Начало</span>
+                    <span className="text-[8px] text-white/25 uppercase font-bold w-12 select-none tracking-widest text-right">{t('canvasToolbar.style.start')}</span>
                     <div className="flex gap-0.5">
                       {LINE_CAPS.map((cap) => (
                         <button
@@ -1326,7 +1332,7 @@ export function CanvasToolbar() {
                               ? 'bg-white/20 text-white shadow-sm'
                               : 'text-white/40 hover:bg-white/10 hover:text-white/70'
                             }`}
-                          title={cap.label}
+                          title={t(cap.labelKey)}
                         >
                           {cap.icon}
                         </button>
@@ -1336,7 +1342,7 @@ export function CanvasToolbar() {
 
                   {/* End cap */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[8px] text-white/25 uppercase font-bold w-12 select-none tracking-widest text-right">Конец</span>
+                    <span className="text-[8px] text-white/25 uppercase font-bold w-12 select-none tracking-widest text-right">{t('canvasToolbar.style.end')}</span>
                     <div className="flex gap-0.5">
                       {LINE_CAPS.map((cap) => (
                         <button
@@ -1347,7 +1353,7 @@ export function CanvasToolbar() {
                               ? 'bg-white/20 text-white shadow-sm'
                               : 'text-white/40 hover:bg-white/10 hover:text-white/70'
                             }`}
-                          title={cap.label}
+                          title={t(cap.labelKey)}
                         >
                           {cap.icon}
                         </button>
@@ -1363,7 +1369,7 @@ export function CanvasToolbar() {
               <>
                 <div className="w-px self-stretch bg-white/10" />
                 <div className="flex flex-col gap-2 justify-center h-full pt-1">
-                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block">Сущность</span>
+                  <span className="text-[8px] text-white/25 uppercase font-bold tracking-widest select-none block">{t('canvasToolbar.style.entity')}</span>
                   <div className="flex gap-1 rounded-lg bg-white/[0.03] p-0.5">
                     {ENTITY_TOKEN_FRAME_OPTIONS.map((frame) => (
                       <button
@@ -1374,9 +1380,9 @@ export function CanvasToolbar() {
                             ? 'bg-white/20 text-white shadow-sm'
                             : 'text-white/40 hover:bg-white/10 hover:text-white/70'
                           }`}
-                        title={frame.description}
+                        title={t(`canvasToolbar.tokenFrameDescriptions.${frame.id}`)}
                       >
-                        {frame.shortLabel}
+                        {t(`canvasToolbar.tokenFrames.${frame.id}`)}
                       </button>
                     ))}
                   </div>
@@ -1388,9 +1394,9 @@ export function CanvasToolbar() {
                           ? 'bg-white/20 text-white shadow-sm'
                           : 'text-white/40 hover:bg-white/10 hover:text-white/70'
                         }`}
-                      title="Компактная фишка сущности"
+                      title={t('canvasToolbar.entityToken.tokenTitle')}
                     >
-                      Фишка
+                      {t('canvasToolbar.entityToken.token')}
                     </button>
                     <button
                       onClick={() => handleEntityTokenModeChange('art')}
@@ -1399,9 +1405,9 @@ export function CanvasToolbar() {
                           ? 'bg-white/20 text-white shadow-sm'
                           : 'text-white/40 hover:bg-white/10 hover:text-white/70'
                         }`}
-                      title="Карточка сущности с сохранением пропорций изображения"
+                      title={t('canvasToolbar.entityToken.cardTitle')}
                     >
-                      Карточка
+                      {t('canvasToolbar.entityToken.card')}
                     </button>
                   </div>
                 </div>
@@ -1413,14 +1419,14 @@ export function CanvasToolbar() {
           {/* Alignment options (Bottom Row separate if multiples selected) */}
           {activeTool === 'select' && selectedElementIds.length > 1 && (
             <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/5 justify-center">
-              <span className="text-[8px] text-white/25 uppercase font-bold mr-1.5 select-none tracking-widest">Выравнивание:</span>
+              <span className="text-[8px] text-white/25 uppercase font-bold mr-1.5 select-none tracking-widest">{t('canvasToolbar.style.alignment')}:</span>
               <div className="flex items-center gap-1">
                 {ALIGN_OPTIONS.map((align) => (
                   <button
                     key={align.id}
                     onClick={() => handleAlign(align.id)}
                     className="w-7 h-7 rounded flex items-center justify-center transition-all cursor-pointer text-white/50 hover:bg-white/10 hover:text-white"
-                    title={align.title}
+                    title={t(align.titleKey)}
                   >
                     {align.icon}
                   </button>
@@ -1449,12 +1455,12 @@ export function CanvasToolbar() {
               <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-white/5">
                 {/* Layer controls row */}
                 <div className="flex items-center gap-3 justify-center">
-                  <span className="text-[8px] text-white/25 uppercase font-bold mr-1.5 select-none tracking-widest">Слои:</span>
+                  <span className="text-[8px] text-white/25 uppercase font-bold mr-1.5 select-none tracking-widest">{t('canvasToolbar.layers.title')}:</span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleZOrder('back')}
                       className="w-7 h-7 rounded flex items-center justify-center transition-all cursor-pointer text-white/50 hover:bg-white/10 hover:text-white"
-                      title="На задний план"
+                      title={t('canvasToolbar.layers.toBack')}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="17 18 12 23 7 18" />
@@ -1464,7 +1470,7 @@ export function CanvasToolbar() {
                     <button
                       onClick={() => handleZOrder('backward')}
                       className="w-7 h-7 rounded flex items-center justify-center transition-all cursor-pointer text-white/50 hover:bg-white/10 hover:text-white"
-                      title="Назад"
+                      title={t('canvasToolbar.layers.backward')}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="17 13 12 18 7 13" />
@@ -1473,7 +1479,7 @@ export function CanvasToolbar() {
                     <button
                       onClick={() => handleZOrder('forward')}
                       className="w-7 h-7 rounded flex items-center justify-center transition-all cursor-pointer text-white/50 hover:bg-white/10 hover:text-white"
-                      title="Вперёд"
+                      title={t('canvasToolbar.layers.forward')}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="17 11 12 6 7 11" />
@@ -1482,7 +1488,7 @@ export function CanvasToolbar() {
                     <button
                       onClick={() => handleZOrder('front')}
                       className="w-7 h-7 rounded flex items-center justify-center transition-all cursor-pointer text-white/50 hover:bg-white/10 hover:text-white"
-                      title="На передний план"
+                      title={t('canvasToolbar.layers.toFront')}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="17 18 12 13 7 18" />
@@ -1510,7 +1516,7 @@ export function CanvasToolbar() {
                         }}
                         className={`w-6 h-6 rounded flex items-center justify-center transition-all cursor-pointer text-[10px] 
                           ${firstSelected.showName !== false ? 'bg-white/15 text-white' : 'text-white/30 hover:bg-white/10'}`}
-                        title={firstSelected.showName !== false ? 'Скрыть название' : 'Показать название'}
+                        title={firstSelected.showName !== false ? t('canvasToolbar.entityToken.hideName') : t('canvasToolbar.entityToken.showName')}
                       >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           {firstSelected.showName !== false ? (
@@ -1523,7 +1529,7 @@ export function CanvasToolbar() {
                     )}
                     {/* Info hints */}
                     {isNameable && !firstSelected.objectName && (
-                      <span className="text-[8px] text-white/20 italic select-none">Alt+2×клик → название</span>
+                      <span className="text-[8px] text-white/20 italic select-none">{t('canvasToolbar.entityToken.nameHint')}</span>
                     )}
                     {hasDescription && (
                       <span className="text-[8px] text-white/20 italic select-none truncate max-w-[80px]">📝 {firstSelected.description?.slice(0, 15)}…</span>

@@ -174,6 +174,151 @@
             "confirm": "Delete selected"
         }
     },
+    "canvasToolbar": {
+        "undo": "Undo (Ctrl+Z)",
+        "redo": "Redo (Ctrl+Shift+Z / Ctrl+Y)",
+        "moreTools": "More tools",
+        "recenter": "Recenter",
+        "tools": {
+            "select": "Select",
+            "pen": "Pen",
+            "line": "Line",
+            "rect": "Rectangle (2×click → text)",
+            "ellipse": "Ellipse",
+            "image": "Image",
+            "frame": "Frame",
+            "lasso": "Lasso"
+        },
+        "grid": {
+            "title": "Grid ({{type}}, {{spacing}}px)",
+            "squareShort": "squares",
+            "hexShort": "hexes",
+            "show": "Show grid",
+            "type": "Grid type",
+            "square": "Squares",
+            "hex": "Hexes",
+            "spacing": "Grid step (px)"
+        },
+        "elementTypes": {
+            "line": "Line",
+            "arrow": "Arrow",
+            "rectangle": "Rectangle",
+            "ellipse": "Ellipse",
+            "text": "Text",
+            "image": "Image",
+            "frame": "Frame"
+        },
+        "sections": {
+            "drawings": "Drawings",
+            "tokensEntities": "Tokens and Entities"
+        },
+        "fog": {
+            "title": "Fog of War",
+            "closeMode": "Close fog mode",
+            "revealBrush": "Reveal: Brush",
+            "revealRect": "Reveal: Area",
+            "coverBrush": "Hide: Brush",
+            "coverRect": "Hide: Area",
+            "coverAll": "Cover all with fog",
+            "clearTitle": "Clear fog from canvas",
+            "clearDescription": "This fully removes fog of war from the current canvas. All players will see the whole map. Continue?",
+            "clearConfirm": "Clear",
+            "hideGmFog": "Hide GM fog",
+            "showGmFog": "Show GM fog",
+            "chooseTool": "Choose a tool"
+        },
+        "strokeStyles": {
+            "solid": "Solid",
+            "dashed": "Dashed",
+            "dotted": "Dotted"
+        },
+        "lineCaps": {
+            "none": "None",
+            "arrow": "Arrow",
+            "circle": "Circle",
+            "diamond": "Diamond"
+        },
+        "align": {
+            "left": "Align left",
+            "center": "Center horizontally",
+            "right": "Align right",
+            "top": "Align top",
+            "middle": "Center vertically",
+            "bottom": "Align bottom"
+        },
+        "style": {
+            "stroke": "Stroke",
+            "fill": "Fill",
+            "strokeShort": "Str",
+            "fillShort": "Fill",
+            "textShort": "Txt",
+            "strokeOpacityTitle": "Stroke opacity, %",
+            "strokeOpacityAria": "Stroke opacity in percent",
+            "fillOpacityTitle": "Fill opacity, %",
+            "fillOpacityAria": "Fill opacity in percent",
+            "textOpacityTitle": "Text opacity, %",
+            "textOpacityAria": "Text opacity in percent",
+            "font": "Font",
+            "size": "Size",
+            "alignment": "Alignment",
+            "textColor": "Text color",
+            "width": "Width",
+            "strokeStyle": "Style",
+            "visual": "Look",
+            "line": "Line",
+            "start": "Start",
+            "end": "End",
+            "entity": "Entity"
+        },
+        "visualStyles": {
+            "clean": "Clean",
+            "soft": "Soft",
+            "sketch": "Sketch"
+        },
+        "visualStyleDescriptions": {
+            "clean": "Clean geometry for diagrams, maps, and precise UI blocks.",
+            "soft": "Light stroke glow so important links stay readable on dark maps.",
+            "sketch": "Stable handwritten stroke duplicate without random flicker."
+        },
+        "lineModes": {
+            "straight": "Straight",
+            "curved": "Curved",
+            "elbow": "Elbow"
+        },
+        "lineModeDescriptions": {
+            "straight": "Unsmooth polyline: precise diagrams, routes, boundaries.",
+            "curved": "Smoothed line for free connections and handwritten sketches.",
+            "elbow": "Orthogonal routing with right angles for graphs and diagrams."
+        },
+        "tokenFrames": {
+            "plain": "Plain",
+            "ring": "Ring",
+            "badge": "Badge",
+            "hex": "Hex"
+        },
+        "tokenFrameDescriptions": {
+            "plain": "Minimal frame without decorative layers.",
+            "ring": "Classic VTT token with an outer ring and soft glow.",
+            "badge": "Token on a compact backing with a readable label.",
+            "hex": "Angular frame for tactical scenes and tokens."
+        },
+        "entityToken": {
+            "tokenTitle": "Compact entity token",
+            "token": "Token",
+            "cardTitle": "Entity card that preserves image proportions",
+            "card": "Card",
+            "hideName": "Hide name",
+            "showName": "Show name",
+            "nameHint": "Alt+2×click → name"
+        },
+        "layers": {
+            "title": "Layers",
+            "toBack": "Send to back",
+            "backward": "Send backward",
+            "forward": "Bring forward",
+            "toFront": "Bring to front"
+        }
+    },
     "notifications": {
         "title": "Notifications",
         "records": "{{count}} records",
