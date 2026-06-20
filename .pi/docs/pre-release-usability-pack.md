@@ -1,7 +1,7 @@
 # Pre-release usability pack
 
-> Обновлено: 2026-06-12
-> Статус: implementation in progress
+> Обновлено: 2026-06-20
+> Статус: implementation complete; automated QA passed, manual smoke pending
 > Цель: довести существующий функционал до более понятного и пригодного для beta `0.1.0` вида без запуска крупных новых подсистем.
 
 ## Принцип
@@ -20,7 +20,7 @@
 
 ### 1. Asset loading/error/retry foundation
 
-Статус: first slice implemented for entity image block and Asset Browser image/video previews; QA pending.
+Статус: first slice implemented for entity image block and Asset Browser image/video previews; automated QA passed, manual preview smoke pending.
 
 Задача: сделать поведение файлов предсказуемым, когда preview/audio/image не загрузились.
 
@@ -176,3 +176,9 @@ Acceptance:
 - `npm.cmd run build`
 - focused tests для изменённых utils/store;
 - manual smoke: assets, audio, Notes, canvas cards, settings reset, startup Electron/browser.
+
+Последний автоматический прогон: 2026-06-20, passed:
+
+- `app`: `npm.cmd exec tsc -- --noEmit`, `npm.cmd run lint`, `npm.cmd run build`, `npm.cmd run desktop:build`;
+- Notes focused tests: `notesWorkspaceLayout`, `notesWorkspaceStore`, `notesWorkspaceModules`, `notesWorkspaceLinks`;
+- `server`: `npm.cmd run build`.

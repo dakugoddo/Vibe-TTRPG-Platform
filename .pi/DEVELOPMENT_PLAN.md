@@ -26,11 +26,12 @@
 1. Pre-release usability pack:
    - идти по `.pi/docs/pre-release-usability-pack.md`;
    - completed slices: `Asset loading/error/retry foundation`, `Entity quick actions`, `Notes discoverability polish`, `Audio dock states`, `Canvas card readability`, `Startup clarity`, `Settings reset controls`;
+   - automated release QA passed 2026-06-20;
    - текущий пункт: manual QA по pack перед beta;
    - далее: beta release checklist.
 2. Electron desktop polish:
    - Windows signing decision;
-   - smoke QA packaged app.
+   - `desktop:pack` passed 2026-06-20; manual launch smoke packaged app remains.
 3. Beta 0.1 release QA:
    - пройти `.pi/docs/release-0.1-beta-checklist.md`;
    - решить, какие `test-world/*` изменения являются demo-data, а какие runtime-мусор.

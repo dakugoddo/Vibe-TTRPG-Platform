@@ -1,6 +1,6 @@
 # Eternity Table 0.1 beta release checklist
 
-> Обновлено: 2026-06-11
+> Обновлено: 2026-06-20
 > Статус: подготовка к beta release, без git tag/release до ручной QA
 
 ## Цель
@@ -16,7 +16,7 @@
 - Notes workspace получил Obsidian-like первый срез: vault tree, tabs/splits, source/preview/split modes, data view, linked context.
 - Notes shell-модули встроены в рабочую область: `Vault`, `Context`, `Notifications`, `Search`, `Graph`, `Audio`, settings toggles, shell-only reset и persisted resize/visibility.
 - Desktop build path проходит через `npm.cmd run desktop:build`.
-- Unpacked Electron build проверен через `npm.cmd run desktop:pack` на Windows 2026-06-12: создан `electron-release/win-unpacked/Eternity Table.exe`; default Electron icon warning и Vite chunk-size warning устранены.
+- Unpacked Electron build проверен через `npm.cmd run desktop:pack` на Windows 2026-06-20: создан `electron-release/win-unpacked/Eternity Table.exe`; default Electron icon warning и Vite chunk-size warning устранены.
 
 ## Перед git tag/release проверить вручную
 
@@ -51,6 +51,9 @@
    - права на GM/user/general сущности.
 
 ## Автоматические проверки перед release
+
+Последний прогон: 2026-06-20, все команды ниже прошли. Логи сохранены локально в `.tmp/qa-logs/`.
+Дополнительно 2026-06-20 прошёл `npm.cmd run desktop:pack`, актуальный unpacked exe создан в `electron-release/win-unpacked/Eternity Table.exe`.
 
 ```bat
 cd app
