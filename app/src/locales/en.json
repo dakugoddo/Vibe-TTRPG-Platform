@@ -595,6 +595,45 @@
         "adhocModifier": "Ad hoc modifier",
         "total": "Total"
     },
+    "markdownRenderer": {
+        "rollError": "Roll error: {{error}}",
+        "rollTitle": "Roll {{expression}}",
+        "stats": {
+            "availableInEntityWindow": "The stats block is available inside an entity window.",
+            "title": "Stats: {{name}}",
+            "wounds": "Wounds",
+            "defaults": {
+                "constitution": "Constitution",
+                "cognition": "Cognition",
+                "physique": "Physique",
+                "mind": "Mind",
+                "speed": "Speed",
+                "hunger": "Hunger",
+                "evasion": "Evasion",
+                "armor": "Armor",
+                "astral": "Astral",
+                "ether": "Ether",
+                "aura": "Aura"
+            }
+        },
+        "inventory": {
+            "availableInEntityWindow": "The inventory block is available inside an entity window.",
+            "title": "Inventory: {{name}}",
+            "summary": "{{count}} / weight {{weight}}",
+            "empty": "Inventory is empty.",
+            "equipped": "equipped",
+            "categories": {
+                "weapon": "weapon",
+                "armor": "armor",
+                "consumable": "consumable",
+                "other": "other"
+            }
+        },
+        "gmOnly": {
+            "hidden": "Hidden GM block",
+            "title": "GM only"
+        }
+    },
     "entityImage": {
         "notifications": {
             "largePhoto": "Large entity photo",

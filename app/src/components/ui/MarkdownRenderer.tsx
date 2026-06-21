@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { BarChart3, Dices, Lock, Package } from 'lucide-react';
@@ -17,25 +18,32 @@ interface MarkdownRendererProps {
 }
 
 interface StatBlockRow {
-    label: string;
+    label?: string;
+    labelKey?: string;
     path: string[];
 }
 
 const DEFAULT_STAT_ROWS: StatBlockRow[] = [
-    { label: 'Телосложение', path: ['attributes', 'constitution'] },
-    { label: 'Когниция', path: ['attributes', 'cognition'] },
-    { label: 'Фигура', path: ['attributes', 'physique'] },
-    { label: 'Мышление', path: ['attributes', 'mind'] },
-    { label: 'Скорость', path: ['attributes', 'speed'] },
-    { label: 'Голод', path: ['attributes', 'hunger'] },
-    { label: 'Уклонение', path: ['defense', 'evasion'] },
-    { label: 'Броня', path: ['defense', 'armor'] },
-    { label: 'Астрал', path: ['power', 'astral'] },
-    { label: 'Эфир', path: ['power', 'ether'] },
-    { label: 'Аура', path: ['power', 'aura'] },
+    { labelKey: 'markdownRenderer.stats.defaults.constitution', path: ['attributes', 'constitution'] },
+    { labelKey: 'markdownRenderer.stats.defaults.cognition', path: ['attributes', 'cognition'] },
+    { labelKey: 'markdownRenderer.stats.defaults.physique', path: ['attributes', 'physique'] },
+    { labelKey: 'markdownRenderer.stats.defaults.mind', path: ['attributes', 'mind'] },
+    { labelKey: 'markdownRenderer.stats.defaults.speed', path: ['attributes', 'speed'] },
+    { labelKey: 'markdownRenderer.stats.defaults.hunger', path: ['attributes', 'hunger'] },
+    { labelKey: 'markdownRenderer.stats.defaults.evasion', path: ['defense', 'evasion'] },
+    { labelKey: 'markdownRenderer.stats.defaults.armor', path: ['defense', 'armor'] },
+    { labelKey: 'markdownRenderer.stats.defaults.astral', path: ['power', 'astral'] },
+    { labelKey: 'markdownRenderer.stats.defaults.ether', path: ['power', 'ether'] },
+    { labelKey: 'markdownRenderer.stats.defaults.aura', path: ['power', 'aura'] },
 ];
 
-const INVENTORY_CATEGORY_ORDER = ['оружие', 'броня', 'расходуемое', 'другое'];
+const INVENTORY_CATEGORY_ORDER = ['оружие', 'броня', 'расходуемое', 'другое'] as const;
+const INVENTORY_CATEGORY_LABEL_KEYS: Record<(typeof INVENTORY_CATEGORY_ORDER)[number], string> = {
+    'оружие': 'markdownRenderer.inventory.categories.weapon',
+    'броня': 'markdownRenderer.inventory.categories.armor',
+    'расходуемое': 'markdownRenderer.inventory.categories.consumable',
+    'другое': 'markdownRenderer.inventory.categories.other',
+};
 
 function normalizeKey(value: string): string {
     return value.trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -84,18 +92,22 @@ function resolveVariable(varName: string, contextEntity?: Entity): number {
     return createEntityRollVariableResolver(contextEntity, Object.values(allEntities))(varName) ?? 0;
 }
 
-function handleInlineRoll(expression: string, contextEntity?: Entity) {
+function handleInlineRoll(
+    expression: string,
+    contextEntity: Entity | undefined,
+    t: (key: string, options?: Record<string, unknown>) => string
+) {
     const result = rollEngine.rollExpression(expression, {
         plainNumberAsD6Pool: true,
         resolveVariable: (variableName) => resolveVariable(variableName, contextEntity),
     });
 
     if (result.error) {
-        yjsStore.sendMessage(`Ошибка броска: ${result.error}`, 'Система', true);
+        yjsStore.sendMessage(t('markdownRenderer.rollError', { error: result.error }), t('chat.systemSender'), true);
         return;
     }
 
-    yjsStore.sendMessage(rollEngine.formatRollMessage(expression, result), 'Система', true);
+    yjsStore.sendMessage(rollEngine.formatRollMessage(expression, result), t('chat.systemSender'), true);
 }
 
 function parseWikiLinkTarget(source: string): { target: string; label?: string } {
@@ -135,10 +147,12 @@ function readStat(entity: Entity, path: string[]): number | null {
 }
 
 function MarkdownStatsBlock({ entity, config }: { entity?: Entity; config: string }) {
+    const { t } = useTranslation();
+
     if (!entity) {
         return (
             <div className={`${glass.blockBg} text-xs text-[var(--vibe-text-faint)]`}>
-                Блок stats доступен внутри окна сущности.
+                {t('markdownRenderer.stats.availableInEntityWindow')}
             </div>
         );
     }
@@ -151,12 +165,12 @@ function MarkdownStatsBlock({ entity, config }: { entity?: Entity; config: strin
         <div className={`${glass.blockBg} my-3`}>
             <div className={`${glass.blockHeader} mb-3`}>
                 <BarChart3 size={14} className="mr-2" />
-                Статы: {entity.name}
+                {t('markdownRenderer.stats.title', { name: entity.name })}
             </div>
 
             {(woundsCurrent !== null || woundsLimit !== null) && (
                 <div className="mb-3 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_26%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] px-3 py-2 text-xs text-[var(--vibe-text-muted)]">
-                    <span className="mr-2 font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Раны</span>
+                    <span className="mr-2 font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('markdownRenderer.stats.wounds')}</span>
                     <span className="font-mono font-bold">{woundsCurrent ?? 0}</span>
                     {woundsLimit !== null && <span className="text-[var(--vibe-text-faint)]"> / {woundsLimit * 2}</span>}
                 </div>
@@ -165,9 +179,10 @@ function MarkdownStatsBlock({ entity, config }: { entity?: Entity; config: strin
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {rows.map(row => {
                     const value = readStat(entity, row.path);
+                    const label = row.label ?? (row.labelKey ? t(row.labelKey) : row.path.at(-1) ?? '');
                     return (
-                        <div key={`${row.label}:${row.path.join('.')}`} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-3 py-2">
-                            <div className="truncate text-[10px] uppercase tracking-wider text-[var(--vibe-text-faint)]">{row.label}</div>
+                        <div key={`${label}:${row.path.join('.')}`} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-3 py-2">
+                            <div className="truncate text-[10px] uppercase tracking-wider text-[var(--vibe-text-faint)]">{label}</div>
                             <div className="font-mono text-lg font-bold text-[var(--vibe-text-primary)]">{value ?? '-'}</div>
                         </div>
                     );
@@ -178,10 +193,12 @@ function MarkdownStatsBlock({ entity, config }: { entity?: Entity; config: strin
 }
 
 function MarkdownInventoryBlock({ entity, childrenEntities }: { entity?: Entity; childrenEntities: Entity[] }) {
+    const { t } = useTranslation();
+
     if (!entity) {
         return (
             <div className={`${glass.blockBg} text-xs text-[var(--vibe-text-faint)]`}>
-                Блок inventory доступен внутри окна сущности.
+                {t('markdownRenderer.inventory.availableInEntityWindow')}
             </div>
         );
     }
@@ -204,14 +221,14 @@ function MarkdownInventoryBlock({ entity, childrenEntities }: { entity?: Entity;
         <div className={`${glass.blockBg} my-3`}>
             <div className={`${glass.blockHeader} mb-3`}>
                 <Package size={14} className="mr-2" />
-                Инвентарь: {entity.name}
+                {t('markdownRenderer.inventory.title', { name: entity.name })}
                 <span className="ml-auto font-mono normal-case tracking-normal text-[var(--vibe-text-faint)]">
-                    {inventory.length} / вес {totalWeight.toFixed(1)}
+                    {t('markdownRenderer.inventory.summary', { count: inventory.length, weight: totalWeight.toFixed(1) })}
                 </span>
             </div>
 
             {inventory.length === 0 ? (
-                <div className="text-xs italic text-[var(--vibe-text-faint)]">Инвентарь пуст.</div>
+                <div className="text-xs italic text-[var(--vibe-text-faint)]">{t('markdownRenderer.inventory.empty')}</div>
             ) : (
                 <div className="space-y-2">
                     {INVENTORY_CATEGORY_ORDER.map(category => {
@@ -221,7 +238,7 @@ function MarkdownInventoryBlock({ entity, childrenEntities }: { entity?: Entity;
                         return (
                             <div key={category} className="overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)]">
                                 <div className="bg-[var(--vibe-surface-header)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                    {category} ({items.length})
+                                    {t(INVENTORY_CATEGORY_LABEL_KEYS[category])} ({items.length})
                                 </div>
                                 <div className="divide-y divide-[var(--vibe-border-subtle)]">
                                     {items.map(item => {
@@ -230,7 +247,7 @@ function MarkdownInventoryBlock({ entity, childrenEntities }: { entity?: Entity;
                                         return (
                                             <div key={item.id} className="flex items-center gap-2 px-3 py-2 text-xs">
                                                 <EntityLink entityId={item.id} underline={false} className="truncate font-medium text-[var(--vibe-text-muted)] hover:text-[var(--vibe-text-primary)]" />
-                                                {equipped && <span className="rounded bg-green-500/20 border border-green-500/30 px-1.5 py-0.5 text-[9px] text-green-300 uppercase">экип.</span>}
+                                                {equipped && <span className="rounded bg-green-500/20 border border-green-500/30 px-1.5 py-0.5 text-[9px] text-green-300 uppercase">{t('markdownRenderer.inventory.equipped')}</span>}
                                                 <span className="ml-auto font-mono text-[var(--vibe-text-faint)]">x{quantity}</span>
                                             </div>
                                         );
@@ -246,15 +263,18 @@ function MarkdownInventoryBlock({ entity, childrenEntities }: { entity?: Entity;
 }
 
 function HiddenGmBlock() {
+    const { t } = useTranslation();
+
     return (
         <div className="my-3 flex items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-warning)_26%,transparent)] bg-[color-mix(in_srgb,var(--vibe-warning)_12%,transparent)] px-3 py-2 text-xs text-[var(--vibe-warning)]">
             <Lock size={13} />
-            Скрытый блок ГМа
+            {t('markdownRenderer.gmOnly.hidden')}
         </div>
     );
 }
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, entityId, allowCustomBlocks = true }) => {
+    const { t } = useTranslation();
     const entity = useEntity(entityId ?? '');
     const childrenEntities = useEntitiesByParent(entityId ?? null);
     const isGm = yjsStore.localRole === 'gm';
@@ -278,10 +298,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, ent
                         onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
-                            handleInlineRoll(expression, entity);
+                            handleInlineRoll(expression, entity, t);
                         }}
                         className="inline-flex items-center gap-1 px-2 py-0.5 mx-0.5 rounded-md bg-violet-500/20 text-violet-300 border border-violet-500/30 hover:bg-violet-500/40 hover:text-violet-100 transition-all cursor-pointer align-baseline text-xs font-bold"
-                        title={`Бросить ${expression}`}
+                        title={t('markdownRenderer.rollTitle', { expression })}
                     >
                         <Dices size={12} />
                         {children}
@@ -332,7 +352,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, ent
                     <div className="my-3 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-warning)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-warning)_12%,transparent)] p-3">
                         <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-warning)]">
                             <Lock size={12} />
-                            Только для ГМа
+                            {t('markdownRenderer.gmOnly.title')}
                         </div>
                         <MarkdownRenderer content={blockContent} entityId={entityId} allowCustomBlocks={false} />
                     </div>
@@ -360,7 +380,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, ent
         th: ({ children }) => <th className="p-2 font-semibold text-xs uppercase tracking-wider">{children}</th>,
         td: ({ children }) => <td className="border-b border-[var(--vibe-border-subtle)] p-2 text-[var(--vibe-text-muted)]">{children}</td>,
         hr: () => <hr className="my-6 border-[var(--vibe-border-subtle)]" />,
-    }), [allowCustomBlocks, childrenEntities, entity, entityId, isGm]);
+    }), [allowCustomBlocks, childrenEntities, entity, entityId, isGm, t]);
 
     return (
         <div className="markdown-body text-sm leading-relaxed text-[var(--vibe-text-muted)]">

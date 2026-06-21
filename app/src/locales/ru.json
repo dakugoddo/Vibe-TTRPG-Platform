@@ -595,6 +595,45 @@
     "adhocModifier": "Доп. модификатор",
     "total": "Итого"
   },
+  "markdownRenderer": {
+    "rollError": "Ошибка броска: {{error}}",
+    "rollTitle": "Бросить {{expression}}",
+    "stats": {
+      "availableInEntityWindow": "Блок stats доступен внутри окна сущности.",
+      "title": "Статы: {{name}}",
+      "wounds": "Раны",
+      "defaults": {
+        "constitution": "Телосложение",
+        "cognition": "Когниция",
+        "physique": "Фигура",
+        "mind": "Мышление",
+        "speed": "Скорость",
+        "hunger": "Голод",
+        "evasion": "Уклонение",
+        "armor": "Броня",
+        "astral": "Астрал",
+        "ether": "Эфир",
+        "aura": "Аура"
+      }
+    },
+    "inventory": {
+      "availableInEntityWindow": "Блок inventory доступен внутри окна сущности.",
+      "title": "Инвентарь: {{name}}",
+      "summary": "{{count}} / вес {{weight}}",
+      "empty": "Инвентарь пуст.",
+      "equipped": "экип.",
+      "categories": {
+        "weapon": "оружие",
+        "armor": "броня",
+        "consumable": "расходуемое",
+        "other": "другое"
+      }
+    },
+    "gmOnly": {
+      "hidden": "Скрытый блок ГМа",
+      "title": "Только для ГМа"
+    }
+  },
   "entityImage": {
     "notifications": {
       "largePhoto": "Крупное фото сущности",
