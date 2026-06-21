@@ -486,6 +486,26 @@
     "mainPhotoHint": "Пусто = использовать основное фото сущности",
     "mainPhoto": "Основное фото"
   },
+  "entityImage": {
+    "notifications": {
+      "largePhoto": "Крупное фото сущности",
+      "photoUpload": "Загрузка фото сущности",
+      "noEntityRights": "Нет прав на сущность",
+      "uploadedButNotLinked": "{{name}} загружен, но не привязан к сущности.",
+      "photoUploaded": "Фото сущности загружено",
+      "photoUploadFailed": "Фото не загрузилось"
+    },
+    "invalidImage": "Ссылка недействительна или изображение удалено",
+    "loadingPhoto": "Загружаю фото",
+    "noPhoto": "НЕТ ФОТО",
+    "changePhoto": "Изменить фото",
+    "imageSettings": "Настройки изображения",
+    "fileOrUrlPlaceholder": "Имя файла или URL...",
+    "chooseExisting": "...или выберите существующее",
+    "saveLink": "Сохранить ссылку",
+    "unlinkPhotoTitle": "Удалить привязку к фото (файл останется)",
+    "uploadNewPhoto": "Загрузить новое фото"
+  },
   "audio": {
     "channels": {
       "music": "Музыка",

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { yjsStore } from '../../../store/yjsStore';
 import type { Entity } from '../../../types';
 import { glass } from '../../../utils/theme';
@@ -31,6 +32,7 @@ function getEntityOwnerId(entity: Entity): string | undefined {
 }
 
 export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockProps) {
+    const { t } = useTranslation();
     const isHost = getIsHost();
     const canEditImage = yjsStore.canModify(entity.database, getEntityOwnerId(entity));
     const [isEditing, setIsEditing] = useState(false);
@@ -85,7 +87,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
             kind: 'progress',
             scope: 'local',
             status: 'pending',
-            title: isLargeUpload ? 'Крупное фото сущности' : 'Загрузка фото сущности',
+            title: isLargeUpload ? t('entityImage.notifications.largePhoto') : t('entityImage.notifications.photoUpload'),
             message: `${file.name} • ${formatNotificationFileSize(file.size)}`,
             progress: 0,
             payload: {
@@ -105,8 +107,8 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                 updateNotification(uploadNotification.id, {
                     kind: 'warning',
                     status: 'failed',
-                    title: 'Нет прав на сущность',
-                    message: `${file.name} загружен, но не привязан к сущности.`,
+                    title: t('entityImage.notifications.noEntityRights'),
+                    message: t('entityImage.notifications.uploadedButNotLinked', { name: file.name }),
                 });
                 return;
             }
@@ -114,7 +116,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
             updateNotification(uploadNotification.id, {
                 kind: 'success',
                 status: 'done',
-                title: 'Фото сущности загружено',
+                title: t('entityImage.notifications.photoUploaded'),
                 message: `${file.name} • ${formatNotificationFileSize(file.size)}`,
                 progress: 100,
             });
@@ -124,7 +126,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
             updateNotification(uploadNotification.id, {
                 kind: 'error',
                 status: 'failed',
-                title: 'Фото не загрузилось',
+                title: t('entityImage.notifications.photoUploadFailed'),
                 message: `${file.name}: ${(err as Error).message}`,
             });
             setUploadError((err as Error).message);
@@ -141,7 +143,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                 imageLoadState.isError ? (
                     <div className="flex flex-col items-center justify-center text-[var(--vibe-danger)] opacity-80">
                         <AlertTriangle size={32} className="mb-2" />
-                        <span className="text-xs font-bold text-center px-4">Ссылка недействительна или изображение удалено</span>
+                        <span className="text-xs font-bold text-center px-4">{t('entityImage.invalidImage')}</span>
                         <button
                             type="button"
                             onClick={(event) => {
@@ -151,7 +153,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                             className="mt-3 inline-flex items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_34%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_20%,transparent)]"
                         >
                             <RefreshCw size={12} />
-                            Повторить
+                            {t('common.retry')}
                         </button>
                     </div>
                 ) : (
@@ -166,7 +168,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                         {imageLoadState.isLoading && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-[color-mix(in_srgb,var(--vibe-body-bg)_38%,transparent)] text-[var(--vibe-text-faint)] backdrop-blur-sm">
                                 <RefreshCw size={22} className="mb-2 animate-spin" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest">Загружаю фото</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest">{t('entityImage.loadingPhoto')}</span>
                             </div>
                         )}
                     </>
@@ -174,7 +176,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
             ) : (
                 <div className="flex flex-col items-center justify-center text-[var(--vibe-text-faint)]">
                     <Icon size={isWide ? 64 : 48} strokeWidth={1.5} />
-                    <span className="text-[10px] mt-2 font-bold tracking-widest uppercase opacity-50">НЕТ ФОТО</span>
+                    <span className="text-[10px] mt-2 font-bold tracking-widest uppercase opacity-50">{t('entityImage.noPhoto')}</span>
                 </div>
             )}
 
@@ -187,16 +189,16 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                         onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
                         className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-surface-input)] px-4 py-2 text-xs font-bold text-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-block)] backdrop-blur-[var(--vibe-backdrop-blur)] transition-all hover:bg-[var(--vibe-surface-hover)]"
                     >
-                        Изменить фото
+                        {t('entityImage.changePhoto')}
                     </button>
                 ) : (
                     <div className="relative flex h-full w-full flex-col gap-2 bg-[var(--vibe-surface-block)] p-4" onClick={e => e.stopPropagation()}>
                         {/* Close button */}
-                        <button onClick={() => setIsEditing(false)} className={`${glass.iconButton} absolute right-2 top-2 rounded-full p-1`} title="Отмена">
+                        <button onClick={() => setIsEditing(false)} className={`${glass.iconButton} absolute right-2 top-2 rounded-full p-1`} title={t('common.cancel')}>
                             <X size={14} />
                         </button>
 
-                        <div className="mb-1 pt-2 text-center text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">Настройки изображения</div>
+                        <div className="mb-1 pt-2 text-center text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">{t('entityImage.imageSettings')}</div>
 
                         <div className="flex flex-col gap-2 w-full max-w-sm mx-auto overflow-y-auto custom-scrollbar">
                             {/* URL/Filename input */}
@@ -205,7 +207,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                                     type="text"
                                     value={tempUrl}
                                     onChange={(e) => setTempUrl(e.target.value)}
-                                    placeholder="Имя файла или URL..."
+                                    placeholder={t('entityImage.fileOrUrlPlaceholder')}
                                     className={`${glass.input} w-full text-xs py-1.5 px-2`}
                                 />
                             </div>
@@ -217,7 +219,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                                     onChange={(e) => setTempUrl(e.target.value)}
                                     value=""
                                 >
-                                    <option value="" disabled>...или выберите существующее</option>
+                                    <option value="" disabled>{t('entityImage.chooseExisting')}</option>
                                     {availableImages.map(asset => (
                                         <option key={asset.id} value={asset.path}>{asset.path}</option>
                                     ))}
@@ -229,15 +231,15 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                                     onClick={handleSave}
                                     className="flex-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] py-1.5 text-xs font-bold text-[var(--vibe-accent)] shadow-sm transition-colors hover:bg-[var(--vibe-surface-hover)]"
                                 >
-                                    Сохранить ссылку
+                                    {t('entityImage.saveLink')}
                                 </button>
                                 {entity.icon_url && (
                                     <button 
                                         onClick={handleRemove}
                                         className="rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_14%,transparent)] px-3 py-1.5 text-xs font-bold text-[var(--vibe-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_24%,transparent)]"
-                                        title="Удалить привязку к фото (файл останется)"
+                                        title={t('entityImage.unlinkPhotoTitle')}
                                     >
-                                        Удалить
+                                        {t('common.delete')}
                                     </button>
                                 )}
                             </div>
@@ -257,7 +259,7 @@ export function EntityImageBlock({ entity, isWide = false }: EntityImageBlockPro
                                         className={`flex w-full items-center justify-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] py-1.5 text-xs font-bold text-[var(--vibe-text-primary)] transition-colors ${isUploading ? 'bg-[var(--vibe-surface-input)] opacity-50' : 'bg-[var(--vibe-surface-input)] hover:bg-[var(--vibe-surface-hover)]'}`}
                                     >
                                         <Upload size={14} />
-                                        {isUploading ? 'Загрузка...' : 'Загрузить новое фото'}
+                                        {isUploading ? t('common.loading') : t('entityImage.uploadNewPhoto')}
                                     </button>
                                     {uploadError && (
                                         <div className="mt-2 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] px-2 py-1.5 text-[10px] font-semibold text-[var(--vibe-danger)]">

@@ -486,6 +486,26 @@
         "mainPhotoHint": "Empty = use the entity main photo",
         "mainPhoto": "Main photo"
     },
+    "entityImage": {
+        "notifications": {
+            "largePhoto": "Large entity photo",
+            "photoUpload": "Entity photo upload",
+            "noEntityRights": "No entity permission",
+            "uploadedButNotLinked": "{{name}} uploaded, but not linked to the entity.",
+            "photoUploaded": "Entity photo uploaded",
+            "photoUploadFailed": "Photo upload failed"
+        },
+        "invalidImage": "Link is invalid or image was deleted",
+        "loadingPhoto": "Loading photo",
+        "noPhoto": "NO PHOTO",
+        "changePhoto": "Change photo",
+        "imageSettings": "Image settings",
+        "fileOrUrlPlaceholder": "File name or URL...",
+        "chooseExisting": "...or choose existing",
+        "saveLink": "Save link",
+        "unlinkPhotoTitle": "Remove photo link (file stays)",
+        "uploadNewPhoto": "Upload new photo"
+    },
     "audio": {
         "channels": {
             "music": "Music",
