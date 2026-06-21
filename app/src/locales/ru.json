@@ -528,6 +528,22 @@
       "description": "Вы уверены, что хотите удалить способность «{{name}}»?"
     }
   },
+  "abilitySheet": {
+    "tabs": {
+      "params": "Параметры",
+      "description": "Описание",
+      "canvas": "Настройки"
+    },
+    "rollError": "Ошибка броска {{name}}: {{error}}",
+    "finishEditing": "Завершить редактирование",
+    "editDescription": "Редактировать описание",
+    "paramsTitle": "Параметры способности",
+    "roll": "Бросок",
+    "descriptionTitle": "Описание",
+    "descriptionPlaceholder": "Описание способности, условия применения, эффекты...",
+    "emptyDescriptionEditable": "Описание пустое. Дважды кликните для редактирования.",
+    "emptyDescription": "Описание пустое."
+  },
   "competenciesBlock": {
     "title": "Компетенции ({{count}})",
     "add": "Добавить",

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Entity } from '../../../types';
 import { yjsStore } from '../../../store/yjsStore';
 import { getEntitiesSnapshot } from '../../../hooks/useEntities';
@@ -45,7 +46,10 @@ function updateAbilityProperty(ability: Entity, key: string, value: unknown) {
     });
 }
 
-function sendAbilityRollToChat(ability: Entity) {
+function sendAbilityRollToChat(
+    ability: Entity,
+    t: (key: string, options?: Record<string, unknown>) => string
+) {
     const formula = getAbilityFormula(ability);
     if (!formula) return;
 
@@ -55,14 +59,15 @@ function sendAbilityRollToChat(ability: Entity) {
         resolveVariable: createEntityRollVariableResolver(ability, parentEntity ? [parentEntity] : []),
     });
     if (result.error) {
-        yjsStore.sendMessage(`Ошибка броска ${ability.name}: ${result.error}`, 'Система', true);
+        yjsStore.sendMessage(t('abilitySheet.rollError', { name: ability.name, error: result.error }), t('chat.systemSender'), true);
         return;
     }
 
-    yjsStore.sendMessage(rollEngine.formatRollMessage(`${ability.name}: ${formula}`, result), 'Система', true);
+    yjsStore.sendMessage(rollEngine.formatRollMessage(`${ability.name}: ${formula}`, result), t('chat.systemSender'), true);
 }
 
 export function AbilitySheet({ entity }: AbilitySheetProps) {
+    const { t } = useTranslation();
     const canEditAbility = canEditEntity(entity);
     const formula = getAbilityFormula(entity);
     const costBase = getAbilityCostBase(entity);
@@ -70,9 +75,9 @@ export function AbilitySheet({ entity }: AbilitySheetProps) {
     const [activeTab, setActiveTab] = useState<AbilityTab>('params');
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const tabs: SheetTab<AbilityTab>[] = [
-        { id: 'params', label: 'Параметры', icon: SlidersHorizontal },
-        { id: 'description', label: 'Описание', icon: FileText },
-        { id: 'canvas', label: 'Настройки', icon: Box },
+        { id: 'params', label: t('abilitySheet.tabs.params'), icon: SlidersHorizontal },
+        { id: 'description', label: t('abilitySheet.tabs.description'), icon: FileText },
+        { id: 'canvas', label: t('abilitySheet.tabs.canvas'), icon: Box },
     ];
 
     return (
@@ -85,7 +90,7 @@ export function AbilitySheet({ entity }: AbilitySheetProps) {
                     <button
                         onClick={() => setIsEditingDescription(!isEditingDescription)}
                         className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${isEditingDescription ? 'bg-white/20 text-white shadow-sm' : 'text-white/45 hover:bg-white/10 hover:text-white'}`}
-                        title={isEditingDescription ? 'Завершить редактирование' : 'Редактировать описание'}
+                        title={isEditingDescription ? t('abilitySheet.finishEditing') : t('abilitySheet.editDescription')}
                     >
                         {isEditingDescription ? <Check size={14} /> : <Edit2 size={14} />}
                     </button>
@@ -96,12 +101,12 @@ export function AbilitySheet({ entity }: AbilitySheetProps) {
             <div className={`${glass.blockBg} border-cyan-500/20 shadow-[inset_0_0_20px_rgba(34,211,238,0.05)]`}>
                 <div className="flex items-center justify-between gap-3 mb-4">
                     <h3 className={glass.blockHeader + ' text-cyan-300 border-cyan-500/20 mb-0'}>
-                        Параметры способности
+                        {t('abilitySheet.paramsTitle')}
                     </h3>
                     <button
-                        onClick={() => sendAbilityRollToChat(entity)}
+                        onClick={() => sendAbilityRollToChat(entity, t)}
                         disabled={!canRoll}
-                        title={canRoll ? `Бросить ${formula}` : 'Укажите формулу броска'}
+                        title={canRoll ? t('abilitiesBlock.rollTitle', { formula }) : t('abilitiesBlock.rollFormulaMissing')}
                         className={clsx(
                             'flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-bold transition-all border',
                             canRoll
@@ -109,13 +114,13 @@ export function AbilitySheet({ entity }: AbilitySheetProps) {
                                 : 'bg-white/5 text-white/20 border-transparent cursor-not-allowed'
                         )}
                     >
-                        <Dices size={14} /> Бросок
+                        <Dices size={14} /> {t('abilitySheet.roll')}
                     </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                     <label className="min-w-0">
-                        <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">Стоимость</span>
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">{t('abilitiesBlock.cost')}</span>
                         <input
                             type="number"
                             value={costBase}
@@ -126,7 +131,7 @@ export function AbilitySheet({ entity }: AbilitySheetProps) {
                         />
                     </label>
                     <label className="min-w-0">
-                        <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">Формула</span>
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">{t('abilitiesBlock.formula')}</span>
                         <input
                             type="text"
                             value={formula}
@@ -137,24 +142,24 @@ export function AbilitySheet({ entity }: AbilitySheetProps) {
                         />
                     </label>
                     <label className="min-w-0">
-                        <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">Дистанция</span>
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">{t('abilitiesBlock.range')}</span>
                         <input
                             type="text"
                             value={stringifyProperty(entity.properties?.range)}
                             readOnly={!canEditAbility}
                             onChange={(e) => updateAbilityProperty(entity, 'range', e.target.value)}
-                            placeholder="ближняя"
+                            placeholder={t('abilitiesBlock.rangePlaceholder')}
                             className="w-full bg-black/25 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/80 outline-none focus:border-cyan-400/50 read-only:text-white/40 read-only:cursor-default"
                         />
                     </label>
                     <label className="min-w-0">
-                        <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">Область</span>
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-white/30 block mb-1">{t('abilitiesBlock.area')}</span>
                         <input
                             type="text"
                             value={stringifyProperty(entity.properties?.area)}
                             readOnly={!canEditAbility}
                             onChange={(e) => updateAbilityProperty(entity, 'area', e.target.value)}
-                            placeholder="цель"
+                            placeholder={t('abilitiesBlock.areaPlaceholder')}
                             className="w-full bg-black/25 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white/80 outline-none focus:border-cyan-400/50 read-only:text-white/40 read-only:cursor-default"
                         />
                     </label>
@@ -164,21 +169,21 @@ export function AbilitySheet({ entity }: AbilitySheetProps) {
 
             {activeTab === 'description' && (
                 <div className={`${glass.blockBg} min-h-[220px]`}>
-                    <h3 className={glass.blockHeader}>Описание</h3>
+                    <h3 className={glass.blockHeader}>{t('abilitySheet.descriptionTitle')}</h3>
                     {isEditingDescription && canEditAbility ? (
                         <WikiLinkTextarea
                             value={entity.description || ''}
                             onValueChange={(value) => yjsStore.updateEntity(entity.id, { description: value })}
                             excludeEntityId={entity.id}
                             className={`${glass.input} w-full min-h-[180px] resize-y custom-scrollbar text-sm font-sans`}
-                            placeholder="Описание способности, условия применения, эффекты..."
+                            placeholder={t('abilitySheet.descriptionPlaceholder')}
                             autoFocus
                         />
                     ) : (
                         <div className="min-h-[180px] text-sm leading-relaxed text-white/80" onDoubleClick={() => { if (canEditAbility) setIsEditingDescription(true); }}>
                             {entity.description
                                 ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
-                                : <span className="text-white/30 italic cursor-pointer">{canEditAbility ? 'Описание пустое. Дважды кликните для редактирования.' : 'Описание пустое.'}</span>}
+                                : <span className="text-white/30 italic cursor-pointer">{canEditAbility ? t('abilitySheet.emptyDescriptionEditable') : t('abilitySheet.emptyDescription')}</span>}
                         </div>
                     )}
                 </div>

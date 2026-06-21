@@ -528,6 +528,22 @@
             "description": "Are you sure you want to delete ability \"{{name}}\"?"
         }
     },
+    "abilitySheet": {
+        "tabs": {
+            "params": "Params",
+            "description": "Description",
+            "canvas": "Settings"
+        },
+        "rollError": "Roll error for {{name}}: {{error}}",
+        "finishEditing": "Finish editing",
+        "editDescription": "Edit description",
+        "paramsTitle": "Ability parameters",
+        "roll": "Roll",
+        "descriptionTitle": "Description",
+        "descriptionPlaceholder": "Ability description, usage conditions, effects...",
+        "emptyDescriptionEditable": "Description is empty. Double click to edit.",
+        "emptyDescription": "Description is empty."
+    },
     "competenciesBlock": {
         "title": "Competencies ({{count}})",
         "add": "Add",
