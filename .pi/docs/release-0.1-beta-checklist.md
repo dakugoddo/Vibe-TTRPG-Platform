@@ -1,6 +1,6 @@
 # Eternity Table 0.1 beta release checklist
 
-> Обновлено: 2026-06-20
+> Обновлено: 2026-06-21
 > Статус: подготовка к beta release, без git tag/release до ручной QA
 
 ## Цель
@@ -52,14 +52,13 @@
 
 ## Автоматические проверки перед release
 
-Последний прогон: 2026-06-20, все команды ниже прошли. Логи сохранены локально в `.tmp/qa-logs/`.
+Последний прогон: 2026-06-21, все команды ниже прошли после i18n build regression fix.
 Дополнительно 2026-06-20 прошёл `npm.cmd run desktop:pack`, актуальный unpacked exe создан в `electron-release/win-unpacked/Eternity Table.exe`.
 
 ```bat
 cd app
 npm.cmd exec tsc -- --noEmit
 npm.cmd run lint
-npm.cmd run build
 npm.cmd run desktop:build
 ..\server\node_modules\.bin\tsx.cmd src\utils\notesWorkspaceLayout.test.ts
 ..\server\node_modules\.bin\tsx.cmd src\store\notesWorkspaceStore.test.ts
@@ -69,7 +68,7 @@ npm.cmd run desktop:build
 
 ```bat
 cd server
-npm.cmd run build
+REM covered by app/npm.cmd run desktop:build -> server:build
 ```
 
 ## Не включать в release commit

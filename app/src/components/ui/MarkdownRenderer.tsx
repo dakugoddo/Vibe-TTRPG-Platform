@@ -38,6 +38,8 @@ const DEFAULT_STAT_ROWS: StatBlockRow[] = [
 ];
 
 const INVENTORY_CATEGORY_ORDER = ['оружие', 'броня', 'расходуемое', 'другое'] as const;
+type InventoryCategory = (typeof INVENTORY_CATEGORY_ORDER)[number];
+
 const INVENTORY_CATEGORY_LABEL_KEYS: Record<(typeof INVENTORY_CATEGORY_ORDER)[number], string> = {
     'оружие': 'markdownRenderer.inventory.categories.weapon',
     'броня': 'markdownRenderer.inventory.categories.armor',
@@ -206,7 +208,9 @@ function MarkdownInventoryBlock({ entity, childrenEntities }: { entity?: Entity;
     const inventory = childrenEntities.filter(child => child.type === 'object');
     const grouped = inventory.reduce<Record<string, Entity[]>>((acc, item) => {
         const category = String(item.properties?.category ?? 'другое').toLowerCase();
-        const normalizedCategory = INVENTORY_CATEGORY_ORDER.includes(category) ? category : 'другое';
+        const normalizedCategory: InventoryCategory = (INVENTORY_CATEGORY_ORDER as readonly string[]).includes(category)
+            ? category as InventoryCategory
+            : 'другое';
         acc[normalizedCategory] = [...(acc[normalizedCategory] ?? []), item];
         return acc;
     }, {});

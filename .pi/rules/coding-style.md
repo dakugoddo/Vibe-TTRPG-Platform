@@ -266,6 +266,12 @@ describe('diceParser', () => {
 });
 ```
 
+### Локализация и production build
+
+- После i18n-pass по стабильному UI chrome запускай не только быстрый `npm.cmd exec tsc -- --noEmit`, но и production path `npm.cmd run desktop:build` из `app/`.
+- При замене `label` на `labelKey` проверяй все render paths: tab/header/filter/group labels должны рендериться через `t(labelKey)`.
+- Если русские literals остаются как data compatibility keys (`as const` категории, старые property names), не расширяй их до обычного `string`; используй явный type guard/alias, чтобы `tsc -b` не падал.
+
 ---
 
 ## 10. КОММЕНТАРИИ

@@ -1,6 +1,6 @@
 # Pre-release usability pack
 
-> Обновлено: 2026-06-20
+> Обновлено: 2026-06-21
 > Статус: implementation complete; automated QA passed, manual smoke pending
 > Цель: довести существующий функционал до более понятного и пригодного для beta `0.1.0` вида без запуска крупных новых подсистем.
 
@@ -177,8 +177,8 @@ Acceptance:
 - focused tests для изменённых utils/store;
 - manual smoke: assets, audio, Notes, canvas cards, settings reset, startup Electron/browser.
 
-Последний автоматический прогон: 2026-06-20, passed:
+Последний автоматический прогон: 2026-06-21, passed after i18n build regression fix:
 
-- `app`: `npm.cmd exec tsc -- --noEmit`, `npm.cmd run lint`, `npm.cmd run build`, `npm.cmd run desktop:build`;
+- `app`: `npm.cmd exec tsc -- --noEmit`, `npm.cmd run lint`, `npm.cmd run desktop:build`;
 - Notes focused tests: `notesWorkspaceLayout`, `notesWorkspaceStore`, `notesWorkspaceModules`, `notesWorkspaceLinks`;
-- `server`: `npm.cmd run build`.
+- `server`: covered through `app` `desktop:build` / `server:build`.

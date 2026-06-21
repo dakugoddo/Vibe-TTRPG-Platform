@@ -1475,7 +1475,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                             onClick={() => setActiveTab(tab.type)}
                             className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${activeTab === tab.type ? tab.dot.replace('bg-', 'bg-').replace('500', '600') + ' text-white shadow-md' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/90'}`}
                         >
-                            {tab.label}
+                            {t(tab.labelKey)}
                         </button>
                     ))}
                 </div>

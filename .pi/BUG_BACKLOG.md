@@ -1,6 +1,6 @@
 # Vibe TTRPG Platform: bug backlog
 
-> Обновлено: 2026-06-07
+> Обновлено: 2026-06-21
 > Назначение: активные баги, QA-pending фиксы и regression notes. Закрытая история не хранится здесь, чтобы не засорять контекст.
 
 ## Приоритеты
@@ -33,6 +33,7 @@
 | `BUG-NOTES-010` | `P2` | NotesWorkspace / Editor Leaf DnD | Fixed, owner QA pending | Agent-induced follow-up: после первого leaf-open pass вкладки всё ещё использовали browser HTML `draggable`, поэтому при перетаскивании появлялась старая ghost-визуализация; в шапке leaf оставались лишние split-кнопки. | Проверить: перетаскивание вкладки или шапки leaf показывает только наш drop overlay без browser ghost; split создается drop на край; drop в центр объединяет в tab group; кнопок `Разделить вправо/вниз` больше нет. |
 | `BUG-NOTES-011` | `P2` | NotesWorkspace / Editor Leaf DnD | Fixed, owner QA pending | Agent-induced follow-up: после удаления browser ghost осталась старая full-pane drop-визуализация, которая заливала весь editor leaf синим прямоугольником вместо тонкой полоски. | Проверить: drag вкладки/шапки leaf показывает только тонкую полоску у края или tab-bar; большой синий прямоугольник на всю панель больше не появляется. |
 | `BUG-I18N-003` | `P2` | Localization / Settings | Fixed, owner QA pending | English locale did not cover stable Settings/Notes shell UI enough; user also needed a desktop button to open translation files. | Проверить English mode: Settings tabs/sections, Notes storage names/module labels/search fields are English; Electron button opens built-in locales folder. |
+| `BUG-I18N-004` | `P2` | Localization / Build | Fixed, automated QA passed | Agent-induced regression: i18n-pass оставил `tab.label` вместо `t(tab.labelKey)` в `EntityDatabase` и не дал production type guard для русских inventory category keys в `MarkdownRenderer`; `npm.cmd run desktop:build` падал, хотя быстрый `tsc --noEmit` прошёл. | Закрыто повторным `npm.cmd exec tsc -- --noEmit`, `npm.cmd run lint`, `npm.cmd run desktop:build` и focused Notes tests 2026-06-21. |
 
 ## Regression notes
 
@@ -51,6 +52,7 @@
 - `BUG-NOTES-010`: editor tabs/leaves must use pointer-driven drag, not browser HTML `draggable`, so the only visible feedback is the project drop overlay. Do not reintroduce split buttons in the leaf header; split is created by dropping a tab/leaf on an edge.
 - `BUG-NOTES-011`: editor leaf drop feedback must be a thin edge/tab-bar indicator. Do not use full-pane `absolute inset-0` fill/border overlays for tab drag, because they look like the old DnD visualization and cover the content.
 - `BUG-I18N-003`: stable application chrome belongs in `ru/en.json`; entity names/descriptions/properties are user/world content and must not be translated at render time. Desktop-only folder buttons must go through the typed Electron preload bridge.
+- `BUG-I18N-004`: после i18n-pass запускать production path `npm.cmd run desktop:build`, а не только быстрый `tsc --noEmit`. При замене `label` на `labelKey` проверять все render paths, а для русских data compatibility literals в `as const` массивах использовать явный type guard вместо widening до `string`.
 - Для agent-induced regression всегда обновлять релевантный `.pi/rules/*`, `.pi/docs/*` или `.pi/skills/*/SKILL.md`, а не только точечно фиксить код.
 
 ## Ручные QA сценарии
