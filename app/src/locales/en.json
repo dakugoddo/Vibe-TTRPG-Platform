@@ -512,6 +512,16 @@
         "totalRoll": "Total roll:",
         "roll": "Roll {{dice}}"
     },
+    "resourcesBlock": {
+        "title": "Resources ({{count}})",
+        "newResource": "New resource",
+        "emptyEditable": "No resources. Add a reserve, charge, focus, or other counter.",
+        "empty": "No resources added yet.",
+        "name": "Name",
+        "current": "Current",
+        "max": "Max",
+        "deleteResource": "Delete resource"
+    },
     "entityImage": {
         "notifications": {
             "largePhoto": "Large entity photo",

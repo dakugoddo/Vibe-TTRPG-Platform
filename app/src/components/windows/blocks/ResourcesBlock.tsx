@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
 import type { Entity } from '../../../types';
 import { yjsStore } from '../../../store/yjsStore';
@@ -21,6 +22,7 @@ function canEditEntity(entity: Entity): boolean {
 }
 
 export function ResourcesBlock({ entity }: ResourcesBlockProps) {
+    const { t } = useTranslation();
     const canEditResources = canEditEntity(entity);
     const resources = useMemo(() => normalizeResources(entity.properties?.resources), [entity.properties?.resources]);
     const entries = Object.entries(resources);
@@ -41,12 +43,12 @@ export function ResourcesBlock({ entity }: ResourcesBlockProps) {
         saveResources({
             ...resources,
             [id]: {
-                label: 'Новый ресурс',
+                label: t('resourcesBlock.newResource'),
                 current: 0,
                 max: 0,
             },
         });
-    }, [canEditResources, resources, saveResources]);
+    }, [canEditResources, resources, saveResources, t]);
 
     const handleUpdateResource = useCallback((id: string, patch: Partial<ResourceEntry>) => {
         const previous = resources[id] ?? { current: 0, max: 0 };
@@ -69,21 +71,21 @@ export function ResourcesBlock({ entity }: ResourcesBlockProps) {
             <div className={glass.blockBg}>
                 <div className="flex items-center justify-between gap-3 mb-4">
                     <h4 className={glass.blockHeader + ' mb-0'}>
-                        Ресурсы ({entries.length})
+                        {t('resourcesBlock.title', { count: entries.length })}
                     </h4>
                     {canEditResources && (
                         <button
                             onClick={handleAddResource}
                             className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-success)_34%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_14%,transparent)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-success)] transition-all hover:border-[color-mix(in_srgb,var(--vibe-success)_52%,transparent)] hover:bg-[color-mix(in_srgb,var(--vibe-success)_24%,transparent)]"
                         >
-                            <Plus size={12} /> Добавить
+                            <Plus size={12} /> {t('entityWindow.add')}
                         </button>
                     )}
                 </div>
 
                 {entries.length === 0 ? (
                     <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] py-8 text-center text-xs italic text-[var(--vibe-text-faint)]">
-                        {canEditResources ? 'Нет ресурсов. Добавьте запас, заряд, фокус или другой счетчик.' : 'Ресурсы пока не добавлены.'}
+                        {canEditResources ? t('resourcesBlock.emptyEditable') : t('resourcesBlock.empty')}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-2">
@@ -100,7 +102,7 @@ export function ResourcesBlock({ entity }: ResourcesBlockProps) {
                                 >
                                     <div className="flex items-start gap-3">
                                         <label className="flex-1 min-w-0">
-                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Название</span>
+                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('resourcesBlock.name')}</span>
                                             <input
                                                 type="text"
                                                 value={label}
@@ -120,7 +122,7 @@ export function ResourcesBlock({ entity }: ResourcesBlockProps) {
                                                 <Minus size={13} />
                                             </button>
                                             <label className="w-16">
-                                                <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Текущее</span>
+                                                <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('resourcesBlock.current')}</span>
                                                 <input
                                                     type="number"
                                                     min={0}
@@ -131,7 +133,7 @@ export function ResourcesBlock({ entity }: ResourcesBlockProps) {
                                                 />
                                             </label>
                                             <label className="w-16">
-                                                <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Макс.</span>
+                                                <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('resourcesBlock.max')}</span>
                                                 <input
                                                     type="number"
                                                     min={0}
@@ -153,7 +155,7 @@ export function ResourcesBlock({ entity }: ResourcesBlockProps) {
                                                 <button
                                                     onClick={() => handleDeleteResource(id)}
                                                     className="mb-px rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)]"
-                                                    title="Удалить ресурс"
+                                                    title={t('resourcesBlock.deleteResource')}
                                                 >
                                                     <Trash2 size={13} />
                                                 </button>

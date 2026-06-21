@@ -512,6 +512,16 @@
     "totalRoll": "Суммарный бросок:",
     "roll": "Бросить {{dice}}"
   },
+  "resourcesBlock": {
+    "title": "Ресурсы ({{count}})",
+    "newResource": "Новый ресурс",
+    "emptyEditable": "Нет ресурсов. Добавьте запас, заряд, фокус или другой счетчик.",
+    "empty": "Ресурсы пока не добавлены.",
+    "name": "Название",
+    "current": "Текущее",
+    "max": "Макс.",
+    "deleteResource": "Удалить ресурс"
+  },
   "entityImage": {
     "notifications": {
       "largePhoto": "Крупное фото сущности",
