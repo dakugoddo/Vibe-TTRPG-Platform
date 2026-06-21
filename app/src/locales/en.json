@@ -371,6 +371,76 @@
             "giveToPlayer": "Give to player"
         }
     },
+    "entityWindow": {
+        "hiddenEntity": "Hidden entity",
+        "removeFromCanvas": "Remove from canvas",
+        "noEntityFileAccess": "No access to this entity file",
+        "tabs": {
+            "description": "Description",
+            "settings": "Settings"
+        },
+        "quickCreate": {
+            "object": "Create item",
+            "competency": "Create competency",
+            "ability": "Create ability",
+            "attack": "Create attack"
+        },
+        "relations": {
+            "links": "Links",
+            "parent": "Parent",
+            "children": "Children",
+            "tags": "Tags",
+            "backlinks": "Backlinks"
+        },
+        "layout": {
+            "title": "Window layout",
+            "screenOnly": "Layout is available for screen windows",
+            "left": "Left half",
+            "right": "Right half",
+            "topLeft": "Top-left corner",
+            "topRight": "Top-right corner",
+            "bottomLeft": "Bottom-left corner",
+            "bottomRight": "Bottom-right corner",
+            "center": "Center",
+            "wideCenter": "Wide center",
+            "grid": "Arrange all windows in a grid",
+            "cascade": "Cascade",
+            "saveSnapshot": "Save layout",
+            "restoreSnapshot": "Restore layout"
+        },
+        "pinToCanvas": "Pin to canvas",
+        "unpinFromCanvas": "Unpin from canvas",
+        "noCanvasEditRight": "No permission to edit this canvas",
+        "noActiveCanvasEditRight": "No permission to edit active canvas",
+        "minimizeToIcon": "Minimize to icon",
+        "compactMode": "Normal mode",
+        "technicalMode": "Technical mode: properties, hidden tags, and System ID",
+        "closeWindow": "Close window",
+        "finishEditing": "Finish editing",
+        "editDescription": "Edit description",
+        "descriptionPlaceholder": "Type markdown description...",
+        "noDescriptionEditable": "No description provided. Double click to edit.",
+        "noDescription": "No description provided.",
+        "properties": "Properties",
+        "noPropertiesRecorded": "No properties recorded",
+        "hiddenTagsTitle": "TAGS (Hidden tags)",
+        "unknownTag": "Unknown tag",
+        "noTags": "No tags",
+        "add": "Add",
+        "attachHiddenTags": "Attach (Hidden tags)",
+        "removeTag": "Remove tag",
+        "contextMenu": {
+            "title": "Context menu",
+            "rename": "Rename",
+            "duplicate": "Duplicate",
+            "copyWikiLink": "Copy [[link]]",
+            "deleteEntity": "Delete entity"
+        },
+        "deleteConfirm": {
+            "title": "Entity deletion",
+            "description": "Are you sure you want to delete \"{{name}}\"?"
+        }
+    },
     "audio": {
         "channels": {
             "music": "Music",

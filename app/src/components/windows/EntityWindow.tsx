@@ -12,6 +12,7 @@ import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { SheetTabs, type SheetTab } from '../ui/SheetTabs';
 import { WikiLinkTextarea } from '../ui/WikiLinkTextarea';
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactDOM from 'react-dom';
 
 interface ContextMenuState {
@@ -93,7 +94,7 @@ const MAX_RELATION_LINKS = 8;
 
 interface QuickCreateAction {
     type: EntityType;
-    label: string;
+    labelKey: string;
     icon: LucideIcon;
 }
 
@@ -102,14 +103,14 @@ type GenericEntityTab = 'description' | 'canvas';
 function getWindowQuickCreateActions(entity: Entity): QuickCreateAction[] {
     if (entity.type === 'character') {
         return [
-            { type: 'object', label: 'Создать предмет', icon: Box },
-            { type: 'competency', label: 'Создать компетенцию', icon: Lightbulb },
-            { type: 'ability', label: 'Создать способность', icon: Wand2 },
+            { type: 'object', labelKey: 'entityWindow.quickCreate.object', icon: Box },
+            { type: 'competency', labelKey: 'entityWindow.quickCreate.competency', icon: Lightbulb },
+            { type: 'ability', labelKey: 'entityWindow.quickCreate.ability', icon: Wand2 },
         ];
     }
 
     if (entity.type === 'object') {
-        return [{ type: 'attack', label: 'Создать атаку', icon: Sword }];
+        return [{ type: 'attack', labelKey: 'entityWindow.quickCreate.attack', icon: Sword }];
     }
 
     return [];
@@ -169,6 +170,7 @@ function RelationPill({ entity }: { entity: Entity }) {
 }
 
 function EntityRelationsBlock({ entity }: { entity: Entity }) {
+    const { t } = useTranslation();
     const allEntities = useEntities();
 
     const sections = useMemo(() => {
@@ -191,12 +193,12 @@ function EntityRelationsBlock({ entity }: { entity: Entity }) {
             .sort(sortByName);
 
         return [
-            { id: 'parent', label: 'Parent', icon: Network, entities: parent ? [parent] : [] },
-            { id: 'children', label: 'Children', icon: CornerDownRight, entities: children },
-            { id: 'tags', label: 'Tags', icon: Tag, entities: tags },
-            { id: 'backlinks', label: 'Backlinks', icon: Link2, entities: backlinks },
+            { id: 'parent', label: t('entityWindow.relations.parent'), icon: Network, entities: parent ? [parent] : [] },
+            { id: 'children', label: t('entityWindow.relations.children'), icon: CornerDownRight, entities: children },
+            { id: 'tags', label: t('entityWindow.relations.tags'), icon: Tag, entities: tags },
+            { id: 'backlinks', label: t('entityWindow.relations.backlinks'), icon: Link2, entities: backlinks },
         ].filter(section => section.entities.length > 0);
-    }, [allEntities, entity]);
+    }, [allEntities, entity, t]);
 
     if (sections.length === 0) return null;
 
@@ -205,7 +207,7 @@ function EntityRelationsBlock({ entity }: { entity: Entity }) {
             <h3 className={glass.blockHeader}>
                 <div className="flex items-center gap-2">
                     <Link2 size={12} className="text-[var(--vibe-text-faint)]" />
-                    Links
+                    {t('entityWindow.relations.links')}
                 </div>
             </h3>
             <div className="grid gap-3">
@@ -240,6 +242,7 @@ function EntityRelationsBlock({ entity }: { entity: Entity }) {
 }
 
 export function EntityWindow({ windowState }: EntityWindowProps) {
+    const { t } = useTranslation();
     const { id, entityId, mode, x, y, width, height, zIndex, isPinned } = windowState;
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [isEditingName, setIsEditingName] = useState(false);
@@ -484,21 +487,21 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                     <div className={`${glass.header} draggable-header flex cursor-move items-center justify-between gap-2 border-b border-[var(--vibe-border-subtle)] px-3 py-2`}>
                         <div className="flex min-w-0 items-center gap-2">
                             <Lock size={14} className="text-[var(--vibe-warning)]" />
-                            <span className="truncate text-sm font-bold text-[var(--vibe-text-primary)]">Скрытая сущность</span>
+                            <span className="truncate text-sm font-bold text-[var(--vibe-text-primary)]">{t('entityWindow.hiddenEntity')}</span>
                         </div>
                         {(!isCanvasWindowInstance || canEditPinnedPlacement) && (
                             <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); handleCloseWindow(); }}
                                 className="rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)]"
-                                title="Убрать с канваса"
+                                title={t('entityWindow.removeFromCanvas')}
                             >
                                 <X size={14} />
                             </button>
                         )}
                     </div>
                     <div className="grid h-[calc(100%-42px)] place-items-center px-4 text-center text-sm text-[var(--vibe-text-muted)]">
-                        Нет доступа к файлу этой сущности
+                        {t('entityWindow.noEntityFileAccess')}
                     </div>
                 </div>
             </Rnd>
@@ -550,8 +553,8 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
     const supportsCanvasTokenSettings = entity.type !== 'canvas' && entity.type !== 'folder';
     const usesSpecialTabbedSheet = entity.type === 'character' || entity.type === 'object' || entity.type === 'ability' || entity.type === 'attack';
     const genericTabs: SheetTab<GenericEntityTab>[] = [
-        { id: 'description', label: 'Описание', icon: FileText },
-        { id: 'canvas', label: 'Настройки', icon: Box },
+        { id: 'description', label: t('entityWindow.tabs.description'), icon: FileText },
+        { id: 'canvas', label: t('entityWindow.tabs.settings'), icon: Box },
     ];
     const headerBorderClass = focusedWindowId === id ? 'border-[var(--vibe-border-strong)]' : 'border-[var(--vibe-border-subtle)]';
     const iconActionClass = 'rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-muted)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
@@ -564,21 +567,21 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
         ? (!isCanvasWindowInstance || canEditPinnedPlacement)
         : Boolean(activeCanvasId && canvasEntity?.type === 'canvas' && canModifyEntityRecord(canvasEntity));
     const pinButtonTitle = isPinned
-        ? (canToggleCanvasPin ? 'Открепить от канваса' : 'Нет права менять этот canvas')
-        : (canToggleCanvasPin ? 'Закрепить на канвасе' : 'Нет права менять активный canvas');
+        ? (canToggleCanvasPin ? t('entityWindow.unpinFromCanvas') : t('entityWindow.noCanvasEditRight'))
+        : (canToggleCanvasPin ? t('entityWindow.pinToCanvas') : t('entityWindow.noActiveCanvasEditRight'));
     const layoutMenuActions: Array<{ id: string; label: string; icon: LucideIcon; run: () => void }> = [
-        { id: 'left', label: 'Левая половина', icon: PanelLeft, run: () => tileWindow(id, 'left') },
-        { id: 'right', label: 'Правая половина', icon: PanelRight, run: () => tileWindow(id, 'right') },
-        { id: 'top-left', label: 'Верхний левый угол', icon: LayoutGrid, run: () => tileWindow(id, 'topLeft') },
-        { id: 'top-right', label: 'Верхний правый угол', icon: LayoutGrid, run: () => tileWindow(id, 'topRight') },
-        { id: 'bottom-left', label: 'Нижний левый угол', icon: LayoutGrid, run: () => tileWindow(id, 'bottomLeft') },
-        { id: 'bottom-right', label: 'Нижний правый угол', icon: LayoutGrid, run: () => tileWindow(id, 'bottomRight') },
-        { id: 'center', label: 'Центр', icon: Crosshair, run: () => tileWindow(id, 'center') },
-        { id: 'wide-center', label: 'Широкий центр', icon: Crosshair, run: () => tileWindow(id, 'wideCenter') },
-        { id: 'grid', label: 'Разложить все окна сеткой', icon: LayoutGrid, run: arrangeVisibleWindowsGrid },
-        { id: 'cascade', label: 'Каскадом', icon: Layers, run: cascadeVisibleWindows },
-        { id: 'save-snapshot', label: 'Сохранить раскладку', icon: Save, run: saveCurrentWindowLayoutSnapshot },
-        { id: 'restore-snapshot', label: 'Восстановить раскладку', icon: RotateCcw, run: restoreWindowLayoutSnapshot },
+        { id: 'left', label: t('entityWindow.layout.left'), icon: PanelLeft, run: () => tileWindow(id, 'left') },
+        { id: 'right', label: t('entityWindow.layout.right'), icon: PanelRight, run: () => tileWindow(id, 'right') },
+        { id: 'top-left', label: t('entityWindow.layout.topLeft'), icon: LayoutGrid, run: () => tileWindow(id, 'topLeft') },
+        { id: 'top-right', label: t('entityWindow.layout.topRight'), icon: LayoutGrid, run: () => tileWindow(id, 'topRight') },
+        { id: 'bottom-left', label: t('entityWindow.layout.bottomLeft'), icon: LayoutGrid, run: () => tileWindow(id, 'bottomLeft') },
+        { id: 'bottom-right', label: t('entityWindow.layout.bottomRight'), icon: LayoutGrid, run: () => tileWindow(id, 'bottomRight') },
+        { id: 'center', label: t('entityWindow.layout.center'), icon: Crosshair, run: () => tileWindow(id, 'center') },
+        { id: 'wide-center', label: t('entityWindow.layout.wideCenter'), icon: Crosshair, run: () => tileWindow(id, 'wideCenter') },
+        { id: 'grid', label: t('entityWindow.layout.grid'), icon: LayoutGrid, run: arrangeVisibleWindowsGrid },
+        { id: 'cascade', label: t('entityWindow.layout.cascade'), icon: Layers, run: cascadeVisibleWindows },
+        { id: 'save-snapshot', label: t('entityWindow.layout.saveSnapshot'), icon: Save, run: saveCurrentWindowLayoutSnapshot },
+        { id: 'restore-snapshot', label: t('entityWindow.layout.restoreSnapshot'), icon: RotateCcw, run: restoreWindowLayoutSnapshot },
     ];
 
     return (
@@ -649,7 +652,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                             }}
                             disabled={isPinned}
                             className={`${iconActionClass} ${isPinned ? 'cursor-not-allowed opacity-45' : ''}`}
-                            title={isPinned ? 'Раскладка доступна для экранных окон' : 'Раскладка окна'}
+                            title={isPinned ? t('entityWindow.layout.screenOnly') : t('entityWindow.layout.title')}
                         >
                             <LayoutGrid size={14} />
                         </button>
@@ -722,21 +725,21 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                         <button
                             onClick={(e) => { e.stopPropagation(); handleModeChange('icon'); }}
                             className={iconActionClass}
-                            title="Свернуть в иконку"
+                            title={t('entityWindow.minimizeToIcon')}
                         >
                             <CircleDot size={14} />
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); handleModeChange(isFullMode ? 'compact' : 'full'); }}
                             className={iconActionClass}
-                            title={isFullMode ? 'Обычный режим' : 'Технический режим: свойства, скрытые теги и System ID'}
+                            title={isFullMode ? t('entityWindow.compactMode') : t('entityWindow.technicalMode')}
                         >
                             {isFullMode ? <Minimize2 size={14} /> : <Bug size={14} />}
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); handleCloseWindow(); }}
                             className="ml-1 rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)]"
-                            title={isCanvasWindowInstance ? 'Убрать с канваса' : 'Закрыть окно'}
+                            title={isCanvasWindowInstance ? t('entityWindow.removeFromCanvas') : t('entityWindow.closeWindow')}
                         >
                             <X size={14} />
                         </button>
@@ -767,7 +770,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                                 <button
                                                     onClick={() => setIsEditingDescription(!isEditingDescription)}
                                                     className={editToggleClass(isEditingDescription)}
-                                                    title={isEditingDescription ? 'Завершить редактирование' : 'Редактировать описание'}
+                                                    title={isEditingDescription ? t('entityWindow.finishEditing') : t('entityWindow.editDescription')}
                                                 >
                                                     {isEditingDescription ? <Check size={14} /> : <Edit2 size={14} />}
                                                 </button>
@@ -779,7 +782,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                         <div className={glass.blockBg}>
                                             <h3 className={glass.blockHeader}>
                                                 <div className="flex items-center gap-2 flex-1">
-                                                    Description
+                                                    {t('entityWindow.tabs.description')}
                                                 </div>
                                                 {!supportsCanvasTokenSettings && canEditCurrentEntity && (
                                                     <button
@@ -800,14 +803,14 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                                     }}
                                                     excludeEntityId={entity.id}
                                                     className={`${glass.input} w-full h-32 resize-y flex-1 custom-scrollbar text-sm font-sans`}
-                                                    placeholder="Type markdown description here..."
+                                                    placeholder={t('entityWindow.descriptionPlaceholder')}
                                                     autoFocus
                                                 />
                                             ) : (
                                                 <div className="text-sm leading-relaxed whitespace-pre-wrap text-[var(--vibe-text-muted)] flex-1 h-full min-h-[100px]" onDoubleClick={() => { if (canEditCurrentEntity) setIsEditingDescription(true); }}>
                                                     {entity.description
                                                         ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
-                                                        : <span className="cursor-pointer italic text-[var(--vibe-text-faint)]">{canEditCurrentEntity ? 'No description provided. Double click to edit.' : 'No description provided.'}</span>}
+                                                        : <span className="cursor-pointer italic text-[var(--vibe-text-faint)]">{canEditCurrentEntity ? t('entityWindow.noDescriptionEditable') : t('entityWindow.noDescription')}</span>}
                                                 </div>
                                             )}
                                         </div>
@@ -837,13 +840,13 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                 <div className="space-y-4 animate-in fade-in duration-200 mt-6 slide-in-from-bottom-2">
                                     <div>
                                         <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                            Properties
+                                            {t('entityWindow.properties')}
                                             <div className="h-px flex-1 bg-[var(--vibe-border-subtle)]"></div>
                                         </h3>
                                         <div className="overflow-x-auto rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 font-mono text-xs text-[var(--vibe-success)] shadow-[var(--vibe-shadow-block)] custom-scrollbar">
                                             {Object.keys(entity.properties || {}).length > 0
                                                 ? JSON.stringify(entity.properties, null, 2)
-                                                : <span className="text-[var(--vibe-text-faint)]">{"{}"} // No properties recorded</span>}
+                                                : <span className="text-[var(--vibe-text-faint)]">{"{}"} // {t('entityWindow.noPropertiesRecorded')}</span>}
                                         </div>
                                     </div>
 
@@ -855,7 +858,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                         <div className="flex items-center justify-between mb-2">
                                             <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
                                                 <Tag size={12} className="text-[var(--vibe-text-faint)]" />
-                                                TAGS (Скрытые теги)
+                                                {t('entityWindow.hiddenTagsTitle')}
                                             </h3>
                                             <div className="ml-2 h-px flex-1 bg-[var(--vibe-border-subtle)]"></div>
                                         </div>
@@ -865,7 +868,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                                 return (
                                                     <div key={tagId} className="group/tag flex items-center overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] transition-colors hover:border-[var(--vibe-border-strong)]">
                                                         <EntityLink entityId={tagId} underline={false} className="whitespace-nowrap px-2 py-1 font-medium text-[var(--vibe-text-muted)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]">
-                                                            #{tagEntity ? tagEntity.name : 'Unknown Tag'}
+                                                            #{tagEntity ? tagEntity.name : t('entityWindow.unknownTag')}
                                                         </EntityLink>
                                                         {canEditCurrentEntity && (
                                                             <button
@@ -874,14 +877,14 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                                                     yjsStore.updateEntity(entity.id, { tags: newTags });
                                                                 }}
                                                                 className="border-l border-[var(--vibe-border-subtle)] px-1.5 py-1 text-[var(--vibe-text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)] group-hover/tag:border-[var(--vibe-border-strong)]"
-                                                                title="Remove Tag"
+                                                                title={t('entityWindow.removeTag')}
                                                             >
                                                                 <Trash2 size={10} />
                                                             </button>
                                                         )}
                                                     </div>
                                                 )
-                                            }) : <span className="py-1 text-xs italic text-[var(--vibe-text-faint)]">Нет тегов</span>}
+                                            }) : <span className="py-1 text-xs italic text-[var(--vibe-text-faint)]">{t('entityWindow.noTags')}</span>}
 
                                             {/* Add tag button */}
                                             {canEditCurrentEntity && (
@@ -890,7 +893,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                                         className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[var(--vibe-text-faint)] transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                                                         onClick={() => setIsTagPickerOpen(true)}
                                                     >
-                                                        <Plus size={10} /> Добавить
+                                                        <Plus size={10} /> {t('entityWindow.add')}
                                                     </button>
 
                                                     <TagPickerPopup
@@ -903,7 +906,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                                         }}
                                                         excludeTags={entity.tags || []}
                                                         allowedFolders={['folder_tags_hidden']}
-                                                        title="Прикрепить (Скрытые теги)"
+                                                        title={t('entityWindow.attachHiddenTags')}
                                                     />
                                                 </>
                                             )}
@@ -937,7 +940,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                         }}
                     >
                         <div className="pointer-events-none mb-1 select-none border-b border-[var(--vibe-border-subtle)] px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
-                            Раскладка окна
+                            {t('entityWindow.layout.title')}
                         </div>
                         {layoutMenuActions.map((action) => {
                             const ActionIcon = action.icon;
@@ -976,7 +979,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                         }}
                     >
                         <div className="pointer-events-none mb-1 select-none border-b border-[var(--vibe-border-subtle)] px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
-                            Контекстное меню
+                            {t('entityWindow.contextMenu.title')}
                         </div>
                         <button
                             onClick={(e) => {
@@ -988,7 +991,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                             }}
                             className={contextMenuItemClass}
                         >
-                            <Edit2 size={14} className={contextMenuIconClass} /> Переименовать
+                            <Edit2 size={14} className={contextMenuIconClass} /> {t('entityWindow.contextMenu.rename')}
                         </button>
                         <button
                             onClick={(e) => {
@@ -997,7 +1000,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                             }}
                             className={contextMenuItemClass}
                         >
-                            <Copy size={14} className={contextMenuIconClass} /> Дублировать
+                            <Copy size={14} className={contextMenuIconClass} /> {t('entityWindow.contextMenu.duplicate')}
                         </button>
                         <button
                             onClick={(e) => {
@@ -1006,7 +1009,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                             }}
                             className={contextMenuItemClass}
                         >
-                            <Link2 size={14} className={contextMenuIconClass} /> Копировать [[ссылку]]
+                            <Link2 size={14} className={contextMenuIconClass} /> {t('entityWindow.contextMenu.copyWikiLink')}
                         </button>
                         {quickCreateActions.length > 0 && (
                             <>
@@ -1022,7 +1025,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                             }}
                                             className={contextMenuItemClass}
                                         >
-                                            <ActionIcon size={14} className={contextMenuIconClass} /> {action.label}
+                                            <ActionIcon size={14} className={contextMenuIconClass} /> {t(action.labelKey)}
                                         </button>
                                     );
                                 })}
@@ -1035,9 +1038,9 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                 if (!canEditCurrentEntity) return;
                                 setContextMenuState(null);
                                 openConfirm({
-                                    title: "Удаление сущности",
-                                    description: `Вы уверены, что хотите удалить "${entity.name}"?`,
-                                    confirmText: "Удалить",
+                                    title: t('entityWindow.deleteConfirm.title'),
+                                    description: t('entityWindow.deleteConfirm.description', { name: entity.name }),
+                                    confirmText: t('common.delete'),
                                     isDestructive: true,
                                     onConfirm: () => {
                                         handleCloseWindow();
@@ -1047,7 +1050,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                             }}
                             className="group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[var(--vibe-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)]"
                         >
-                            <Trash2 size={14} className="text-[var(--vibe-danger)] opacity-70 transition-opacity group-hover:opacity-100" /> Удалить сущность
+                            <Trash2 size={14} className="text-[var(--vibe-danger)] opacity-70 transition-opacity group-hover:opacity-100" /> {t('entityWindow.contextMenu.deleteEntity')}
                         </button>
                     </div>
                 </>,

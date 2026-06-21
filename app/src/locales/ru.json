@@ -371,6 +371,76 @@
       "giveToPlayer": "Выдать игроку"
     }
   },
+  "entityWindow": {
+    "hiddenEntity": "Скрытая сущность",
+    "removeFromCanvas": "Убрать с канваса",
+    "noEntityFileAccess": "Нет доступа к файлу этой сущности",
+    "tabs": {
+      "description": "Описание",
+      "settings": "Настройки"
+    },
+    "quickCreate": {
+      "object": "Создать предмет",
+      "competency": "Создать компетенцию",
+      "ability": "Создать способность",
+      "attack": "Создать атаку"
+    },
+    "relations": {
+      "links": "Связи",
+      "parent": "Родитель",
+      "children": "Вложенные",
+      "tags": "Теги",
+      "backlinks": "Обратные ссылки"
+    },
+    "layout": {
+      "title": "Раскладка окна",
+      "screenOnly": "Раскладка доступна для экранных окон",
+      "left": "Левая половина",
+      "right": "Правая половина",
+      "topLeft": "Верхний левый угол",
+      "topRight": "Верхний правый угол",
+      "bottomLeft": "Нижний левый угол",
+      "bottomRight": "Нижний правый угол",
+      "center": "Центр",
+      "wideCenter": "Широкий центр",
+      "grid": "Разложить все окна сеткой",
+      "cascade": "Каскадом",
+      "saveSnapshot": "Сохранить раскладку",
+      "restoreSnapshot": "Восстановить раскладку"
+    },
+    "pinToCanvas": "Закрепить на канвасе",
+    "unpinFromCanvas": "Открепить от канваса",
+    "noCanvasEditRight": "Нет права менять этот canvas",
+    "noActiveCanvasEditRight": "Нет права менять активный canvas",
+    "minimizeToIcon": "Свернуть в иконку",
+    "compactMode": "Обычный режим",
+    "technicalMode": "Технический режим: свойства, скрытые теги и System ID",
+    "closeWindow": "Закрыть окно",
+    "finishEditing": "Завершить редактирование",
+    "editDescription": "Редактировать описание",
+    "descriptionPlaceholder": "Введите markdown-описание...",
+    "noDescriptionEditable": "Описание не заполнено. Дважды кликните, чтобы редактировать.",
+    "noDescription": "Описание не заполнено.",
+    "properties": "Свойства",
+    "noPropertiesRecorded": "Свойства не записаны",
+    "hiddenTagsTitle": "TAGS (Скрытые теги)",
+    "unknownTag": "Неизвестный тег",
+    "noTags": "Нет тегов",
+    "add": "Добавить",
+    "attachHiddenTags": "Прикрепить (Скрытые теги)",
+    "removeTag": "Удалить тег",
+    "contextMenu": {
+      "title": "Контекстное меню",
+      "rename": "Переименовать",
+      "duplicate": "Дублировать",
+      "copyWikiLink": "Копировать [[ссылку]]",
+      "deleteEntity": "Удалить сущность"
+    },
+    "deleteConfirm": {
+      "title": "Удаление сущности",
+      "description": "Вы уверены, что хотите удалить \"{{name}}\"?"
+    }
+  },
   "audio": {
     "channels": {
       "music": "Музыка",
