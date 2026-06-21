@@ -534,6 +534,10 @@
         "remove": "Remove",
         "empty": "No properties added"
     },
+    "sheetTabs": {
+        "scrollLeft": "Scroll tabs left",
+        "scrollRight": "Scroll tabs right"
+    },
     "statTooltip": {
         "title": "Modifier calculation",
         "base": "Base",

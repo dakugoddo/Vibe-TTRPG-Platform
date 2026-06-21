@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
@@ -20,6 +21,7 @@ interface SheetTabsProps<T extends string> {
 }
 
 export function SheetTabs<T extends string>({ tabs, activeTab, onChange, endSlot, className }: SheetTabsProps<T>) {
+    const { t } = useTranslation();
     const scrollRef = useRef<HTMLDivElement | null>(null);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
@@ -70,7 +72,7 @@ export function SheetTabs<T extends string>({ tabs, activeTab, onChange, endSlot
                     onClick={() => scrollTabs(-1)}
                     disabled={!canScrollLeft}
                     className={`grid h-[var(--vibe-tab-height)] w-7 flex-shrink-0 place-items-center rounded-[var(--vibe-radius-sm)] disabled:opacity-25 ${glass.iconButton}`}
-                    title="Прокрутить вкладки влево"
+                    title={t('sheetTabs.scrollLeft')}
                 >
                     <ChevronLeft size={14} />
                 </button>
@@ -117,7 +119,7 @@ export function SheetTabs<T extends string>({ tabs, activeTab, onChange, endSlot
                     onClick={() => scrollTabs(1)}
                     disabled={!canScrollRight}
                     className={`grid h-[var(--vibe-tab-height)] w-7 flex-shrink-0 place-items-center rounded-[var(--vibe-radius-sm)] disabled:opacity-25 ${glass.iconButton}`}
-                    title="Прокрутить вкладки вправо"
+                    title={t('sheetTabs.scrollRight')}
                 >
                     <ChevronRight size={14} />
                 </button>
