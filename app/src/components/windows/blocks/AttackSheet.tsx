@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { yjsStore } from '../../../store/yjsStore';
 import { useEntities } from '../../../hooks/useEntities';
 import { useWindowStore } from '../../../store/windowStore';
@@ -21,6 +22,13 @@ interface AttackSheetProps {
 type AttackTab = 'stats' | 'description' | 'canvas';
 
 const DISTANCES = ['ближняя', 'средняя', 'дальняя', 'экстремальная', 'запредельная'];
+const DISTANCE_LABEL_KEYS: Record<string, string> = {
+    'ближняя': 'attackSheet.distances.melee',
+    'средняя': 'attackSheet.distances.medium',
+    'дальняя': 'attackSheet.distances.long',
+    'экстремальная': 'attackSheet.distances.extreme',
+    'запредельная': 'attackSheet.distances.beyond',
+};
 const attackPanelClass = `${glass.blockBg} border-[color-mix(in_srgb,var(--vibe-danger)_28%,var(--vibe-border-subtle))] shadow-[inset_0_0_20px_color-mix(in_srgb,var(--vibe-danger)_8%,transparent)]`;
 const statCardClass = 'group flex flex-col items-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 shadow-sm transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]';
 const statLabelClass = 'mb-1 cursor-pointer text-[10px] font-bold uppercase text-[var(--vibe-text-faint)] transition-colors hover:text-[var(--vibe-text-primary)]';
@@ -37,6 +45,7 @@ function canEditEntity(entity: Entity): boolean {
 }
 
 export function AttackSheet({ entity }: AttackSheetProps) {
+    const { t } = useTranslation();
     const allEntities = useEntities();
     const { openWindow } = useWindowStore();
     const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
@@ -47,9 +56,9 @@ export function AttackSheet({ entity }: AttackSheetProps) {
     const canRoll = rollFormula.length > 0;
     const parentEntity = allEntities.find(item => item.id === entity.parentId);
     const tabs: SheetTab<AttackTab>[] = [
-        { id: 'stats', label: 'Параметры', icon: SlidersHorizontal },
-        { id: 'description', label: 'Описание', icon: FileText },
-        { id: 'canvas', label: 'Настройки', icon: Box },
+        { id: 'stats', label: t('attackSheet.tabs.stats'), icon: SlidersHorizontal },
+        { id: 'description', label: t('attackSheet.tabs.description'), icon: FileText },
+        { id: 'canvas', label: t('attackSheet.tabs.canvas'), icon: Box },
     ];
 
     const updateProperty = (key: string, value: unknown) => {
@@ -67,7 +76,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
         if (note) {
             openWindow(note.id, Math.random() * 200 + 100, Math.random() * 200 + 100);
         } else {
-            console.log(`Заметка '${noteName}' не найдена`);
+            console.log(t('attackSheet.noteNotFound', { name: noteName }));
         }
     };
 
@@ -81,7 +90,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                     <button
                         onClick={() => setIsEditingDescription(!isEditingDescription)}
                         className={`grid h-8 w-8 place-items-center rounded-[var(--vibe-radius-sm)] transition-colors ${isEditingDescription ? glass.iconButtonActive : glass.iconButton}`}
-                        title={isEditingDescription ? 'Завершить редактирование' : 'Редактировать описание'}
+                        title={isEditingDescription ? t('abilitySheet.finishEditing') : t('abilitySheet.editDescription')}
                     >
                         {isEditingDescription ? <Check size={14} /> : <Edit2 size={14} />}
                     </button>
@@ -92,17 +101,16 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                 <>
             <div className={attackPanelClass}>
                 <h3 className={`${glass.blockHeader} mb-3 border-[color-mix(in_srgb,var(--vibe-danger)_28%,transparent)] text-[var(--vibe-danger)]`}>
-                    Характеристики Атаки
+                    {t('attackSheet.statsTitle')}
                 </h3>
 
                 <div className="grid grid-cols-2 gap-3">
-                    {/* Урон */}
                     <div className={statCardClass}>
                         <span
                             className={statLabelClass}
                             onClick={() => handleOpenNote('Урон')}
                         >
-                            Урон
+                            {t('attackSheet.stats.damage')}
                         </span>
                         <input
                             type="number"
@@ -114,13 +122,12 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                         />
                     </div>
 
-                    {/* Масштаб */}
                     <div className={statCardClass}>
                         <span
                             className={statLabelClass}
                             onClick={() => handleOpenNote('Масштаб')}
                         >
-                            Масштаб
+                            {t('attackSheet.stats.scale')}
                         </span>
                         <input
                             type="number"
@@ -132,13 +139,12 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                         />
                     </div>
 
-                    {/* Попадание */}
                     <div className={statCardClass}>
                         <span
                             className={statLabelClass}
                             onClick={() => handleOpenNote('Попадание')}
                         >
-                            Попадание
+                            {t('attackSheet.stats.hit')}
                         </span>
                         <input
                             type="number"
@@ -150,13 +156,12 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                         />
                     </div>
 
-                    {/* Дистанция */}
                     <div className={`${statCardClass} justify-center`}>
                         <span
                             className={`${statLabelClass} text-center`}
                             onClick={() => handleOpenNote('Дистанция')}
                         >
-                            Дистанция
+                            {t('attackSheet.stats.distance')}
                         </span>
                         <select
                             value={entity.properties.дистанция || DISTANCES[0]}
@@ -165,14 +170,14 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                             className={`${glass.input} w-full cursor-pointer appearance-none p-1 text-center text-xs font-bold`}
                         >
                             {DISTANCES.map(d => (
-                                <option key={d} value={d}>{d}</option>
+                                <option key={d} value={d}>{t(DISTANCE_LABEL_KEYS[d] ?? d)}</option>
                             ))}
                         </select>
                     </div>
 
                     <div className="group col-span-2 flex flex-col gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_28%,var(--vibe-border-subtle))] bg-[var(--vibe-surface-input)] p-2 shadow-sm transition-all hover:border-[color-mix(in_srgb,var(--vibe-danger)_42%,var(--vibe-border-strong))] hover:bg-[var(--vibe-surface-hover)]">
                         <span className="text-[10px] font-bold uppercase text-[color-mix(in_srgb,var(--vibe-danger)_78%,var(--vibe-text-muted))]">
-                            Формула броска
+                            {t('attackSheet.rollFormula')}
                         </span>
                         <div className="flex items-center gap-2">
                             <input
@@ -188,7 +193,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                                 onClick={() => rollEntityActionToChat(entity, 'attack', parentEntity ? [parentEntity] : [])}
                                 disabled={!canRoll}
                                 className={`grid h-8 w-8 place-items-center rounded-[var(--vibe-radius-sm)] border transition-all ${canRoll ? 'border-[color-mix(in_srgb,var(--vibe-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] text-[var(--vibe-danger)] hover:bg-[color-mix(in_srgb,var(--vibe-danger)_28%,transparent)]' : 'cursor-not-allowed border-transparent bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)]'}`}
-                                title={canRoll ? `Бросить ${rollFormula}` : 'Укажите формулу броска'}
+                                title={canRoll ? t('abilitiesBlock.rollTitle', { formula: rollFormula }) : t('abilitiesBlock.rollFormulaMissing')}
                             >
                                 <Dices size={14} />
                             </button>
@@ -197,12 +202,11 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                 </div>
             </div>
 
-            {/* ПРОПЕРТИЗ БЛОК (Свойства) */}
             <div className={attackPanelClass}>
                 <div className="flex items-center justify-between mb-4">
                     <h4 className={`${glass.blockHeader} mb-0 border-[color-mix(in_srgb,var(--vibe-danger)_28%,transparent)] text-[var(--vibe-danger)]`}>
                         <Tag size={14} className="mr-2" />
-                        Свойства
+                        {t('attackSheet.propertiesTitle')}
                     </h4>
 
                     {canEditAttack && (
@@ -211,7 +215,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                                 className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                                 onClick={() => setIsTagPickerOpen(true)}
                             >
-                                <Plus size={12} /> Добавить
+                                <Plus size={12} /> {t('attackSheet.add')}
                             </button>
 
                             <TagPickerPopup
@@ -224,7 +228,7 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                                 }}
                                 excludeTags={entity.tags || []}
                                 allowedFolders={['folder_tags_properties']}
-                                title="Добавить свойство"
+                                title={t('propertiesBlock.addProperty')}
                             />
                         </>
                     )}
@@ -242,14 +246,14 @@ export function AttackSheet({ entity }: AttackSheetProps) {
                                             yjsStore.updateEntity(entity.id, { tags: newTags });
                                         }}
                                         className="border-l border-[var(--vibe-border-subtle)] px-2 py-1 text-[var(--vibe-text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)] group-hover/tag:border-[color-mix(in_srgb,var(--vibe-danger)_42%,var(--vibe-border-strong))]"
-                                        title="Убрать"
+                                        title={t('propertiesBlock.remove')}
                                     >
                                         <Trash2 size={12} />
                                     </button>
                                 )}
                             </div>
                         )
-                    }) : <span className="text-xs italic text-[var(--vibe-text-faint)]">Нет свойств</span>}
+                    }) : <span className="text-xs italic text-[var(--vibe-text-faint)]">{t('propertiesBlock.empty')}</span>}
                 </div>
             </div>
                 </>
@@ -257,21 +261,21 @@ export function AttackSheet({ entity }: AttackSheetProps) {
 
             {activeTab === 'description' && (
                 <div className={`${glass.blockBg} min-h-[220px]`}>
-                    <h3 className={glass.blockHeader}>Описание</h3>
+                    <h3 className={glass.blockHeader}>{t('attackSheet.descriptionTitle')}</h3>
                     {isEditingDescription && canEditAttack ? (
                         <WikiLinkTextarea
                             value={entity.description || ''}
                             onValueChange={(value) => yjsStore.updateEntity(entity.id, { description: value })}
                             excludeEntityId={entity.id}
                             className={`${glass.input} w-full min-h-[180px] resize-y custom-scrollbar text-sm font-sans`}
-                            placeholder="Описание атаки, эффекты, условия применения..."
+                            placeholder={t('attackSheet.descriptionPlaceholder')}
                             autoFocus
                         />
                     ) : (
                         <div className="min-h-[180px] text-sm leading-relaxed text-[var(--vibe-text-muted)]" onDoubleClick={() => { if (canEditAttack) setIsEditingDescription(true); }}>
                             {entity.description
                                 ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
-                                : <span className="cursor-pointer italic text-[var(--vibe-text-faint)]">{canEditAttack ? 'Описание пустое. Дважды кликните для редактирования.' : 'Описание пустое.'}</span>}
+                                : <span className="cursor-pointer italic text-[var(--vibe-text-faint)]">{canEditAttack ? t('abilitySheet.emptyDescriptionEditable') : t('abilitySheet.emptyDescription')}</span>}
                         </div>
                     )}
                 </div>

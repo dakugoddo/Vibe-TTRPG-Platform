@@ -544,6 +544,33 @@
     "emptyDescriptionEditable": "Описание пустое. Дважды кликните для редактирования.",
     "emptyDescription": "Описание пустое."
   },
+  "attackSheet": {
+    "tabs": {
+      "stats": "Параметры",
+      "description": "Описание",
+      "canvas": "Настройки"
+    },
+    "noteNotFound": "Заметка «{{name}}» не найдена",
+    "statsTitle": "Характеристики атаки",
+    "stats": {
+      "damage": "Урон",
+      "scale": "Масштаб",
+      "hit": "Попадание",
+      "distance": "Дистанция"
+    },
+    "distances": {
+      "melee": "ближняя",
+      "medium": "средняя",
+      "long": "дальняя",
+      "extreme": "экстремальная",
+      "beyond": "запредельная"
+    },
+    "rollFormula": "Формула броска",
+    "propertiesTitle": "Свойства",
+    "add": "Добавить",
+    "descriptionTitle": "Описание",
+    "descriptionPlaceholder": "Описание атаки, эффекты, условия применения..."
+  },
   "competenciesBlock": {
     "title": "Компетенции ({{count}})",
     "add": "Добавить",

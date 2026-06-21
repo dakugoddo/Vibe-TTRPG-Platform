@@ -544,6 +544,33 @@
         "emptyDescriptionEditable": "Description is empty. Double click to edit.",
         "emptyDescription": "Description is empty."
     },
+    "attackSheet": {
+        "tabs": {
+            "stats": "Stats",
+            "description": "Description",
+            "canvas": "Settings"
+        },
+        "noteNotFound": "Note \"{{name}}\" was not found",
+        "statsTitle": "Attack stats",
+        "stats": {
+            "damage": "Damage",
+            "scale": "Scale",
+            "hit": "Hit",
+            "distance": "Distance"
+        },
+        "distances": {
+            "melee": "melee",
+            "medium": "medium",
+            "long": "long",
+            "extreme": "extreme",
+            "beyond": "beyond"
+        },
+        "rollFormula": "Roll formula",
+        "propertiesTitle": "Properties",
+        "add": "Add",
+        "descriptionTitle": "Description",
+        "descriptionPlaceholder": "Attack description, effects, usage conditions..."
+    },
     "competenciesBlock": {
         "title": "Competencies ({{count}})",
         "add": "Add",
