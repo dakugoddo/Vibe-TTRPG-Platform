@@ -522,6 +522,12 @@
     "max": "Макс.",
     "deleteResource": "Удалить ресурс"
   },
+  "propertiesBlock": {
+    "title": "Свойства Предмета",
+    "addProperty": "Добавить свойство",
+    "remove": "Убрать",
+    "empty": "Нет добавленных свойств"
+  },
   "entityImage": {
     "notifications": {
       "largePhoto": "Крупное фото сущности",

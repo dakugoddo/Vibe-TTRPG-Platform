@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Tag, Plus, Trash2 } from 'lucide-react';
 import type { Entity } from '../../../types';
 import { yjsStore } from '../../../store/yjsStore';
@@ -16,6 +17,7 @@ function getEntityOwnerId(entity: Entity): string | undefined {
 }
 
 export function PropertiesBlock({ entity }: PropertiesBlockProps) {
+    const { t } = useTranslation();
     const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
     const canEditProperties = yjsStore.canModify(entity.database, getEntityOwnerId(entity));
 
@@ -24,7 +26,7 @@ export function PropertiesBlock({ entity }: PropertiesBlockProps) {
             <div className="flex items-center justify-between mb-4">
                 <h4 className="text-[11px] text-white/50 font-bold uppercase tracking-widest flex items-center gap-2">
                     <Tag size={14} className="text-emerald-400" />
-                    Свойства Предмета
+                    {t('propertiesBlock.title')}
                 </h4>
 
                 {canEditProperties && (
@@ -32,7 +34,7 @@ export function PropertiesBlock({ entity }: PropertiesBlockProps) {
                         className="flex items-center gap-1 px-2 py-1 bg-white/5 border border-white/10 border-dashed rounded-md text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all text-[10px] font-bold uppercase tracking-wider"
                         onClick={() => setIsTagPickerOpen(true)}
                     >
-                        <Plus size={12} /> Добавить
+                        <Plus size={12} /> {t('entityWindow.add')}
                     </button>
                 )}
 
@@ -47,7 +49,7 @@ export function PropertiesBlock({ entity }: PropertiesBlockProps) {
                         }}
                         excludeTags={entity.tags || []}
                         allowedFolders={['folder_tags_properties']}
-                        title="Добавить свойство"
+                        title={t('propertiesBlock.addProperty')}
                     />
                 )}
             </div>
@@ -70,14 +72,14 @@ export function PropertiesBlock({ entity }: PropertiesBlockProps) {
                                         yjsStore.updateEntity(entity.id, { tags: newTags });
                                     }}
                                     className="px-2 py-1 text-white/30 hover:bg-red-500/20 hover:text-red-400 transition-colors border-l border-white/5 group-hover/tag:border-white/10"
-                                    title="Убрать"
+                                    title={t('propertiesBlock.remove')}
                                 >
                                     <Trash2 size={12} />
                                 </button>
                             )}
                         </div>
                     )
-                }) : <span className="text-white/30 text-xs italic">Нет добавленных свойств</span>}
+                }) : <span className="text-white/30 text-xs italic">{t('propertiesBlock.empty')}</span>}
             </div>
         </div>
     );

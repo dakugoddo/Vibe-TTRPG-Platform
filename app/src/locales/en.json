@@ -522,6 +522,12 @@
         "max": "Max",
         "deleteResource": "Delete resource"
     },
+    "propertiesBlock": {
+        "title": "Item Properties",
+        "addProperty": "Add property",
+        "remove": "Remove",
+        "empty": "No properties added"
+    },
     "entityImage": {
         "notifications": {
             "largePhoto": "Large entity photo",
