@@ -441,6 +441,23 @@
       "description": "Вы уверены, что хотите удалить \"{{name}}\"?"
     }
   },
+  "characterSheet": {
+    "tabs": {
+      "stats": "Статы",
+      "skills": "Навыки",
+      "competencies": "Компетенции",
+      "abilities": "Способности",
+      "resources": "Ресурсы",
+      "inventory": "Инвентарь",
+      "notes": "Заметки",
+      "settings": "Настройки"
+    },
+    "editNotes": "Редактировать заметки",
+    "notesPlaceholder": "История персонажа и заметки...",
+    "noNotesEditable": "Заметки не заполнены. Дважды кликните, чтобы редактировать.",
+    "noNotes": "Заметки не заполнены.",
+    "expandForDetails": "Разверните окно, чтобы увидеть больше деталей."
+  },
   "audio": {
     "channels": {
       "music": "Музыка",

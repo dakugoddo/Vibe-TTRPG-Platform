@@ -441,6 +441,23 @@
             "description": "Are you sure you want to delete \"{{name}}\"?"
         }
     },
+    "characterSheet": {
+        "tabs": {
+            "stats": "Stats",
+            "skills": "Skills",
+            "competencies": "Competencies",
+            "abilities": "Abilities",
+            "resources": "Resources",
+            "inventory": "Inventory",
+            "notes": "Notes",
+            "settings": "Settings"
+        },
+        "editNotes": "Edit notes",
+        "notesPlaceholder": "Character backstory and notes...",
+        "noNotesEditable": "No notes provided. Double click to edit.",
+        "noNotes": "No notes provided.",
+        "expandForDetails": "Expand window to see more details."
+    },
     "audio": {
         "channels": {
             "music": "Music",

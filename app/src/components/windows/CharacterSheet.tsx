@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useEntity, useEntitiesByParent } from '../../hooks/useEntities';
 import type { Entity } from '../../types';
@@ -30,6 +31,7 @@ function getEntityOwnerId(entity: Entity): string | undefined {
 
 export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
 
+    const { t } = useTranslation();
     const entity = useEntity(entityId);
     const children = useEntitiesByParent(entityId);
     const [activeTab, setActiveTab] = useState<CharacterTab>('stats');
@@ -50,14 +52,14 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
         ? Object.keys(entity.properties.resources).length
         : 0;
     const tabs: SheetTab<CharacterTab>[] = [
-        { id: 'stats', label: 'Статы', icon: Activity },
-        { id: 'skills', label: 'Навыки', icon: Dices },
-        { id: 'competencies', label: 'Компетенции', badge: competenciesCount, icon: Brain },
-        { id: 'abilities', label: 'Способности', badge: abilitiesCount, icon: Sparkles },
-        { id: 'resources', label: 'Ресурсы', badge: resourcesCount, icon: Gauge },
-        { id: 'inventory', label: 'Инвентарь', badge: inventoryCount, icon: Backpack },
-        { id: 'notes', label: 'Заметки', icon: BookOpen },
-        { id: 'canvas', label: 'Настройки', icon: Box },
+        { id: 'stats', label: t('characterSheet.tabs.stats'), icon: Activity },
+        { id: 'skills', label: t('characterSheet.tabs.skills'), icon: Dices },
+        { id: 'competencies', label: t('characterSheet.tabs.competencies'), badge: competenciesCount, icon: Brain },
+        { id: 'abilities', label: t('characterSheet.tabs.abilities'), badge: abilitiesCount, icon: Sparkles },
+        { id: 'resources', label: t('characterSheet.tabs.resources'), badge: resourcesCount, icon: Gauge },
+        { id: 'inventory', label: t('characterSheet.tabs.inventory'), badge: inventoryCount, icon: Backpack },
+        { id: 'notes', label: t('characterSheet.tabs.notes'), icon: BookOpen },
+        { id: 'canvas', label: t('characterSheet.tabs.settings'), icon: Box },
     ];
 
     return (
@@ -70,7 +72,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                     <button
                         onClick={() => setIsEditingNotes(!isEditingNotes)}
                         className={`grid h-[var(--vibe-tab-height)] w-[var(--vibe-tab-height)] place-items-center rounded-[var(--vibe-radius-sm)] border transition-colors ${isEditingNotes ? glass.tabActive : glass.tabIdle}`}
-                        title={isEditingNotes ? 'Завершить редактирование' : 'Редактировать заметки'}
+                        title={isEditingNotes ? t('entityWindow.finishEditing') : t('characterSheet.editNotes')}
                     >
                         {isEditingNotes ? <Check size={14} /> : <Edit2 size={14} />}
                     </button>
@@ -110,7 +112,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                                 value={entity.description || ''}
                                 onValueChange={handleUpdateDescription}
                                 excludeEntityId={entity.id}
-                                placeholder="Character backstory and notes..."
+                                placeholder={t('characterSheet.notesPlaceholder')}
                                 className={`${glass.input} flex-1 w-full resize-none p-[var(--vibe-space-block)] text-sm custom-scrollbar font-sans`}
                                 autoFocus
                             />
@@ -118,7 +120,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
                             <div className={`${glass.blockBg} flex-1 text-[var(--vibe-text-muted)]`} onDoubleClick={() => { if (canEditCharacter) setIsEditingNotes(true); }}>
                                 {entity.description
                                     ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
-                                    : <span className="cursor-pointer italic text-[var(--vibe-text-faint)]">{canEditCharacter ? 'No notes provided. Double click to text.' : 'No notes provided.'}</span>}
+                                    : <span className="cursor-pointer italic text-[var(--vibe-text-faint)]">{canEditCharacter ? t('characterSheet.noNotesEditable') : t('characterSheet.noNotes')}</span>}
                             </div>
                         )}
                     </div>
@@ -132,7 +134,7 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
             {
                 !isFullMode && activeTab !== 'notes' && activeTab !== 'skills' && activeTab !== 'competencies' && activeTab !== 'abilities' && activeTab !== 'resources' && activeTab !== 'canvas' && (
                     <div className="mt-4 border-t border-[var(--vibe-border-subtle)] pt-3 text-center text-[10px] italic text-[var(--vibe-text-faint)]">
-                        Expand window to see more details.
+                        {t('characterSheet.expandForDetails')}
                     </div>
                 )
             }
