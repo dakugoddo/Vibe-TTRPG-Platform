@@ -330,6 +330,47 @@
     "notFoundNamed": "Сущность '{{name}}' не найдена",
     "noDescription": "Нет описания"
   },
+  "entityDatabase": {
+    "defaultHeader": "БАЗА СУЩНОСТЕЙ",
+    "createInGroup": "Создать: {{group}}",
+    "searchFields": {
+      "name": "имя",
+      "description": "описание",
+      "property": "свойства",
+      "tag": "теги",
+      "type": "тип",
+      "database": "база"
+    },
+    "groups": {
+      "canvas": "Пространства",
+      "character": "Персонажи",
+      "object": "Предметы",
+      "competency": "Компетенции",
+      "ability": "Способности",
+      "note": "Заметки",
+      "tag": "Теги",
+      "attack": "Атаки"
+    },
+    "quickCreate": {
+      "object": "Создать предмет",
+      "competency": "Создать компетенцию",
+      "ability": "Создать способность",
+      "attack": "Создать атаку"
+    },
+    "contextMenu": {
+      "title": "Контекстное меню",
+      "rename": "Переименовать",
+      "duplicate": "Дублировать",
+      "openFocus": "Открыть / сфокусировать",
+      "pinToCanvas": "Закрепить на канвасе",
+      "showParent": "Показать родителя",
+      "copyId": "Копировать ID",
+      "copyWikiLink": "Копировать [[ссылку]]",
+      "showInExplorer": "Показать в проводнике",
+      "exportMd": "Экспорт .md",
+      "giveToPlayer": "Выдать игроку"
+    }
+  },
   "notifications": {
     "title": "Уведомления",
     "records": "{{count}} записей",

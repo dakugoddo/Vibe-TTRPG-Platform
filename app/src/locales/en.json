@@ -330,6 +330,47 @@
         "notFoundNamed": "Entity '{{name}}' not found",
         "noDescription": "No description"
     },
+    "entityDatabase": {
+        "defaultHeader": "ENTITY DATABASE",
+        "createInGroup": "Create: {{group}}",
+        "searchFields": {
+            "name": "name",
+            "description": "description",
+            "property": "properties",
+            "tag": "tags",
+            "type": "type",
+            "database": "database"
+        },
+        "groups": {
+            "canvas": "Spaces",
+            "character": "Characters",
+            "object": "Items",
+            "competency": "Competencies",
+            "ability": "Abilities",
+            "note": "Notes",
+            "tag": "Tags",
+            "attack": "Attacks"
+        },
+        "quickCreate": {
+            "object": "Create item",
+            "competency": "Create competency",
+            "ability": "Create ability",
+            "attack": "Create attack"
+        },
+        "contextMenu": {
+            "title": "Context menu",
+            "rename": "Rename",
+            "duplicate": "Duplicate",
+            "openFocus": "Open / focus",
+            "pinToCanvas": "Pin to canvas",
+            "showParent": "Show parent",
+            "copyId": "Copy ID",
+            "copyWikiLink": "Copy [[link]]",
+            "showInExplorer": "Show in Explorer",
+            "exportMd": "Export .md",
+            "giveToPlayer": "Give to player"
+        }
+    },
     "notifications": {
         "title": "Notifications",
         "records": "{{count}} records",

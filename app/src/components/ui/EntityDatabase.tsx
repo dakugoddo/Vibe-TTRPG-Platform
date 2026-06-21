@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import ReactDOM from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { yjsStore } from '../../store/yjsStore';
 import { useEntities } from '../../hooks/useEntities';
 import { useWindowStore } from '../../store/windowStore';
@@ -95,14 +96,14 @@ function saveSavedEntitySearches(savedQueries: string[]): void {
     }
 }
 
-const SEARCH_FIELD_LABELS: Record<EntitySearchMatchField, string> = {
-    name: 'имя',
-    description: 'описание',
-    property: 'свойства',
-    tag: 'теги',
-    type: 'тип',
+const SEARCH_FIELD_LABEL_KEYS: Record<EntitySearchMatchField, string> = {
+    name: 'entityDatabase.searchFields.name',
+    description: 'entityDatabase.searchFields.description',
+    property: 'entityDatabase.searchFields.property',
+    tag: 'entityDatabase.searchFields.tag',
+    type: 'entityDatabase.searchFields.type',
     id: 'id',
-    database: 'база',
+    database: 'entityDatabase.searchFields.database',
 };
 
 function getEntityGroupType(entity: Entity): string {
@@ -130,9 +131,9 @@ function renderHighlightedText(text: string, terms: string[]): React.ReactNode {
     });
 }
 
-function formatSearchFields(result?: EntitySearchResult): string {
+function formatSearchFields(result: EntitySearchResult | undefined, t: (key: string) => string): string {
     if (!result || result.matchedFields.length === 0) return '';
-    return result.matchedFields.slice(0, 3).map(field => SEARCH_FIELD_LABELS[field]).join(', ');
+    return result.matchedFields.slice(0, 3).map(field => field === 'id' ? 'id' : t(SEARCH_FIELD_LABEL_KEYS[field])).join(', ');
 }
 
 // ─── Custom Context Menu (rendered via React Portal in <body>) ───
@@ -186,6 +187,7 @@ function EntityContextMenu({ state, canEdit, canShowInExplorer, canAddToCanvas, 
     onGiveToPlayer?: (id: string) => void;
     onClose: () => void;
 }) {
+    const { t } = useTranslation();
     const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -233,7 +235,7 @@ function EntityContextMenu({ state, canEdit, canShowInExplorer, canAddToCanvas, 
                 }}
             >
             <div className="px-3 py-1.5 text-[9px] font-bold text-white/30 uppercase tracking-widest border-b border-white/5 mb-1 select-none pointer-events-none">
-                Контекстное меню
+                {t('entityDatabase.contextMenu.title')}
             </div>
             
             {canEdit && (
@@ -241,7 +243,7 @@ function EntityContextMenu({ state, canEdit, canShowInExplorer, canAddToCanvas, 
                     onClick={() => { onRename(state.entityId); onClose(); }}
                     className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
                 >
-                    <Edit2 size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Переименовать
+                    <Edit2 size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {t('entityDatabase.contextMenu.rename')}
                 </button>
             )}
             {canEdit && (
@@ -249,7 +251,7 @@ function EntityContextMenu({ state, canEdit, canShowInExplorer, canAddToCanvas, 
                     onClick={() => { onDuplicate(state.entityId); onClose(); }}
                     className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
                 >
-                    <Copy size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Дублировать
+                    <Copy size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {t('entityDatabase.contextMenu.duplicate')}
                 </button>
             )}
             {canEdit && quickCreateActions.length > 0 && (
@@ -263,7 +265,7 @@ function EntityContextMenu({ state, canEdit, canShowInExplorer, canAddToCanvas, 
                                 onClick={() => { onCreateChild(state.entityId, action.type); onClose(); }}
                                 className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
                             >
-                                <ActionIcon size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {action.label}
+                                <ActionIcon size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {t(action.labelKey)}
                             </button>
                         );
                     })}
@@ -273,14 +275,14 @@ function EntityContextMenu({ state, canEdit, canShowInExplorer, canAddToCanvas, 
                 onClick={() => { onOpenWindow(state.entityId); onClose(); }}
                 className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
             >
-                <ExternalLink size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Открыть / сфокусировать
+                <ExternalLink size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {t('entityDatabase.contextMenu.openFocus')}
             </button>
             {canAddToCanvas && (
                 <button
                     onClick={() => { onAddToCanvas(state.entityId); onClose(); }}
                     className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
                 >
-                    <Pin size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Закрепить на канвасе
+                    <Pin size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {t('entityDatabase.contextMenu.pinToCanvas')}
                 </button>
             )}
             {hasParent && (
@@ -288,34 +290,34 @@ function EntityContextMenu({ state, canEdit, canShowInExplorer, canAddToCanvas, 
                     onClick={() => { onOpenParent(state.entityId); onClose(); }}
                     className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
                 >
-                    <CornerDownRight size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Показать родителя
+                    <CornerDownRight size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {t('entityDatabase.contextMenu.showParent')}
                 </button>
             )}
             <button
                 onClick={() => { onCopyId(state.entityId); onClose(); }}
                 className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
             >
-                <Copy size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Копировать ID
+                <Copy size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {t('entityDatabase.contextMenu.copyId')}
             </button>
             <button
                 onClick={() => { onCopyWikiLink(state.entityId); onClose(); }}
                 className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
             >
-                <Link2 size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Копировать [[ссылку]]
+                <Link2 size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {t('entityDatabase.contextMenu.copyWikiLink')}
             </button>
             {canShowInExplorer && (
                 <button
                     onClick={() => { onShowInExplorer(state.entityId); onClose(); }}
                     className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
                 >
-                    <FolderSearch size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Показать в проводнике
+                    <FolderSearch size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {t('entityDatabase.contextMenu.showInExplorer')}
                 </button>
             )}
             <button
                 onClick={() => { onExport(state.entityId); onClose(); }}
                 className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
             >
-                <Download size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> Экспорт .md
+                <Download size={14} className="text-white/40 group-hover:text-white/80 transition-colors" /> {t('entityDatabase.contextMenu.exportMd')}
             </button>
             {canEdit && onGiveToPlayer && (
                 <>
@@ -324,7 +326,7 @@ function EntityContextMenu({ state, canEdit, canShowInExplorer, canAddToCanvas, 
                         onClick={() => { onGiveToPlayer(state.entityId); onClose(); }}
                         className="w-full text-left px-3 py-2 text-sm text-violet-300 hover:bg-violet-500/20 hover:text-violet-100 transition-colors flex items-center gap-2 group"
                     >
-                        <Gift size={14} className="text-violet-400/50 group-hover:text-violet-300 transition-colors" /> Выдать игроку
+                        <Gift size={14} className="text-violet-400/50 group-hover:text-violet-300 transition-colors" /> {t('entityDatabase.contextMenu.giveToPlayer')}
                     </button>
                 </>
             )}
@@ -335,7 +337,7 @@ function EntityContextMenu({ state, canEdit, canShowInExplorer, canAddToCanvas, 
                         onClick={() => { onDelete(state.entityId); onClose(); }}
                         className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center gap-2 group"
                     >
-                        <Trash2 size={14} className="text-red-500/50 group-hover:text-red-400 transition-colors" /> Удалить
+                        <Trash2 size={14} className="text-red-500/50 group-hover:text-red-400 transition-colors" /> {t('common.delete')}
                     </button>
                 </>
             )}
@@ -346,21 +348,21 @@ function EntityContextMenu({ state, canEdit, canShowInExplorer, canAddToCanvas, 
 }
 
 export const EntityGroups = [
-    { type: 'canvas', label: 'Пространства', dot: 'bg-orange-400', focus: 'hover:border-orange-400', text: 'text-orange-300', iconHov: 'group-hover:border-orange-400 group-hover:bg-orange-500/10', labelHov: 'group-hover:text-orange-200' },
-    { type: 'character', label: 'Персонажи', dot: 'bg-indigo-400', focus: 'hover:border-indigo-400', text: 'text-indigo-300', iconHov: 'group-hover:border-indigo-400 group-hover:bg-indigo-500/10', labelHov: 'group-hover:text-indigo-200' },
-    { type: 'object', label: 'Предметы', dot: 'bg-amber-400', focus: 'hover:border-amber-400', text: 'text-amber-300', iconHov: 'group-hover:border-amber-400 group-hover:bg-amber-500/10', labelHov: 'group-hover:text-amber-200' },
-    { type: 'competency', label: 'Компетенции', dot: 'bg-violet-400', focus: 'hover:border-violet-400', text: 'text-violet-300', iconHov: 'group-hover:border-violet-400 group-hover:bg-violet-500/10', labelHov: 'group-hover:text-violet-200' },
-    { type: 'ability', label: 'Способности', dot: 'bg-cyan-400', focus: 'hover:border-cyan-400', text: 'text-cyan-300', iconHov: 'group-hover:border-cyan-400 group-hover:bg-cyan-500/10', labelHov: 'group-hover:text-cyan-200' },
-    { type: 'note', label: 'Заметки', dot: 'bg-emerald-400', focus: 'hover:border-emerald-400', text: 'text-emerald-300', iconHov: 'group-hover:border-emerald-400 group-hover:bg-emerald-500/10', labelHov: 'group-hover:text-emerald-200' },
-    { type: 'tag', label: 'Теги', dot: 'bg-blue-400', focus: 'hover:border-blue-400', text: 'text-blue-300', iconHov: 'group-hover:border-blue-400 group-hover:bg-blue-500/10', labelHov: 'group-hover:text-blue-200' },
-    { type: 'attack', label: 'Атаки', dot: 'bg-rose-400', focus: 'hover:border-rose-400', text: 'text-rose-300', iconHov: 'group-hover:border-rose-400 group-hover:bg-rose-500/10', labelHov: 'group-hover:text-rose-200' }
+    { type: 'canvas', labelKey: 'entityDatabase.groups.canvas', dot: 'bg-orange-400', focus: 'hover:border-orange-400', text: 'text-orange-300', iconHov: 'group-hover:border-orange-400 group-hover:bg-orange-500/10', labelHov: 'group-hover:text-orange-200' },
+    { type: 'character', labelKey: 'entityDatabase.groups.character', dot: 'bg-indigo-400', focus: 'hover:border-indigo-400', text: 'text-indigo-300', iconHov: 'group-hover:border-indigo-400 group-hover:bg-indigo-500/10', labelHov: 'group-hover:text-indigo-200' },
+    { type: 'object', labelKey: 'entityDatabase.groups.object', dot: 'bg-amber-400', focus: 'hover:border-amber-400', text: 'text-amber-300', iconHov: 'group-hover:border-amber-400 group-hover:bg-amber-500/10', labelHov: 'group-hover:text-amber-200' },
+    { type: 'competency', labelKey: 'entityDatabase.groups.competency', dot: 'bg-violet-400', focus: 'hover:border-violet-400', text: 'text-violet-300', iconHov: 'group-hover:border-violet-400 group-hover:bg-violet-500/10', labelHov: 'group-hover:text-violet-200' },
+    { type: 'ability', labelKey: 'entityDatabase.groups.ability', dot: 'bg-cyan-400', focus: 'hover:border-cyan-400', text: 'text-cyan-300', iconHov: 'group-hover:border-cyan-400 group-hover:bg-cyan-500/10', labelHov: 'group-hover:text-cyan-200' },
+    { type: 'note', labelKey: 'entityDatabase.groups.note', dot: 'bg-emerald-400', focus: 'hover:border-emerald-400', text: 'text-emerald-300', iconHov: 'group-hover:border-emerald-400 group-hover:bg-emerald-500/10', labelHov: 'group-hover:text-emerald-200' },
+    { type: 'tag', labelKey: 'entityDatabase.groups.tag', dot: 'bg-blue-400', focus: 'hover:border-blue-400', text: 'text-blue-300', iconHov: 'group-hover:border-blue-400 group-hover:bg-blue-500/10', labelHov: 'group-hover:text-blue-200' },
+    { type: 'attack', labelKey: 'entityDatabase.groups.attack', dot: 'bg-rose-400', focus: 'hover:border-rose-400', text: 'text-rose-300', iconHov: 'group-hover:border-rose-400 group-hover:bg-rose-500/10', labelHov: 'group-hover:text-rose-200' }
 ] as const;
 
 type EntityGroup = typeof EntityGroups[number];
 
 interface QuickCreateAction {
     type: EntityType;
-    label: string;
+    labelKey: string;
     icon: LucideIcon;
 }
 
@@ -369,14 +371,14 @@ function getQuickCreateActions(entity?: Entity): QuickCreateAction[] {
 
     if (entity.type === 'character') {
         return [
-            { type: 'object', label: 'Создать предмет', icon: Box },
-            { type: 'competency', label: 'Создать компетенцию', icon: Lightbulb },
-            { type: 'ability', label: 'Создать способность', icon: Wand2 },
+            { type: 'object', labelKey: 'entityDatabase.quickCreate.object', icon: Box },
+            { type: 'competency', labelKey: 'entityDatabase.quickCreate.competency', icon: Lightbulb },
+            { type: 'ability', labelKey: 'entityDatabase.quickCreate.ability', icon: Wand2 },
         ];
     }
 
     if (entity.type === 'object') {
-        return [{ type: 'attack', label: 'Создать атаку', icon: Sword }];
+        return [{ type: 'attack', labelKey: 'entityDatabase.quickCreate.attack', icon: Sword }];
     }
 
     return [];
@@ -406,6 +408,7 @@ interface RecursiveEntityItemProps {
 }
 
 function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false, defaultGroupContext, baseParentId, targetDb, targetPlayerOwner, onPromptDrop, renamingId, onRenameStart, onRenameSubmit, onRenameCancel, onShowContextMenu, canModifyEntityInUi, canModifyTargetDb, searchResultsById, searchTerms, selectedEntityIds, onEntitySelectionClick }: RecursiveEntityItemProps) {
+    const { t } = useTranslation();
     const [expanded, setExpanded] = useState(false);
     const [renameValue, setRenameValue] = useState(entity.name);
     const renameInputRef = useRef<HTMLInputElement>(null);
@@ -453,7 +456,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
     const canExpandEntity = children.length > 0;
     const isExpanded = expanded || searchActive;
     const searchResult = searchResultsById.get(entity.id);
-    const searchFieldLabel = formatSearchFields(searchResult);
+    const searchFieldLabel = formatSearchFields(searchResult, t);
     const isSelected = selectedEntityIds.has(entity.id);
 
     let fullUrl = entity.icon_url;
@@ -702,8 +705,10 @@ interface EntityDatabaseProps {
     playerFilter?: string;
 }
 
-export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTitle = "БАЗА СУЩНОСТЕЙ", allowedTabs, targetDb = 'general', playerFilter }: EntityDatabaseProps) {
+export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTitle, allowedTabs, targetDb = 'general', playerFilter }: EntityDatabaseProps) {
+    const { t } = useTranslation();
     const allEntities = useEntities();
+    const resolvedHeaderTitle = headerTitle ?? t('entityDatabase.defaultHeader');
     const targetPlayerOwner = targetDb === 'user' ? (playerFilter || yjsStore.localPlayerName) : undefined;
     const entities = allEntities.filter((entity) => {
         const entityDb = entity.database || 'general';
@@ -1306,7 +1311,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
             />
             <div className="p-4 border-b border-white/10 bg-black/10 z-10 backdrop-blur-md">
                 <div className="flex items-center justify-between mb-3">
-                    <div className="text-[10px] font-bold text-white/50 uppercase tracking-widest">{headerTitle}</div>
+                    <div className="text-[10px] font-bold text-white/50 uppercase tracking-widest">{resolvedHeaderTitle}</div>
                     {getIsHost() && canModifyTargetDb && (
                         <button
                             onClick={() => importInputRef.current?.click()}
@@ -1445,7 +1450,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                                     : 'border-white/10 bg-black/15 text-white/45 hover:border-white/20 hover:text-white/75'
                                             }`}
                                         >
-                                            {group.label} <span className="font-mono text-white/35">{count}</span>
+                                            {t(group.labelKey)} <span className="font-mono text-white/35">{count}</span>
                                         </button>
                                     );
                                 })}
@@ -1574,7 +1579,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                     onClick={() => setCollapsedCategories(p => ({ ...p, [group.type]: !isCollapsed }))}
                                 >
                                     <h3 className={`text-xs font-bold uppercase tracking-wider border-l-2 pl-2 transition-colors ${group.text}`} style={{ borderLeftColor: 'currentColor' }}>
-                                        {group.label} <span className="text-white/30 text-[10px] ml-1">({groupEntities.length})</span>
+                                        {t(group.labelKey)} <span className="text-white/30 text-[10px] ml-1">({groupEntities.length})</span>
                                     </h3>
                                     <div className="flex items-center gap-2">
                                         {canModifyTargetDb && baseParentId && baseParentId.includes('personal-inventory') && group.type === 'object' && (
@@ -1591,7 +1596,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); addTestEntity(group.type); }}
                                                     className="rounded border border-white/10 bg-white/5 p-1 text-white/55 shadow-inner transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
-                                                    title={`Создать: ${group.label}`}
+                                                    title={t('entityDatabase.createInGroup', { group: t(group.labelKey) })}
                                                 >
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                                 </button>
