@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { yjsStore } from '../../store/yjsStore';
 import type { ChatMessage } from '../../types';
 import { rollEngine } from '../../services/rollEngine';
@@ -46,6 +47,7 @@ function parseDiceMessage(msg: ChatMessage): DiceHistoryEntry | null {
 }
 
 export function ChatPanel() {
+    const { t } = useTranslation();
     const [messages, setMessages] = useState<ChatMessage[]>(() => yjsStore.chatArray.toArray());
     const [input, setInput] = useState('');
     const [activeTab, setActiveTab] = useState<'chat' | 'history' | 'events'>('chat');
@@ -124,13 +126,13 @@ export function ChatPanel() {
 
             if (result) {
                 if (result.error) {
-                    yjsStore.sendMessage(`Ошибка: ${result.error}`, 'Система', true);
+                    yjsStore.sendMessage(t('chat.rollError', { error: result.error }), t('chat.systemSender'), true);
                 } else {
                     const message = rollEngine.formatRollMessage(result.notation, result);
 
                     yjsStore.sendMessage(trimmed);
                     setTimeout(() => {
-                        yjsStore.sendMessage(message, 'Система', true);
+                        yjsStore.sendMessage(message, t('chat.systemSender'), true);
                     }, 50);
                 }
             }
@@ -158,21 +160,21 @@ export function ChatPanel() {
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'chat' ? 'bg-white/15 text-white shadow-md border border-white/10' : 'text-white/40 hover:text-white/80 hover:bg-white/5 border border-transparent'}`}
                     >
                         <MessageSquare size={14} />
-                        Чат
+                        {t('chat.tabs.chat')}
                     </button>
                     <button
                         onClick={() => setActiveTab('history')}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'history' ? 'bg-white/15 text-white shadow-md border border-white/10' : 'text-white/40 hover:text-white/80 hover:bg-white/5 border border-transparent'}`}
                     >
                         <History size={14} />
-                        Броски ({diceHistory.length})
+                        {t('chat.tabs.rolls', { count: diceHistory.length })}
                     </button>
                     <button
                         onClick={() => setActiveTab('events')}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'events' ? 'bg-white/15 text-white shadow-md border border-white/10' : 'text-white/40 hover:text-white/80 hover:bg-white/5 border border-transparent'}`}
                     >
                         <ScrollText size={14} />
-                        События ({actionLog.length})
+                        {t('chat.tabs.events', { count: actionLog.length })}
                     </button>
                 </div>
             </div>
@@ -183,7 +185,7 @@ export function ChatPanel() {
                     <div ref={chatScrollRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-y-auto p-3 pb-5 space-y-3 custom-scrollbar">
                         {messages.length === 0 ? (
                             <div className="text-center text-gray-500 text-xs italic mt-10">
-                                Чат пуст. Напишите сообщение или используйте /r 1d20 для броска кубиков.
+                                {t('chat.emptyChat')}
                             </div>
                         ) : (
                             messages.map((msg, index) => {
@@ -232,7 +234,7 @@ export function ChatPanel() {
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
-                                placeholder="Сообщение или /r 1d20+5..."
+                                placeholder={t('chat.inputPlaceholder')}
                                 className="flex-1 bg-transparent border-none text-sm text-white/90 px-3 py-2 outline-none placeholder:text-white/30"
                             />
                             <button
@@ -244,7 +246,7 @@ export function ChatPanel() {
                             </button>
                         </div>
                         <div className="text-[9px] text-white/30 mt-1 pl-1 font-mono">
-                            Подсказка: /r 2d6, /roll 1d20+3
+                            {t('chat.hint')}
                         </div>
                     </div>
                 </>
@@ -255,7 +257,7 @@ export function ChatPanel() {
                 <div ref={historyScrollRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-y-auto p-3 pb-5 custom-scrollbar">
                     {diceHistory.length === 0 ? (
                         <div className="text-center text-gray-500 text-xs italic mt-10">
-                            История бросков пуста. Бросьте кубики через чат, навыки или заметки.
+                            {t('chat.emptyRollHistory')}
                         </div>
                     ) : (
                         <div className="space-y-2">
@@ -316,7 +318,7 @@ export function ChatPanel() {
                 <div ref={eventsScrollRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-y-auto p-3 pb-5 custom-scrollbar">
                     {actionLog.length === 0 ? (
                         <div className="text-center text-gray-500 text-xs italic mt-10">
-                            Событий пока нет. Измените раны, статус или выдайте предмет игроку.
+                            {t('chat.emptyEvents')}
                         </div>
                     ) : (
                         <div className="space-y-2">
@@ -355,7 +357,7 @@ export function ChatPanel() {
                     type="button"
                     onClick={() => scrollToLatest(activeTab)}
                     className="absolute bottom-20 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-[#111827]/90 text-white/70 shadow-[0_14px_35px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all hover:border-white/30 hover:bg-white/15 hover:text-white"
-                    title="К последним сообщениям"
+                    title={t('chat.jumpToLatest')}
                 >
                     <ArrowDown size={16} />
                 </button>

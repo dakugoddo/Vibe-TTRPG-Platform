@@ -445,6 +445,21 @@
         "compactToButton": "Compact to button",
         "nothingPlaying": "Nothing playing"
     },
+    "chat": {
+        "systemSender": "System",
+        "rollError": "Error: {{error}}",
+        "tabs": {
+            "chat": "Chat",
+            "rolls": "Rolls ({{count}})",
+            "events": "Events ({{count}})"
+        },
+        "emptyChat": "Chat is empty. Write a message or use /r 1d20 to roll dice.",
+        "inputPlaceholder": "Message or /r 1d20+5...",
+        "hint": "Hint: /r 2d6, /roll 1d20+3",
+        "emptyRollHistory": "Roll history is empty. Roll dice from chat, skills, or notes.",
+        "emptyEvents": "No events yet. Change wounds, status, or give an item to a player.",
+        "jumpToLatest": "Jump to latest messages"
+    },
     "notifications": {
         "title": "Notifications",
         "records": "{{count}} records",
