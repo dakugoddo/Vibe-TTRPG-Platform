@@ -571,6 +571,45 @@
     "descriptionTitle": "Описание",
     "descriptionPlaceholder": "Описание атаки, эффекты, условия применения..."
   },
+  "inventoryBlock": {
+    "title": "Инвентарь персонажа",
+    "availableAttacksTitle": "Доступные атаки (экипированное оружие)",
+    "noAvailableAttacks": "Нет доступных атак. Экипируйте оружие с атаками.",
+    "attackFrom": "(от: {{name}})",
+    "entitiesCount": "{{count}} сущностей",
+    "dropItemsHere": "Перетащите сюда предметы...",
+    "noItemsInCategory": "Нет предметов в категории.",
+    "equip": "Экипировать",
+    "deleteItem": "Удалить предмет",
+    "totalWeight": "Общая нагрузка:",
+    "categories": {
+      "weapon": "оружие",
+      "armor": "броня",
+      "consumable": "расходуемое",
+      "other": "другое"
+    },
+    "columns": {
+      "item": "Предмет",
+      "equipped": "Экипировано",
+      "equippedShort": "Эк.",
+      "quantity": "Количество",
+      "quantityShort": "Кол-во",
+      "weightTitle": "Нагрузка (вес одного)",
+      "weight": "Вес",
+      "figure": "Фигура",
+      "figureShort": "ФИГ",
+      "durability": "Прочность",
+      "durabilityShort": "ПРОЧ",
+      "rarity": "Редкость",
+      "rarityShort": "РЕД",
+      "priceTitle": "Цена (У.Е.)",
+      "price": "Цена"
+    },
+    "deleteConfirm": {
+      "title": "Удаление предмета",
+      "description": "Вы уверены, что хотите удалить предмет «{{name}}»?"
+    }
+  },
   "competenciesBlock": {
     "title": "Компетенции ({{count}})",
     "add": "Добавить",

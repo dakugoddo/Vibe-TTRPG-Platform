@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Entity } from '../../../types';
 import { yjsStore } from '../../../store/yjsStore';
 import { useEntities } from '../../../hooks/useEntities';
@@ -18,6 +19,19 @@ interface InventoryBlockProps {
 
 const CATEGORIES = ['оружие', 'броня', 'расходуемое', 'другое'] as const;
 type Category = typeof CATEGORIES[number];
+const CATEGORY_LABEL_KEYS: Record<Category, string> = {
+    'оружие': 'inventoryBlock.categories.weapon',
+    'броня': 'inventoryBlock.categories.armor',
+    'расходуемое': 'inventoryBlock.categories.consumable',
+    'другое': 'inventoryBlock.categories.other',
+};
+const ATTACK_DISTANCE_LABEL_KEYS: Record<string, string> = {
+    'ближняя': 'attackSheet.distances.melee',
+    'средняя': 'attackSheet.distances.medium',
+    'дальняя': 'attackSheet.distances.long',
+    'экстремальная': 'attackSheet.distances.extreme',
+    'запредельная': 'attackSheet.distances.beyond',
+};
 const attackPanelClass = `${glass.blockBg} border-[color-mix(in_srgb,var(--vibe-danger)_28%,var(--vibe-border-subtle))] shadow-[inset_0_0_20px_color-mix(in_srgb,var(--vibe-danger)_8%,transparent)]`;
 const inventoryCategoryClass = 'overflow-hidden rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] pb-2 shadow-[var(--vibe-shadow-block)]';
 const tableCellClass = 'px-[var(--vibe-control-px)] py-[var(--vibe-control-py)]';
@@ -34,6 +48,7 @@ function canEditEntity(entity: Entity): boolean {
 }
 
 export function InventoryBlock({ entity }: InventoryBlockProps) {
+    const { t } = useTranslation();
     const allEntities = useEntities();
     const children = allEntities.filter(e => e.parentId === entity.id);
     const inventory = children.filter(e => e.type === 'object');
@@ -60,9 +75,9 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
         if (!item || !canEditInventory || !canEditEntity(item)) return;
 
         openConfirm({
-            title: "Удаление предмета",
-            description: `Вы уверены, что хотите удалить предмет "${itemName}"?`,
-            confirmText: "Удалить",
+            title: t('inventoryBlock.deleteConfirm.title'),
+            description: t('inventoryBlock.deleteConfirm.description', { name: itemName }),
+            confirmText: t('common.delete'),
             isDestructive: true,
             onConfirm: () => {
                 if (!canEditInventory || !canEditEntity(item)) return;
@@ -125,7 +140,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
         setDragDropPrompt({
             x: e.clientX,
             y: e.clientY,
-            entityName: droppedEntities.length === 1 ? droppedEntities[0].name : `${droppedEntities.length} сущностей`,
+            entityName: droppedEntities.length === 1 ? droppedEntities[0].name : t('inventoryBlock.entitiesCount', { count: droppedEntities.length }),
             canMove: canMoveAll,
             canCopy: canCopyAll,
             moveLabel: moveAction?.label,
@@ -188,13 +203,12 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
 
     return (
         <div className="flex flex-col gap-4">
-            {/* Блок Атак */}
             <div className={attackPanelClass}>
                 <h4 className={`${glass.blockHeader} border-[color-mix(in_srgb,var(--vibe-danger)_28%,transparent)] text-[var(--vibe-danger)]`}>
-                    Доступные Атаки (Экипированное Оружие)
+                    {t('inventoryBlock.availableAttacksTitle')}
                 </h4>
                 {availableAttacks.length === 0 ? (
-                    <div className="text-[10px] italic text-[var(--vibe-text-faint)]">Нет доступных атак. Экипируйте оружие с атаками.</div>
+                    <div className="text-[10px] italic text-[var(--vibe-text-faint)]">{t('inventoryBlock.noAvailableAttacks')}</div>
                 ) : (
                     <div className="grid grid-cols-1 gap-2">
                         {availableAttacks.map(atk => (
@@ -202,13 +216,13 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                 <div className="flex items-center gap-2">
                                     <div className="flex h-5 w-5 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_16%,transparent)] text-[10px] font-bold text-[var(--vibe-danger)]">⚔️</div>
                                     <EntityLink entityId={atk.id} className="text-sm font-bold text-[var(--vibe-text-primary)] hover:text-[var(--vibe-danger)]" />
-                                    <span className="ml-2 text-[10px] text-[var(--vibe-text-faint)]">(от: {allEntities.find(e => e.id === atk.parentId)?.name})</span>
+                                    <span className="ml-2 text-[10px] text-[var(--vibe-text-faint)]">{t('inventoryBlock.attackFrom', { name: allEntities.find(e => e.id === atk.parentId)?.name })}</span>
                                 </div>
                                 <div className="flex gap-3 font-mono text-[10px] text-[var(--vibe-text-muted)]">
-                                    <span title="Урон">🗡️ <span className="font-bold text-[var(--vibe-text-primary)]">{atk.properties.урон ?? 1}</span></span>
-                                    <span title="Масштаб">📏 <span className="font-bold text-[var(--vibe-text-primary)]">{atk.properties.масштаб ?? 1}</span></span>
-                                    <span title="Попадание">🎯 <span className="font-bold text-[var(--vibe-text-primary)]">{atk.properties.попадание ?? 1}</span></span>
-                                    <span title="Дистанция" className="uppercase text-[var(--vibe-danger)]">[{atk.properties.дистанция ?? 'ближняя'}]</span>
+                                    <span title={t('attackSheet.stats.damage')}>🗡️ <span className="font-bold text-[var(--vibe-text-primary)]">{atk.properties.урон ?? 1}</span></span>
+                                    <span title={t('attackSheet.stats.scale')}>📏 <span className="font-bold text-[var(--vibe-text-primary)]">{atk.properties.масштаб ?? 1}</span></span>
+                                    <span title={t('attackSheet.stats.hit')}>🎯 <span className="font-bold text-[var(--vibe-text-primary)]">{atk.properties.попадание ?? 1}</span></span>
+                                    <span title={t('attackSheet.stats.distance')} className="uppercase text-[var(--vibe-danger)]">[{t(ATTACK_DISTANCE_LABEL_KEYS[String(atk.properties.дистанция ?? 'ближняя')] ?? String(atk.properties.дистанция ?? 'ближняя'))}]</span>
                                 </div>
                             </div>
                         ))}
@@ -216,11 +230,10 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                 )}
             </div>
 
-            {/* Блок Инвентаря */}
             <div className={`${glass.blockBg} flex-1`}>
                 <div className="flex justify-between items-center mb-4">
                     <h4 className={glass.blockHeader + " mb-0"}>
-                        Инвентарь персонажа
+                        {t('inventoryBlock.title')}
                     </h4>
                 </div>
 
@@ -234,7 +247,6 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                             totalWeight += (qty * weight);
                         });
 
-                        // Sorting logic
                         const sortConfig = sortConfigs[category];
                         if (sortConfig) {
                             itemsInCategory.sort((a, b) => {
@@ -278,12 +290,12 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                 onDrop={(e) => handleDrop(e, category)}
                             >
                                 <div className="mb-1 flex items-center justify-between border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)] px-[var(--vibe-control-px)] py-[var(--vibe-control-py)] text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-muted)] shadow-inner">
-                                    {category} ({itemsInCategory.length})
+                                    {t(CATEGORY_LABEL_KEYS[category])} ({itemsInCategory.length})
                                 </div>
 
                                 {itemsInCategory.length === 0 ? (
                                     <div className="px-3 py-3 text-[10px] italic text-[var(--vibe-text-faint)]">
-                                        {canEditInventory ? 'Перетащите сюда предметы...' : 'Нет предметов в категории.'}
+                                        {canEditInventory ? t('inventoryBlock.dropItemsHere') : t('inventoryBlock.noItemsInCategory')}
                                     </div>
                                 ) : (
                                     <div className="overflow-x-auto w-full custom-scrollbar">
@@ -292,30 +304,30 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                 <tr className="select-none border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] text-[9px] uppercase tracking-wider text-[var(--vibe-text-faint)]">
                                                     <th className={`${tableCellClass} w-6 font-normal`}></th>
                                                     <th className={`${tableHeadCellClass} cursor-pointer`} onClick={() => handleSort(category, 'name')}>
-                                                        Предмет <SortIcon colKey="name" />
+                                                        {t('inventoryBlock.columns.item')} <SortIcon colKey="name" />
                                                     </th>
                                                     {isWeaponOrArmor && (
-                                                        <th className={`${tableHeadCellClass} cursor-pointer text-center`} title="Экипировано" onClick={() => handleSort(category, 'equipped')}>
-                                                            Эк. <SortIcon colKey="equipped" />
+                                                        <th className={`${tableHeadCellClass} cursor-pointer text-center`} title={t('inventoryBlock.columns.equipped')} onClick={() => handleSort(category, 'equipped')}>
+                                                            {t('inventoryBlock.columns.equippedShort')} <SortIcon colKey="equipped" />
                                                         </th>
                                                     )}
-                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title="Количество" onClick={() => handleSort(category, 'количество')}>
-                                                        Кол-во <SortIcon colKey="количество" />
+                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title={t('inventoryBlock.columns.quantity')} onClick={() => handleSort(category, 'количество')}>
+                                                        {t('inventoryBlock.columns.quantityShort')} <SortIcon colKey="количество" />
                                                     </th>
-                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title="Нагрузка (Вес одного)" onClick={() => handleSort(category, 'нагрузка')}>
-                                                        Вес <SortIcon colKey="нагрузка" />
+                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title={t('inventoryBlock.columns.weightTitle')} onClick={() => handleSort(category, 'нагрузка')}>
+                                                        {t('inventoryBlock.columns.weight')} <SortIcon colKey="нагрузка" />
                                                     </th>
-                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title="Фигура" onClick={() => handleSort(category, 'фигура')}>
-                                                        ФИГ <SortIcon colKey="фигура" />
+                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title={t('inventoryBlock.columns.figure')} onClick={() => handleSort(category, 'фигура')}>
+                                                        {t('inventoryBlock.columns.figureShort')} <SortIcon colKey="фигура" />
                                                     </th>
-                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title="Прочность" onClick={() => handleSort(category, 'прочность')}>
-                                                        ПРОЧ <SortIcon colKey="прочность" />
+                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title={t('inventoryBlock.columns.durability')} onClick={() => handleSort(category, 'прочность')}>
+                                                        {t('inventoryBlock.columns.durabilityShort')} <SortIcon colKey="прочность" />
                                                     </th>
-                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title="Редкость" onClick={() => handleSort(category, 'редкость')}>
-                                                        РЕД <SortIcon colKey="редкость" />
+                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center`} title={t('inventoryBlock.columns.rarity')} onClick={() => handleSort(category, 'редкость')}>
+                                                        {t('inventoryBlock.columns.rarityShort')} <SortIcon colKey="редкость" />
                                                     </th>
-                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center text-[var(--vibe-warning)]`} title="Цена (У.Е.)" onClick={() => handleSort(category, 'цена')}>
-                                                        Цена <SortIcon colKey="цена" />
+                                                    <th className={`${tableHeadCellClass} cursor-pointer text-center text-[var(--vibe-warning)]`} title={t('inventoryBlock.columns.priceTitle')} onClick={() => handleSort(category, 'цена')}>
+                                                        {t('inventoryBlock.columns.price')} <SortIcon colKey="цена" />
                                                     </th>
                                                     <th className={`${tableCellClass} w-6 text-center font-normal`}></th>
                                                 </tr>
@@ -355,7 +367,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                                             onClick={(e) => { e.stopPropagation(); updateItemProperty(item.id, 'equipped', !item.properties.equipped); }}
                                                                             disabled={!canEditItem}
                                                                             className={`flex h-4.5 w-8 items-center rounded-full p-0.5 shadow-inner transition-colors duration-300 ${item.properties.equipped ? 'border border-[var(--vibe-success)] bg-[color-mix(in_srgb,var(--vibe-success)_72%,transparent)]' : 'border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] backdrop-blur-sm hover:bg-[var(--vibe-surface-hover)]'}`}
-                                                                            title="Экипировать"
+                                                                            title={t('inventoryBlock.equip')}
                                                                         >
                                                                             <div className={`h-3.5 w-3.5 rounded-full bg-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-block)] transition-transform duration-300 ${item.properties.equipped ? 'translate-x-3.5' : 'translate-x-0'}`}></div>
                                                                         </button>
@@ -392,7 +404,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id, item.name); }}
                                                                         className="p-1 text-[var(--vibe-text-faint)] opacity-0 transition-all hover:text-[var(--vibe-danger)] group-hover:opacity-100"
-                                                                        title="Удалить предмет"
+                                                                        title={t('inventoryBlock.deleteItem')}
                                                                     >
                                                                         <Trash2 size={12} />
                                                                     </button>
@@ -411,7 +423,7 @@ export function InventoryBlock({ entity }: InventoryBlockProps) {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-[var(--vibe-border-subtle)] pt-3 text-xs">
-                    <span className="font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">Общая Нагрузка:</span>
+                    <span className="font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">{t('inventoryBlock.totalWeight')}</span>
                     <span className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-0.5 font-mono text-sm font-bold text-[var(--vibe-text-primary)] shadow-inner">{totalWeight.toFixed(1)}</span>
                 </div>
             </div>

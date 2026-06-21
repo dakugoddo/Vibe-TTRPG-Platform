@@ -571,6 +571,45 @@
         "descriptionTitle": "Description",
         "descriptionPlaceholder": "Attack description, effects, usage conditions..."
     },
+    "inventoryBlock": {
+        "title": "Character inventory",
+        "availableAttacksTitle": "Available attacks (equipped weapons)",
+        "noAvailableAttacks": "No available attacks. Equip a weapon with attacks.",
+        "attackFrom": "(from: {{name}})",
+        "entitiesCount": "{{count}} entities",
+        "dropItemsHere": "Drop items here...",
+        "noItemsInCategory": "No items in this category.",
+        "equip": "Equip",
+        "deleteItem": "Delete item",
+        "totalWeight": "Total load:",
+        "categories": {
+            "weapon": "weapon",
+            "armor": "armor",
+            "consumable": "consumable",
+            "other": "other"
+        },
+        "columns": {
+            "item": "Item",
+            "equipped": "Equipped",
+            "equippedShort": "Eq.",
+            "quantity": "Quantity",
+            "quantityShort": "Qty",
+            "weightTitle": "Load (single item weight)",
+            "weight": "Weight",
+            "figure": "Figure",
+            "figureShort": "FIG",
+            "durability": "Durability",
+            "durabilityShort": "DUR",
+            "rarity": "Rarity",
+            "rarityShort": "RAR",
+            "priceTitle": "Price (c.u.)",
+            "price": "Price"
+        },
+        "deleteConfirm": {
+            "title": "Item deletion",
+            "description": "Are you sure you want to delete item \"{{name}}\"?"
+        }
+    },
     "competenciesBlock": {
         "title": "Competencies ({{count}})",
         "add": "Add",
