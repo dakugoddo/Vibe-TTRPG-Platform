@@ -535,6 +535,8 @@
     },
     "canvas": {
         "textPlaceholder": "Enter text...",
+        "objectNamePlaceholder": "Object name...",
+        "gm": "GM",
         "notifications": {
             "unsupportedFileTitle": "Unsupported canvas file",
             "imageFileRequired": "{{name}}: an image file is required.",
@@ -555,6 +557,55 @@
             "title": "Deleting canvas entity",
             "onlyEntities": "Delete {{count}} entity card(s) or token(s) from the canvas?",
             "mixed": "The selection contains {{count}} entity card(s) or token(s). Delete the whole canvas selection?"
+        },
+        "entityDrop": {
+            "title": "Insert entity",
+            "token": "Token",
+            "card": "Card"
+        },
+        "compact": {
+            "tabs": {
+                "stats": "Stats",
+                "actions": "Actions",
+                "resources": "Resources",
+                "notes": "Notes"
+            },
+            "emptyStats": "Quick stats are not filled yet.",
+            "counters": {
+                "attacks": "Attacks",
+                "abilities": "Abilities",
+                "items": "Items"
+            },
+            "actionBadges": {
+                "attack": "ATK",
+                "ability": "ABL"
+            },
+            "characterAttack": "Character attack",
+            "ability": "Ability",
+            "noFormula": "no formula",
+            "emptyActions": "No attacks or abilities added yet.",
+            "emptyResources": "No resources or items filled yet."
+        },
+        "openEntity": "Open entity",
+        "context": {
+            "showAsCard": "Show as card",
+            "showAsToken": "Show as token",
+            "showName": "Show name",
+            "hideName": "Hide name",
+            "frame": "Frame"
+        },
+        "portal": {
+            "title": "PORTAL",
+            "openTarget": "Open area window",
+            "deleteTitle": "Portal deletion",
+            "deleteDescription": "Are you sure you want to delete portal \"{{name}}\"?",
+            "deleteButton": "Delete portal"
+        },
+        "hints": {
+            "ping": "G + click = ping",
+            "middlePan": "middle button = pan",
+            "toggleFog": "Show/hide fog of war",
+            "fog": "Fog"
         }
     },
     "skillsBlock": {

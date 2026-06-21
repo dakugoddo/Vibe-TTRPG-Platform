@@ -535,6 +535,8 @@
   },
   "canvas": {
     "textPlaceholder": "Введите текст...",
+    "objectNamePlaceholder": "Название объекта...",
+    "gm": "ГМ",
     "notifications": {
       "unsupportedFileTitle": "Неподдерживаемый файл canvas",
       "imageFileRequired": "{{name}}: нужен image-файл.",
@@ -555,6 +557,55 @@
       "title": "Удаление сущности с канваса",
       "onlyEntities": "Удалить {{count}} карточк(у/и) или фишк(у/и) сущности с канваса?",
       "mixed": "В выделении есть {{count}} карточк(а/и) или фишк(а/и) сущности. Удалить всё выделение с канваса?"
+    },
+    "entityDrop": {
+      "title": "Вставить сущность",
+      "token": "Фишка",
+      "card": "Карточка"
+    },
+    "compact": {
+      "tabs": {
+        "stats": "Статы",
+        "actions": "Действия",
+        "resources": "Ресурсы",
+        "notes": "Заметки"
+      },
+      "emptyStats": "Быстрые статы пока не заполнены.",
+      "counters": {
+        "attacks": "Атаки",
+        "abilities": "Способ.",
+        "items": "Вещи"
+      },
+      "actionBadges": {
+        "attack": "АТК",
+        "ability": "СП"
+      },
+      "characterAttack": "Атака персонажа",
+      "ability": "Способность",
+      "noFormula": "без формулы",
+      "emptyActions": "Атаки и способности пока не добавлены.",
+      "emptyResources": "Ресурсы и вещи пока не заполнены."
+    },
+    "openEntity": "Открыть сущность",
+    "context": {
+      "showAsCard": "Показать как карточку",
+      "showAsToken": "Показать как фишку",
+      "showName": "Показать имя",
+      "hideName": "Скрыть имя",
+      "frame": "Рамка"
+    },
+    "portal": {
+      "title": "ПОРТАЛ",
+      "openTarget": "Открыть окно области",
+      "deleteTitle": "Удаление портала",
+      "deleteDescription": "Вы уверены, что хотите удалить портал «{{name}}»?",
+      "deleteButton": "Удалить портал"
+    },
+    "hints": {
+      "ping": "G + клик = пинг",
+      "middlePan": "средняя кнопка = панорама",
+      "toggleFog": "Показать/скрыть туман войны",
+      "fog": "Туман"
     }
   },
   "skillsBlock": {

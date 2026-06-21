@@ -46,11 +46,11 @@ const MIDDLE_PAN_COMMIT_THRESHOLD_Y = 56;
 
 type CharacterCompactTab = 'stats' | 'actions' | 'resources' | 'notes';
 
-const CHARACTER_COMPACT_TABS: Array<{ id: CharacterCompactTab; label: string }> = [
-  { id: 'stats', label: 'Статы' },
-  { id: 'actions', label: 'Действия' },
-  { id: 'resources', label: 'Ресурсы' },
-  { id: 'notes', label: 'Заметки' },
+const CHARACTER_COMPACT_TABS: Array<{ id: CharacterCompactTab; labelKey: string }> = [
+  { id: 'stats', labelKey: 'canvas.compact.tabs.stats' },
+  { id: 'actions', labelKey: 'canvas.compact.tabs.actions' },
+  { id: 'resources', labelKey: 'canvas.compact.tabs.resources' },
+  { id: 'notes', labelKey: 'canvas.compact.tabs.notes' },
 ];
 
 const ENTITY_TOKEN_LABEL_MIN_WIDTH = 96;
@@ -172,17 +172,17 @@ function getPlainEntityDescription(entity: Entity): string {
     .trim();
 }
 
-function getCanvasEntityTypeLabel(entity: Entity): string {
-  if (entity.type === 'character') return 'Персонаж';
-  if (entity.type === 'object') return 'Предмет';
-  if (entity.type === 'ability') return 'Способность';
-  if (entity.type === 'competency') return 'Компетенция';
-  if (entity.type === 'attack') return 'Атака';
-  if (entity.type === 'tag') return 'Тег';
-  if (entity.type === 'note') return 'Заметка';
-  if (entity.type === 'canvas') return 'Канвас';
-  if (entity.type === 'folder') return 'Папка';
-  if (entity.type === 'portal') return 'Портал';
+function getCanvasEntityTypeLabel(entity: Entity, t: (key: string) => string): string {
+  if (entity.type === 'character') return t('notesWorkspace.entityTypes.character');
+  if (entity.type === 'object') return t('notesWorkspace.entityTypes.object');
+  if (entity.type === 'ability') return t('notesWorkspace.entityTypes.ability');
+  if (entity.type === 'competency') return t('notesWorkspace.entityTypes.competency');
+  if (entity.type === 'attack') return t('notesWorkspace.entityTypes.attack');
+  if (entity.type === 'tag') return t('notesWorkspace.entityTypes.tag');
+  if (entity.type === 'note') return t('notesWorkspace.entityTypes.note');
+  if (entity.type === 'canvas') return t('notesWorkspace.entityTypes.canvas');
+  if (entity.type === 'folder') return t('notesWorkspace.entityTypes.folder');
+  if (entity.type === 'portal') return t('notesWorkspace.entityTypes.portal');
   return entity.type;
 }
 
@@ -435,6 +435,7 @@ const DrawElementNode = memo(function DrawElementNode({
   onShowLinkedEntityInfo?: (elementId: string, e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
   isEntityInfoOpen?: boolean;
 }) {
+  const { t } = useTranslation();
   const bounds = getElementBounds(element);
   const cx = bounds.x + bounds.w / 2;
   const cy = bounds.y + bounds.h / 2;
@@ -860,7 +861,7 @@ const DrawElementNode = memo(function DrawElementNode({
     const mode = element.entityTokenMode || 'token';
     const frame = getEntityTokenFrameConfig(element.entityTokenFrame);
     const showEntityName = element.showName !== false;
-    const displayName = canViewLinked ? linkedEntity.name : 'Скрыто';
+    const displayName = canViewLinked ? linkedEntity.name : t('entityWindow.hiddenEntity');
     const initial = displayName.trim().charAt(0).toUpperCase() || '?';
     const accentStroke = canViewLinked ? element.stroke || '#a5b4fc' : 'rgba(248,113,113,0.65)';
     const tokenFill = canViewLinked ? element.fill || 'rgba(30,41,59,0.96)' : 'rgba(63,23,23,0.9)';
@@ -993,7 +994,7 @@ const DrawElementNode = memo(function DrawElementNode({
               width={ew}
               height={eh}
               entityName={linkedEntity.name}
-              entityTypeLabel={getCanvasEntityTypeLabel(linkedEntity)}
+              entityTypeLabel={getCanvasEntityTypeLabel(linkedEntity, t)}
               summary={characterArtSummary}
               description={getPlainEntityDescription(linkedEntity)}
             />
@@ -1028,7 +1029,7 @@ const DrawElementNode = memo(function DrawElementNode({
                 y={artLabelY + artLabelHeight - 13}
                 width={ew - 16}
                 height={9}
-                text={canViewLinked && linkedEntity ? getCanvasEntityTypeLabel(linkedEntity) : 'Скрыто'}
+                text={canViewLinked && linkedEntity ? getCanvasEntityTypeLabel(linkedEntity, t) : t('entityWindow.hiddenEntity')}
                 fontSize={8}
                 fill="rgba(203,213,225,0.55)"
                 align="center"
@@ -1065,7 +1066,7 @@ const DrawElementNode = memo(function DrawElementNode({
                 y={ey + 42}
                 width={Math.max(20, ew - 24)}
                 height={Math.max(24, eh - 58)}
-                text={getPlainEntityDescription(linkedEntity) || 'Описание пока пустое.'}
+                text={getPlainEntityDescription(linkedEntity) || t('abilitySheet.emptyDescription')}
                 fontSize={Math.min(13, Math.max(10, ew / 18))}
                 fill="rgba(226,232,240,0.74)"
                 lineHeight={1.25}
@@ -1502,6 +1503,8 @@ function CharacterCanvasCardOverlay({
   summary: CharacterCompactSummary;
   description: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <Html
       groupProps={{ x, y, listening: false }}
@@ -1557,11 +1560,11 @@ function CharacterCanvasCardOverlay({
 
           {summary.actions.length > 0 && (
             <div className="space-y-1">
-              <div className="text-[8px] font-black text-[var(--vibe-text-faint)]">Действия</div>
+              <div className="text-[8px] font-black text-[var(--vibe-text-faint)]">{t('canvas.compact.tabs.actions')}</div>
               {summary.actions.map((action) => (
                 <div key={action.id} className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-1 rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-1">
                   <span className="rounded bg-[var(--vibe-accent-soft)] px-1 text-center text-[7px] font-black text-[var(--vibe-text-muted)]">
-                    {action.kind === 'attack' ? 'АТК' : 'СП'}
+                    {action.kind === 'attack' ? t('canvas.compact.actionBadges.attack') : t('canvas.compact.actionBadges.ability')}
                   </span>
                   <span className="min-w-0 truncate text-[10px] font-bold text-[var(--vibe-text-primary)]">{action.name}</span>
                   <span className="max-w-[78px] truncate font-mono text-[9px] text-[var(--vibe-text-faint)]">{action.formula || '-'}</span>
@@ -1572,14 +1575,14 @@ function CharacterCanvasCardOverlay({
 
           {summary.inventory.length > 0 && (
             <div className="space-y-1">
-              <div className="text-[8px] font-black text-[var(--vibe-text-faint)]">Инвентарь</div>
+              <div className="text-[8px] font-black text-[var(--vibe-text-faint)]">{t('inventoryBlock.title')}</div>
               {summary.inventory.map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-1 rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-1">
                   <div className="min-w-0">
                     <div className="truncate text-[10px] font-bold text-[var(--vibe-text-primary)]">{item.name}</div>
                     <div className="truncate text-[8px] text-[var(--vibe-text-faint)]">{item.category}</div>
                   </div>
-                  {item.equipped && <span className="rounded bg-[color-mix(in_srgb,var(--vibe-success)_18%,transparent)] px-1 text-[7px] font-black text-[var(--vibe-success)]">Надето</span>}
+                  {item.equipped && <span className="rounded bg-[color-mix(in_srgb,var(--vibe-success)_18%,transparent)] px-1 text-[7px] font-black text-[var(--vibe-success)]">{t('markdownRenderer.inventory.equipped')}</span>}
                 </div>
               ))}
             </div>
@@ -4436,7 +4439,7 @@ export function InfiniteCanvas() {
 
       const textarea = document.createElement('textarea');
       textarea.value = shapeEl.description || '';
-      textarea.placeholder = 'Введите описание...';
+      textarea.placeholder = t('entityWindow.descriptionPlaceholder');
       textarea.style.position = 'fixed';
       textarea.style.left = `${sx + 6 * scale}px`;
       textarea.style.top = `${sy + 6 * scale}px`;
@@ -4478,7 +4481,7 @@ export function InfiniteCanvas() {
         ke.stopPropagation();
       });
     },
-    [activeTool, activeCanvasId, pushHistory]
+    [activeTool, activeCanvasId, pushHistory, t]
   );
 
   // ─── Select mode: double click on line to add intermediate point ───
@@ -4537,7 +4540,7 @@ export function InfiniteCanvas() {
       const input = document.createElement('input');
       input.type = 'text';
       input.value = el.objectName || '';
-      input.placeholder = 'Название объекта...';
+      input.placeholder = t('canvas.objectNamePlaceholder');
       input.style.position = 'fixed';
       input.style.left = `${screenX}px`;
       input.style.top = `${screenY}px`;
@@ -4580,7 +4583,7 @@ export function InfiniteCanvas() {
         ke.stopPropagation();
       });
     },
-    [activeTool, activeCanvasId, pushHistory]
+    [activeTool, activeCanvasId, pushHistory, t]
   );
 
   // ─── Select mode: click on element ───
@@ -5254,7 +5257,7 @@ export function InfiniteCanvas() {
                         x={8}
                         y={-3}
                         width={20}
-                        text="ГМ"
+                        text={t('canvas.gm')}
                         fontSize={8}
                         fontStyle="bold"
                         fill="white"
@@ -5518,7 +5521,7 @@ export function InfiniteCanvas() {
             >
               <div className="mb-2 flex items-center justify-between gap-2 px-1">
                 <div className="min-w-0">
-                  <div className="truncate text-xs font-bold uppercase tracking-widest text-white/35">Вставить сущность</div>
+                  <div className="truncate text-xs font-bold uppercase tracking-widest text-white/35">{t('canvas.entityDrop.title')}</div>
                   <div className="truncate text-sm font-bold text-white/90">{linkedEntity.name}</div>
                 </div>
                 <button
@@ -5537,7 +5540,7 @@ export function InfiniteCanvas() {
                     className="flex h-16 flex-col items-center justify-center gap-1 rounded-lg border border-cyan-200/20 bg-cyan-300/10 text-cyan-50 transition-colors hover:border-cyan-200/40 hover:bg-cyan-300/18"
                   >
                     <Box size={18} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Фишка</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">{t('canvas.entityDrop.token')}</span>
                   </button>
                 )}
                 {canPlaceCard && (
@@ -5547,7 +5550,7 @@ export function InfiniteCanvas() {
                     className="flex h-16 flex-col items-center justify-center gap-1 rounded-lg border border-amber-200/20 bg-amber-300/10 text-amber-50 transition-colors hover:border-amber-200/40 hover:bg-amber-300/18"
                   >
                     <ImageIcon size={18} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Карточка</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">{t('canvas.entityDrop.card')}</span>
                   </button>
                 )}
               </div>
@@ -5651,7 +5654,7 @@ export function InfiniteCanvas() {
                           : 'text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                         }`}
                       >
-                        {tab.label}
+                        {t(tab.labelKey)}
                       </button>
                     ))}
                   </div>
@@ -5669,15 +5672,15 @@ export function InfiniteCanvas() {
                         </div>
                       ) : (
                         <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-center text-[11px] text-[var(--vibe-text-faint)]">
-                          Быстрые статы пока не заполнены.
+                          {t('canvas.compact.emptyStats')}
                         </div>
                       )}
 
                       <div className="grid grid-cols-3 gap-1.5">
                         {[
-                          ['Атаки', characterSummary.attackCount],
-                          ['Способ.', characterSummary.abilityCount],
-                          ['Вещи', characterSummary.inventoryCount],
+                          [t('canvas.compact.counters.attacks'), characterSummary.attackCount],
+                          [t('canvas.compact.counters.abilities'), characterSummary.abilityCount],
+                          [t('canvas.compact.counters.items'), characterSummary.inventoryCount],
                         ].map(([label, value]) => (
                           <div key={label} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] px-2 py-1.5 text-center">
                             <div className="text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{label}</div>
@@ -5696,19 +5699,19 @@ export function InfiniteCanvas() {
                             ? 'border-[color-mix(in_srgb,var(--vibe-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_14%,transparent)] text-[var(--vibe-danger)]'
                             : 'border-[color-mix(in_srgb,var(--vibe-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-accent)_14%,transparent)] text-[var(--vibe-accent)]'
                           }`}>
-                            {action.kind === 'attack' ? 'АТК' : 'СП'}
+                            {action.kind === 'attack' ? t('canvas.compact.actionBadges.attack') : t('canvas.compact.actionBadges.ability')}
                           </span>
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-xs font-bold text-[var(--vibe-text-primary)]">{action.name}</div>
-                            <div className="truncate text-[10px] text-[var(--vibe-text-faint)]">{action.parentName || (action.kind === 'attack' ? 'Атака персонажа' : 'Способность')}</div>
+                            <div className="truncate text-[10px] text-[var(--vibe-text-faint)]">{action.parentName || (action.kind === 'attack' ? t('canvas.compact.characterAttack') : t('canvas.compact.ability'))}</div>
                           </div>
                           <div className="max-w-[108px] truncate rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-1.5 py-1 font-mono text-[10px] text-[var(--vibe-text-muted)]">
-                            {action.formula || 'без формулы'}
+                            {action.formula || t('canvas.compact.noFormula')}
                           </div>
                         </div>
                       )) : (
                         <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-center text-[11px] text-[var(--vibe-text-faint)]">
-                          Атаки и способности пока не добавлены.
+                          {t('canvas.compact.emptyActions')}
                         </div>
                       )}
                     </div>
@@ -5737,7 +5740,7 @@ export function InfiniteCanvas() {
 
                       {characterSummary.inventory.length > 0 && (
                         <div className="space-y-1">
-                          <div className="text-[9px] font-black uppercase tracking-widest text-[var(--vibe-text-faint)]">Инвентарь</div>
+                          <div className="text-[9px] font-black uppercase tracking-widest text-[var(--vibe-text-faint)]">{t('inventoryBlock.title')}</div>
                           {characterSummary.inventory.map((item) => (
                             <div key={item.id} className="flex items-center justify-between gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5">
                               <div className="min-w-0">
@@ -5746,7 +5749,7 @@ export function InfiniteCanvas() {
                               </div>
                               {item.equipped && (
                                 <span className="flex-shrink-0 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-success)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_14%,transparent)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-success)]">
-                                  надето
+                                  {t('markdownRenderer.inventory.equipped')}
                                 </span>
                               )}
                             </div>
@@ -5756,7 +5759,7 @@ export function InfiniteCanvas() {
 
                       {characterSummary.resources.length === 0 && characterSummary.inventory.length === 0 && (
                         <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-center text-[11px] text-[var(--vibe-text-faint)]">
-                          Ресурсы и вещи пока не заполнены.
+                          {t('canvas.compact.emptyResources')}
                         </div>
                       )}
                     </div>
@@ -5764,13 +5767,13 @@ export function InfiniteCanvas() {
 
                   {entityTokenInfoTab === 'notes' && (
                     <div className="max-h-40 overflow-y-auto rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 text-[11px] leading-relaxed text-[var(--vibe-text-muted)] custom-scrollbar">
-                      {description || 'Описание пока пустое.'}
+                      {description || t('abilitySheet.emptyDescription')}
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="max-h-24 overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 text-[11px] leading-relaxed text-[var(--vibe-text-muted)]">
-                  {description || 'Описание пока пустое.'}
+                  {description || t('abilitySheet.emptyDescription')}
                 </div>
               )}
               <button
@@ -5781,7 +5784,7 @@ export function InfiniteCanvas() {
                 }}
                 className="mt-3 h-8 w-full rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-primary)] transition-colors hover:bg-[var(--vibe-surface-hover)]"
               >
-                Открыть сущность
+                {t('canvas.openEntity')}
               </button>
             </div>
           </>
@@ -5858,7 +5861,7 @@ export function InfiniteCanvas() {
         const canOpenLinked = canViewCanvasEntity(linkedEntity);
         const canEditRepresentation = canEditCanvasEntityById(activeCanvasId);
         const nextMode: EntityTokenMode = element.entityTokenMode === 'art' ? 'token' : 'art';
-        const nextModeLabel = nextMode === 'art' ? 'Показать как карточку' : 'Показать как фишку';
+        const nextModeLabel = nextMode === 'art' ? t('canvas.context.showAsCard') : t('canvas.context.showAsToken');
 
         return (
           <>
@@ -5888,7 +5891,7 @@ export function InfiniteCanvas() {
                   }}
                 >
                   <ExternalLink size={14} className="text-white/40 transition-colors group-hover:text-white/80" />
-                  Открыть сущность
+                  {t('canvas.openEntity')}
                 </button>
               )}
 
@@ -5919,11 +5922,11 @@ export function InfiniteCanvas() {
                     ) : (
                       <EyeOff size={14} className="text-white/40 transition-colors group-hover:text-white/80" />
                     )}
-                    {element.showName === false ? 'Показать имя' : 'Скрыть имя'}
+                    {element.showName === false ? t('canvas.context.showName') : t('canvas.context.hideName')}
                   </button>
                   <div className="mx-2 my-1 border-t border-white/5" />
                   <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white/25">
-                    Рамка
+                    {t('canvas.context.frame')}
                   </div>
                   <div className="grid grid-cols-2 gap-1 px-2 pb-1">
                     {ENTITY_TOKEN_FRAME_OPTIONS.map((frame) => {
@@ -5977,7 +5980,7 @@ export function InfiniteCanvas() {
             }}
           >
             <div className="px-3 py-1.5 text-[9px] font-bold text-white/30 uppercase tracking-widest border-b border-white/5 mb-1 select-none pointer-events-none">
-              ПОРТАЛ
+              {t('canvas.portal.title')}
             </div>
             {canOpenTarget && (
               <button
@@ -5988,7 +5991,7 @@ export function InfiniteCanvas() {
                 }}
               >
                 <ExternalLink size={14} className="text-white/40 group-hover:text-white/80 transition-colors" />{' '}
-                Открыть окно области
+                {t('canvas.portal.openTarget')}
               </button>
             )}
             {canDeletePortal && (
@@ -6000,9 +6003,9 @@ export function InfiniteCanvas() {
                     const portalToDelete = portalMenu.portal;
                     setPortalMenu(null);
                     openConfirm({
-                      title: 'Удаление портала',
-                      description: `Вы уверены, что хотите удалить портал «${portalToDelete.name}»?`,
-                      confirmText: 'Удалить',
+                      title: t('canvas.portal.deleteTitle'),
+                      description: t('canvas.portal.deleteDescription', { name: portalToDelete.name }),
+                      confirmText: t('common.delete'),
                       isDestructive: true,
                       onConfirm: () => {
                         if (canEditEntity(portalToDelete)) {
@@ -6013,7 +6016,7 @@ export function InfiniteCanvas() {
                   }}
                 >
                   <Trash2 size={14} className="text-red-500/50 group-hover:text-red-400 transition-colors" />{' '}
-                  Удалить портал
+                  {t('canvas.portal.deleteButton')}
                 </button>
               </>
             )}
@@ -6028,14 +6031,14 @@ export function InfiniteCanvas() {
         <div className="pointer-events-none bg-black/30 backdrop-blur-md rounded-lg border border-white/5 px-3 py-1.5 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-white/50 animate-pulse shadow-[0_0_6px_rgba(255,255,255,0.3)]" />
           <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider select-none">
-            G + клик = пинг
+            {t('canvas.hints.ping')}
           </span>
         </div>
         {/* Middle-mouse pan hint */}
         <div className="pointer-events-none bg-black/30 backdrop-blur-md rounded-lg border border-white/5 px-3 py-1.5 flex items-center gap-2">
           <span className="text-[10px] text-white/20 select-none">🖱️</span>
           <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider select-none">
-            средняя кнопка = панорама
+            {t('canvas.hints.middlePan')}
           </span>
         </div>
         {/* Player fog toggle */}
@@ -6043,11 +6046,11 @@ export function InfiniteCanvas() {
           <button
             onClick={togglePlayerFog}
             className="pointer-events-auto bg-black/30 backdrop-blur-md rounded-lg border border-white/5 px-2.5 py-1.5 flex items-center gap-1.5 transition-all hover:bg-white/10 cursor-pointer"
-            title="Показать/скрыть туман войны"
+            title={t('canvas.hints.toggleFog')}
           >
             <span className={`w-2 h-2 rounded-full transition-colors ${playerFogVisible ? 'bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.5)]' : 'bg-white/20'}`} />
             <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider select-none">
-              Туман
+              {t('canvas.hints.fog')}
             </span>
           </button>
         )}
