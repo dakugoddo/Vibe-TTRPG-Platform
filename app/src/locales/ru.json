@@ -73,6 +73,99 @@
     "collapsePanel": "Свернуть панель",
     "loading": "Загрузка..."
   },
+  "styleDemo": {
+    "title": "Варианты раскладки окна",
+    "sampleCharacter": "Артур (Паладин)",
+    "variants": {
+      "compactLists": {
+        "short": "Компактные списки"
+      },
+      "cardView": {
+        "short": "Карточный вид"
+      },
+      "detailedRadial": {
+        "short": "Подробный / радиальный"
+      }
+    },
+    "tabs": {
+      "stats": "ХАРАКТЕРИСТИКИ",
+      "inventory": "ИНВЕНТАРЬ",
+      "notes": "ЗАМЕТКИ"
+    },
+    "context": {
+      "title": "Контекстное меню",
+      "settings": "Настроить",
+      "toInventory": "В инвентарь"
+    },
+    "sections": {
+      "woundsBar": "Накопление РАН (полоса)",
+      "woundsSegments": "Накопление РАН (сегменты)",
+      "woundsScale": "Накопление РАН (шкала)",
+      "powerSystem": "СИСТЕМА: МОЩЬ",
+      "powerCards": "СИСТЕМА: МОЩЬ (карточки)",
+      "powerStacked": "СИСТЕМА: МОЩЬ (стековая шкала)",
+      "attributesCompact": "Атрибуты (компактно)",
+      "attributesGrid": "Атрибуты (сетка)",
+      "attributesInline": "Атрибуты (инлайн-теги)",
+      "inventoryList": "Экипировка (список)",
+      "inventoryGrid": "Экипировка (сетка)",
+      "inventoryDetailed": "Экипировка (детально)",
+      "logNotes": "ЛОГ И ЗАМЕТКИ"
+    },
+    "labels": {
+      "of": "из",
+      "heavilyWounded": "Тяжело ранен",
+      "healthRemaining": "Остаток здоровья:",
+      "active": "Актив",
+      "activePower": "Активно",
+      "baseColon": "База: {{value}}",
+      "baseValue": "База {{value}}",
+      "astral": "Астрал",
+      "ether": "Эфир",
+      "aura": "Аура",
+      "constitution": "Телосложение",
+      "agility": "Ловкость",
+      "thinking": "Мышление",
+      "body": "Тело",
+      "thought": "Мысль",
+      "charisma": "Харизма",
+      "figure": "Фигура",
+      "wounds": "РАН",
+      "healthy": "Здоров",
+      "death": "Смерть"
+    },
+    "items": {
+      "longSword": "Длинный меч",
+      "meleeWeapon": "Оружие ближнего боя",
+      "damageValue": "Урон {{value}}",
+      "oldShield": "Старый щит",
+      "armor": "Броня",
+      "armorValue": "Броня {{value}}",
+      "torch": "Факел",
+      "light": "Освещение",
+      "quantityValue": "Кол-во: {{value}}",
+      "weapon": "Оружие",
+      "item": "Предмет",
+      "strengthPotion": "Зелье сил",
+      "twoHanded": "Двуручное",
+      "damage": "Урон",
+      "accuracy": "Точность",
+      "range": "Дистанция",
+      "closeRange": "Близкая",
+      "durability": "Прочность",
+      "defense": "Защита",
+      "penalty": "Штраф"
+    },
+    "actions": {
+      "woundMinus": "- Рана",
+      "woundPlus": "+ Рана",
+      "drink": "Выпить"
+    },
+    "notes": {
+      "story": "Здесь находится текст истории персонажа...",
+      "lore": "Здесь находится текст лора персонажа или заметки..."
+    }
+  },
   "leftDrawer": {
     "personalInventory": "Личный инвентарь",
     "inventoryForPlayer": "Инвентарь: {{player}}",

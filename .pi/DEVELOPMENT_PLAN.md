@@ -1,6 +1,6 @@
 # Eternity Table: текущий план разработки
 
-> Обновлено: 2026-06-12
+> Обновлено: 2026-06-21
 > Назначение: короткий рабочий план. Этот файл не является журналом всех закрытых срезов.
 
 ## Правила вектора
@@ -14,7 +14,7 @@
 
 ## Текущее состояние
 
-- UI/theme/i18n foundation реализован: semantic theme tokens, visual workspace presets, density registry, RU/EN switch, основные shell/entity/settings/assets/audio поверхности переведены на токены. Settings/Notes shell UI закрыт дополнительным EN-pass; Electron умеет открывать встроенную папку `locales`.
+- UI/theme/i18n foundation реализован: semantic theme tokens, visual workspace presets, density registry, RU/EN switch, основные shell/entity/settings/assets/audio поверхности переведены на токены. Settings/Notes shell UI и StyleDemo закрыты дополнительным EN-pass; Electron умеет открывать встроенную папку `locales`. Оставшаяся кириллица в коде в основном относится к data/model compatibility, тестам и шаблонам новых сущностей, а не к стабильному UI chrome.
 - Compact character card foundation реализован по уточнённому контракту: карточка на canvas информационная, без roll/edit/add/delete controls, detailed info показывается только при edit access к entity.
 - Workspace foundation реализован локально: screen-window singleton, canvas pinned window instances, local window layouts, Obsidian-like Notes workspace с vault tree, tab/split editor, source/preview/split modes, entity data, linked context и unified movable Notes shell modules, включая обязательный `Editor`. Первый leaf-open срез для Notes panes реализован: новая сущность открывается отдельным editor leaf рядом с активным, повторное открытие фокусирует существующий leaf. Native multi-window отложен до desktop gate.
 - Electron desktop foundation реализован: shell, preload IPC, native folder dialog, native asset reveal, embedded server path, build artifact metadata, custom app icon, lazy-loaded app shell chunks, player delivery baseline, `desktop:dev`, `desktop:pack`, `desktop:dist`, dev performance overlay.
@@ -36,8 +36,8 @@
    - пройти `.pi/docs/release-0.1-beta-checklist.md`;
    - решить, какие `test-world/*` изменения являются demo-data, а какие runtime-мусор.
 4. UI polish по фактическим шероховатостям после Electron QA:
-   - оставшиеся hardcoded surfaces;
-   - отдельный i18n-pass для canvas toolbar/hotkeys/notification strings;
+   - manual English smoke по основным экранам;
+   - оставшиеся hardcoded surfaces только если это реальные UI-подписи, а не данные мира/шаблоны;
    - compact card/entity sheet читаемость;
    - theme consistency на разных плотностях.
 5. Custom world locales/editor только после отдельного design-doc:

@@ -73,6 +73,99 @@
         "collapsePanel": "Collapse panel",
         "loading": "Loading..."
     },
+    "styleDemo": {
+        "title": "Window Layout Variants",
+        "sampleCharacter": "Arthur (Paladin)",
+        "variants": {
+            "compactLists": {
+                "short": "Compact lists"
+            },
+            "cardView": {
+                "short": "Card view"
+            },
+            "detailedRadial": {
+                "short": "Detailed / radial"
+            }
+        },
+        "tabs": {
+            "stats": "STATS",
+            "inventory": "INVENTORY",
+            "notes": "NOTES"
+        },
+        "context": {
+            "title": "Context menu",
+            "settings": "Configure",
+            "toInventory": "To inventory"
+        },
+        "sections": {
+            "woundsBar": "Wound buildup (bar)",
+            "woundsSegments": "Wound buildup (segments)",
+            "woundsScale": "Wound buildup (scale)",
+            "powerSystem": "POWER SYSTEM",
+            "powerCards": "POWER SYSTEM (cards)",
+            "powerStacked": "POWER SYSTEM (stacked scale)",
+            "attributesCompact": "Attributes (compact)",
+            "attributesGrid": "Attributes (grid)",
+            "attributesInline": "Attributes (inline tags)",
+            "inventoryList": "Equipment (list)",
+            "inventoryGrid": "Equipment (grid)",
+            "inventoryDetailed": "Equipment (detailed)",
+            "logNotes": "LOG AND NOTES"
+        },
+        "labels": {
+            "of": "of",
+            "heavilyWounded": "Heavily wounded",
+            "healthRemaining": "Health remaining:",
+            "active": "Active",
+            "activePower": "Active",
+            "baseColon": "Base: {{value}}",
+            "baseValue": "Base {{value}}",
+            "astral": "Astral",
+            "ether": "Ether",
+            "aura": "Aura",
+            "constitution": "Constitution",
+            "agility": "Agility",
+            "thinking": "Thinking",
+            "body": "Body",
+            "thought": "Mind",
+            "charisma": "Charisma",
+            "figure": "Figure",
+            "wounds": "WND",
+            "healthy": "Healthy",
+            "death": "Death"
+        },
+        "items": {
+            "longSword": "Long sword",
+            "meleeWeapon": "Melee weapon",
+            "damageValue": "Damage {{value}}",
+            "oldShield": "Old shield",
+            "armor": "Armor",
+            "armorValue": "Armor {{value}}",
+            "torch": "Torch",
+            "light": "Light",
+            "quantityValue": "Qty: {{value}}",
+            "weapon": "Weapon",
+            "item": "Item",
+            "strengthPotion": "Strength potion",
+            "twoHanded": "Two-handed",
+            "damage": "Damage",
+            "accuracy": "Accuracy",
+            "range": "Range",
+            "closeRange": "Close",
+            "durability": "Durability",
+            "defense": "Defense",
+            "penalty": "Penalty"
+        },
+        "actions": {
+            "woundMinus": "- Wound",
+            "woundPlus": "+ Wound",
+            "drink": "Drink"
+        },
+        "notes": {
+            "story": "Character story text lives here...",
+            "lore": "Character lore text or notes live here..."
+        }
+    },
     "leftDrawer": {
         "personalInventory": "Personal inventory",
         "inventoryForPlayer": "Inventory: {{player}}",
