@@ -540,7 +540,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
                     onPromptDrop({
                         x: e.clientX,
                         y: e.clientY,
-                        entityName: draggedEntities.length === 1 ? draggedEntities[0].name : `${draggedEntities.length} сущностей`,
+                        entityName: draggedEntities.length === 1 ? draggedEntities[0].name : t('entityDatabase.entitiesCount', { count: draggedEntities.length }),
                         canCopy: Boolean(copyAction),
                         canMove: Boolean(moveAction),
                         copyLabel: copyAction?.label,
@@ -624,9 +624,9 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
                             onClick={(e) => {
                                 e.stopPropagation();
                                 openConfirm({
-                                    title: "Удаление сущности",
-                                    description: `Вы уверены, что хотите удалить "${entity.name}"?`,
-                                    confirmText: "Удалить",
+                                    title: t('entityWindow.deleteConfirm.title'),
+                                    description: t('entityWindow.deleteConfirm.description', { name: entity.name }),
+                                    confirmText: t('common.delete'),
                                     isDestructive: true,
                                     onConfirm: () => {
                                         yjsStore.deleteEntity(entity.id);
@@ -635,7 +635,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
                                 });
                             }}
                             className="opacity-0 group-hover/item:opacity-100 p-2 text-white/30 hover:text-red-400 rounded hover:bg-red-500/20 transition-all ml-1 flex-shrink-0"
-                            title="Удалить"
+                            title={t('common.delete')}
                         >
                             <Trash2 size={16} />
                         </button>
@@ -648,7 +648,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
                                 setExpanded(!expanded);
                             }}
                             className="p-1 text-white/40 hover:text-white"
-                            title={isExpanded ? 'Свернуть вложенные сущности' : 'Развернуть вложенные сущности'}
+                            title={isExpanded ? t('entityDatabase.collapseChildren') : t('entityDatabase.expandChildren')}
                         >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
@@ -660,7 +660,7 @@ function RecursiveEntityItem({ entity, entities, level = 0, searchActive = false
                 isExpanded && canExpandEntity && (
                     <div className="flex flex-col gap-1 w-full pl-2 mt-1 relative before:empty before:w-px before:bg-white/10 before:absolute before:left-3 before:top-0 before:bottom-0">
                         {children.length === 0 ? (
-                            <div className="text-[10px] text-white/30 italic py-1 pl-4">Пусто</div>
+                            <div className="text-[10px] text-white/30 italic py-1 pl-4">{t('entityDatabase.empty')}</div>
                         ) : (
                             children.map(child => (
                                 <RecursiveEntityItem
@@ -1066,9 +1066,12 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         const hiddenCount = Math.max(0, bulkDeletableEntities.length - 4);
 
         openConfirm({
-            title: 'Массовое удаление',
-            description: `Удалить выбранные сущности (${bulkDeletableEntities.length})? ${previewNames}${hiddenCount > 0 ? ` и ещё ${hiddenCount}` : ''}. Вложенные выбранные сущности будут удалены вместе с родителями.`,
-            confirmText: 'Удалить выбранные',
+            title: t('entityDatabase.bulkDelete.title'),
+            description: t('entityDatabase.bulkDelete.description', {
+                count: bulkDeletableEntities.length,
+                preview: `${previewNames}${hiddenCount > 0 ? t('entityDatabase.bulkDelete.hiddenMore', { count: hiddenCount }) : ''}`,
+            }),
+            confirmText: t('entityDatabase.bulkDelete.confirm'),
             isDestructive: true,
             onConfirm: () => {
                 const { closeWindow } = useWindowStore.getState();
@@ -1077,7 +1080,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                 clearEntitySelection();
             }
         });
-    }, [bulkDeleteRootIds, bulkDeletableEntities, clearEntitySelection, openConfirm, selectedEntityIds]);
+    }, [bulkDeleteRootIds, bulkDeletableEntities, clearEntitySelection, openConfirm, selectedEntityIds, t]);
 
     const handleCopyWikiLink = useCallback((id: string) => {
         const entity = entities.find(e => e.id === id);
@@ -1104,9 +1107,9 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         const db = entity.database || targetDb;
         const owner = getEntityOwnerId(entity) || targetPlayerOwner;
         void showEntityInExplorer(db, entity.id, owner).then((ok) => {
-            if (!ok) console.warn(`Не удалось открыть файл сущности в проводнике: ${entity.name}`);
+            if (!ok) console.warn(t('entityDatabase.openInExplorerFailed', { name: entity.name }));
         });
-    }, [entities, targetDb, targetPlayerOwner]);
+    }, [entities, targetDb, targetPlayerOwner, t]);
 
     const handleCloseContextMenu = useCallback(() => {
         setContextMenuState(null);
@@ -1133,16 +1136,15 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
 
         applyOwnerToEntityTree(newId, playerName);
 
-        // Log to chat
         yjsStore.sendMessage(
-            `🎁 ${entity.name} выдан игроку ${playerName}`,
-            'Система',
+            t('entityDatabase.givenToPlayerMessage', { name: entity.name, player: playerName }),
+            t('chat.systemSender'),
             true
         );
 
         setGiveToPlayerEntityId(null);
         setGiveToPlayerList([]);
-    }, [giveToPlayerEntityId, entities]);
+    }, [giveToPlayerEntityId, entities, t]);
 
     const handlePromptDrop = (data: DragDropPromptData) => {
         setDragDropPrompt({
@@ -1195,7 +1197,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
         handlePromptDrop({
             x: e.clientX,
             y: e.clientY,
-            entityName: draggedEntities.length === 1 ? draggedEntities[0].name : `${draggedEntities.length} сущностей`,
+            entityName: draggedEntities.length === 1 ? draggedEntities[0].name : t('entityDatabase.entitiesCount', { count: draggedEntities.length }),
             canCopy: Boolean(copyAction),
             canMove: Boolean(moveAction),
             copyLabel: copyAction?.label,
@@ -1316,10 +1318,10 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                         <button
                             onClick={() => importInputRef.current?.click()}
                             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-cyan-300/20 bg-cyan-400/10 px-2.5 text-[10px] font-bold uppercase tracking-wider text-cyan-100/80 shadow-inner transition-all hover:border-cyan-200/35 hover:bg-cyan-300/15 hover:text-white"
-                            title="Импорт .md файлов"
+                            title={t('entityDatabase.importMdTitle')}
                         >
                             <Upload size={13} />
-                            Импорт .md
+                            {t('entityDatabase.importMd')}
                         </button>
                     )}
                 </div>
@@ -1330,14 +1332,14 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Поиск: атлетика 3, type:character, prop:hp.current>=7"
+                        placeholder={t('entityDatabase.searchPlaceholder')}
                         className="w-full h-9 rounded-lg bg-black/25 border border-white/10 pl-9 pr-9 text-xs text-white/80 placeholder:text-white/30 outline-none focus:border-white/25 focus:bg-black/35 transition-colors"
                     />
                     {searchQuery && (
                         <button
                             onClick={() => setSearchQuery('')}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-white/35 hover:text-white/80 hover:bg-white/10 transition-colors"
-                            title="Очистить поиск"
+                            title={t('entityDatabase.clearSearch')}
                         >
                             <X size={14} />
                         </button>
@@ -1346,7 +1348,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
 
                 {!searchActive && savedSearches.length > 0 && (
                     <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-amber-100/35">Сохранённые</span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-amber-100/35">{t('entityDatabase.savedSearches')}</span>
                         {savedSearches.slice(0, 8).map((query) => (
                             <div
                                 key={query}
@@ -1364,7 +1366,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                     type="button"
                                     onClick={() => handleRemoveSavedSearch(query)}
                                     className="border-l border-amber-100/10 px-1.5 py-1 text-amber-50/35 transition-colors hover:bg-amber-200/10 hover:text-amber-50"
-                                    title="Убрать сохранённый поиск"
+                                    title={t('entityDatabase.removeSavedSearch')}
                                 >
                                     <X size={11} />
                                 </button>
@@ -1375,7 +1377,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
 
                 {!searchActive && recentSearches.length > 0 && (
                     <div className="mb-3 flex flex-wrap items-center gap-1.5">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-white/25">Недавние</span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-white/25">{t('entityDatabase.recentSearches')}</span>
                         {recentSearches.slice(0, 5).map((query) => (
                             <button
                                 key={query}
@@ -1391,9 +1393,9 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                             type="button"
                             onClick={handleClearRecentSearches}
                             className="rounded-lg border border-white/10 bg-black/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white/30 transition-colors hover:border-white/20 hover:text-white/65"
-                            title="Очистить историю поиска"
+                            title={t('entityDatabase.clearSearchHistory')}
                         >
-                            Сброс
+                            {t('common.reset')}
                         </button>
                     </div>
                 )}
@@ -1403,10 +1405,10 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                         <div className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wider text-cyan-100/75">
                             <span className="flex items-center gap-2">
                                 <Search size={12} />
-                                {directSearchMatches.length} совпадений
+                                {t('entityDatabase.searchMatches', { count: directSearchMatches.length })}
                             </span>
                             <div className="flex items-center gap-1.5">
-                                <span className="font-mono text-white/35">{visibleEntities.filter(entity => entity.id !== 'root').length} с контекстом</span>
+                                <span className="font-mono text-white/35">{t('entityDatabase.searchContextCount', { count: visibleEntities.filter(entity => entity.id !== 'root').length })}</span>
                                 <button
                                     type="button"
                                     onClick={handleSaveCurrentSearch}
@@ -1416,10 +1418,10 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                             ? 'cursor-default border-amber-200/10 bg-amber-300/10 text-amber-100/45'
                                             : 'border-amber-200/20 bg-amber-300/10 text-amber-50/70 hover:border-amber-100/35 hover:bg-amber-300/15 hover:text-amber-50'
                                     }`}
-                                    title={isCurrentSearchSaved ? 'Поиск уже сохранён' : 'Сохранить текущий поиск'}
+                                    title={isCurrentSearchSaved ? t('entityDatabase.searchAlreadySaved') : t('entityDatabase.saveCurrentSearch')}
                                 >
                                     <Bookmark size={11} />
-                                    {isCurrentSearchSaved ? 'Сохранено' : 'Сохранить'}
+                                    {isCurrentSearchSaved ? t('entityDatabase.saved') : t('entityDatabase.save')}
                                 </button>
                             </div>
                         </div>
@@ -1434,7 +1436,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                             : 'border-white/10 bg-black/15 text-white/45 hover:border-white/20 hover:text-white/75'
                                     }`}
                                 >
-                                    Все <span className="font-mono text-white/35">{directSearchMatches.length}</span>
+                                    {t('entityDatabase.all')} <span className="font-mono text-white/35">{directSearchMatches.length}</span>
                                 </button>
                                 {tabsToShow.map((group) => {
                                     const count = searchMatchCountsByType[group.type] || 0;
@@ -1465,7 +1467,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                         onClick={() => setActiveTab('all')}
                         className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${activeTab === 'all' ? 'bg-white/20 text-white shadow-md' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/90'}`}
                     >
-                        Все
+                        {t('entityDatabase.all')}
                     </button>
                     {tabsToShow.map(tab => (
                         <button
@@ -1482,11 +1484,11 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                     <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-cyan-200/15 bg-cyan-300/[0.08] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                         <div className="min-w-0">
                             <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-50/75">
-                                Выбрано <span className="font-mono text-cyan-50">{selectedEntities.length}</span>
+                                {t('entityDatabase.selected', { count: selectedEntities.length })}
                             </div>
                             {bulkDeletableEntities.length !== selectedEntities.length && (
                                 <div className="mt-0.5 truncate text-[9px] font-medium text-amber-100/55">
-                                    Доступно для удаления: {bulkDeletableEntities.length}
+                                    {t('entityDatabase.deletableCount', { count: bulkDeletableEntities.length })}
                                 </div>
                             )}
                         </div>
@@ -1496,16 +1498,16 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                 onClick={handleBulkDelete}
                                 disabled={bulkDeleteRootIds.length === 0}
                                 className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-red-300/20 bg-red-400/10 px-2.5 text-[10px] font-bold uppercase tracking-wider text-red-100/80 transition-colors hover:border-red-200/35 hover:bg-red-400/20 hover:text-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-white/25"
-                                title="Удалить выбранные сущности"
+                                title={t('entityDatabase.bulkDelete.buttonTitle')}
                             >
                                 <Trash2 size={13} />
-                                Удалить
+                                {t('common.delete')}
                             </button>
                             <button
                                 type="button"
                                 onClick={clearEntitySelection}
                                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-black/20 text-white/45 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
-                                title="Сбросить выделение"
+                                title={t('entityDatabase.clearSelection')}
                             >
                                 <X size={14} />
                             </button>
@@ -1522,7 +1524,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                             id: 'root',
                             parentId: null,
                             type: 'canvas',
-                            name: 'Корневое пространство',
+                            name: t('entityDatabase.rootCanvasName'),
                             description: '',
                             tags: [],
                             properties: {}
@@ -1555,7 +1557,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
 
                     {searchActive && activeTab === 'all' && !hasVisibleSearchResults && (
                         <div className="text-[10px] text-white/40 italic px-3 py-5 bg-black/20 rounded-lg border border-white/10 border-dashed text-center">
-                            Ничего не найдено
+                            {t('entityDatabase.noSearchResults')}
                         </div>
                     )}
 
@@ -1586,7 +1588,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); addTestEntity('object'); }}
                                                 className="rounded border border-white/10 bg-white/5 p-1 text-white/55 shadow-inner transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
-                                                title="Создать предмет"
+                                                title={t('entityDatabase.quickCreate.object')}
                                             >
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                             </button>
@@ -1603,7 +1605,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); addTestEntity('folder', group.type); }}
                                                     className="text-white/30 hover:text-white transition-colors flex items-center justify-center p-0.5 rounded hover:bg-white/10 border border-transparent hover:border-white/20"
-                                                    title="Создать папку"
+                                                    title={t('entityDatabase.createFolder')}
                                                 >
                                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /><line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" /></svg>
                                                 </button>
@@ -1615,7 +1617,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                 {!isCollapsed && (
                                     <div className="flex flex-col gap-1.5">
                                         {groupEntities.length === 0 ? (
-                                            <div className="text-[10px] text-white/40 italic px-2 py-4 bg-black/20 rounded-lg border border-white/10 border-dashed text-center">В этой категории пусто</div>
+                                            <div className="text-[10px] text-white/40 italic px-2 py-4 bg-black/20 rounded-lg border border-white/10 border-dashed text-center">{t('entityDatabase.emptyCategory')}</div>
                                         ) : (
                                             groupEntities.map(entity => (
                                                 <RecursiveEntityItem
@@ -1675,9 +1677,9 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                     const ent = entities.find(e => e.id === id);
                     if (ent) {
                         openConfirm({
-                            title: "Удаление сущности",
-                            description: `Вы уверены, что хотите удалить "${ent.name}"?`,
-                            confirmText: "Удалить",
+                            title: t('entityWindow.deleteConfirm.title'),
+                            description: t('entityWindow.deleteConfirm.description', { name: ent.name }),
+                            confirmText: t('common.delete'),
                             isDestructive: true,
                             onConfirm: () => {
                                 yjsStore.deleteEntity(id);
@@ -1700,8 +1702,8 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                         <div className="pointer-events-auto bg-[#151c2b]/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.7)] w-[320px] max-h-[60vh] flex flex-col animate-in zoom-in-95 fade-in duration-200">
                             <div className="flex items-center justify-between p-4 border-b border-white/10">
                                 <div>
-                                    <h3 className="text-sm font-bold text-white">Выдать игроку</h3>
-                                    <p className="text-xs text-white/50 mt-0.5">Выберите получателя</p>
+                                    <h3 className="text-sm font-bold text-white">{t('entityDatabase.giveToPlayer.title')}</h3>
+                                    <p className="text-xs text-white/50 mt-0.5">{t('entityDatabase.giveToPlayer.subtitle')}</p>
                                 </div>
                                 <button
                                     onClick={() => { setGiveToPlayerEntityId(null); setGiveToPlayerList([]); }}
@@ -1713,7 +1715,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                             <div className="flex-1 overflow-y-auto p-3 custom-scrollbar space-y-1.5">
                                 {giveToPlayerList.length === 0 ? (
                                     <div className="text-center text-white/30 text-xs py-8 italic">
-                                        Нет доступных игроков
+                                        {t('entityDatabase.giveToPlayer.noPlayers')}
                                     </div>
                                 ) : (
                                     giveToPlayerList.map(playerName => (
@@ -1727,7 +1729,7 @@ export function EntityDatabase({ baseParentId, showRootCanvas = false, headerTit
                                             </div>
                                             <div>
                                                 <div className="text-sm text-white/80 font-medium">{playerName}</div>
-                                                <div className="text-[10px] text-white/30">Инвентарь игрока</div>
+                                                <div className="text-[10px] text-white/30">{t('entityDatabase.giveToPlayer.playerInventory')}</div>
                                             </div>
                                         </button>
                                     ))
