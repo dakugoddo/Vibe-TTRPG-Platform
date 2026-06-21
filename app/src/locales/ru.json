@@ -634,6 +634,40 @@
       "button": "Удалить атаку"
     }
   },
+  "attributeBlock": {
+    "editLabel": "Редак.: {{label}}",
+    "adhocShort": "Доп.",
+    "wounds": {
+      "title": "Состояние здоровья",
+      "limit": "Предел ран",
+      "limitPrefix": "Предел:",
+      "critical": "ШОК / КРИТИЧЕСКИ РАНЕН",
+      "healthy": "ЗДОРОВ / ЛЕГКИЕ РАНЫ",
+      "minus": "−{{count}} ран",
+      "plus": "+{{count}} ран",
+      "editKeys": "Enter — сохранить, Esc — отменить",
+      "manualInput": "Нажать — ввести вручную",
+      "barTitle": "ЛКМ: +1 рана | ПКМ: −1 рана",
+      "barHint": "ЛКМ +1 / ПКМ −1",
+      "chatDelta": "{{emoji}} {{name}}: {{sign}}{{delta}} ран (текущие: {{current}}/{{max}})"
+    },
+    "attributes": {
+      "title": "Атрибуты"
+    },
+    "power": {
+      "title": "Мощь",
+      "activeSources": "Активированные источники"
+    },
+    "defense": {
+      "title": "Защита"
+    },
+    "statuses": {
+      "title": "Статусы и состояния",
+      "add": "Добавить",
+      "addStatus": "Добавить статус",
+      "empty": "Нет активных статусов"
+    }
+  },
   "competenciesBlock": {
     "title": "Компетенции ({{count}})",
     "add": "Добавить",

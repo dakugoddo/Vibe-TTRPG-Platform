@@ -634,6 +634,40 @@
             "button": "Delete attack"
         }
     },
+    "attributeBlock": {
+        "editLabel": "Edit: {{label}}",
+        "adhocShort": "Ad hoc",
+        "wounds": {
+            "title": "Health state",
+            "limit": "Wound limit",
+            "limitPrefix": "Limit:",
+            "critical": "SHOCK / CRITICALLY WOUNDED",
+            "healthy": "HEALTHY / LIGHT WOUNDS",
+            "minus": "−{{count}} wounds",
+            "plus": "+{{count}} wounds",
+            "editKeys": "Enter — save, Esc — cancel",
+            "manualInput": "Click to enter manually",
+            "barTitle": "LMB: +1 wound | RMB: −1 wound",
+            "barHint": "LMB +1 / RMB −1",
+            "chatDelta": "{{emoji}} {{name}}: {{sign}}{{delta}} wounds (current: {{current}}/{{max}})"
+        },
+        "attributes": {
+            "title": "Attributes"
+        },
+        "power": {
+            "title": "Power",
+            "activeSources": "Active sources"
+        },
+        "defense": {
+            "title": "Defense"
+        },
+        "statuses": {
+            "title": "Statuses and conditions",
+            "add": "Add",
+            "addStatus": "Add status",
+            "empty": "No active statuses"
+        }
+    },
     "competenciesBlock": {
         "title": "Competencies ({{count}})",
         "add": "Add",

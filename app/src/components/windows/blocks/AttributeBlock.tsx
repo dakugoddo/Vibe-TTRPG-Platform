@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Entity } from '../../../types';
 import { yjsStore } from '../../../store/yjsStore';
 import { getEntitiesSnapshot } from '../../../hooks/useEntities';
@@ -25,6 +26,7 @@ const StatRow = ({
     entityId,
     path,
     label,
+    noteName,
     icon: Icon,
     properties,
     baseLabel,
@@ -35,6 +37,7 @@ const StatRow = ({
     entityId: string;
     path: string[];
     label: string;
+    noteName?: string;
     icon?: React.ElementType;
     properties: Record<string, unknown>;
     baseLabel?: string;
@@ -42,6 +45,7 @@ const StatRow = ({
     handleUpdateAttribute: (p: string[], v: unknown) => void;
     canEdit: boolean;
 }) => {
+    const { t } = useTranslation();
     const stat = useCalculatedStat(entityId, path);
     const allEntities = getEntitiesSnapshot();
     const { openWindow } = useWindowStore();
@@ -51,7 +55,7 @@ const StatRow = ({
         if (note) {
             openWindow(note.id, Math.random() * 200 + 100, Math.random() * 200 + 100);
         } else {
-            console.log(`Заметка '${noteName}' не найдена`);
+            console.log(t('attackSheet.noteNotFound', { name: noteName }));
         }
     };
 
@@ -72,7 +76,7 @@ const StatRow = ({
                 {Icon && <Icon size={12} className="text-[var(--vibe-text-faint)] transition-colors group-hover:text-[var(--vibe-text-muted)]" />}
                 <span
                     className="cursor-pointer text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)] transition-colors hover:text-[var(--vibe-text-primary)]"
-                    onClick={() => handleOpenNote(label)}
+                    onClick={() => handleOpenNote(noteName ?? label)}
                 >
                     {label}
                 </span>
@@ -81,11 +85,11 @@ const StatRow = ({
                 placement="left"
                 content={
                     <div className={`flex flex-col gap-3 rounded-[var(--vibe-radius-md)] p-3 ${glass.popover}`}>
-                        <span className="border-b border-[var(--vibe-border-subtle)] pb-2 text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">Редак.: {label}</span>
+                        <span className="border-b border-[var(--vibe-border-subtle)] pb-2 text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">{t('attributeBlock.editLabel', { label })}</span>
 
                         <div className="flex gap-4">
                             <div className="flex flex-col gap-1 w-16">
-                                <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">{baseLabel || 'База'}</label>
+                                <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">{baseLabel || t('statTooltip.base')}</label>
                                 <input
                                     type="number"
                                     value={stat.base}
@@ -96,7 +100,7 @@ const StatRow = ({
                             </div>
 
                             <div className="flex flex-col gap-1 w-16">
-                                <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">{adhocLabel || 'Доп.'}</label>
+                                <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">{adhocLabel || t('attributeBlock.adhocShort')}</label>
                                 <input
                                     type="number"
                                     value={adhoc}
@@ -125,6 +129,7 @@ const StatRow = ({
 };
 
 export function AttributeBlock({ entity }: AttributeBlockProps) {
+    const { t } = useTranslation();
     const properties = entity.properties || {};
     const canEditAttributes = yjsStore.canModify(entity.database, getEntityOwnerId(entity));
     const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
@@ -140,7 +145,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
             // Random offset for window
             openWindow(note.id, Math.random() * 200 + 100, Math.random() * 200 + 100);
         } else {
-            console.log(`Заметка '${noteName}' не найдена`);
+            console.log(t('attackSheet.noteNotFound', { name: noteName }));
         }
     };
 
@@ -150,7 +155,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
     const currentWounds = Number(properties.attributes?.wounds?.current ?? 0);
     const maxWounds = Math.max(0, limitStat.total * 2);
 
-    // Specific calculation for Мощь (Power)
+    // Specific calculation for Power.
     const activePowers: string[] = properties.activePowers || []; // 'astral', 'ether', 'aura'
     const astral = useCalculatedStat(entity.id, ['power', 'astral']).total;
     const ether = useCalculatedStat(entity.id, ['power', 'ether']).total;
@@ -171,7 +176,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
         total: evasionTotal,
         breakdown: [
             ...baseEvasionStat.breakdown,
-            { source: 'Мощь', value: Math.floor(activePowerTotal / 2) }
+            { source: t('attributeBlock.power.title'), value: Math.floor(activePowerTotal / 2) }
         ]
     };
 
@@ -199,8 +204,8 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
         const emoji = actualDelta > 0 ? '⚔️' : '💚';
         const sign = actualDelta > 0 ? '+' : '';
         yjsStore.sendMessage(
-            `${emoji} ${entity.name}: ${sign}${actualDelta} ран (текущие: ${newValue}/${maxWounds})`,
-            'Система',
+            t('attributeBlock.wounds.chatDelta', { emoji, name: entity.name, sign, delta: actualDelta, current: newValue, max: maxWounds }),
+            t('chat.systemSender'),
             true
         );
     };
@@ -262,16 +267,16 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                     className="cursor-pointer text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)] transition-colors hover:text-[var(--vibe-text-primary)]"
                                     onClick={() => handleOpenNote('Раны')}
                                 >
-                                    Состояние Здоровья
+                                    {t('attributeBlock.wounds.title')}
                                 </h4>
                                 <Popover
                                     placement="bottom"
                                     content={
                                         <div className={`flex flex-col gap-3 rounded-[var(--vibe-radius-md)] p-3 ${glass.popover}`}>
-                                            <span className="border-b border-[var(--vibe-border-subtle)] pb-2 text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">Предел ран</span>
+                                            <span className="border-b border-[var(--vibe-border-subtle)] pb-2 text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">{t('attributeBlock.wounds.limit')}</span>
                                             <div className="flex gap-4">
                                                 <div className="flex flex-col gap-1 w-16">
-                                                    <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">База</label>
+                                                    <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">{t('statTooltip.base')}</label>
                                                     <input
                                                         type="number"
                                                         value={limitStat.base}
@@ -281,7 +286,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                                     />
                                                 </div>
                                                 <div className="flex flex-col gap-1 w-16">
-                                                    <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">Доп.</label>
+                                                    <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">{t('attributeBlock.adhocShort')}</label>
                                                     <input
                                                         type="number"
                                                         value={woundsAdhoc}
@@ -296,13 +301,13 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                 >
                                     <StatTooltip stat={limitStat}>
                                         <span className="cursor-pointer text-[10px] text-[var(--vibe-text-faint)] transition-colors hover:text-[var(--vibe-text-muted)]">
-                                            Предел: <span className="font-bold text-[var(--vibe-text-primary)]">{limitStat.total}</span>
+                                            {t('attributeBlock.wounds.limitPrefix')} <span className="font-bold text-[var(--vibe-text-primary)]">{limitStat.total}</span>
                                         </span>
                                     </StatTooltip>
                                 </Popover>
                             </div>
                             <div className="text-sm font-bold text-[var(--vibe-text-primary)]">
-                                {currentWounds >= limitStat.total ? 'ШОК / КРИТИЧЕСКИ РАНЕН' : 'ЗДОРОВ / ЛЕГКИЕ РАНЫ'}
+                                {currentWounds >= limitStat.total ? t('attributeBlock.wounds.critical') : t('attributeBlock.wounds.healthy')}
                             </div>
                         </div>
 
@@ -313,7 +318,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                     onClick={() => handleChangeWounds(-5)}
                                     disabled={!canEditAttributes || currentWounds <= 0}
                                     className="rounded p-1 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
-                                    title="−5 ран"
+                                    title={t('attributeBlock.wounds.minus', { count: 5 })}
                                 >
                                     <Minus size={10} />
                                     <span className="text-[8px]">5</span>
@@ -322,7 +327,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                     onClick={() => handleChangeWounds(-1)}
                                     disabled={!canEditAttributes || currentWounds <= 0}
                                     className="rounded p-1 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
-                                    title="−1 рана"
+                                    title={t('attributeBlock.wounds.minus', { count: 1 })}
                                 >
                                     <Minus size={14} />
                                 </button>
@@ -353,7 +358,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                             "h-8 w-12 px-1 py-0 text-center text-lg font-bold tabular-nums",
                                             currentWounds >= limitStat.total ? "text-[var(--vibe-danger)]" : "text-[var(--vibe-success)]"
                                         )}
-                                        title="Enter — сохранить, Esc — отменить"
+                                        title={t('attributeBlock.wounds.editKeys')}
                                     />
                                 ) : (
                                     <button
@@ -363,7 +368,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                             "h-8 w-12 select-none rounded-[var(--vibe-radius-sm)] text-center text-xl font-bold tabular-nums transition-colors hover:bg-[var(--vibe-surface-hover)] hover:brightness-125",
                                             currentWounds >= limitStat.total ? "text-[var(--vibe-danger)]" : "text-[var(--vibe-success)]"
                                         )}
-                                        title="Нажать — ввести вручную"
+                                        title={t('attributeBlock.wounds.manualInput')}
                                         onClick={startWoundsEdit}
                                     >
                                         {currentWounds}
@@ -374,7 +379,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                     onClick={() => handleChangeWounds(1)}
                                     disabled={!canEditAttributes || currentWounds >= maxWounds}
                                     className="rounded p-1 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
-                                    title="+1 рана"
+                                    title={t('attributeBlock.wounds.plus', { count: 1 })}
                                 >
                                     <Plus size={14} />
                                 </button>
@@ -382,7 +387,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                     onClick={() => handleChangeWounds(5)}
                                     disabled={!canEditAttributes || currentWounds >= maxWounds}
                                     className="rounded p-1 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-20"
-                                    title="+5 ран"
+                                    title={t('attributeBlock.wounds.plus', { count: 5 })}
                                 >
                                     <Plus size={10} />
                                     <span className="text-[8px]">5</span>
@@ -399,7 +404,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                 className="group/bar relative h-3 w-full cursor-pointer overflow-hidden rounded-full border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-[1px] shadow-[var(--vibe-shadow-block)]"
                 onClick={() => { if (canEditAttributes) handleChangeWounds(1); }}
                 onContextMenu={(e) => { e.preventDefault(); if (canEditAttributes) handleChangeWounds(-1); }}
-                title="ЛКМ: +1 рана | ПКМ: −1 рана"
+                title={t('attributeBlock.wounds.barTitle')}
             >
                 <div
                     className={clsx("absolute top-0 left-0 bottom-0 rounded-full transition-all duration-300",
@@ -409,42 +414,39 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                     )}
                     style={{ width: `${Math.min(100, Math.max(0, (currentWounds / Math.max(1, maxWounds)) * 100))}%` }}
                 />
-                {/* Hover hint */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/bar:opacity-100 transition-opacity">
-                    <span className="text-[9px] font-bold text-[var(--vibe-text-muted)] drop-shadow-lg">ЛКМ +1 / ПКМ −1</span>
+                    <span className="text-[9px] font-bold text-[var(--vibe-text-muted)] drop-shadow-lg">{t('attributeBlock.wounds.barHint')}</span>
                 </div>
             </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                {/* ATTRIBUTES BLOCK */}
                 <div className={`${glass.blockBg} col-span-2 lg:col-span-1`}>
                     <h4
                         className={glass.blockHeader + " cursor-pointer hover:text-[var(--vibe-text-primary)]"}
                         onClick={() => handleOpenNote('Атрибуты')}
                     >
-                        Атрибуты
+                        {t('attributeBlock.attributes.title')}
                     </h4>
                     <div className="grid grid-cols-2 gap-2">
-                        <StatRow entityId={entity.id} path={['attributes', 'constitution']} label="Телосложение" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
-                        <StatRow entityId={entity.id} path={['attributes', 'cognition']} label="Когниция" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
-                        <StatRow entityId={entity.id} path={['attributes', 'physique']} label="Фигура" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
-                        <StatRow entityId={entity.id} path={['attributes', 'mind']} label="Мышление" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
-                        <StatRow entityId={entity.id} path={['attributes', 'speed']} label="Скорость" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
-                        <StatRow entityId={entity.id} path={['attributes', 'hunger']} label="Голод" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                        <StatRow entityId={entity.id} path={['attributes', 'constitution']} label={t('markdownRenderer.stats.defaults.constitution')} noteName="Телосложение" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                        <StatRow entityId={entity.id} path={['attributes', 'cognition']} label={t('markdownRenderer.stats.defaults.cognition')} noteName="Когниция" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                        <StatRow entityId={entity.id} path={['attributes', 'physique']} label={t('markdownRenderer.stats.defaults.physique')} noteName="Фигура" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                        <StatRow entityId={entity.id} path={['attributes', 'mind']} label={t('markdownRenderer.stats.defaults.mind')} noteName="Мышление" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                        <StatRow entityId={entity.id} path={['attributes', 'speed']} label={t('markdownRenderer.stats.defaults.speed')} noteName="Скорость" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                        <StatRow entityId={entity.id} path={['attributes', 'hunger']} label={t('markdownRenderer.stats.defaults.hunger')} noteName="Голод" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
                     </div>
                 </div>
 
                 <div className="col-span-2 lg:col-span-1 flex flex-col gap-4">
-                    {/* POWER BLOCK */}
                     <div className={`${glass.blockBg} flex-1`}>
                         <div className="flex items-center justify-between mb-4">
                             <h4
                                 className={glass.blockHeader + " mb-0 cursor-pointer hover:text-[var(--vibe-text-primary)]"}
                                 onClick={() => handleOpenNote('Мощь')}
                             >
-                                Мощь
+                                {t('attributeBlock.power.title')}
                             </h4>
                             <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-3 py-1 font-mono text-sm font-bold text-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-block)]">
                                 {activePowerTotal}
@@ -452,56 +454,54 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                         </div>
 
                         <div className="grid grid-cols-3 gap-2 mb-4">
-                            <StatRow entityId={entity.id} path={['power', 'astral']} label="Астрал" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
-                            <StatRow entityId={entity.id} path={['power', 'ether']} label="Эфир" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
-                            <StatRow entityId={entity.id} path={['power', 'aura']} label="Аура" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                            <StatRow entityId={entity.id} path={['power', 'astral']} label={t('markdownRenderer.stats.defaults.astral')} noteName="Астрал" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                            <StatRow entityId={entity.id} path={['power', 'ether']} label={t('markdownRenderer.stats.defaults.ether')} noteName="Эфир" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                            <StatRow entityId={entity.id} path={['power', 'aura']} label={t('markdownRenderer.stats.defaults.aura')} noteName="Аура" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
                         </div>
 
                         <div className="border-t border-[var(--vibe-border-subtle)] pt-3">
-                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Активированные источники</label>
+                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('attributeBlock.power.activeSources')}</label>
                             <div className={`${glass.tabBar} flex gap-1 rounded-[var(--vibe-radius-md)] p-1`}>
                                 <button
                                     onClick={() => togglePower('astral')}
                                     disabled={!canEditAttributes}
                                     className={clsx("flex-1 rounded-[var(--vibe-radius-sm)] border py-1.5 text-xs font-medium transition-all duration-300", activePowers.includes('astral') ? glass.tabActive : glass.tabIdle)}
-                                >Астрал</button>
+                                >{t('markdownRenderer.stats.defaults.astral')}</button>
                                 <button
                                     onClick={() => togglePower('ether')}
                                     disabled={!canEditAttributes}
                                     className={clsx("flex-1 rounded-[var(--vibe-radius-sm)] border py-1.5 text-xs font-medium transition-all duration-300", activePowers.includes('ether') ? glass.tabActive : glass.tabIdle)}
-                                >Эфир</button>
+                                >{t('markdownRenderer.stats.defaults.ether')}</button>
                                 <button
                                     onClick={() => togglePower('aura')}
                                     disabled={!canEditAttributes}
                                     className={clsx("flex-1 rounded-[var(--vibe-radius-sm)] border py-1.5 text-xs font-medium transition-all duration-300", activePowers.includes('aura') ? glass.tabActive : glass.tabIdle)}
-                                >Аура</button>
+                                >{t('markdownRenderer.stats.defaults.aura')}</button>
                             </div>
                         </div>
                     </div>
 
-                    {/* DEFENSE BLOCK */}
                     <div className={`${glass.blockBg}`}>
                         <h4
                             className={glass.blockHeader + " cursor-pointer hover:text-[var(--vibe-text-primary)]"}
                             onClick={() => handleOpenNote('Защита')}
                         >
-                            Защита
+                            {t('attributeBlock.defense.title')}
                         </h4>
                         <div className="grid grid-cols-2 gap-2">
-                            {/* Custom Evasion Row to use the overridden stat */}
                             <div className="group relative flex flex-col items-center justify-between rounded-[var(--vibe-radius-md)] border border-transparent bg-[var(--vibe-surface-input)] p-3 shadow-sm transition-all hover:border-[var(--vibe-border-subtle)] hover:bg-[var(--vibe-surface-hover)]">
                                 <div className="mb-2 cursor-pointer text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)] transition-colors hover:text-[var(--vibe-text-primary)]" onClick={() => handleOpenNote('Уклонение')}>
-                                    Уклонение
+                                    {t('markdownRenderer.stats.defaults.evasion')}
                                 </div>
                                 <Popover
                                     placement="left"
                                     content={
                                         <div className={`flex flex-col gap-3 rounded-[var(--vibe-radius-md)] p-3 ${glass.popover}`}>
-                                            <span className="border-b border-[var(--vibe-border-subtle)] pb-2 text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">Редак.: Уклонение</span>
+                                            <span className="border-b border-[var(--vibe-border-subtle)] pb-2 text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">{t('attributeBlock.editLabel', { label: t('markdownRenderer.stats.defaults.evasion') })}</span>
 
                                             <div className="flex gap-4">
                                                 <div className="flex flex-col gap-1 w-16">
-                                                    <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">База</label>
+                                                    <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">{t('statTooltip.base')}</label>
                                                     <input
                                                         type="number"
                                                         value={baseEvasionStat.base}
@@ -512,7 +512,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                                 </div>
 
                                                 <div className="flex flex-col gap-1 w-16">
-                                                    <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">Доп.</label>
+                                                    <label className="whitespace-nowrap text-[10px] text-[var(--vibe-text-muted)]">{t('attributeBlock.adhocShort')}</label>
                                                     <input
                                                         type="number"
                                                         value={properties.defense?.evasion?.adhoc || 0}
@@ -533,18 +533,17 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                 </Popover>
                             </div>
 
-                            <StatRow entityId={entity.id} path={['defense', 'armor']} label="Броня" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
+                            <StatRow entityId={entity.id} path={['defense', 'armor']} label={t('markdownRenderer.stats.defaults.armor')} noteName="Броня" properties={properties} handleUpdateAttribute={handleUpdateAttribute} canEdit={canEditAttributes} />
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* STATUSES BLOCK */}
             <div className={`${glass.blockBg}`}>
                 <div className="flex items-center justify-between mb-4">
                     <h4 className={glass.blockHeader + " mb-0"}>
                         <Tag size={14} className="mr-2" />
-                        Статусы и Состояния
+                        {t('attributeBlock.statuses.title')}
                     </h4>
 
                     {canEditAttributes && (
@@ -553,7 +552,7 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                 className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                                 onClick={() => setIsTagPickerOpen(true)}
                             >
-                                <Plus size={12} /> Добавить
+                                <Plus size={12} /> {t('attributeBlock.statuses.add')}
                             </button>
 
                             <TagPickerPopup
@@ -568,14 +567,14 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                     if (tagEntity) {
                                         yjsStore.sendMessage(
                                             `🏷️ ${entity.name}: +${tagEntity.name}`,
-                                            'Система',
+                                            t('chat.systemSender'),
                                             true
                                         );
                                     }
                                 }}
                                 excludeTags={entity.tags || []}
                                 allowedFolders={['folder_tags_statuses']}
-                                title="Добавить статус"
+                                title={t('attributeBlock.statuses.addStatus')}
                             />
                         </>
                     )}
@@ -601,20 +600,20 @@ export function AttributeBlock({ entity }: AttributeBlockProps) {
                                             if (tagEntity) {
                                                 yjsStore.sendMessage(
                                                     `🏷️ ${entity.name}: −${tagEntity.name}`,
-                                                    'Система',
+                                                    t('chat.systemSender'),
                                                     true
                                                 );
                                             }
                                         }}
                                         className="border-l border-[var(--vibe-border-subtle)] px-2 py-1 text-[var(--vibe-text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)] group-hover/tag:border-[var(--vibe-border-strong)]"
-                                        title="Убрать"
+                                        title={t('propertiesBlock.remove')}
                                     >
                                         <Trash2 size={12} />
                                     </button>
                                 )}
                             </div>
                         )
-                    }) : <span className="text-xs italic text-[var(--vibe-text-faint)]">Нет активных статусов</span>}
+                    }) : <span className="text-xs italic text-[var(--vibe-text-faint)]">{t('attributeBlock.statuses.empty')}</span>}
                 </div>
             </div>
 
