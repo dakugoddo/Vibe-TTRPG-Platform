@@ -533,6 +533,30 @@
         "mainPhotoHint": "Empty = use the entity main photo",
         "mainPhoto": "Main photo"
     },
+    "canvas": {
+        "textPlaceholder": "Enter text...",
+        "notifications": {
+            "unsupportedFileTitle": "Unsupported canvas file",
+            "imageFileRequired": "{{name}}: an image file is required.",
+            "fileTooLargeTitle": "File too large",
+            "quickUploadLimit": "{{name}} • {{size}}. Quick canvas upload is currently limited to 250 MB.",
+            "largeImageUpload": "Large image upload",
+            "imageUpload": "Uploading image to canvas",
+            "imageUploaded": "Image uploaded",
+            "canvasChangedTitle": "File uploaded, but the canvas changed",
+            "canvasChangedMessage": "{{name}}: open the original canvas and drag the file from the file browser.",
+            "uploadFailed": "Canvas upload failed",
+            "approvalSent": "Request sent to the GM",
+            "uploadRejected": "Upload rejected",
+            "fileNotAdded": "File was not added to canvas",
+            "dragDropImagesOnly": "{{name}}: canvas drag/drop currently accepts images."
+        },
+        "deleteSelection": {
+            "title": "Deleting canvas entity",
+            "onlyEntities": "Delete {{count}} entity card(s) or token(s) from the canvas?",
+            "mixed": "The selection contains {{count}} entity card(s) or token(s). Delete the whole canvas selection?"
+        }
+    },
     "skillsBlock": {
         "title": "Skills",
         "rollError": "Roll error: {{error}}",

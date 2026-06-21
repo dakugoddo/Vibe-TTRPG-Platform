@@ -1,4 +1,5 @@
 import { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo, memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Stage, Layer, Text, Group, Circle, Line, Rect, Ellipse, RegularPolygon, Image as KonvaImage, Shape } from 'react-konva';
 import { Html } from 'react-konva-utils';
 import { Box, Copy, ExternalLink, Eye, EyeOff, Image as ImageIcon, MoveRight, Trash2 } from 'lucide-react';
@@ -2139,6 +2140,7 @@ function FogOfWarLayer({
 // ─── Main Component ───
 
 export function InfiniteCanvas() {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [imagePickerTarget, setImagePickerTarget] = useState<CanvasImageTarget | null>(null);
@@ -2416,8 +2418,8 @@ export function InfiniteCanvas() {
         kind: 'warning',
         scope: 'local',
         status: 'failed',
-        title: 'Неподдерживаемый файл canvas',
-        message: `${file.name}: нужен image-файл.`,
+        title: t('canvas.notifications.unsupportedFileTitle'),
+        message: t('canvas.notifications.imageFileRequired', { name: file.name }),
       });
       return;
     }
@@ -2427,8 +2429,8 @@ export function InfiniteCanvas() {
         kind: 'warning',
         scope: 'local',
         status: 'failed',
-        title: 'Файл слишком большой',
-        message: `${file.name} • ${formatNotificationFileSize(file.size)}. Быстрый canvas upload сейчас ограничен 250 MB.`,
+        title: t('canvas.notifications.fileTooLargeTitle'),
+        message: t('canvas.notifications.quickUploadLimit', { name: file.name, size: formatNotificationFileSize(file.size) }),
       });
       return;
     }
@@ -2439,10 +2441,10 @@ export function InfiniteCanvas() {
       kind: 'progress' as const,
       scope: 'local' as const,
       status: 'pending' as const,
-      title: isLargeUpload ? 'Загрузка крупного изображения' : 'Загрузка изображения на canvas',
+      title: isLargeUpload ? t('canvas.notifications.largeImageUpload') : t('canvas.notifications.imageUpload'),
       message: `${file.name} • ${formatNotificationFileSize(file.size)}`,
       progress: 0,
-      actions: [{ id: 'cancel-upload', label: 'Отменить', tone: 'danger' as const }],
+      actions: [{ id: 'cancel-upload', label: t('common.cancel'), tone: 'danger' as const }],
       payload: {
         canvasId: target.canvasId,
         fileName: file.name,
@@ -2507,7 +2509,7 @@ export function InfiniteCanvas() {
       updateNotification(notificationId, {
         kind: 'success',
         status: 'done',
-        title: 'Изображение загружено',
+        title: t('canvas.notifications.imageUploaded'),
         message: `${file.name} • ${formatNotificationFileSize(file.size)}`,
         progress: 100,
         actions: [],
@@ -2533,8 +2535,8 @@ export function InfiniteCanvas() {
           kind: 'warning',
           scope: 'local',
           status: 'done',
-          title: 'Файл загружен, но canvas сменился',
-          message: `${file.name}: открой исходный canvas и перетащи файл из браузера файлов.`,
+          title: t('canvas.notifications.canvasChangedTitle'),
+          message: t('canvas.notifications.canvasChangedMessage', { name: file.name }),
         });
         return;
       }
@@ -2552,7 +2554,7 @@ export function InfiniteCanvas() {
     } catch (err) {
       unregisterAbortCallback(notificationId);
       const isAbort = (err as Error).name === 'AbortError';
-      const message = isAbort ? 'Загрузка отменена' : ((err as Error).message || 'Unknown upload error');
+      const message = isAbort ? t('assetBrowser.notifications.cancelled') : ((err as Error).message || 'Unknown upload error');
 
       console.warn('Canvas image upload/insert failed.', {
         fileName: file.name,
@@ -2566,17 +2568,17 @@ export function InfiniteCanvas() {
         updateNotification(notificationId, {
           kind: 'warning',
           status: 'failed',
-          title: 'Загрузка отменена',
+          title: t('assetBrowser.notifications.cancelled'),
           message: `${file.name}`,
-          actions: [{ id: 'retry-upload', label: 'Повторить', tone: 'primary' }],
+          actions: [{ id: 'retry-upload', label: t('common.retry'), tone: 'primary' }],
         });
       } else {
         updateNotification(notificationId, {
           kind: 'error',
           status: 'failed',
-          title: 'Canvas upload не удался',
+          title: t('canvas.notifications.uploadFailed'),
           message: `${file.name}: ${message}`,
-          actions: [{ id: 'retry-upload', label: 'Повторить', tone: 'primary' }],
+          actions: [{ id: 'retry-upload', label: t('common.retry'), tone: 'primary' }],
         });
       }
 
@@ -2604,6 +2606,7 @@ export function InfiniteCanvas() {
     registerRetryCallback,
     unregisterRetryCallback,
     insertImageElement,
+    t,
   ]);
 
   useEffect(() => {
@@ -2625,7 +2628,7 @@ export function InfiniteCanvas() {
         kind: 'approval',
         scope: 'player',
         status: 'pending',
-        title: 'Запрос отправлен ГМу',
+        title: t('canvas.notifications.approvalSent'),
         message: `${file.name} • ${formatNotificationFileSize(file.size)}`,
         payload: {
           canvasId: target.canvasId,
@@ -2636,7 +2639,7 @@ export function InfiniteCanvas() {
     }
 
     void uploadAndInsertCanvasImage(file, target, centerOnPoint);
-  }, [addNotification, uploadAndInsertCanvasImage]);
+  }, [addNotification, uploadAndInsertCanvasImage, t]);
 
   useEffect(() => {
     const handleSessionNotification = (notification: SessionNotificationEvent) => {
@@ -2664,7 +2667,7 @@ export function InfiniteCanvas() {
           kind: 'warning',
           scope: 'player',
           status: 'rejected',
-          title: 'Загрузка отклонена',
+          title: t('canvas.notifications.uploadRejected'),
           message: `${pending.file.name} • ${formatNotificationFileSize(pending.file.size)}`,
           payload: {
             canvasId: pending.target.canvasId,
@@ -2675,7 +2678,7 @@ export function InfiniteCanvas() {
     };
 
     return yjsStore.observeSessionNotifications(handleSessionNotification);
-  }, [addNotification, uploadAndInsertCanvasImage]);
+  }, [addNotification, uploadAndInsertCanvasImage, t]);
 
   const insertAssetImageAtPoint = useCallback((asset: AssetRecord, target: CanvasImageTarget, centerOnPoint = false) => {
     const sourceUrl = asset.url || getAssetUrl(asset.path);
@@ -2932,16 +2935,16 @@ export function InfiniteCanvas() {
     }
 
     openConfirm({
-      title: 'Удаление сущности с канваса',
+      title: t('canvas.deleteSelection.title'),
       description:
         entityPlacements.length === selected.length
-          ? `Удалить ${entityPlacements.length} карточк(у/и) или фишк(у/и) сущности с канваса?`
-          : `В выделении есть ${entityPlacements.length} карточк(а/и) или фишк(а/и) сущности. Удалить всё выделение с канваса?`,
-      confirmText: 'Удалить',
+          ? t('canvas.deleteSelection.onlyEntities', { count: entityPlacements.length })
+          : t('canvas.deleteSelection.mixed', { count: entityPlacements.length }),
+      confirmText: t('common.delete'),
       isDestructive: true,
       onConfirm: deleteSelection,
     });
-  }, [activeCanvasId, clearSelection, openConfirm, pushHistory, selectedElementIds]);
+  }, [activeCanvasId, clearSelection, openConfirm, pushHistory, selectedElementIds, t]);
 
   // ─── Keyboard shortcuts ───
   useEffect(() => {
@@ -3965,7 +3968,7 @@ export function InfiniteCanvas() {
         textarea.style.resize = 'both';
         textarea.style.zIndex = '99999';
         textarea.style.overflow = 'hidden';
-        textarea.placeholder = 'Введите текст...';
+        textarea.placeholder = t('canvas.textPlaceholder');
 
         document.body.appendChild(textarea);
         setTimeout(() => {
@@ -4015,7 +4018,7 @@ export function InfiniteCanvas() {
         return;
       }
     },
-    [activeTool, currentStyle, drawElements.length, getCanvasPoint, startDrawing, clearSelection, handleMiddlePanStart, activeCanvasId, pushHistory, startMarquee, sendPing, isGM, applyFogBrushOperation, snapCanvasPoint, snapLinePoint]
+    [activeTool, currentStyle, drawElements.length, getCanvasPoint, startDrawing, clearSelection, handleMiddlePanStart, activeCanvasId, pushHistory, startMarquee, sendPing, isGM, applyFogBrushOperation, snapCanvasPoint, snapLinePoint, t]
   );
 
   const handleMouseMove = useCallback(
@@ -4860,8 +4863,8 @@ export function InfiniteCanvas() {
         kind: 'warning',
         scope: 'local',
         status: 'failed',
-        title: 'Файл не добавлен на canvas',
-        message: `${file.name}: canvas drag/drop сейчас принимает изображения.`,
+        title: t('canvas.notifications.fileNotAdded'),
+        message: t('canvas.notifications.dragDropImagesOnly', { name: file.name }),
       });
       return;
     }
@@ -4873,7 +4876,7 @@ export function InfiniteCanvas() {
       screenX: e.clientX,
       screenY: e.clientY,
     }, true);
-  }, [activeCanvasId, addNotification, insertFileImageAtPoint, insertImageElement, snapCanvasPoint]);
+  }, [activeCanvasId, addNotification, insertFileImageAtPoint, insertImageElement, snapCanvasPoint, t]);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     if (isPointerOverNonCanvasUi(e.clientX, e.clientY, containerRef.current)) return;

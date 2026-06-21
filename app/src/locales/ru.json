@@ -533,6 +533,30 @@
     "mainPhotoHint": "Пусто = использовать основное фото сущности",
     "mainPhoto": "Основное фото"
   },
+  "canvas": {
+    "textPlaceholder": "Введите текст...",
+    "notifications": {
+      "unsupportedFileTitle": "Неподдерживаемый файл canvas",
+      "imageFileRequired": "{{name}}: нужен image-файл.",
+      "fileTooLargeTitle": "Файл слишком большой",
+      "quickUploadLimit": "{{name}} • {{size}}. Быстрый canvas upload сейчас ограничен 250 MB.",
+      "largeImageUpload": "Загрузка крупного изображения",
+      "imageUpload": "Загрузка изображения на canvas",
+      "imageUploaded": "Изображение загружено",
+      "canvasChangedTitle": "Файл загружен, но canvas сменился",
+      "canvasChangedMessage": "{{name}}: открой исходный canvas и перетащи файл из браузера файлов.",
+      "uploadFailed": "Canvas upload не удался",
+      "approvalSent": "Запрос отправлен ГМу",
+      "uploadRejected": "Загрузка отклонена",
+      "fileNotAdded": "Файл не добавлен на canvas",
+      "dragDropImagesOnly": "{{name}}: canvas drag/drop сейчас принимает изображения."
+    },
+    "deleteSelection": {
+      "title": "Удаление сущности с канваса",
+      "onlyEntities": "Удалить {{count}} карточк(у/и) или фишк(у/и) сущности с канваса?",
+      "mixed": "В выделении есть {{count}} карточк(а/и) или фишк(а/и) сущности. Удалить всё выделение с канваса?"
+    }
+  },
   "skillsBlock": {
     "title": "Навыки",
     "rollError": "Ошибка броска: {{error}}",
