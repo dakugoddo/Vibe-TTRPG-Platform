@@ -371,6 +371,80 @@
             "giveToPlayer": "Give to player"
         }
     },
+    "audio": {
+        "channels": {
+            "music": "Music",
+            "ambience": "Ambience",
+            "sfx": "SFX",
+            "voice": "Voice"
+        },
+        "cueModes": {
+            "track": "Track",
+            "loop": "Loop",
+            "oneshot": "One-shot"
+        },
+        "modes": {
+            "session": "Session",
+            "local": "Local"
+        },
+        "notifications": {
+            "largeAudioFile": "Large audio file",
+            "audioUpload": "Audio upload",
+            "audioUploaded": "Audio uploaded",
+            "audioUploadFailed": "Audio upload failed"
+        },
+        "errors": {
+            "fileTooLarge": "File \"{{name}}\" is larger than 250 MB. Files this large need a separate approval/upload flow.",
+            "fileNotFound": "File not found: {{name}}",
+            "playbackFailed": "Could not play: {{name}}",
+            "playbackError": "Playback error"
+        },
+        "allChannels": "All channels",
+        "sessionSound": "Session sound",
+        "localPlayerSettings": "Local player settings",
+        "receiveSound": "Receive sound",
+        "soundDesk": "Sound desk",
+        "moduleSubtitle": "Separate module: music, ambience, SFX",
+        "deskStats": "{{cues}} buttons / {{assets}} audio",
+        "refreshAssets": "Refresh audio assets",
+        "stopAllChannels": "Stop all channels",
+        "loopsCount": "{{count}} loops",
+        "toPlayers": "To players",
+        "fade": "Fade",
+        "fadeHint": "Fade in/out for starting and stopping sound",
+        "buttonsForChannel": "Buttons / {{channel}}",
+        "stop": "Stop",
+        "noCuesForChannel": "No buttons on this channel",
+        "loopFlag": "Loop",
+        "deleteCue": "Delete cue",
+        "audio": "Audio",
+        "drop": "Drop",
+        "searchAudio": "Search audio...",
+        "scanningAssets": "Scanning assets...",
+        "noAudioFound": "No audio found",
+        "addToChannel": "Add to {{channel}}",
+        "sound": "Sound",
+        "collapseDesk": "Collapse desk",
+        "openDesk": "Open sound desk",
+        "hideDesk": "Hide sound desk",
+        "pause": "Pause",
+        "resume": "Resume",
+        "stopMusic": "Stop music",
+        "trackPosition": "Track position",
+        "musicVolume": "Music volume",
+        "sessionEnabled": "Session sound enabled",
+        "enableSessionAudio": "Enable session sound",
+        "sessionDisabled": "Session sound disabled",
+        "gmStartedSound": "GM started sound",
+        "turnOff": "Turn off",
+        "turnOn": "Turn on",
+        "soundOnShort": "Sound ON",
+        "soundOffShort": "Sound OFF",
+        "offShort": "Off",
+        "onShort": "On",
+        "compactToButton": "Compact to button",
+        "nothingPlaying": "Nothing playing"
+    },
     "notifications": {
         "title": "Notifications",
         "records": "{{count}} records",

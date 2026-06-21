@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Headphones, Music, Play, Plus, Radio, RefreshCw, SlidersHorizontal, Square, Trash2, Upload, Volume2, VolumeX } from 'lucide-react';
 import { getAssetUrl, getIsHost, listAssetRecords, uploadAssetFile, getAudioDeck, saveAudioDeck, type AssetRecord } from '../../services/fileApi';
 import { normalizeAudioFadeMs, shouldUseBufferedPlayback, startBufferedSfxPlayback, startMediaPlayback, type AudioPlaybackHandle, type MediaPlaybackHandle } from '../../services/audioPlayback';
@@ -30,11 +31,11 @@ const audioDangerButtonClass = 'border-[color-mix(in_srgb,var(--vibe-danger)_28%
 const audioActiveClass = 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)]';
 const audioIdleClass = 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
 
-const CHANNELS: Array<{ id: AudioChannel; label: string; shortLabel: string }> = [
-    { id: 'music', label: 'Музыка', shortLabel: 'MUS' },
-    { id: 'ambience', label: 'Атмосфера', shortLabel: 'AMB' },
-    { id: 'sfx', label: 'SFX', shortLabel: 'SFX' },
-    { id: 'voice', label: 'Голос', shortLabel: 'VOX' },
+const CHANNELS: Array<{ id: AudioChannel; labelKey: string; shortLabel: string }> = [
+    { id: 'music', labelKey: 'audio.channels.music', shortLabel: 'MUS' },
+    { id: 'ambience', labelKey: 'audio.channels.ambience', shortLabel: 'AMB' },
+    { id: 'sfx', labelKey: 'audio.channels.sfx', shortLabel: 'SFX' },
+    { id: 'voice', labelKey: 'audio.channels.voice', shortLabel: 'VOX' },
 ];
 
 export interface MusicPlaybackStatus {
@@ -124,14 +125,15 @@ function isAudioUploadFile(file: File): boolean {
     return /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(file.name);
 }
 
-function getChannelLabel(channel: AudioChannel): string {
-    return CHANNELS.find(item => item.id === channel)?.label ?? channel;
+function getChannelLabel(channel: AudioChannel, t: (key: string) => string): string {
+    const channelLabelKey = CHANNELS.find(item => item.id === channel)?.labelKey;
+    return channelLabelKey ? t(channelLabelKey) : channel;
 }
 
-function getCueModeLabel(mode: AudioCueMode): string {
-    if (mode === 'track') return 'Трек';
-    if (mode === 'loop') return 'Петля';
-    return 'Разово';
+function getCueModeLabel(mode: AudioCueMode, t: (key: string) => string): string {
+    if (mode === 'track') return t('audio.cueModes.track');
+    if (mode === 'loop') return t('audio.cueModes.loop');
+    return t('audio.cueModes.oneshot');
 }
 
 export function AudioDesk({
@@ -142,6 +144,7 @@ export function AudioDesk({
     stopAllRequestId,
     chrome = 'full',
 }: AudioDeskProps = {}) {
+    const { t } = useTranslation();
     const isHost = getIsHost();
     const [assets, setAssets] = useState<AudioAsset[]>([]);
     const [deckState, setDeckState] = useState<AudioDeckState>(loadAudioDeckState);
@@ -300,7 +303,7 @@ export function AudioDesk({
         try {
             for (const file of files) {
                 if (file.size > MAX_AUDIO_UPLOAD_BYTES) {
-                    throw new Error(`Файл "${file.name}" больше 250 MB. Для таких файлов нужен отдельный approval/upload flow.`);
+                    throw new Error(t('audio.errors.fileTooLarge', { name: file.name }));
                 }
 
                 const isLargeUpload = file.size > LARGE_ASSET_UPLOAD_APPROVAL_BYTES;
@@ -308,7 +311,7 @@ export function AudioDesk({
                     kind: 'progress',
                     scope: 'local',
                     status: 'pending',
-                    title: isLargeUpload ? 'Крупный аудиофайл' : 'Загрузка аудио',
+                    title: isLargeUpload ? t('audio.notifications.largeAudioFile') : t('audio.notifications.audioUpload'),
                     message: `${file.name} • ${formatNotificationFileSize(file.size)}`,
                     progress: 0,
                     payload: {
@@ -325,7 +328,7 @@ export function AudioDesk({
                     updateNotification(uploadNotification.id, {
                         kind: 'success',
                         status: 'done',
-                        title: 'Аудио загружено',
+                        title: t('audio.notifications.audioUploaded'),
                         message: `${file.name} • ${formatNotificationFileSize(file.size)}`,
                         progress: 100,
                     });
@@ -337,7 +340,7 @@ export function AudioDesk({
                     updateNotification(uploadNotification.id, {
                         kind: 'error',
                         status: 'failed',
-                        title: 'Загрузка аудио не удалась',
+                        title: t('audio.notifications.audioUploadFailed'),
                         message: `${file.name}: ${(err as Error).message}`,
                     });
                     throw err;
@@ -346,7 +349,7 @@ export function AudioDesk({
         } catch (err) {
             setError((err as Error).message);
         }
-    }, [addCueFromAsset, addNotification, isHost, loadAssets, updateNotification, updateNotificationProgress]);
+    }, [addCueFromAsset, addNotification, isHost, loadAssets, t, updateNotification, updateNotificationProgress]);
 
     const stopChannel = useCallback((channel: AudioChannel, shouldBroadcast = true) => {
         if (channel === 'ambience') {
@@ -366,13 +369,13 @@ export function AudioDesk({
                 action: 'stop',
                 assetId: `channel:${channel}`,
                 assetPath: '',
-                assetName: getChannelLabel(channel),
+                assetName: getChannelLabel(channel, t),
                 channel,
                 volume: 0,
                 fadeMs,
             });
         }
-    }, [fadeMs, publishIdleMusicStatus, syncToPlayers]);
+    }, [fadeMs, publishIdleMusicStatus, syncToPlayers, t]);
 
     const stopAmbienceCue = useCallback((cue: AudioCue, shouldBroadcast = true) => {
         ambiencePlaybackByCueRef.current[cue.id]?.stop(fadeMs);
@@ -455,14 +458,14 @@ export function AudioDesk({
                     action: 'stop',
                     assetId: 'channel:music',
                     assetPath: '',
-                    assetName: getChannelLabel('music'),
+                    assetName: getChannelLabel('music', t),
                     channel: 'music',
                     volume: 0,
                     fadeMs: 0,
                 });
             }
         }
-    }, [deckState.cues, musicPlayPauseRequestId, playingByChannel.music, syncToPlayers]);
+    }, [deckState.cues, musicPlayPauseRequestId, playingByChannel.music, syncToPlayers, t]);
 
     useEffect(() => {
         if (!musicSeekRequest || lastMusicSeekRequestIdRef.current === musicSeekRequest.id) return;
@@ -484,12 +487,12 @@ export function AudioDesk({
                 action: 'stop',
                 assetId: 'all',
                 assetPath: '',
-                assetName: 'Все каналы',
+                assetName: t('audio.allChannels'),
                 volume: 0,
                 fadeMs,
             });
         }
-    }, [fadeMs, stopChannel, syncToPlayers]);
+    }, [fadeMs, stopChannel, syncToPlayers, t]);
 
     useEffect(() => {
         if (stopAllRequestId == null || lastStopAllRequestIdRef.current === stopAllRequestId) return;
@@ -546,7 +549,7 @@ export function AudioDesk({
     const playCue = useCallback((cue: AudioCue) => {
         const asset = audioAssetsById.get(cue.assetId);
         if (!asset) {
-            const message = `Файл не найден: ${cue.assetName}`;
+            const message = t('audio.errors.fileNotFound', { name: cue.assetName });
             setError(message);
             if (cue.channel === 'music') publishMusicError(cue.label ?? cue.assetName, message);
             return;
@@ -579,7 +582,7 @@ export function AudioDesk({
             fadeInMs: cue.fadeMs,
             onEnded: clearCuePlayback,
             onError: () => {
-                const message = `Не удалось воспроизвести: ${cue.assetName}`;
+                const message = t('audio.errors.playbackFailed', { name: cue.assetName });
                 setError(message);
                 if (cue.channel === 'music') publishMusicError(cue.label ?? cue.assetName, message);
                 clearCuePlayback();
@@ -613,7 +616,7 @@ export function AudioDesk({
         }
 
         void handle.playPromise.catch(clearCuePlayback);
-    }, [audioAssetsById, publishMusicError, stopChannel, syncToPlayers]);
+    }, [audioAssetsById, publishMusicError, stopChannel, syncToPlayers, t]);
 
     const toggleCue = useCallback((cue: AudioCue) => {
         if (cue.channel === 'ambience' && playingAmbienceCueIds.includes(cue.id)) {
@@ -637,15 +640,15 @@ export function AudioDesk({
                                 <Headphones size={18} />
                             </div>
                             <div className="min-w-0">
-                                <div className="text-sm font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Звук сессии</div>
-                                <div className="truncate text-[11px] text-[var(--vibe-text-faint)]">Локальные настройки игрока</div>
+                                <div className="text-sm font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">{t('audio.sessionSound')}</div>
+                                <div className="truncate text-[11px] text-[var(--vibe-text-faint)]">{t('audio.localPlayerSettings')}</div>
                             </div>
                         </div>
                     </div>
                 )}
                 <div className="space-y-4 p-4">
                     <label className="hidden">
-                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">Принимать звук</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">{t('audio.receiveSound')}</span>
                         <input
                             type="checkbox"
                             checked={sessionAudioEnabled}
@@ -656,7 +659,7 @@ export function AudioDesk({
                     <div className={`${audioPanelClass} space-y-3`}>
                         {CHANNELS.map(channel => (
                             <label key={channel.id} className="grid grid-cols-[82px_1fr_34px] items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                <span>{channel.label}</span>
+                                <span>{getChannelLabel(channel.id, t)}</span>
                                 <input
                                     type="range"
                                     min={0}
@@ -691,9 +694,9 @@ export function AudioDesk({
                                 <SlidersHorizontal size={17} />
                             </div>
                             <div className="min-w-0">
-                                <div className="truncate text-sm font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Пульт звука</div>
+                                <div className="truncate text-sm font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">{t('audio.soundDesk')}</div>
                                 <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                    {deckState.cues.length} кнопок / {assets.length} аудио
+                                    {t('audio.deskStats', { cues: deckState.cues.length, assets: assets.length })}
                                 </div>
                             </div>
                         </div>
@@ -702,7 +705,7 @@ export function AudioDesk({
                                 type="button"
                                 onClick={() => void loadAssets()}
                                 className={`${audioButtonClass} h-8 w-8`}
-                                title="Обновить аудио ассеты"
+                                title={t('audio.refreshAssets')}
                             >
                                 <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
                             </button>
@@ -710,7 +713,7 @@ export function AudioDesk({
                                 type="button"
                                 onClick={stopAll}
                                 className={`${audioButtonClass} ${audioDangerButtonClass} h-8 w-8`}
-                                title="Остановить все каналы"
+                                title={t('audio.stopAllChannels')}
                             >
                                 <VolumeX size={14} />
                             </button>
@@ -737,7 +740,7 @@ export function AudioDesk({
                             >
                                 <span className="block text-[9px] font-black uppercase tracking-wider">{channel.shortLabel}</span>
                                 <span className="mt-0.5 block truncate text-[10px] font-semibold">
-                                    {ambienceCount > 1 ? `${ambienceCount} loops` : playingCue ? playingCue.label ?? playingCue.assetName : channel.label}
+                                    {ambienceCount > 1 ? t('audio.loopsCount', { count: ambienceCount }) : playingCue ? playingCue.label ?? playingCue.assetName : getChannelLabel(channel.id, t)}
                                 </span>
                             </button>
                         );
@@ -749,7 +752,7 @@ export function AudioDesk({
                 <div className="flex items-center justify-between gap-2">
                     <label className="inline-flex items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">
                         <Radio size={13} className={syncToPlayers ? 'text-[var(--vibe-success)]' : 'text-[var(--vibe-text-faint)]'} />
-                        Игрокам
+                        {t('audio.toPlayers')}
                         <input
                             type="checkbox"
                             checked={syncToPlayers}
@@ -763,7 +766,7 @@ export function AudioDesk({
                                 type="button"
                                 onClick={() => void loadAssets()}
                                 className={`${audioButtonClass} h-8 w-8`}
-                                title="Обновить аудио ассеты"
+                                title={t('audio.refreshAssets')}
                             >
                                 <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
                             </button>
@@ -771,14 +774,14 @@ export function AudioDesk({
                                 type="button"
                                 onClick={stopAll}
                                 className={`${audioButtonClass} ${audioDangerButtonClass} h-8 w-8`}
-                                title="Остановить все каналы"
+                                title={t('audio.stopAllChannels')}
                             >
                                 <VolumeX size={14} />
                             </button>
                         </div>
                     )}
-                    <div className="flex items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5" title="Fade in/out для запуска и остановки звука">
-                        <span className="text-[9px] font-black uppercase tracking-wider text-[var(--vibe-text-faint)]">Fade</span>
+                    <div className="flex items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5" title={t('audio.fadeHint')}>
+                        <span className="text-[9px] font-black uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('audio.fade')}</span>
                         {[0, 1000, 3000].map(value => (
                             <button
                                 key={value}
@@ -824,7 +827,7 @@ export function AudioDesk({
                     <div className="mb-2 flex items-center justify-between">
                         <div className={audioTitleClass}>
                             <Music size={13} />
-                            Кнопки / {getChannelLabel(activeChannel)}
+                            {t('audio.buttonsForChannel', { channel: getChannelLabel(activeChannel, t) })}
                         </div>
                         {(activeChannel === 'ambience' ? playingAmbienceCueIds.length > 0 : playingByChannel[activeChannel]) && (
                             <button
@@ -832,14 +835,14 @@ export function AudioDesk({
                                 onClick={() => stopChannel(activeChannel)}
                                 className={`rounded-[var(--vibe-radius-sm)] border px-2 py-1 text-[9px] font-black uppercase tracking-wider transition-colors ${audioDangerButtonClass}`}
                             >
-                                Стоп
+                                {t('audio.stop')}
                             </button>
                         )}
                     </div>
 
                     {cuesForActiveChannel.length === 0 ? (
                         <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-4 text-center text-xs italic text-[var(--vibe-text-faint)]">
-                            Нет кнопок на этом канале
+                            {t('audio.noCuesForChannel')}
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -862,8 +865,8 @@ export function AudioDesk({
                                                 {cue.label ?? cue.assetName}
                                             </div>
                                             <div className="mt-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                                <span>{getCueModeLabel(cue.mode)}</span>
-                                                {cue.loop && <span>Loop</span>}
+                                                <span>{getCueModeLabel(cue.mode, t)}</span>
+                                                {cue.loop && <span>{t('audio.loopFlag')}</span>}
                                             </div>
                                         </div>
                                         <div className="mt-2 flex items-center justify-between gap-1">
@@ -883,7 +886,7 @@ export function AudioDesk({
                                                 type="button"
                                                 onClick={() => removeCue(cue.id)}
                                                 className={`flex h-8 w-8 items-center justify-center rounded-[var(--vibe-radius-sm)] border transition-colors ${audioDangerButtonClass}`}
-                                                title="Удалить cue"
+                                                title={t('audio.deleteCue')}
                                             >
                                                 <Trash2 size={13} />
                                             </button>
@@ -899,12 +902,12 @@ export function AudioDesk({
                     <div className="mb-2 flex items-center justify-between">
                         <div className={audioTitleClass}>
                             <Volume2 size={13} />
-                            Аудио
+                            {t('audio.audio')}
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="hidden items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] sm:inline-flex">
                                 <Upload size={11} />
-                                Drop
+                                {t('audio.drop')}
                             </span>
                             <span className="font-mono text-[10px] text-[var(--vibe-text-faint)]">{visibleAssets.length}</span>
                         </div>
@@ -912,13 +915,13 @@ export function AudioDesk({
                     <input
                         value={query}
                         onChange={(event) => setQuery(event.target.value)}
-                        placeholder="Поиск аудио..."
+                        placeholder={t('audio.searchAudio')}
                         className={`${glass.input} mb-2 h-9 w-full px-3 text-xs`}
                     />
 
                     {visibleAssets.length === 0 ? (
                         <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-4 text-center text-xs italic text-[var(--vibe-text-faint)]">
-                            {isLoading ? 'Сканирую assets...' : 'Аудио не найдено'}
+                            {isLoading ? t('audio.scanningAssets') : t('audio.noAudioFound')}
                         </div>
                     ) : (
                         <div className="space-y-1.5">
@@ -932,7 +935,7 @@ export function AudioDesk({
                                         type="button"
                                         onClick={() => addCueFromAsset(asset)}
                                         className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-success)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_12%,transparent)] text-[var(--vibe-success)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-success)_20%,transparent)]"
-                                        title={`Добавить в ${getChannelLabel(activeChannel)}`}
+                                        title={t('audio.addToChannel', { channel: getChannelLabel(activeChannel, t) })}
                                     >
                                         <Plus size={14} />
                                     </button>

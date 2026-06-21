@@ -371,6 +371,80 @@
       "giveToPlayer": "Выдать игроку"
     }
   },
+  "audio": {
+    "channels": {
+      "music": "Музыка",
+      "ambience": "Атмосфера",
+      "sfx": "SFX",
+      "voice": "Голос"
+    },
+    "cueModes": {
+      "track": "Трек",
+      "loop": "Петля",
+      "oneshot": "Разово"
+    },
+    "modes": {
+      "session": "Сессия",
+      "local": "Локально"
+    },
+    "notifications": {
+      "largeAudioFile": "Крупный аудиофайл",
+      "audioUpload": "Загрузка аудио",
+      "audioUploaded": "Аудио загружено",
+      "audioUploadFailed": "Загрузка аудио не удалась"
+    },
+    "errors": {
+      "fileTooLarge": "Файл \"{{name}}\" больше 250 MB. Для таких файлов нужен отдельный approval/upload flow.",
+      "fileNotFound": "Файл не найден: {{name}}",
+      "playbackFailed": "Не удалось воспроизвести: {{name}}",
+      "playbackError": "Ошибка воспроизведения"
+    },
+    "allChannels": "Все каналы",
+    "sessionSound": "Звук сессии",
+    "localPlayerSettings": "Локальные настройки игрока",
+    "receiveSound": "Принимать звук",
+    "soundDesk": "Пульт звука",
+    "moduleSubtitle": "Отдельный модуль: музыка, атмосфера, SFX",
+    "deskStats": "{{cues}} кнопок / {{assets}} аудио",
+    "refreshAssets": "Обновить аудио ассеты",
+    "stopAllChannels": "Остановить все каналы",
+    "loopsCount": "{{count}} петель",
+    "toPlayers": "Игрокам",
+    "fade": "Fade",
+    "fadeHint": "Fade in/out для запуска и остановки звука",
+    "buttonsForChannel": "Кнопки / {{channel}}",
+    "stop": "Стоп",
+    "noCuesForChannel": "Нет кнопок на этом канале",
+    "loopFlag": "Петля",
+    "deleteCue": "Удалить cue",
+    "audio": "Аудио",
+    "drop": "Drop",
+    "searchAudio": "Поиск аудио...",
+    "scanningAssets": "Сканирую файлы...",
+    "noAudioFound": "Аудио не найдено",
+    "addToChannel": "Добавить в {{channel}}",
+    "sound": "Звук",
+    "collapseDesk": "Свернуть пульт",
+    "openDesk": "Открыть пульт звука",
+    "hideDesk": "Скрыть пульт звука",
+    "pause": "Пауза",
+    "resume": "Продолжить",
+    "stopMusic": "Остановить музыку",
+    "trackPosition": "Позиция трека",
+    "musicVolume": "Громкость музыки",
+    "sessionEnabled": "Звук сессии включён",
+    "enableSessionAudio": "Включить звук сессии",
+    "sessionDisabled": "Звук сессии выключен",
+    "gmStartedSound": "ГМ запустил звук",
+    "turnOff": "Выключить",
+    "turnOn": "Включить",
+    "soundOnShort": "Звук ВКЛ",
+    "soundOffShort": "Звук ВЫКЛ",
+    "offShort": "Выкл",
+    "onShort": "Вкл",
+    "compactToButton": "Сжать до кнопки",
+    "nothingPlaying": "Ничего не играет"
+  },
   "notifications": {
     "title": "Уведомления",
     "records": "{{count}} записей",

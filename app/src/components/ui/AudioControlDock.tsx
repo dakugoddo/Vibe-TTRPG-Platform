@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, ChevronDown, Music, Pause, Play, SlidersHorizontal, Square, Volume2, VolumeX, X } from 'lucide-react';
 import { getIsHost } from '../../services/fileApi';
 import { useAudioSessionEnabled } from '../../hooks/useAudioSessionEnabled';
@@ -48,15 +49,15 @@ function isSessionAudioCommandActive(command: AudioSessionCommand | null): boole
     return ageMs < 30_000;
 }
 
-function getDockChannelLabel(channel: MusicPlaybackStatus['channel']): string {
-    if (channel === 'ambience') return 'Атмосфера';
-    if (channel === 'sfx') return 'SFX';
-    if (channel === 'voice') return 'Голос';
-    return 'Музыка';
+function getDockChannelLabel(channel: MusicPlaybackStatus['channel'], t: (key: string) => string): string {
+    if (channel === 'ambience') return t('audio.channels.ambience');
+    if (channel === 'sfx') return t('audio.channels.sfx');
+    if (channel === 'voice') return t('audio.channels.voice');
+    return t('audio.channels.music');
 }
 
-function getDockModeLabel(sessionMode: MusicPlaybackStatus['sessionMode']): string {
-    return sessionMode === 'session' ? 'Сессия' : 'Локально';
+function getDockModeLabel(sessionMode: MusicPlaybackStatus['sessionMode'], t: (key: string) => string): string {
+    return sessionMode === 'session' ? t('audio.modes.session') : t('audio.modes.local');
 }
 
 export function AudioControlDock({
@@ -64,6 +65,7 @@ export function AudioControlDock({
     embeddedTargetId = null,
     embeddedChrome = 'full',
 }: AudioControlDockProps = {}) {
+    const { t } = useTranslation();
     const isHost = getIsHost();
     const [isOpen, setIsOpen] = useState(false);
     const [isCompact, setIsCompact] = useState(true);
@@ -147,11 +149,11 @@ export function AudioControlDock({
     }, [currentTime, duration]);
     const hasMusicError = Boolean(musicStatus.error);
     const musicTitle = hasMusicError
-        ? (musicStatus.title ?? 'Ошибка воспроизведения')
-        : (musicStatus.title ?? 'Ничего не играет');
+        ? (musicStatus.title ?? t('audio.errors.playbackError'))
+        : (musicStatus.title ?? t('audio.nothingPlaying'));
     const musicMeta = hasMusicError
-        ? (musicStatus.error ?? 'Ошибка воспроизведения')
-        : `${getDockChannelLabel(musicStatus.channel)} / ${getDockModeLabel(musicStatus.sessionMode)}`;
+        ? (musicStatus.error ?? t('audio.errors.playbackError'))
+        : `${getDockChannelLabel(musicStatus.channel, t)} / ${getDockModeLabel(musicStatus.sessionMode, t)}`;
 
     const isEmbedded = !floatingEnabled && Boolean(embeddedRect);
     const useCompactEmbeddedChrome = isEmbedded && embeddedChrome === 'compact';
@@ -185,9 +187,9 @@ export function AudioControlDock({
                                 <SlidersHorizontal size={16} />
                             </div>
                             <div className="min-w-0">
-                                <div className="truncate text-xs font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">Пульт звука</div>
+                                <div className="truncate text-xs font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">{t('audio.soundDesk')}</div>
                                 <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                    Отдельный модуль: музыка, атмосфера, SFX
+                                    {t('audio.moduleSubtitle')}
                                 </div>
                             </div>
                         </div>
@@ -195,7 +197,7 @@ export function AudioControlDock({
                             type="button"
                             onClick={() => setIsOpen(false)}
                             className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] ${glass.iconButton}`}
-                            title="Свернуть пульт"
+                            title={t('audio.collapseDesk')}
                         >
                             <X size={15} />
                         </button>
@@ -225,7 +227,7 @@ export function AudioControlDock({
                             ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] shadow-[var(--vibe-shadow-block)]'
                             : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-window)] text-[var(--vibe-text-muted)] shadow-[var(--vibe-shadow-block)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                     }`}
-                    title={isHost ? 'Открыть пульт звука' : sessionAudioEnabled ? 'Звук сессии включён' : 'Включить звук сессии'}
+                    title={isHost ? t('audio.openDesk') : sessionAudioEnabled ? t('audio.sessionEnabled') : t('audio.enableSessionAudio')}
                 >
                     {showEnablePulse && (
                         <>
@@ -248,7 +250,7 @@ export function AudioControlDock({
                             ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] shadow-[var(--vibe-shadow-block)]'
                             : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)] hover:bg-[var(--vibe-surface-hover)]'
                     }`}
-                    title={isOpen ? 'Скрыть пульт звука' : 'Открыть пульт звука'}
+                    title={isOpen ? t('audio.hideDesk') : t('audio.openDesk')}
                 >
                     {showEnablePulse && (
                         <>
@@ -257,7 +259,7 @@ export function AudioControlDock({
                         </>
                     )}
                     <Music size={16} />
-                    {!isCompact && <span>Звук</span>}
+                    {!isCompact && <span>{t('audio.sound')}</span>}
                 </button>
 
                 {isHost ? (
@@ -268,7 +270,7 @@ export function AudioControlDock({
                                 onClick={() => setMusicPlayPauseRequestId(Date.now())}
                                 disabled={!musicStatus.cueId}
                                 className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] transition-colors hover:bg-[var(--vibe-surface-hover)] disabled:cursor-not-allowed disabled:opacity-35"
-                                title={musicStatus.isPlaying ? 'Пауза' : 'Продолжить'}
+                                title={musicStatus.isPlaying ? t('audio.pause') : t('audio.resume')}
                             >
                                 {musicStatus.isPlaying ? <Pause size={13} /> : <Play size={13} />}
                             </button>
@@ -277,7 +279,7 @@ export function AudioControlDock({
                                 onClick={() => setMusicStopRequestId(Date.now())}
                                 disabled={!musicStatus.cueId}
                                 className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-35"
-                                title="Остановить музыку"
+                                title={t('audio.stopMusic')}
                             >
                                 <Square size={13} />
                             </button>
@@ -285,7 +287,7 @@ export function AudioControlDock({
                                 type="button"
                                 onClick={() => setStopAllRequestId(Date.now())}
                                 className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--vibe-danger)_26%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_10%,transparent)] text-[var(--vibe-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)]"
-                                title="Остановить все каналы"
+                                title={t('audio.stopAllChannels')}
                             >
                                 <VolumeX size={13} />
                             </button>
@@ -318,7 +320,7 @@ export function AudioControlDock({
                                         disabled={!duration}
                                         onChange={(event) => setMusicSeekRequest({ id: Date.now(), seconds: Number(event.target.value) })}
                                         className="absolute inset-0 h-4 w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
-                                        title="Позиция трека"
+                                        title={t('audio.trackPosition')}
                                     />
                                 </div>
                             </div>
@@ -332,7 +334,7 @@ export function AudioControlDock({
                                     value={channelVolumes.music}
                                     onChange={(event) => setChannelVolume('music', Number(event.target.value))}
                                     className="h-1 w-full accent-[var(--vibe-accent)]"
-                                    title="Громкость музыки"
+                                    title={t('audio.musicVolume')}
                                 />
                             </div>
                         </div>
@@ -350,7 +352,7 @@ export function AudioControlDock({
                                 type="button"
                                 onClick={() => setStopAllRequestId(Date.now())}
                                 className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--vibe-danger)_26%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_10%,transparent)] text-[var(--vibe-danger)] transition-colors"
-                                title="Остановить все каналы"
+                                title={t('audio.stopAllChannels')}
                             >
                                 <VolumeX size={12} />
                             </button>
@@ -377,7 +379,7 @@ export function AudioControlDock({
                         <div className="hidden min-w-0 flex-1 items-center gap-2 sm:flex">
                             <Volume2 size={13} className={sessionAudioEnabled ? 'text-[var(--vibe-accent)]' : 'text-[var(--vibe-text-faint)]'} />
                             <span className="truncate text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                {sessionAudioEnabled ? 'Звук сессии включён' : showEnablePulse ? 'ГМ запустил звук' : 'Звук сессии выключен'}
+                                {sessionAudioEnabled ? t('audio.sessionEnabled') : showEnablePulse ? t('audio.gmStartedSound') : t('audio.sessionDisabled')}
                             </span>
                             <button
                                 type="button"
@@ -388,13 +390,13 @@ export function AudioControlDock({
                                         : 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)] hover:bg-[var(--vibe-surface-hover)]'
                                 }`}
                             >
-                                {sessionAudioEnabled ? 'Выключить' : 'Включить'}
+                                {sessionAudioEnabled ? t('audio.turnOff') : t('audio.turnOn')}
                             </button>
                         </div>
 
                         <div className="flex min-w-0 flex-1 items-center gap-2 sm:hidden justify-between">
                             <span className="truncate text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                                {sessionAudioEnabled ? 'Звук ВКЛ' : 'Звук ВЫКЛ'}
+                                {sessionAudioEnabled ? t('audio.soundOnShort') : t('audio.soundOffShort')}
                             </span>
                             <button
                                 type="button"
@@ -405,7 +407,7 @@ export function AudioControlDock({
                                         : 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)]'
                                 }`}
                             >
-                                {sessionAudioEnabled ? 'Выкл' : 'Вкл'}
+                                {sessionAudioEnabled ? t('audio.offShort') : t('audio.onShort')}
                             </button>
                         </div>
                     </>
@@ -425,7 +427,7 @@ export function AudioControlDock({
                                 setIsCompact(true);
                             }}
                             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-[var(--vibe-text-faint)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
-                            title="Сжать до кнопки"
+                            title={t('audio.compactToButton')}
                         >
                             <ChevronDown size={16} />
                         </button>
