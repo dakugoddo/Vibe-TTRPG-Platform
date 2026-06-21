@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { yjsStore } from '../../../store/yjsStore';
 import { useEntities } from '../../../hooks/useEntities';
 import { useWindowStore } from '../../../store/windowStore';
@@ -28,6 +29,19 @@ interface ObjectSheetProps {
 type ObjectTab = 'stats' | 'attacks' | 'description' | 'canvas';
 
 const CATEGORIES = ['оружие', 'броня', 'расходуемое', 'другое'];
+const CATEGORY_LABEL_KEYS: Record<string, string> = {
+    'оружие': 'inventoryBlock.categories.weapon',
+    'броня': 'inventoryBlock.categories.armor',
+    'расходуемое': 'inventoryBlock.categories.consumable',
+    'другое': 'inventoryBlock.categories.other',
+};
+const ATTACK_DISTANCE_LABEL_KEYS: Record<string, string> = {
+    'ближняя': 'attackSheet.distances.melee',
+    'средняя': 'attackSheet.distances.medium',
+    'дальняя': 'attackSheet.distances.long',
+    'экстремальная': 'attackSheet.distances.extreme',
+    'запредельная': 'attackSheet.distances.beyond',
+};
 const statCardClass = 'group flex flex-col items-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 shadow-sm transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]';
 const statLabelClass = 'mb-1 cursor-pointer text-[10px] font-bold uppercase text-[var(--vibe-text-faint)] transition-colors hover:text-[var(--vibe-text-primary)]';
 const statInputClass = 'w-full bg-transparent text-center text-lg font-bold text-[var(--vibe-text-primary)] outline-none transition-colors group-hover:text-[var(--vibe-accent)]';
@@ -49,7 +63,11 @@ function getAttackFormula(attack: Entity): string {
     return stringifyProperty(attack.properties?.diceFormula ?? attack.properties?.dice).trim();
 }
 
-function sendAttackRollToChat(attack: Entity, parentObject?: Entity) {
+function sendAttackRollToChat(
+    attack: Entity,
+    parentObject: Entity | undefined,
+    t: (key: string, options?: Record<string, unknown>) => string
+) {
     const formula = getAttackFormula(attack);
     if (!formula) return;
 
@@ -58,14 +76,15 @@ function sendAttackRollToChat(attack: Entity, parentObject?: Entity) {
         resolveVariable: createEntityRollVariableResolver(attack, parentObject ? [parentObject] : []),
     });
     if (result.error) {
-        yjsStore.sendMessage(`Ошибка броска ${attack.name}: ${result.error}`, 'Система', true);
+        yjsStore.sendMessage(t('abilitySheet.rollError', { name: attack.name, error: result.error }), t('chat.systemSender'), true);
         return;
     }
 
-    yjsStore.sendMessage(rollEngine.formatRollMessage(`${attack.name}: ${formula}`, result), 'Система', true);
+    yjsStore.sendMessage(rollEngine.formatRollMessage(`${attack.name}: ${formula}`, result), t('chat.systemSender'), true);
 }
 
 export function ObjectSheet({ entity }: ObjectSheetProps) {
+    const { t } = useTranslation();
     const allEntities = useEntities();
     const { openWindow } = useWindowStore();
     const { openConfirm } = useUIStore();
@@ -75,13 +94,12 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const canEditObject = canEditEntity(entity);
 
-    // Find child attacks
     const attacks = allEntities.filter(e => e.parentId === entity.id && e.type === 'attack');
     const tabs: SheetTab<ObjectTab>[] = [
-        { id: 'stats', label: 'Параметры', icon: Package },
-        { id: 'attacks', label: 'Атаки', badge: attacks.length, icon: Swords },
-        { id: 'description', label: 'Описание', icon: FileText },
-        { id: 'canvas', label: 'Настройки', icon: Box },
+        { id: 'stats', label: t('objectSheet.tabs.stats'), icon: Package },
+        { id: 'attacks', label: t('objectSheet.tabs.attacks'), badge: attacks.length, icon: Swords },
+        { id: 'description', label: t('objectSheet.tabs.description'), icon: FileText },
+        { id: 'canvas', label: t('objectSheet.tabs.canvas'), icon: Box },
     ];
 
     const updateProperty = (key: string, value: unknown) => {
@@ -156,7 +174,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
         setDragDropPrompt({
             x: e.clientX,
             y: e.clientY,
-            entityName: draggedEntities.length === 1 ? draggedEntities[0].name : `${draggedEntities.length} сущностей`,
+            entityName: draggedEntities.length === 1 ? draggedEntities[0].name : t('inventoryBlock.entitiesCount', { count: draggedEntities.length }),
             canMove: canMoveAll,
             canCopy: canCopyAll,
             moveLabel: moveAction?.label,
@@ -194,7 +212,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
         if (note) {
             openWindow(note.id, Math.random() * 200 + 100, Math.random() * 200 + 100);
         } else {
-            console.log(`Заметка '${noteName}' не найдена`);
+            console.log(t('attackSheet.noteNotFound', { name: noteName }));
         }
     };
 
@@ -214,7 +232,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                     <button
                         onClick={() => setIsEditingDescription(!isEditingDescription)}
                         className={`grid h-8 w-8 place-items-center rounded-[var(--vibe-radius-sm)] transition-colors ${isEditingDescription ? glass.iconButtonActive : glass.iconButton}`}
-                        title={isEditingDescription ? 'Завершить редактирование' : 'Редактировать описание'}
+                        title={isEditingDescription ? t('abilitySheet.finishEditing') : t('abilitySheet.editDescription')}
                     >
                         {isEditingDescription ? <Check size={14} /> : <Edit2 size={14} />}
                     </button>
@@ -223,16 +241,14 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
 
             {activeTab === 'stats' && (
                 <>
-                    {/* Базовые параметры */}
                     <div className={`${glass.blockBg}`}>
                         <h3 className={glass.blockHeader}>
-                            Характеристики Предмета
+                            {t('objectSheet.statsTitle')}
                         </h3>
 
                 <div className="grid grid-cols-3 gap-3">
-                    {/* Категория (для инвентаря персонажа) */}
                     <div className={`${statCardClass} col-span-3 justify-center`}>
-                        <span className="mb-1 text-[10px] font-bold uppercase text-[var(--vibe-text-faint)]">Категория (Тип)</span>
+                        <span className="mb-1 text-[10px] font-bold uppercase text-[var(--vibe-text-faint)]">{t('objectSheet.category')}</span>
                         <div className={`${glass.tabBar} flex rounded-[var(--vibe-radius-sm)] p-1`}>
                             {CATEGORIES.map(cat => (
                                 <button
@@ -241,7 +257,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                                     disabled={!canEditObject}
                                     className={`flex-1 rounded-[var(--vibe-radius-sm)] px-1 py-1 text-[10px] font-bold uppercase tracking-wider transition-all disabled:cursor-default ${(entity.properties.category || 'другое') === cat ? glass.tabActive : glass.tabIdle}`}
                                 >
-                                    {cat}
+                                    {t(CATEGORY_LABEL_KEYS[cat] ?? cat)}
                                 </button>
                             ))}
                         </div>
@@ -250,10 +266,10 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                     <div className={statCardClass}>
                         <span
                             className={statLabelClass}
-                            title="Размер в единицах: 1,2,3,4..."
+                            title={t('objectSheet.figureHint')}
                             onClick={() => handleOpenNote('Фигура')}
                         >
-                            Фигура
+                            {t('inventoryBlock.columns.figure')}
                         </span>
                         <input
                             type="number" min="0" step="1"
@@ -268,7 +284,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                             className={statLabelClass}
                             onClick={() => handleOpenNote('Прочность')}
                         >
-                            Прочность
+                            {t('inventoryBlock.columns.durability')}
                         </span>
                         <input
                             type="number" min="0" step="1"
@@ -283,7 +299,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                             className={statLabelClass}
                             onClick={() => handleOpenNote('Нагрузка')}
                         >
-                            Нагрузка (Вес)
+                            {t('objectSheet.loadWeight')}
                         </span>
                         <input
                             type="number" min="0" step="0.1"
@@ -296,10 +312,10 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                     <div className={statCardClass}>
                         <span
                             className={statLabelClass}
-                            title="Ранг от 0 до 5"
+                            title={t('objectSheet.rarityHint')}
                             onClick={() => handleOpenNote('Редкость')}
                         >
-                            Редкость
+                            {t('inventoryBlock.columns.rarity')}
                         </span>
                         <input
                             type="number" min="0" max="5" step="1"
@@ -314,7 +330,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                             className="mb-1 cursor-pointer text-[10px] font-bold uppercase text-[var(--vibe-warning)] transition-colors hover:brightness-125"
                             onClick={() => handleOpenNote('Цена')}
                         >
-                            Цена (У.Е.)
+                            {t('inventoryBlock.columns.priceTitle')}
                         </span>
                         <input
                             type="number" min="0" step="1"
@@ -328,12 +344,11 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                     </div>
                     </div>
 
-                    {/* ПРОПЕРТИЗ БЛОК (Свойства) */}
                     <div className={glass.blockBg}>
                         <div className="flex items-center justify-between mb-4">
                             <h4 className={glass.blockHeader + " mb-0"}>
                                 <Tag size={14} className="mr-2" />
-                                Свойства
+                                {t('attackSheet.propertiesTitle')}
                             </h4>
 
                     {canEditObject && (
@@ -342,7 +357,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                                 className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] transition-all hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                                 onClick={() => setIsTagPickerOpen(true)}
                             >
-                                <Plus size={12} /> Добавить
+                                <Plus size={12} /> {t('attackSheet.add')}
                             </button>
 
                             <TagPickerPopup
@@ -355,7 +370,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                                 }}
                                 excludeTags={entity.tags || []}
                                 allowedFolders={['folder_tags_properties']}
-                                title="Добавить свойство"
+                                title={t('propertiesBlock.addProperty')}
                             />
                         </>
                     )}
@@ -377,20 +392,19 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                                                     yjsStore.updateEntity(entity.id, { tags: newTags });
                                                 }}
                                                 className="border-l border-[var(--vibe-border-subtle)] px-2 py-1 text-[var(--vibe-text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)] group-hover/tag:border-[var(--vibe-border-strong)]"
-                                                title="Убрать"
+                                                title={t('propertiesBlock.remove')}
                                             >
                                                 <Trash2 size={12} />
                                             </button>
                                         )}
                                     </div>
                                 )
-                            }) : <span className="text-xs italic text-[var(--vibe-text-faint)]">Нет свойств</span>}
+                            }) : <span className="text-xs italic text-[var(--vibe-text-faint)]">{t('propertiesBlock.empty')}</span>}
                         </div>
                     </div>
                 </>
             )}
 
-            {/* Список Атак внутри предмета */}
             {activeTab === 'attacks' && (
                 <div
                     data-entity-drop-target="true"
@@ -403,14 +417,14 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                 >
                     <div className="flex items-center justify-between mb-3">
                         <h3 className={`${glass.blockHeader} mb-0 border-[color-mix(in_srgb,var(--vibe-danger)_28%,transparent)] text-[var(--vibe-danger)]`}>
-                            Встроенные Атаки
+                            {t('objectSheet.embeddedAttacks')}
                         </h3>
                         {canEditObject && (
                             <button
                                 onClick={handleCreateAttack}
                                 className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_16%,transparent)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-danger)_26%,transparent)]"
                             >
-                                <Plus size={10} /> Добавить
+                                <Plus size={10} /> {t('attackSheet.add')}
                             </button>
                         )}
                     </div>
@@ -418,7 +432,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                 <div className="space-y-2">
                     {attacks.length === 0 ? (
                         <div className="pointer-events-none py-4 text-center text-xs italic text-[var(--vibe-text-faint)]">
-                            {canEditObject ? 'Перетащите атаки сюда или создайте новую' : 'Встроенные атаки пока не добавлены'}
+                            {canEditObject ? t('objectSheet.emptyAttacksEditable') : t('objectSheet.emptyAttacks')}
                         </div>
                     ) : (
                         attacks.map(attack => {
@@ -436,21 +450,21 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                                 <div className="flex-1 overflow-hidden pointer-events-none">
                                     <EntityLink entityId={attack.id} className="pointer-events-auto block truncate text-sm font-bold text-[var(--vibe-text-primary)] transition-colors hover:text-[var(--vibe-danger)]" underline={false} />
                                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] text-[var(--vibe-text-muted)]">
-                                        <span title="Урон">🗡️ <span className="font-bold text-[var(--vibe-text-primary)]">{attack.properties.урон ?? 1}</span></span>
-                                        <span title="Масштаб">📏 <span className="font-bold text-[var(--vibe-text-primary)]">{attack.properties.масштаб ?? 1}</span></span>
-                                        <span title="Попадание">🎯 <span className="font-bold text-[var(--vibe-text-primary)]">{attack.properties.попадание ?? 1}</span></span>
-                                        <span title="Дистанция" className="uppercase text-[var(--vibe-danger)]">({attack.properties.дистанция ?? 'ближняя'})</span>
-                                        {formula && <span title="Формула броска" className="text-[var(--vibe-success)]">🎲 {formula}</span>}
+                                        <span title={t('attackSheet.stats.damage')}>🗡️ <span className="font-bold text-[var(--vibe-text-primary)]">{attack.properties.урон ?? 1}</span></span>
+                                        <span title={t('attackSheet.stats.scale')}>📏 <span className="font-bold text-[var(--vibe-text-primary)]">{attack.properties.масштаб ?? 1}</span></span>
+                                        <span title={t('attackSheet.stats.hit')}>🎯 <span className="font-bold text-[var(--vibe-text-primary)]">{attack.properties.попадание ?? 1}</span></span>
+                                        <span title={t('attackSheet.stats.distance')} className="uppercase text-[var(--vibe-danger)]">({t(ATTACK_DISTANCE_LABEL_KEYS[String(attack.properties.дистанция ?? 'ближняя')] ?? String(attack.properties.дистанция ?? 'ближняя'))})</span>
+                                        {formula && <span title={t('attackSheet.rollFormula')} className="text-[var(--vibe-success)]">🎲 {formula}</span>}
                                     </div>
                                 </div>
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        sendAttackRollToChat(attack, entity);
+                                        sendAttackRollToChat(attack, entity, t);
                                     }}
                                     disabled={!canRoll}
                                     className={`flex-shrink-0 rounded-[var(--vibe-radius-sm)] border p-1.5 transition-all ${canRoll ? 'border-[color-mix(in_srgb,var(--vibe-danger)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_16%,transparent)] text-[var(--vibe-danger)] hover:bg-[color-mix(in_srgb,var(--vibe-danger)_26%,transparent)]' : 'cursor-not-allowed border-transparent bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)]'}`}
-                                    title={canRoll ? `Бросить ${formula}` : 'У атаки нет формулы броска'}
+                                    title={canRoll ? t('abilitiesBlock.rollTitle', { formula }) : t('objectSheet.attackNoFormula')}
                                 >
                                     <Dices size={14} />
                                 </button>
@@ -459,9 +473,9 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             openConfirm({
-                                                title: "Удаление атаки",
-                                                description: `Вы уверены, что хотите удалить атаку "${attack.name}"?`,
-                                                confirmText: "Удалить",
+                                                title: t('objectSheet.deleteAttack.title'),
+                                                description: t('objectSheet.deleteAttack.description', { name: attack.name }),
+                                                confirmText: t('common.delete'),
                                                 isDestructive: true,
                                                 onConfirm: () => {
                                                     yjsStore.deleteEntity(attack.id);
@@ -469,7 +483,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                                             });
                                         }}
                                         className="rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] opacity-0 transition-colors hover:text-[var(--vibe-danger)] group-hover/atk:opacity-100"
-                                        title="Удалить атаку"
+                                        title={t('objectSheet.deleteAttack.button')}
                                     >
                                         <Trash2 size={14} />
                                     </button>
@@ -485,7 +499,7 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
             {activeTab === 'description' && (
                 <div className={`${glass.blockBg} min-h-[220px]`}>
                     <h3 className={glass.blockHeader}>
-                        Описание
+                        {t('objectSheet.descriptionTitle')}
                     </h3>
 
                     {isEditingDescription && canEditObject ? (
@@ -494,14 +508,14 @@ export function ObjectSheet({ entity }: ObjectSheetProps) {
                             onValueChange={updateDescription}
                             excludeEntityId={entity.id}
                             className={`${glass.input} w-full min-h-[180px] resize-y custom-scrollbar text-sm font-sans`}
-                            placeholder="Описание предмета, правила, заметки..."
+                            placeholder={t('objectSheet.descriptionPlaceholder')}
                             autoFocus
                         />
                     ) : (
                         <div className="min-h-[180px] text-sm leading-relaxed text-[var(--vibe-text-muted)]" onDoubleClick={() => { if (canEditObject) setIsEditingDescription(true); }}>
                             {entity.description
                                 ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
-                                : <span className="cursor-pointer italic text-[var(--vibe-text-faint)]">{canEditObject ? 'Описание пустое. Дважды кликните для редактирования.' : 'Описание пустое.'}</span>}
+                                : <span className="cursor-pointer italic text-[var(--vibe-text-faint)]">{canEditObject ? t('abilitySheet.emptyDescriptionEditable') : t('abilitySheet.emptyDescription')}</span>}
                         </div>
                     )}
                 </div>

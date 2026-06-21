@@ -610,6 +610,30 @@
             "description": "Are you sure you want to delete item \"{{name}}\"?"
         }
     },
+    "objectSheet": {
+        "tabs": {
+            "stats": "Stats",
+            "attacks": "Attacks",
+            "description": "Description",
+            "canvas": "Settings"
+        },
+        "statsTitle": "Item stats",
+        "category": "Category (type)",
+        "figureHint": "Size in units: 1,2,3,4...",
+        "loadWeight": "Load (weight)",
+        "rarityHint": "Rank from 0 to 5",
+        "embeddedAttacks": "Embedded attacks",
+        "emptyAttacksEditable": "Drop attacks here or create a new one",
+        "emptyAttacks": "No embedded attacks added yet",
+        "attackNoFormula": "This attack has no roll formula",
+        "descriptionTitle": "Description",
+        "descriptionPlaceholder": "Item description, rules, notes...",
+        "deleteAttack": {
+            "title": "Attack deletion",
+            "description": "Are you sure you want to delete attack \"{{name}}\"?",
+            "button": "Delete attack"
+        }
+    },
     "competenciesBlock": {
         "title": "Competencies ({{count}})",
         "add": "Add",

@@ -610,6 +610,30 @@
       "description": "Вы уверены, что хотите удалить предмет «{{name}}»?"
     }
   },
+  "objectSheet": {
+    "tabs": {
+      "stats": "Параметры",
+      "attacks": "Атаки",
+      "description": "Описание",
+      "canvas": "Настройки"
+    },
+    "statsTitle": "Характеристики предмета",
+    "category": "Категория (тип)",
+    "figureHint": "Размер в единицах: 1,2,3,4...",
+    "loadWeight": "Нагрузка (вес)",
+    "rarityHint": "Ранг от 0 до 5",
+    "embeddedAttacks": "Встроенные атаки",
+    "emptyAttacksEditable": "Перетащите атаки сюда или создайте новую",
+    "emptyAttacks": "Встроенные атаки пока не добавлены",
+    "attackNoFormula": "У атаки нет формулы броска",
+    "descriptionTitle": "Описание",
+    "descriptionPlaceholder": "Описание предмета, правила, заметки...",
+    "deleteAttack": {
+      "title": "Удаление атаки",
+      "description": "Вы уверены, что хотите удалить атаку «{{name}}»?",
+      "button": "Удалить атаку"
+    }
+  },
   "competenciesBlock": {
     "title": "Компетенции ({{count}})",
     "add": "Добавить",
