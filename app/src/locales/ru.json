@@ -471,6 +471,21 @@
     "empty": "Тег не имеет механических эффектов",
     "addModifier": "Добавить модификатор"
   },
+  "canvasTokenSettings": {
+    "title": "Настройки на канвасе",
+    "mode": "Режим",
+    "modes": {
+      "token": "Фишка",
+      "art": "Карточка"
+    },
+    "frame": "Рамка",
+    "nameOnCanvas": "Имя на канвасе",
+    "frameColor": "Цвет рамки",
+    "tokenPhoto": "Фото фишки",
+    "cardPhoto": "Фото карточки",
+    "mainPhotoHint": "Пусто = использовать основное фото сущности",
+    "mainPhoto": "Основное фото"
+  },
   "audio": {
     "channels": {
       "music": "Музыка",

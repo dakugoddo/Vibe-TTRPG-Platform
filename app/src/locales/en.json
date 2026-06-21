@@ -471,6 +471,21 @@
         "empty": "Tag has no mechanical effects",
         "addModifier": "Add modifier"
     },
+    "canvasTokenSettings": {
+        "title": "Canvas settings",
+        "mode": "Mode",
+        "modes": {
+            "token": "Token",
+            "art": "Card"
+        },
+        "frame": "Frame",
+        "nameOnCanvas": "Name on canvas",
+        "frameColor": "Frame color",
+        "tokenPhoto": "Token photo",
+        "cardPhoto": "Card photo",
+        "mainPhotoHint": "Empty = use the entity main photo",
+        "mainPhoto": "Main photo"
+    },
     "audio": {
         "channels": {
             "music": "Music",
