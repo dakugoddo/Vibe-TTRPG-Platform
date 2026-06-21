@@ -458,6 +458,19 @@
         "noNotes": "No notes provided.",
         "expandForDetails": "Expand window to see more details."
     },
+    "tagEditor": {
+        "title": "Effects and Modifiers",
+        "pathPlaceholder": "Path (e.g. attributes.hp.max)",
+        "pathTitle": "Stat path (dot-separated)",
+        "modifierTypes": {
+            "add": "Addition",
+            "multiply": "Multiplier",
+            "min": "Minimum",
+            "max": "Maximum"
+        },
+        "empty": "Tag has no mechanical effects",
+        "addModifier": "Add modifier"
+    },
     "audio": {
         "channels": {
             "music": "Music",
