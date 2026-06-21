@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, X, Plus } from 'lucide-react';
 import { getEntitiesSnapshot, useEntitiesByType } from '../../../hooks/useEntities';
 import { yjsStore } from '../../../store/yjsStore';
@@ -14,10 +15,12 @@ interface TagPickerPopupProps {
     title?: string;
 }
 
-export function TagPickerPopup({ isOpen, onClose, onSelect, excludeTags = [], allowedFolders = [], title = "Выберите тег" }: TagPickerPopupProps) {
+export function TagPickerPopup({ isOpen, onClose, onSelect, excludeTags = [], allowedFolders = [], title }: TagPickerPopupProps) {
+    const { t } = useTranslation();
     const allTags = useEntitiesByType('tag');
     const [searchQuery, setSearchQuery] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
+    const popupTitle = title ?? t('tagPicker.defaultTitle');
 
     useEffect(() => {
         if (isOpen && inputRef.current) {
@@ -64,7 +67,7 @@ export function TagPickerPopup({ isOpen, onClose, onSelect, excludeTags = [], al
         <div className="fixed inset-0 z-[9999] flex animate-in items-center justify-center bg-[color-mix(in_srgb,var(--vibe-body-bg)_62%,transparent)] p-4 backdrop-blur-sm duration-200 fade-in" onClick={onClose}>
             <div className={`flex w-full max-w-sm flex-col overflow-hidden rounded-[var(--vibe-radius-lg)] ${glass.popover}`} onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)] p-3">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">{title}</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">{popupTitle}</h3>
                     <button onClick={onClose} className={`${glass.iconButton} p-1`}><X size={16} /></button>
                 </div>
 
@@ -76,7 +79,7 @@ export function TagPickerPopup({ isOpen, onClose, onSelect, excludeTags = [], al
                             type="text"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Поиск или создание..."
+                            placeholder={t('tagPicker.searchOrCreate')}
                             className={`${glass.input} w-full py-2 pl-9 pr-3 text-sm`}
                         />
                     </div>
@@ -85,13 +88,13 @@ export function TagPickerPopup({ isOpen, onClose, onSelect, excludeTags = [], al
                 <div className="flex-1 overflow-y-auto max-h-[300px] p-2 custom-scrollbar space-y-1">
                     {availableTags.length === 0 ? (
                         <div className="p-4 text-center">
-                            <p className="mb-2 text-xs text-[var(--vibe-text-faint)]">Не найдено подходящих тегов</p>
+                            <p className="mb-2 text-xs text-[var(--vibe-text-faint)]">{t('tagPicker.noMatchingTags')}</p>
                             {searchQuery.trim() && (
                                 <button
                                     onClick={handleCreateNewTag}
                                     className="flex w-full items-center justify-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-success)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_12%,transparent)] py-2 text-xs font-bold text-[var(--vibe-success)] transition-all hover:bg-[color-mix(in_srgb,var(--vibe-success)_22%,transparent)]"
                                 >
-                                    <Plus size={14} /> Создать "{searchQuery.trim()}"
+                                    <Plus size={14} /> {t('tagPicker.createTag', { name: searchQuery.trim() })}
                                 </button>
                             )}
                         </div>

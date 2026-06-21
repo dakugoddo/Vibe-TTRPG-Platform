@@ -471,6 +471,12 @@
     "empty": "Тег не имеет механических эффектов",
     "addModifier": "Добавить модификатор"
   },
+  "tagPicker": {
+    "defaultTitle": "Выберите тег",
+    "searchOrCreate": "Поиск или создание...",
+    "noMatchingTags": "Не найдено подходящих тегов",
+    "createTag": "Создать \"{{name}}\""
+  },
   "canvasTokenSettings": {
     "title": "Настройки на канвасе",
     "mode": "Режим",

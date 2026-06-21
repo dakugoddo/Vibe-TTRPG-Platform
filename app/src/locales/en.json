@@ -471,6 +471,12 @@
         "empty": "Tag has no mechanical effects",
         "addModifier": "Add modifier"
     },
+    "tagPicker": {
+        "defaultTitle": "Choose tag",
+        "searchOrCreate": "Search or create...",
+        "noMatchingTags": "No matching tags found",
+        "createTag": "Create \"{{name}}\""
+    },
     "canvasTokenSettings": {
         "title": "Canvas settings",
         "mode": "Mode",
