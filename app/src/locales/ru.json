@@ -486,6 +486,22 @@
     "mainPhotoHint": "Пусто = использовать основное фото сущности",
     "mainPhoto": "Основное фото"
   },
+  "skillsBlock": {
+    "title": "Навыки",
+    "rollError": "Ошибка броска: {{error}}",
+    "rollTitle": "Бросить {{dice}}",
+    "rankMustBePositive": "Ранг должен быть > 0 для броска",
+    "skills": {
+      "agility": "Ловкость",
+      "attention": "Внимательность",
+      "intuition": "Интуиция",
+      "logic": "Логика",
+      "creativity": "Креативность",
+      "empathy": "Эмпатия",
+      "charisma": "Харизма",
+      "selfcontrol": "Самообладание"
+    }
+  },
   "entityImage": {
     "notifications": {
       "largePhoto": "Крупное фото сущности",

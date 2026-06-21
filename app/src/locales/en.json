@@ -486,6 +486,22 @@
         "mainPhotoHint": "Empty = use the entity main photo",
         "mainPhoto": "Main photo"
     },
+    "skillsBlock": {
+        "title": "Skills",
+        "rollError": "Roll error: {{error}}",
+        "rollTitle": "Roll {{dice}}",
+        "rankMustBePositive": "Rank must be > 0 to roll",
+        "skills": {
+            "agility": "Agility",
+            "attention": "Attention",
+            "intuition": "Intuition",
+            "logic": "Logic",
+            "creativity": "Creativity",
+            "empathy": "Empathy",
+            "charisma": "Charisma",
+            "selfcontrol": "Self-control"
+        }
+    },
     "entityImage": {
         "notifications": {
             "largePhoto": "Large entity photo",

@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Entity } from '../../../types';
 import { yjsStore } from '../../../store/yjsStore';
 import { useEntitiesByParent } from '../../../hooks/useEntities';
@@ -13,14 +14,14 @@ interface SkillsBlockProps {
 }
 
 export const SKILLS = [
-    { key: 'agility',      name: 'Ловкость' },
-    { key: 'attention',    name: 'Внимательность' },
-    { key: 'intuition',    name: 'Интуиция' },
-    { key: 'logic',        name: 'Логика' },
-    { key: 'creativity',   name: 'Креативность' },
-    { key: 'empathy',      name: 'Эмпатия' },
-    { key: 'charisma',     name: 'Харизма' },
-    { key: 'selfcontrol',  name: 'Самообладание' },
+    { key: 'agility',      nameKey: 'skillsBlock.skills.agility' },
+    { key: 'attention',    nameKey: 'skillsBlock.skills.attention' },
+    { key: 'intuition',    nameKey: 'skillsBlock.skills.intuition' },
+    { key: 'logic',        nameKey: 'skillsBlock.skills.logic' },
+    { key: 'creativity',   nameKey: 'skillsBlock.skills.creativity' },
+    { key: 'empathy',      nameKey: 'skillsBlock.skills.empathy' },
+    { key: 'charisma',     nameKey: 'skillsBlock.skills.charisma' },
+    { key: 'selfcontrol',  nameKey: 'skillsBlock.skills.selfcontrol' },
 ] as const;
 
 const RANK_MIN = -2;
@@ -39,21 +40,23 @@ function sendRollToChat(
     skillRank: number,
     competencyName: string | null,
     competencyRank: number,
-    diceCount: number
+    diceCount: number,
+    t: (key: string, options?: Record<string, unknown>) => string
 ) {
     const compStr = competencyName ? ` + ${competencyName}(${competencyRank})` : '';
     const expression = `${skillName}(${skillRank})${compStr}`;
     const result = rollEngine.rollD6Pool(diceCount, expression);
 
     if (result.error) {
-        yjsStore.sendMessage(`Ошибка броска: ${result.error}`, 'Система', true);
+        yjsStore.sendMessage(t('skillsBlock.rollError', { error: result.error }), t('chat.systemSender'), true);
         return;
     }
 
-    yjsStore.sendMessage(rollEngine.formatRollMessage(expression, result), 'Система', true);
+    yjsStore.sendMessage(rollEngine.formatRollMessage(expression, result), t('chat.systemSender'), true);
 }
 
 export function SkillsBlock({ entity }: SkillsBlockProps) {
+    const { t } = useTranslation();
     const properties = useMemo(() => entity.properties ?? {}, [entity.properties]);
     const skills = properties.skills || {};
     const competencies = useEntitiesByParent(entity.id).filter(e => e.type === 'competency');
@@ -78,12 +81,12 @@ export function SkillsBlock({ entity }: SkillsBlockProps) {
 
         if (competencies.length === 0) {
             // No competencies — roll directly
-            sendRollToChat(skillName, skillRank, null, 0, skillRank);
+            sendRollToChat(skillName, skillRank, null, 0, skillRank, t);
         } else {
             // Show competency selection popup
             setRollPopup({ skillKey, skillName, skillRank });
         }
-    }, [competencies]);
+    }, [competencies, t]);
 
     const handleCompetencySelect = useCallback((competencyId: string | null) => {
         if (!rollPopup) return;
@@ -102,17 +105,18 @@ export function SkillsBlock({ entity }: SkillsBlockProps) {
         const diceCount = rollPopup.skillRank + compRank;
         if (diceCount <= 0) return;
 
-        sendRollToChat(rollPopup.skillName, rollPopup.skillRank, compName, compRank, diceCount);
+        sendRollToChat(rollPopup.skillName, rollPopup.skillRank, compName, compRank, diceCount, t);
         setRollPopup(null);
-    }, [rollPopup, competencies]);
+    }, [rollPopup, competencies, t]);
 
     return (
         <div className="space-y-4">
             {/* SKILLS BLOCK */}
             <div className={glass.blockBg}>
-                <h4 className={glass.blockHeader}>Навыки</h4>
+                <h4 className={glass.blockHeader}>{t('skillsBlock.title')}</h4>
                 <div className="grid grid-cols-1 gap-1.5">
-                    {SKILLS.map(({ key, name }) => {
+                    {SKILLS.map(({ key, nameKey }) => {
+                        const name = t(nameKey);
                         const skillData = skills[key] || {};
                         const rank: number = skillData.rank ?? 0;
                         const canRoll = rank > 0;
@@ -173,8 +177,8 @@ export function SkillsBlock({ entity }: SkillsBlockProps) {
                                     }}
                                     disabled={!canRoll}
                                     title={canRoll
-                                        ? `Бросить ${rank}d6`
-                                        : 'Ранг должен быть > 0 для броска'
+                                        ? t('skillsBlock.rollTitle', { dice: `${rank}d6` })
+                                        : t('skillsBlock.rankMustBePositive')
                                     }
                                     className={clsx(
                                         'ml-2 flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border p-1.5 transition-all',
