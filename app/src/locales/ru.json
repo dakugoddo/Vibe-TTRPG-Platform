@@ -534,6 +534,12 @@
     "remove": "Убрать",
     "empty": "Нет добавленных свойств"
   },
+  "statTooltip": {
+    "title": "Расчёт модификаторов",
+    "base": "База",
+    "adhocModifier": "Доп. модификатор",
+    "total": "Итого"
+  },
   "entityImage": {
     "notifications": {
       "largePhoto": "Крупное фото сущности",

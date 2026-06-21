@@ -534,6 +534,12 @@
         "remove": "Remove",
         "empty": "No properties added"
     },
+    "statTooltip": {
+        "title": "Modifier calculation",
+        "base": "Base",
+        "adhocModifier": "Ad hoc modifier",
+        "total": "Total"
+    },
     "entityImage": {
         "notifications": {
             "largePhoto": "Large entity photo",
