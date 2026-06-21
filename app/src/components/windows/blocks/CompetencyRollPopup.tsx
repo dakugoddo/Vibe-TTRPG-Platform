@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactDOM from 'react-dom';
 import type { Entity } from '../../../types';
 import { Dices, X } from 'lucide-react';
@@ -19,6 +20,7 @@ export function CompetencyRollPopup({
     onSelect,
     onClose
 }: CompetencyRollPopupProps) {
+    const { t } = useTranslation();
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -49,9 +51,9 @@ export function CompetencyRollPopup({
                     {/* Header */}
                     <div className="flex items-center justify-between p-4 border-b border-white/10">
                         <div>
-                            <h3 className="text-sm font-bold text-white">Бросок навыка</h3>
+                            <h3 className="text-sm font-bold text-white">{t('competencyRoll.title')}</h3>
                             <p className="text-xs text-white/50 mt-0.5">
-                                {skillName} (ранг: {skillRank})
+                                {t('competencyRoll.skillRank', { skill: skillName, rank: skillRank })}
                             </p>
                         </div>
                         <button
@@ -77,7 +79,7 @@ export function CompetencyRollPopup({
                             <div className="flex items-center gap-3">
                                 <Dices size={16} className="text-white/40" />
                                 <div>
-                                    <div className="text-sm text-white/80 font-medium">Без компетенции</div>
+                                    <div className="text-sm text-white/80 font-medium">{t('competencyRoll.noCompetency')}</div>
                                     <div className="text-[10px] text-white/30">{skillRank}d6</div>
                                 </div>
                             </div>
@@ -109,7 +111,7 @@ export function CompetencyRollPopup({
                                         <div>
                                             <div className="text-sm text-white/80 font-medium">{comp.name}</div>
                                             <div className="text-[10px] text-white/30">
-                                                Ранг: +{rank} → +{rank}d6
+                                                {t('competencyRoll.rankDice', { rank, dice: `${rank}d6` })}
                                             </div>
                                         </div>
                                     </div>
@@ -120,8 +122,8 @@ export function CompetencyRollPopup({
 
                         {competencies.length === 0 && (
                             <div className="text-center text-white/30 text-xs py-8 italic">
-                                У персонажа нет компетенций.<br />
-                                Добавьте их во вкладке «Компетенции».
+                                {t('competencyRoll.emptyLine1')}<br />
+                                {t('competencyRoll.emptyLine2')}
                             </div>
                         )}
                     </div>
@@ -129,7 +131,7 @@ export function CompetencyRollPopup({
                     {/* Footer with roll button */}
                     <div className="p-4 border-t border-white/10">
                         <div className="flex items-center justify-between mb-3 px-1">
-                            <span className="text-xs text-white/40">Суммарный бросок:</span>
+                            <span className="text-xs text-white/40">{t('competencyRoll.totalRoll')}</span>
                             <span className="text-sm font-bold text-white font-mono">{totalDice}d6</span>
                         </div>
                         <button
@@ -143,7 +145,7 @@ export function CompetencyRollPopup({
                             )}
                         >
                             <Dices size={16} />
-                            Бросить {totalDice}d6
+                            {t('competencyRoll.roll', { dice: `${totalDice}d6` })}
                         </button>
                     </div>
                 </div>

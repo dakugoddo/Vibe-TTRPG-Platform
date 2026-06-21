@@ -502,6 +502,16 @@
             "selfcontrol": "Self-control"
         }
     },
+    "competencyRoll": {
+        "title": "Skill roll",
+        "skillRank": "{{skill}} (rank: {{rank}})",
+        "noCompetency": "No competency",
+        "rankDice": "Rank: +{{rank}} -> +{{dice}}",
+        "emptyLine1": "This character has no competencies.",
+        "emptyLine2": "Add them on the Competencies tab.",
+        "totalRoll": "Total roll:",
+        "roll": "Roll {{dice}}"
+    },
     "entityImage": {
         "notifications": {
             "largePhoto": "Large entity photo",

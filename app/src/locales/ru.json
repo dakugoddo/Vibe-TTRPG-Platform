@@ -502,6 +502,16 @@
       "selfcontrol": "Самообладание"
     }
   },
+  "competencyRoll": {
+    "title": "Бросок навыка",
+    "skillRank": "{{skill}} (ранг: {{rank}})",
+    "noCompetency": "Без компетенции",
+    "rankDice": "Ранг: +{{rank}} -> +{{dice}}",
+    "emptyLine1": "У персонажа нет компетенций.",
+    "emptyLine2": "Добавьте их во вкладке «Компетенции».",
+    "totalRoll": "Суммарный бросок:",
+    "roll": "Бросить {{dice}}"
+  },
   "entityImage": {
     "notifications": {
       "largePhoto": "Крупное фото сущности",
