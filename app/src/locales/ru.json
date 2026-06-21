@@ -508,6 +508,41 @@
       "selfcontrol": "Самообладание"
     }
   },
+  "abilitiesBlock": {
+    "title": "Способности ({{count}})",
+    "add": "Добавить",
+    "entitiesCount": "{{count}} сущностей",
+    "emptyEditable": "Нет способностей. Нажмите «Добавить», чтобы создать первую.",
+    "empty": "Способности пока не добавлены.",
+    "rollTitle": "Бросить {{formula}}",
+    "rollFormulaMissing": "Укажите формулу броска",
+    "openWindow": "Открыть окно",
+    "cost": "Стоимость",
+    "formula": "Формула",
+    "range": "Дистанция",
+    "rangePlaceholder": "ближняя",
+    "area": "Область",
+    "areaPlaceholder": "цель",
+    "deleteConfirm": {
+      "title": "Удаление способности",
+      "description": "Вы уверены, что хотите удалить способность «{{name}}»?"
+    }
+  },
+  "competenciesBlock": {
+    "title": "Компетенции ({{count}})",
+    "add": "Добавить",
+    "entitiesCount": "{{count}} сущностей",
+    "emptyEditable": "Нет компетенций. Нажмите «Добавить», чтобы создать первую.",
+    "empty": "Компетенции пока не добавлены.",
+    "rollError": "Ошибка броска: {{error}}",
+    "rollTitle": "Бросить {{dice}}",
+    "rankMustBePositive": "Ранг должен быть > 0",
+    "openWindow": "Открыть окно",
+    "deleteConfirm": {
+      "title": "Удаление компетенции",
+      "description": "Вы уверены, что хотите удалить компетенцию «{{name}}»?"
+    }
+  },
   "competencyRoll": {
     "title": "Бросок навыка",
     "skillRank": "{{skill}} (ранг: {{rank}})",

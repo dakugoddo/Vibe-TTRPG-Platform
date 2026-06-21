@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Entity } from '../../../types';
 import { yjsStore } from '../../../store/yjsStore';
 import { useEntitiesByParent, getEntitiesSnapshot } from '../../../hooks/useEntities';
@@ -42,6 +43,7 @@ function updateAbilityProperty(ability: Entity, key: string, value: unknown) {
 }
 
 export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
+    const { t } = useTranslation();
     const abilities = useEntitiesByParent(entity.id).filter(e => e.type === 'ability');
     const { openWindow } = useWindowStore();
     const { openConfirm } = useUIStore();
@@ -76,15 +78,15 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
         if (!ability || !canEditEntity(ability)) return;
 
         openConfirm({
-            title: 'Удаление способности',
-            description: `Вы уверены, что хотите удалить способность «${abilityName}»?`,
-            confirmText: 'Удалить',
+            title: t('abilitiesBlock.deleteConfirm.title'),
+            description: t('abilitiesBlock.deleteConfirm.description', { name: abilityName }),
+            confirmText: t('common.delete'),
             isDestructive: true,
             onConfirm: () => {
                 yjsStore.deleteEntity(abilityId);
             },
         });
-    }, [openConfirm]);
+    }, [openConfirm, t]);
 
     const getAbilityDropActions = useCallback((ability: Entity) => {
         if (ability.type !== 'ability' || ability.parentId === entity.id) return [];
@@ -140,7 +142,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
         setDragDropPrompt({
             x: event.clientX,
             y: event.clientY,
-            entityName: droppedAbilities.length === 1 ? droppedAbilities[0].name : `${droppedAbilities.length} сущностей`,
+            entityName: droppedAbilities.length === 1 ? droppedAbilities[0].name : t('abilitiesBlock.entitiesCount', { count: droppedAbilities.length }),
             canCopy: canCopyAll,
             canMove: canMoveAll,
             copyLabel: copyAction?.label,
@@ -164,7 +166,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
             },
             onCancel: () => setDragDropPrompt(null),
         });
-    }, [canEditParent, entity, getAbilityDropActions]);
+    }, [canEditParent, entity, getAbilityDropActions, t]);
 
     return (
         <div className="space-y-4">
@@ -179,21 +181,21 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
             >
                 <div className="flex items-center justify-between gap-3 mb-4">
                     <h4 className={glass.blockHeader + ' mb-0'}>
-                        Способности ({abilities.length})
+                        {t('abilitiesBlock.title', { count: abilities.length })}
                     </h4>
                     {canEditParent && (
                         <button
                             onClick={handleAddAbility}
                             className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-accent)] transition-all hover:bg-[var(--vibe-surface-hover)]"
                         >
-                            <Plus size={12} /> Добавить
+                            <Plus size={12} /> {t('abilitiesBlock.add')}
                         </button>
                     )}
                 </div>
 
                 {abilities.length === 0 ? (
                     <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] py-8 text-center text-xs italic text-[var(--vibe-text-faint)]">
-                        {canEditParent ? 'Нет способностей. Нажмите «Добавить» чтобы создать первую.' : 'Способности пока не добавлены.'}
+                        {canEditParent ? t('abilitiesBlock.emptyEditable') : t('abilitiesBlock.empty')}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-2">
@@ -233,7 +235,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                                                 rollEntityActionToChat(ability, 'ability', [entity]);
                                             }}
                                             disabled={!canRoll}
-                                            title={canRoll ? `Бросить ${formula}` : 'Укажите формулу броска'}
+                                            title={canRoll ? t('abilitiesBlock.rollTitle', { formula }) : t('abilitiesBlock.rollFormulaMissing')}
                                             className={clsx(
                                                 'flex-shrink-0 rounded-[var(--vibe-radius-sm)] border p-1.5 transition-all',
                                                 canRoll
@@ -250,7 +252,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                                                 openWindow(ability.id, Math.random() * 200 + 100, Math.random() * 200 + 100);
                                             }}
                                             className="flex-shrink-0 rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
-                                            title="Открыть окно"
+                                            title={t('abilitiesBlock.openWindow')}
                                         >
                                             <ExternalLink size={14} />
                                         </button>
@@ -262,7 +264,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                                                     handleDelete(ability.id, ability.name);
                                                 }}
                                                 className="flex-shrink-0 rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)]"
-                                                title="Удалить"
+                                                title={t('common.delete')}
                                             >
                                                 <Trash2 size={14} />
                                             </button>
@@ -271,7 +273,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
 
                                     <div className="grid grid-cols-2 gap-2 mt-3">
                                         <label className="min-w-0">
-                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Стоимость</span>
+                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('abilitiesBlock.cost')}</span>
                                             <input
                                                 type="number"
                                                 value={costBase}
@@ -284,7 +286,7 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                                             />
                                         </label>
                                         <label className="min-w-0">
-                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Формула</span>
+                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('abilitiesBlock.formula')}</span>
                                             <input
                                                 type="text"
                                                 value={formula}
@@ -295,24 +297,24 @@ export function AbilitiesBlock({ entity }: AbilitiesBlockProps) {
                                             />
                                         </label>
                                         <label className="min-w-0">
-                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Дистанция</span>
+                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('abilitiesBlock.range')}</span>
                                             <input
                                                 type="text"
                                                 value={stringifyProperty(ability.properties?.range)}
                                                 readOnly={!canEditAbility}
                                                 onChange={(e) => updateAbilityProperty(ability, 'range', e.target.value)}
-                                                placeholder="ближняя"
+                                                placeholder={t('abilitiesBlock.rangePlaceholder')}
                                                 className={`${glass.input} w-full text-xs read-only:cursor-default read-only:text-[var(--vibe-text-faint)]`}
                                             />
                                         </label>
                                         <label className="min-w-0">
-                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">Область</span>
+                                            <span className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('abilitiesBlock.area')}</span>
                                             <input
                                                 type="text"
                                                 value={stringifyProperty(ability.properties?.area)}
                                                 readOnly={!canEditAbility}
                                                 onChange={(e) => updateAbilityProperty(ability, 'area', e.target.value)}
-                                                placeholder="цель"
+                                                placeholder={t('abilitiesBlock.areaPlaceholder')}
                                                 className={`${glass.input} w-full text-xs read-only:cursor-default read-only:text-[var(--vibe-text-faint)]`}
                                             />
                                         </label>

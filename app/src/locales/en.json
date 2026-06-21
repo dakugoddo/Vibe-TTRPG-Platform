@@ -508,6 +508,41 @@
             "selfcontrol": "Self-control"
         }
     },
+    "abilitiesBlock": {
+        "title": "Abilities ({{count}})",
+        "add": "Add",
+        "entitiesCount": "{{count}} entities",
+        "emptyEditable": "No abilities. Click Add to create the first one.",
+        "empty": "No abilities added yet.",
+        "rollTitle": "Roll {{formula}}",
+        "rollFormulaMissing": "Set a roll formula",
+        "openWindow": "Open window",
+        "cost": "Cost",
+        "formula": "Formula",
+        "range": "Range",
+        "rangePlaceholder": "melee",
+        "area": "Area",
+        "areaPlaceholder": "target",
+        "deleteConfirm": {
+            "title": "Ability deletion",
+            "description": "Are you sure you want to delete ability \"{{name}}\"?"
+        }
+    },
+    "competenciesBlock": {
+        "title": "Competencies ({{count}})",
+        "add": "Add",
+        "entitiesCount": "{{count}} entities",
+        "emptyEditable": "No competencies. Click Add to create the first one.",
+        "empty": "No competencies added yet.",
+        "rollError": "Roll error: {{error}}",
+        "rollTitle": "Roll {{dice}}",
+        "rankMustBePositive": "Rank must be > 0",
+        "openWindow": "Open window",
+        "deleteConfirm": {
+            "title": "Competency deletion",
+            "description": "Are you sure you want to delete competency \"{{name}}\"?"
+        }
+    },
     "competencyRoll": {
         "title": "Skill roll",
         "skillRank": "{{skill}} (rank: {{rank}})",

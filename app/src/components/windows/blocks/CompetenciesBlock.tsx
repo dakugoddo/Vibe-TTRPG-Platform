@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Entity } from '../../../types';
 import { yjsStore } from '../../../store/yjsStore';
 import { useEntitiesByParent, getEntitiesSnapshot } from '../../../hooks/useEntities';
@@ -26,19 +27,25 @@ function canEditEntity(entity: Entity): boolean {
     return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
 }
 
-function sendRollToChat(compName: string, rank: number, diceCount: number) {
+function sendRollToChat(
+    compName: string,
+    rank: number,
+    diceCount: number,
+    t: (key: string, options?: Record<string, unknown>) => string
+) {
     const expression = `${compName}(${rank})`;
     const result = rollEngine.rollD6Pool(diceCount, expression);
 
     if (result.error) {
-        yjsStore.sendMessage(`Ошибка броска: ${result.error}`, 'Система', true);
+        yjsStore.sendMessage(t('competenciesBlock.rollError', { error: result.error }), t('chat.systemSender'), true);
         return;
     }
 
-    yjsStore.sendMessage(rollEngine.formatRollMessage(expression, result), 'Система', true);
+    yjsStore.sendMessage(rollEngine.formatRollMessage(expression, result), t('chat.systemSender'), true);
 }
 
 export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
+    const { t } = useTranslation();
     const competencies = useEntitiesByParent(entity.id).filter(e => e.type === 'competency');
     const { openWindow } = useWindowStore();
     const { openConfirm } = useUIStore();
@@ -76,20 +83,20 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
         if (!comp || !canEditEntity(comp)) return;
 
         openConfirm({
-            title: 'Удаление компетенции',
-            description: `Вы уверены, что хотите удалить компетенцию «${compName}»?`,
-            confirmText: 'Удалить',
+            title: t('competenciesBlock.deleteConfirm.title'),
+            description: t('competenciesBlock.deleteConfirm.description', { name: compName }),
+            confirmText: t('common.delete'),
             isDestructive: true,
             onConfirm: () => {
                 yjsStore.deleteEntity(compId);
             }
         });
-    }, [openConfirm]);
+    }, [openConfirm, t]);
 
     const handleRollComp = useCallback((compName: string, rank: number) => {
         if (rank <= 0) return;
-        sendRollToChat(compName, rank, rank);
-    }, []);
+        sendRollToChat(compName, rank, rank, t);
+    }, [t]);
 
     const getCompetencyDropActions = useCallback((competency: Entity) => {
         if (competency.type !== 'competency' || competency.parentId === entity.id) return [];
@@ -145,7 +152,7 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
         setDragDropPrompt({
             x: event.clientX,
             y: event.clientY,
-            entityName: droppedCompetencies.length === 1 ? droppedCompetencies[0].name : `${droppedCompetencies.length} сущностей`,
+            entityName: droppedCompetencies.length === 1 ? droppedCompetencies[0].name : t('competenciesBlock.entitiesCount', { count: droppedCompetencies.length }),
             canCopy: canCopyAll,
             canMove: canMoveAll,
             copyLabel: copyAction?.label,
@@ -169,7 +176,7 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
             },
             onCancel: () => setDragDropPrompt(null),
         });
-    }, [canEditParent, entity, getCompetencyDropActions]);
+    }, [canEditParent, entity, getCompetencyDropActions, t]);
 
     return (
         <div className="space-y-4">
@@ -185,21 +192,21 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
             >
                 <div className="flex items-center justify-between mb-4">
                     <h4 className={glass.blockHeader + " mb-0"}>
-                        Компетенции ({competencies.length})
+                        {t('competenciesBlock.title', { count: competencies.length })}
                     </h4>
                     {canEditParent && (
                         <button
                             onClick={handleAddCompetency}
                             className="flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-accent)] transition-all hover:bg-[var(--vibe-surface-hover)]"
                         >
-                            <Plus size={12} /> Добавить
+                            <Plus size={12} /> {t('competenciesBlock.add')}
                         </button>
                     )}
                 </div>
 
                 {competencies.length === 0 ? (
                     <div className="rounded-[var(--vibe-radius-md)] border border-dashed border-[var(--vibe-border-subtle)] py-8 text-center text-xs italic text-[var(--vibe-text-faint)]">
-                        {canEditParent ? 'Нет компетенций. Нажмите «Добавить» чтобы создать первую.' : 'Компетенции пока не добавлены.'}
+                        {canEditParent ? t('competenciesBlock.emptyEditable') : t('competenciesBlock.empty')}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-2">
@@ -271,7 +278,7 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                                             handleRollComp(comp.name, rank);
                                         }}
                                         disabled={!canRoll}
-                                        title={canRoll ? `Бросить ${rank}d6` : 'Ранг должен быть > 0'}
+                                        title={canRoll ? t('competenciesBlock.rollTitle', { dice: `${rank}d6` }) : t('competenciesBlock.rankMustBePositive')}
                                         className={clsx(
                                             'flex-shrink-0 rounded-[var(--vibe-radius-sm)] border p-1.5 transition-all',
                                             canRoll
@@ -289,7 +296,7 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                                             openWindow(comp.id, Math.random() * 200 + 100, Math.random() * 200 + 100);
                                         }}
                                         className="flex-shrink-0 rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
-                                        title="Открыть окно"
+                                        title={t('competenciesBlock.openWindow')}
                                     >
                                         <ExternalLink size={14} />
                                     </button>
@@ -302,7 +309,7 @@ export function CompetenciesBlock({ entity }: CompetenciesBlockProps) {
                                                 handleDelete(comp.id, comp.name);
                                             }}
                                             className="flex-shrink-0 rounded-[var(--vibe-radius-sm)] p-1.5 text-[var(--vibe-text-faint)] transition-all hover:bg-[color-mix(in_srgb,var(--vibe-danger)_18%,transparent)] hover:text-[var(--vibe-danger)]"
-                                            title="Удалить"
+                                            title={t('common.delete')}
                                         >
                                             <Trash2 size={14} />
                                         </button>
