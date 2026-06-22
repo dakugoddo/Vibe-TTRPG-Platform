@@ -202,7 +202,7 @@ Source of truth остаётся файловой системой. Индекс
 - 2026-05-28: `AudioControlDock` compact state is a translucent orb; the expanded bar controls only the `music` transport and opens `AudioDesk`.
 - 2026-05-28: `AudioDesk` accepts host drag/drop audio uploads into `assets/`, creates a cue in the active channel, and sends upload progress through notifications.
 - 2026-05-28: `ambience` uses multiple simultaneous handles instead of a single channel slot. This is command-based only; reconnect-safe ambience snapshots remain future work.
-- Full bottom player + mixer popup is tracked as `FEAT-AUDIO-003` and must pass Architecture/Product gate before final implementation.
+- 2026-06-22: bottom dock gained a small channel mixer popup that reuses existing local channel volumes. Reconnect-safe snapshots, player delegation and artwork metadata remain `FEAT-AUDIO-003` follow-ups.
 
 ## 2026-05-24 update: asset file actions
 

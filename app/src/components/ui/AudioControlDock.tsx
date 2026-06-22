@@ -6,7 +6,7 @@ import { useAudioSessionEnabled } from '../../hooks/useAudioSessionEnabled';
 import { useAudioChannelVolumes } from '../../hooks/useAudioChannelVolumes';
 import { yjsStore } from '../../store/yjsStore';
 import { glass } from '../../utils/theme';
-import type { AudioSessionCommand } from '../../types';
+import type { AudioChannel, AudioSessionCommand } from '../../types';
 import { AudioDesk, type MusicPlaybackStatus, type MusicSeekRequest } from './AudioDesk';
 
 const IDLE_MUSIC_STATUS: MusicPlaybackStatus = {
@@ -19,6 +19,7 @@ const IDLE_MUSIC_STATUS: MusicPlaybackStatus = {
     loop: false,
     volume: 0,
 };
+const DOCK_MIXER_CHANNELS: AudioChannel[] = ['music', 'ambience', 'sfx', 'voice'];
 
 interface AudioControlDockProps {
     floatingEnabled?: boolean;
@@ -77,6 +78,7 @@ export function AudioControlDock({
     const [sessionAudioEnabled, setSessionAudioEnabled] = useAudioSessionEnabled();
     const [channelVolumes, setChannelVolume] = useAudioChannelVolumes();
     const [hasRemoteAudioCue, setHasRemoteAudioCue] = useState(false);
+    const [isMixerOpen, setIsMixerOpen] = useState(false);
 
     useEffect(() => {
         if (isHost) return;
@@ -238,7 +240,42 @@ export function AudioControlDock({
                     <Music size={18} />
                 </button>
             ) : (
-            <div className={`pointer-events-auto flex w-[min(760px,calc(100vw-32px))] items-center gap-2 rounded-full px-2 py-2 ${glass.panel}`}>
+            <div className={`pointer-events-auto relative flex w-[min(760px,calc(100vw-32px))] items-center gap-2 rounded-full px-2 py-2 ${glass.panel}`}>
+                {isMixerOpen && !isCompact && (
+                    <div className={`absolute bottom-[calc(100%+8px)] right-8 w-[min(320px,calc(100vw-48px))] rounded-[var(--vibe-radius-lg)] p-3 ${glass.panel}`}>
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-[var(--vibe-text-primary)]">
+                                <SlidersHorizontal size={13} />
+                                {t('audio.channelMixer')}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsMixerOpen(false)}
+                                className="flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] text-[var(--vibe-text-faint)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                                title={t('audio.closeMixer')}
+                            >
+                                <X size={13} />
+                            </button>
+                        </div>
+                        <div className="space-y-2">
+                            {DOCK_MIXER_CHANNELS.map((channel) => (
+                                <label key={channel} className="grid grid-cols-[78px_1fr_34px] items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                    <span className="truncate">{getDockChannelLabel(channel, t)}</span>
+                                    <input
+                                        type="range"
+                                        min={0}
+                                        max={1}
+                                        step={0.01}
+                                        value={channelVolumes[channel]}
+                                        onChange={(event) => setChannelVolume(channel, Number(event.target.value))}
+                                        className="h-1 w-full accent-[var(--vibe-accent)]"
+                                    />
+                                    <span className="text-right font-mono text-[var(--vibe-text-muted)]">{Math.round(channelVolumes[channel] * 100)}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 <button
                     type="button"
                     onClick={() => {
@@ -416,6 +453,18 @@ export function AudioControlDock({
                 {!isCompact && (
                     <>
                         <div className="hidden h-8 w-px bg-[var(--vibe-border-subtle)] sm:block" />
+                        <button
+                            type="button"
+                            onClick={() => setIsMixerOpen((current) => !current)}
+                            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full transition-colors ${
+                                isMixerOpen
+                                    ? 'bg-[var(--vibe-accent-soft)] text-[var(--vibe-accent)]'
+                                    : 'text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+                            }`}
+                            title={t('audio.openMixer')}
+                        >
+                            <SlidersHorizontal size={15} />
+                        </button>
                         <div className="hidden min-w-0 items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] sm:flex">
                             <Volume2 size={13} />
                             <span className="truncate">{musicMeta}</span>
@@ -425,6 +474,7 @@ export function AudioControlDock({
                             onClick={() => {
                                 setIsOpen(false);
                                 setIsCompact(true);
+                                setIsMixerOpen(false);
                             }}
                             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-[var(--vibe-text-faint)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                             title={t('audio.compactToButton')}
