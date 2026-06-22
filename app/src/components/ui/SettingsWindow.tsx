@@ -17,6 +17,7 @@ import { SUPPORTED_LOCALES, flattenLocaleMessages, mergeLocaleMessages, normaliz
 import { listImplementedNotesShellModules } from '../../utils/notesWorkspaceModules';
 import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, glass, interfaceDensityPresets, saveCustomThemeColors, themePresets, type CustomThemeColors } from '../../utils/theme';
 import { getDevPerformanceOverlayEnabled, setDevPerformanceOverlayEnabled } from '../../utils/devPerformanceOverlay';
+import { applyWorldLocaleOverrides, getBuiltInLocaleMessages } from '../../utils/worldLocaleRuntime';
 import type { AudioChannel, PlayerProfile } from '../../types';
 import { isDesktopRuntime, showTranslationsFolder } from '../../services/desktopBridge';
 import { listPlayerProfiles, listWorldLocaleFiles, readWorldLocaleFile, rollbackWorldLocaleFile, updatePlayerProfileRole, writeWorldLocaleFile, type WorldLocaleDiagnostic, type WorldLocaleFile, type WorldLocaleReadResult } from '../../services/fileApi';
@@ -240,7 +241,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                 }
 
                 const baseLocale = normalizeLocale(result.locale);
-                const baseBundle = (i18n.getResourceBundle(baseLocale, 'translation') ?? {}) as LocaleMessageTree;
+                const baseBundle = getBuiltInLocaleMessages(baseLocale);
                 setWorldLocalePreview(buildWorldLocalePreview(result, baseLocale, baseBundle));
                 setWorldLocaleDraft(formatWorldLocaleDraft(result.overrides));
                 setWorldLocaleDraftError('');
@@ -375,8 +376,9 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
             }
 
             const baseLocale = normalizeLocale(saved.locale);
-            const baseBundle = (i18n.getResourceBundle(baseLocale, 'translation') ?? {}) as LocaleMessageTree;
+            const baseBundle = getBuiltInLocaleMessages(baseLocale);
             setWorldLocalePreview(buildWorldLocalePreview(saved, baseLocale, baseBundle));
+            applyWorldLocaleOverrides(i18n, saved.locale, saved.overrides);
             setWorldLocaleDraft(formatWorldLocaleDraft(saved.overrides));
             setWorldLocaleDraftError('');
             setWorldLocaleSaveMessage(saved.backupCreated
@@ -404,8 +406,9 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
             }
 
             const baseLocale = normalizeLocale(restored.locale);
-            const baseBundle = (i18n.getResourceBundle(baseLocale, 'translation') ?? {}) as LocaleMessageTree;
+            const baseBundle = getBuiltInLocaleMessages(baseLocale);
             setWorldLocalePreview(buildWorldLocalePreview(restored, baseLocale, baseBundle));
+            applyWorldLocaleOverrides(i18n, restored.locale, restored.overrides);
             setWorldLocaleDraft(formatWorldLocaleDraft(restored.overrides));
             setWorldLocaleSaveMessage(t('settings.world.localesRollbackSuccess'));
             setWorldLocaleFiles(await listWorldLocaleFiles());

@@ -167,11 +167,14 @@ Rollback в UI:
 - `PUT /api/world/locales/:locale` принимает `{ overrides }`, пишет pretty JSON в `<world>/locales/<locale>.json`, создаёт `.bak` при перезаписи и откатывает старый файл при ошибке.
 - `POST /api/world/locales/:locale/rollback` восстанавливает `<locale>.json` из `<locale>.json.bak`.
 - `SettingsWindow -> Мир -> Переводы мира` содержит минимальный JSON editor: object-only validation, draft import/export, explicit save через ConfirmDialog, rollback через ConfirmDialog, success/error feedback.
+- `app/src/utils/worldLocaleRuntime.ts` применяет supported world overrides (`ru`/`en`) поверх встроенного bundle без накопления старых overrides.
+- `App.tsx` загружает текущий supported world override при входе в комнату и смене языка; player/no-file-api path откатывается к built-in bundle.
 - Focused client test: `app/src/utils/localization.test.ts`.
+- Focused runtime test: `app/src/utils/worldLocaleRuntime.test.ts`.
 - Focused test: `server/src/worldLocaleManager.test.ts`.
 
 ## Следующий безопасный срез
 
 1. Manual QA Settings editor на мире с валидным и битым `<world>/locales/*.json`.
 2. Добавить manual QA checklist для Settings editor.
-3. После QA подключить runtime application of world overrides к i18next.
+3. После QA решить, нужен ли player delivery world override через Yjs/session metadata.

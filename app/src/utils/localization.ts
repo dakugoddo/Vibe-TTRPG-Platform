@@ -21,8 +21,12 @@ export type FlatLocaleMessages = Record<string, string>;
 
 export const DEFAULT_LOCALE: SupportedLocale = 'ru';
 
+export function isSupportedLocale(value: unknown): value is SupportedLocale {
+    return SUPPORTED_LOCALES.some((locale) => locale.id === value);
+}
+
 export function normalizeLocale(value: unknown): SupportedLocale {
-    return SUPPORTED_LOCALES.some((locale) => locale.id === value)
+    return isSupportedLocale(value)
         ? value as SupportedLocale
         : DEFAULT_LOCALE;
 }

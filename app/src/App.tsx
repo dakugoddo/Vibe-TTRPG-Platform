@@ -8,7 +8,7 @@ import { useCanvasDrawStore } from './store/canvasDrawStore';
 import { useNotesWorkspaceStore } from './store/notesWorkspaceStore';
 import { useWorkspaceModeStore } from './store/workspaceModeStore';
 import { stopSync, forceFlush, setPlayerName } from './services/fileSyncService';
-import { importMarkdown, getIsHost as checkHost } from './services/fileApi';
+import { importMarkdown, getIsHost as checkHost, readWorldLocaleFile } from './services/fileApi';
 import { loadWindowLayout, clearWindowLayout } from './store/windowStore';
 import { DragDropPopover, type DragDropPromptData } from './components/ui/DragDropPopover';
 import { useAppModuleEnabled } from './hooks/useAppModuleEnablement';
@@ -26,6 +26,8 @@ import { DevPerformanceOverlay } from './components/ui/DevPerformanceOverlay';
 import { generateEntityId } from './utils/entityId';
 import { NOTES_AUDIO_DOCK_HOST_ID } from './utils/notesWorkspaceConstants';
 import { glass } from './utils/theme';
+import { normalizeLocale } from './utils/localization';
+import { applyWorldLocaleOverrides, resetWorldLocaleOverrides } from './utils/worldLocaleRuntime';
 import type { UserRole } from './types';
 
 const InfiniteCanvas = lazy(() => import('./components/canvas/InfiniteCanvas').then((module) => ({ default: module.InfiniteCanvas })));
@@ -46,7 +48,7 @@ function WorkspaceLoadingFallback() {
 }
 
 function App() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   useThemePreset();
   useInterfaceDensity();
   const [roomName, setRoomName] = useState('');
@@ -74,6 +76,37 @@ function App() {
       document.body.classList.remove('dragging-global');
     }
   }, [isDraggingGlobal]);
+
+  useEffect(() => {
+    const locale = normalizeLocale(i18n.language);
+    let cancelled = false;
+
+    if (!inRoom) {
+      resetWorldLocaleOverrides(i18n, locale);
+      return;
+    }
+
+    const loadWorldLocaleOverrides = async () => {
+      try {
+        const result = await readWorldLocaleFile(locale);
+        if (cancelled) return;
+
+        if (result?.exists && result.diagnostics.length === 0) {
+          applyWorldLocaleOverrides(i18n, locale, result.overrides);
+        } else {
+          resetWorldLocaleOverrides(i18n, locale);
+        }
+      } catch {
+        if (cancelled) return;
+        resetWorldLocaleOverrides(i18n, locale);
+      }
+    };
+
+    void loadWorldLocaleOverrides();
+    return () => {
+      cancelled = true;
+    };
+  }, [i18n, i18n.language, inRoom]);
 
   const handleJoin = (room: string, playerName?: string, playerId?: string, role?: UserRole) => {
     setRoomName(room);

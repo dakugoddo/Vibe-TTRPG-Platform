@@ -4,6 +4,7 @@ import {
     LOCALE_STORAGE_KEY,
     flattenLocaleMessages,
     getStoredLocale,
+    isSupportedLocale,
     mergeLocaleMessages,
     normalizeLocale,
     saveStoredLocale,
@@ -14,6 +15,8 @@ assert.equal(normalizeLocale('ru'), 'ru');
 assert.equal(normalizeLocale('en'), 'en');
 assert.equal(normalizeLocale('ua'), DEFAULT_LOCALE);
 assert.equal(normalizeLocale(null), DEFAULT_LOCALE);
+assert.equal(isSupportedLocale('ru'), true);
+assert.equal(isSupportedLocale('en-US'), false);
 
 const storageState = new Map<string, string>();
 const storage = {
