@@ -165,12 +165,13 @@ Rollback в UI:
 - `app/src/utils/localization.ts` содержит pure helpers `flattenLocaleMessages()`, `unflattenLocaleMessages()` и `mergeLocaleMessages()`; они игнорируют unsupported JSON leaves и защищают вложенные ветки от опасных parent/child override conflicts.
 - `SettingsWindow -> Мир -> Переводы мира` умеет выбрать override-файл, read-only прочитать его, показать diagnostics, количество override/merged keys и sample первых строк без смены языка и без записи в мир.
 - `PUT /api/world/locales/:locale` принимает `{ overrides }`, пишет pretty JSON в `<world>/locales/<locale>.json`, создаёт `.bak` при перезаписи и откатывает старый файл при ошибке.
-- `SettingsWindow -> Мир -> Переводы мира` содержит минимальный JSON editor: object-only validation, explicit save через ConfirmDialog, typed `writeWorldLocaleFile(locale, overrides)`, success/error feedback.
+- `POST /api/world/locales/:locale/rollback` восстанавливает `<locale>.json` из `<locale>.json.bak`.
+- `SettingsWindow -> Мир -> Переводы мира` содержит минимальный JSON editor: object-only validation, explicit save через ConfirmDialog, rollback через ConfirmDialog, success/error feedback.
 - Focused client test: `app/src/utils/localization.test.ts`.
 - Focused test: `server/src/worldLocaleManager.test.ts`.
 
 ## Следующий безопасный срез
 
 1. Manual QA Settings editor на мире с валидным и битым `<world>/locales/*.json`.
-2. Добавить явный rollback action из `.bak`.
-3. После rollback добавить import/export.
+2. Добавить import/export для world locale JSON.
+3. Добавить manual QA checklist для Settings editor.

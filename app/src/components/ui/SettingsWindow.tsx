@@ -19,7 +19,7 @@ import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, glass, interfa
 import { getDevPerformanceOverlayEnabled, setDevPerformanceOverlayEnabled } from '../../utils/devPerformanceOverlay';
 import type { AudioChannel, PlayerProfile } from '../../types';
 import { isDesktopRuntime, showTranslationsFolder } from '../../services/desktopBridge';
-import { listPlayerProfiles, listWorldLocaleFiles, readWorldLocaleFile, updatePlayerProfileRole, writeWorldLocaleFile, type WorldLocaleDiagnostic, type WorldLocaleFile, type WorldLocaleReadResult } from '../../services/fileApi';
+import { listPlayerProfiles, listWorldLocaleFiles, readWorldLocaleFile, rollbackWorldLocaleFile, updatePlayerProfileRole, writeWorldLocaleFile, type WorldLocaleDiagnostic, type WorldLocaleFile, type WorldLocaleReadResult } from '../../services/fileApi';
 
 type SettingsTabId = 'interface' | 'audio' | 'canvas' | 'world' | 'roles';
 
@@ -389,6 +389,32 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
         }
     };
 
+    const rollbackSelectedWorldLocale = async () => {
+        if (!selectedWorldLocale) return;
+
+        setSavingWorldLocale(true);
+        setWorldLocaleSaveMessage('');
+        setWorldLocaleDraftError('');
+        try {
+            const restored = await rollbackWorldLocaleFile(selectedWorldLocale);
+            if (!restored) {
+                setWorldLocaleDraftError(t('settings.world.localesSaveUnavailable'));
+                return;
+            }
+
+            const baseLocale = normalizeLocale(restored.locale);
+            const baseBundle = (i18n.getResourceBundle(baseLocale, 'translation') ?? {}) as LocaleMessageTree;
+            setWorldLocalePreview(buildWorldLocalePreview(restored, baseLocale, baseBundle));
+            setWorldLocaleDraft(formatWorldLocaleDraft(restored.overrides));
+            setWorldLocaleSaveMessage(t('settings.world.localesRollbackSuccess'));
+            setWorldLocaleFiles(await listWorldLocaleFiles());
+        } catch (err) {
+            setWorldLocaleDraftError(err instanceof Error ? err.message : String(err));
+        } finally {
+            setSavingWorldLocale(false);
+        }
+    };
+
     const confirmSaveWorldLocaleDraft = () => {
         const overrides = parseWorldLocaleDraft();
         if (!overrides || !selectedWorldLocale) return;
@@ -399,6 +425,19 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
             confirmText: t('settings.world.localesSaveButton'),
             cancelText: t('common.cancel'),
             onConfirm: () => void saveWorldLocaleDraft(overrides),
+        });
+    };
+
+    const confirmRollbackWorldLocale = () => {
+        if (!selectedWorldLocale) return;
+
+        openConfirm({
+            title: t('settings.world.localesRollbackConfirmTitle'),
+            description: t('settings.world.localesRollbackConfirmDescription', { locale: selectedWorldLocale }),
+            confirmText: t('settings.world.localesRollbackButton'),
+            cancelText: t('common.cancel'),
+            isDestructive: true,
+            onConfirm: () => void rollbackSelectedWorldLocale(),
         });
     };
 
@@ -1056,15 +1095,25 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                                 <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('settings.world.localesEditorTitle')}</div>
                                                                 <div className="mt-0.5 text-[10px] text-[var(--vibe-text-faint)]">{t('settings.world.localesEditorDescription')}</div>
                                                             </div>
-                                                            <button
-                                                                type="button"
-                                                                disabled={savingWorldLocale}
-                                                                onClick={confirmSaveWorldLocaleDraft}
-                                                                className="flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-accent)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] px-2.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-accent)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-45"
-                                                            >
-                                                                {savingWorldLocale && <Loader2 size={12} className="animate-spin" />}
-                                                                {t('settings.world.localesSaveButton')}
-                                                            </button>
+                                                            <div className="flex shrink-0 items-center gap-1.5">
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={savingWorldLocale}
+                                                                    onClick={confirmRollbackWorldLocale}
+                                                                    className="flex h-8 items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-warning)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-warning)_12%,transparent)] px-2.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-warning)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-warning)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-45"
+                                                                >
+                                                                    {t('settings.world.localesRollbackButton')}
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={savingWorldLocale}
+                                                                    onClick={confirmSaveWorldLocaleDraft}
+                                                                    className="flex h-8 items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-accent)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] px-2.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-accent)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-45"
+                                                                >
+                                                                    {savingWorldLocale && <Loader2 size={12} className="animate-spin" />}
+                                                                    {t('settings.world.localesSaveButton')}
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                         {worldLocaleSaveMessage && (
                                                             <div className="mb-2 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-success)_30%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_12%,transparent)] px-2 py-1.5 text-[10px] text-[var(--vibe-success)]">

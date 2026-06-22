@@ -1463,7 +1463,11 @@
             "localesSaveConfirmDescription": "{{locale}}.json will be overwritten. If the file already existed, the server will create a .bak backup.",
             "localesSaveUnavailable": "File API is unavailable for saving.",
             "localesSaved": "Translation file saved.",
-            "localesSavedWithBackup": "Translation file saved and backup created."
+            "localesSavedWithBackup": "Translation file saved and backup created.",
+            "localesRollbackButton": "Rollback",
+            "localesRollbackConfirmTitle": "Rollback world translation",
+            "localesRollbackConfirmDescription": "{{locale}}.json will be replaced with {{locale}}.json.bak.",
+            "localesRollbackSuccess": "Translation file restored from backup."
         },
         "roles": {
             "title": "Roles",

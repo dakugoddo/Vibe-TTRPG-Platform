@@ -24,7 +24,7 @@ import { createWorld, openWorld, getCurrentWorldPath, getCurrentWorldName, getAs
 import { listAssetRecords, resolveAssetPath } from './assetManager.js';
 import { buildExplorerRevealArgs } from './explorer.js';
 import { claimPlayerProfile, listPlayerProfiles, updatePlayerProfileRole } from './playerProfiles.js';
-import { listWorldLocaleFiles, readWorldLocaleFile, writeWorldLocaleFile } from './worldLocaleManager.js';
+import { listWorldLocaleFiles, readWorldLocaleFile, rollbackWorldLocaleFile, writeWorldLocaleFile } from './worldLocaleManager.js';
 import {
     listEntities,
     readEntity,
@@ -166,6 +166,20 @@ app.put('/api/world/locales/:locale', (req, res) => {
         }
 
         res.json(writeWorldLocaleFile(worldPath, req.params.locale, req.body.overrides));
+    } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+});
+
+app.post('/api/world/locales/:locale/rollback', (req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+
+        res.json(rollbackWorldLocaleFile(worldPath, req.params.locale));
     } catch (err) {
         res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
     }

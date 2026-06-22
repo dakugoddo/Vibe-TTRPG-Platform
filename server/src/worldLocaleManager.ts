@@ -26,6 +26,10 @@ export interface WorldLocaleWriteResult extends WorldLocaleReadResult {
     backupCreated: boolean;
 }
 
+export interface WorldLocaleRollbackResult extends WorldLocaleReadResult {
+    restored: boolean;
+}
+
 const WORLD_LOCALE_ID_PATTERN = /^[a-z]{2}(-[A-Z]{2})?$/;
 
 export function isWorldLocaleId(value: unknown): value is string {
@@ -151,4 +155,21 @@ export function writeWorldLocaleFile(worldPath: string, locale: string, override
 
         throw err;
     }
+}
+
+export function rollbackWorldLocaleFile(worldPath: string, locale: string): WorldLocaleRollbackResult {
+    const filePath = resolveWorldLocalePath(worldPath, locale);
+    const backupPath = `${filePath}.bak`;
+
+    if (!fs.existsSync(backupPath)) {
+        throw new Error(`No backup found for locale: ${locale}`);
+    }
+
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.copyFileSync(backupPath, filePath);
+
+    return {
+        ...readWorldLocaleFile(worldPath, locale),
+        restored: true,
+    };
 }

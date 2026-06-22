@@ -7,6 +7,7 @@ import {
     listWorldLocaleFiles,
     readWorldLocaleFile,
     resolveWorldLocalePath,
+    rollbackWorldLocaleFile,
     writeWorldLocaleFile,
 } from './worldLocaleManager.js';
 
@@ -91,6 +92,17 @@ try {
         },
     });
     assert.throws(() => writeWorldLocaleFile(worldPath, '../es', {}), /Invalid locale id/);
+
+    const restored = rollbackWorldLocaleFile(worldPath, 'es');
+    assert.equal(restored.restored, true);
+    assert.deepEqual(restored.overrides, {
+        settings: {
+            tabs: {
+                world: 'Mundo',
+            },
+        },
+    });
+    assert.throws(() => rollbackWorldLocaleFile(worldPath, 'it'), /No backup found/);
 } finally {
     fs.rmSync(worldPath, { recursive: true, force: true });
 }

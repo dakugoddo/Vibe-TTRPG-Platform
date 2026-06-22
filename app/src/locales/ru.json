@@ -1463,7 +1463,11 @@
       "localesSaveConfirmDescription": "Файл {{locale}}.json будет перезаписан. Если файл уже существовал, сервер создаст .bak backup.",
       "localesSaveUnavailable": "File API недоступен для сохранения.",
       "localesSaved": "Файл перевода сохранён.",
-      "localesSavedWithBackup": "Файл перевода сохранён, backup создан."
+      "localesSavedWithBackup": "Файл перевода сохранён, backup создан.",
+      "localesRollbackButton": "Откатить",
+      "localesRollbackConfirmTitle": "Откатить перевод мира",
+      "localesRollbackConfirmDescription": "Файл {{locale}}.json будет заменён содержимым {{locale}}.json.bak.",
+      "localesRollbackSuccess": "Файл перевода восстановлен из backup."
     },
     "roles": {
       "title": "Роли",

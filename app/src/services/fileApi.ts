@@ -48,6 +48,10 @@ export interface WorldLocaleWriteResult extends WorldLocaleReadResult {
     backupCreated: boolean;
 }
 
+export interface WorldLocaleRollbackResult extends WorldLocaleReadResult {
+    restored: boolean;
+}
+
 // ─── Host detection ───
 // Only the host (who created/opened the room) has a file server running.
 
@@ -163,6 +167,13 @@ export async function writeWorldLocaleFile(locale: string, overrides: Record<str
     return apiFetch<WorldLocaleWriteResult>(`/api/world/locales/${encodeURIComponent(locale)}`, {
         method: 'PUT',
         body: JSON.stringify({ overrides }),
+    });
+}
+
+export async function rollbackWorldLocaleFile(locale: string): Promise<WorldLocaleRollbackResult | null> {
+    if (!(await shouldCallFileApi())) return null;
+    return apiFetch<WorldLocaleRollbackResult>(`/api/world/locales/${encodeURIComponent(locale)}/rollback`, {
+        method: 'POST',
     });
 }
 
