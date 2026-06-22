@@ -24,6 +24,7 @@ import { createWorld, openWorld, getCurrentWorldPath, getCurrentWorldName, getAs
 import { listAssetRecords, resolveAssetPath } from './assetManager.js';
 import { buildExplorerRevealArgs } from './explorer.js';
 import { claimPlayerProfile, listPlayerProfiles, updatePlayerProfileRole } from './playerProfiles.js';
+import { listWorldLocaleFiles, readWorldLocaleFile } from './worldLocaleManager.js';
 import {
     listEntities,
     readEntity,
@@ -123,6 +124,32 @@ app.post('/api/world/audio-deck', (req, res) => {
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.get('/api/world/locales', (_req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        res.json({ locales: listWorldLocaleFiles(worldPath) });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.get('/api/world/locales/:locale', (req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        res.json(readWorldLocaleFile(worldPath, req.params.locale));
+    } catch (err) {
+        res.status((err as Error).message.startsWith('Invalid locale id') ? 400 : 500).json({ error: (err as Error).message });
     }
 });
 

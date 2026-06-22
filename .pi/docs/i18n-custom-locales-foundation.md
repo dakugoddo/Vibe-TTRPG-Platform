@@ -1,7 +1,7 @@
 # Custom world locales and translation editor
 
 > Дата: 2026-06-22  
-> Статус: design-doc для `FEAT-I18N-002`, код world-storage ещё не писать  
+> Статус: read-only server foundation implemented, write/editor ещё не делать  
 > Решение: встроенные RU/EN переводы остаются core, пользовательские переводы мира проектируются как future mod/data-pack layer.
 
 ## Цель
@@ -20,6 +20,7 @@
 - `app/src/i18n.ts` инициализирует `i18next` из встроенных `ru.json` и `en.json`.
 - `app/src/utils/localization.ts` хранит локальный выбор языка в `localStorage` через `vibe_locale`.
 - `SettingsWindow -> Интерфейс` показывает RU/EN switch и кнопку открытия встроенной папки переводов в Electron.
+- `server/src/worldLocaleManager.ts` безопасно читает существующий `<world>/locales/*.json` без записи.
 - `.pi/docs/code-map.md` фиксирует границу: стабильный chrome приложения переводится через `ru/en.json`, данные мира не трогаются.
 
 ## Слои
@@ -151,9 +152,17 @@ Rollback в UI:
 - Не добавлять тяжёлые зависимости ради JSON editor.
 - Не давать player write-доступ к world locale files без отдельной permission QA.
 
+## Реализованный read-only срез
+
+- `GET /api/world/locales` возвращает список существующих валидных locale override файлов.
+- `GET /api/world/locales/:locale` читает один override-файл, возвращает diagnostics для битого JSON и не ломает запуск.
+- Locale id ограничен pattern `^[a-z]{2}(-[A-Z]{2})?$`, path traversal отклоняется.
+- Сервер не создаёт `<world>/locales`, не пишет backup и не меняет файлы мира.
+- Focused test: `server/src/worldLocaleManager.test.ts`.
+
 ## Следующий безопасный срез
 
-1. Добавить pure utils для flatten/unflatten/merge locale objects и tests.
-2. Добавить server-side locale path validation и read-only `GET /api/world/locales`.
-3. Показать read-only список world locale files в Settings.
+1. Добавить typed client API для read-only endpoints.
+2. Показать read-only список world locale files в Settings.
+3. Добавить pure utils для flatten/unflatten/merge locale objects и tests перед write/editor.
 4. Только после этого добавлять `PUT` и editor.

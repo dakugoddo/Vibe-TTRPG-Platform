@@ -43,7 +43,8 @@
    - theme consistency на разных плотностях.
 5. Custom world locales/editor только после отдельного design-doc:
    - design-doc расширен в `.pi/docs/i18n-custom-locales-foundation.md`;
-   - следующий безопасный кодовый срез: pure merge/flatten utils, read-only server endpoints и Settings preview;
+   - read-only server endpoints реализованы без записи в мир;
+   - следующий безопасный кодовый срез: typed client API, Settings preview и pure merge/flatten utils;
    - write/editor/import/export/rollback — только после read-only QA.
 6. Notes workspace polish и native multi-window после Electron gate:
    - ручная QA shell modules/settings/reset/audio dock, включая перенос `Editor`/`Vault`/`Context` между left/center/right;
