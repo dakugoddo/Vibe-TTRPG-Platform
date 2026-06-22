@@ -1334,6 +1334,10 @@
             "customPaletteDescription": "Temporary editor for base colors; full world themes are a separate slice.",
             "density": "Interface density",
             "densityDescription": "Changes spacing, control height, and panel rhythm without switching visual theme.",
+            "pdfViewer": {
+                "title": "PDF preview",
+                "description": "Built-in optional module for previewing PDFs in the file browser. PDF files stay in storage when this is disabled."
+            },
             "themeCardTitle": "Theme",
             "themeCardDescription": "Visual preset + semantic tokens",
             "accessCardTitle": "Access",

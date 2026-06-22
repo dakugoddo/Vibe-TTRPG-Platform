@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FolderOpen, Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2, Loader2, Users, Languages, RotateCcw } from 'lucide-react';
+import { FileText, FolderOpen, Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2, Loader2, Users, Languages, RotateCcw } from 'lucide-react';
 import { yjsStore } from '../../store/yjsStore';
 import { useCanvasDrawStore } from '../../store/canvasDrawStore';
 import { useNotesWorkspaceStore } from '../../store/notesWorkspaceStore';
@@ -89,6 +89,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const [activeTab, setActiveTab] = useState<SettingsTabId>('interface');
     const [audioEnabled, setAudioEnabled] = useAudioSessionEnabled();
     const [audioModuleEnabled, setAudioModuleEnabled] = useAppModuleEnabled('audio');
+    const [pdfViewerEnabled, setPdfViewerEnabled] = useAppModuleEnabled('pdfViewer');
     const [channelVolumes, setChannelVolume] = useAudioChannelVolumes();
     const [locale, setLocale] = useLocalePreference();
     const [themeId, setThemeId] = useThemePreset();
@@ -552,6 +553,22 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                         })}
                                     </div>
                                 </div>
+
+                                <label className={toggleOptionClass}>
+                                    <span className="flex min-w-0 items-start gap-3">
+                                        <FileText size={16} className="mt-0.5 shrink-0 text-[var(--vibe-accent)]" />
+                                        <span className="min-w-0">
+                                            <span className="block text-xs font-bold uppercase tracking-widest text-[var(--vibe-text-primary)]">{t('settings.interface.pdfViewer.title')}</span>
+                                            <span className={`mt-1 block text-[11px] ${settingsMutedTextClass}`}>{t('settings.interface.pdfViewer.description')}</span>
+                                        </span>
+                                    </span>
+                                    <input
+                                        type="checkbox"
+                                        checked={pdfViewerEnabled}
+                                        onChange={(event) => setPdfViewerEnabled(event.target.checked)}
+                                        className="h-4 w-4 shrink-0 accent-[var(--vibe-accent)]"
+                                    />
+                                </label>
 
                                 <div className={settingsPanelClass}>
                                     <div className={settingsSectionTitleClass}>

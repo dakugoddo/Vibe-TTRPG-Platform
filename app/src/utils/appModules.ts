@@ -1,5 +1,6 @@
 export type AppModuleId =
     | 'assetLibrary'
+    | 'pdfViewer'
     | 'audio'
     | 'canvasTools'
     | 'rulesEngine'
@@ -27,6 +28,14 @@ export const APP_MODULE_DEFINITIONS: readonly AppModuleDefinition[] = [
         canDisable: false,
         surfaces: ['drawer', 'service'],
         docPath: '.pi/docs/asset-audio-workbench.md',
+    },
+    {
+        id: 'pdfViewer',
+        status: 'prototype',
+        defaultEnabled: true,
+        canDisable: true,
+        surfaces: ['drawer', 'settings'],
+        docPath: '.pi/docs/module-architecture.md',
     },
     {
         id: 'audio',

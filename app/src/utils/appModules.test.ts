@@ -9,12 +9,13 @@ import {
     setAppModuleEnabled,
 } from './appModules';
 
-assert.deepEqual(APP_MODULE_IDS, ['assetLibrary', 'audio', 'canvasTools', 'rulesEngine', 'future3d']);
+assert.deepEqual(APP_MODULE_IDS, ['assetLibrary', 'pdfViewer', 'audio', 'canvasTools', 'rulesEngine', 'future3d']);
 assert.equal(isAppModuleId('audio'), true);
 assert.equal(isAppModuleId('unknown'), false);
 
 assert.deepEqual(getDefaultAppModuleEnablement(), {
     assetLibrary: true,
+    pdfViewer: true,
     audio: true,
     canvasTools: true,
     rulesEngine: true,
@@ -23,12 +24,14 @@ assert.deepEqual(getDefaultAppModuleEnablement(), {
 
 assert.deepEqual(normalizeAppModuleEnablement({
     assetLibrary: false,
+    pdfViewer: false,
     audio: false,
     rulesEngine: false,
     future3d: true,
     unknown: true,
 }), {
     assetLibrary: true,
+    pdfViewer: false,
     audio: false,
     canvasTools: true,
     rulesEngine: true,
@@ -37,6 +40,7 @@ assert.deepEqual(normalizeAppModuleEnablement({
 
 assert.deepEqual(setAppModuleEnabled({ audio: true }, 'audio', false), {
     assetLibrary: true,
+    pdfViewer: true,
     audio: false,
     canvasTools: true,
     rulesEngine: true,
@@ -45,6 +49,7 @@ assert.deepEqual(setAppModuleEnabled({ audio: true }, 'audio', false), {
 
 assert.deepEqual(setAppModuleEnabled({ rulesEngine: false }, 'rulesEngine', false), {
     assetLibrary: true,
+    pdfViewer: true,
     audio: true,
     canvasTools: true,
     rulesEngine: true,
@@ -54,6 +59,7 @@ assert.deepEqual(setAppModuleEnabled({ rulesEngine: false }, 'rulesEngine', fals
 assert.equal(isAppModuleEnabled({ audio: false }, 'audio'), false);
 assert.deepEqual(getEnabledAppModuleIds({ audio: false, future3d: true }), [
     'assetLibrary',
+    'pdfViewer',
     'canvasTools',
     'rulesEngine',
     'future3d',

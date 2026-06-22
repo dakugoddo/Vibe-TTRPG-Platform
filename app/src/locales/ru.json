@@ -1334,6 +1334,10 @@
       "customPaletteDescription": "Временный редактор базовых цветов; полноценные темы мира будут отдельным срезом.",
       "density": "Плотность интерфейса",
       "densityDescription": "Меняет отступы, высоту контролов и общий ритм панелей без смены визуальной темы.",
+      "pdfViewer": {
+        "title": "PDF-превью",
+        "description": "Встроенный optional module для просмотра PDF в браузере файлов. Сами PDF остаются в хранилище даже при выключении."
+      },
       "themeCardTitle": "Тема",
       "themeCardDescription": "Визуальный preset + semantic tokens",
       "accessCardTitle": "Доступ",

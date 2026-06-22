@@ -7,6 +7,7 @@ import { loadAudioDuration } from '../../services/audioPlayback';
 import { yjsStore } from '../../store/yjsStore';
 import { useNotificationStore } from '../../store/notificationStore';
 import { useUIStore } from '../../store/uiStore';
+import { useAppModuleEnabled } from '../../hooks/useAppModuleEnablement';
 import { useMediaLoadState } from '../../hooks/useMediaLoadState';
 import { writeAssetDragPayload } from '../../utils/assetDrag';
 import { findCanvasInlineImages, replaceInlineCanvasImage } from '../../utils/canvasInlineImageMigration';
@@ -74,11 +75,12 @@ function formatAudioDuration(duration: number | null | undefined): string | null
 interface AssetMediaPreviewProps {
     asset: AssetItem;
     icon: LucideIcon;
+    pdfPreviewEnabled: boolean;
 }
 
-function AssetMediaPreview({ asset, icon: Icon }: AssetMediaPreviewProps) {
+function AssetMediaPreview({ asset, icon: Icon, pdfPreviewEnabled }: AssetMediaPreviewProps) {
     const { t } = useTranslation();
-    const canPreviewMedia = asset.kind === 'image' || asset.kind === 'video' || asset.kind === 'pdf';
+    const canPreviewMedia = asset.kind === 'image' || asset.kind === 'video' || (asset.kind === 'pdf' && pdfPreviewEnabled);
     const media = useMediaLoadState(canPreviewMedia ? asset.url : '');
 
     if (!canPreviewMedia) {
@@ -170,6 +172,7 @@ export function AssetBrowser() {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const pendingPlayerUploadFilesRef = useRef<Map<string, File>>(new Map());
     const uploadProgressThrottleRef = useRef<Map<string, { percent: number; updatedAt: number }>>(new Map());
+    const [pdfPreviewEnabled] = useAppModuleEnabled('pdfViewer');
     const isHost = getIsHost();
 
     const loadAssets = useCallback(async () => {
@@ -948,7 +951,7 @@ export function AssetBrowser() {
                                     title={asset.kind === 'image' ? t('assetBrowser.dragToCanvas') : asset.path}
                                 >
                                     <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-[var(--vibe-surface-block)]">
-                                        <AssetMediaPreview asset={asset} icon={Icon} />
+                                        <AssetMediaPreview asset={asset} icon={Icon} pdfPreviewEnabled={pdfPreviewEnabled} />
                                         <div className="absolute left-2 top-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-body-bg)_55%,transparent)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--vibe-text-muted)] backdrop-blur">
                                             {asset.ext || asset.kind}
                                         </div>

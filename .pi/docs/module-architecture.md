@@ -137,7 +137,7 @@ The audio module should prove the pattern:
 ### Новые функции: предварительная раскладка
 
 - Combat tracker: built-in optional module. Core хранит generic entities/resources; tracker читает их и не меняет формат мира без design-doc.
-- PDF preview/card on canvas: built-in optional module поверх asset library. Не добавлять тяжёлую viewer-зависимость до design-doc.
+- PDF preview/card on canvas: built-in optional module поверх asset library. Нативное превью PDF в Asset Browser уже gated локальным `pdfViewer`; canvas card/page preview и тяжёлая viewer-зависимость требуют отдельный design-doc.
 - Graph view: built-in optional Notes module. Связи `[[id]]` остаются core, визуализация отключаемая.
 - D&D 5e / d20 готовые листы: system pack. Core оставляет generic character sheet и formulas.
 - Theme packs: future mod/data pack. Core хранит theme tokens и валидатор, но не обязан нести десятки стилей.
