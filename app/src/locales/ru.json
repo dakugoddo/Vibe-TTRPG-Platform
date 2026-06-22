@@ -1445,7 +1445,16 @@
       "localesDescription": "Read-only список locale override файлов из <world>/locales. Запись и редактор появятся отдельным срезом после QA.",
       "localesReadOnlyBadge": "только чтение",
       "localesLoading": "Сканирую переводы мира...",
-      "localesEmpty": "В этом мире пока нет locale override файлов."
+      "localesEmpty": "В этом мире пока нет locale override файлов.",
+      "localesPreviewTitle": "Preview merge",
+      "localesBaseLocale": "База",
+      "localesOverrideKeys": "Override keys",
+      "localesMergedKeys": "Merged keys",
+      "localesDiagnosticsTitle": "Diagnostics",
+      "localesNoDiagnostics": "Ошибок не найдено.",
+      "localesSampleTitle": "Первые override keys",
+      "localesNoOverrides": "В файле нет строковых override keys.",
+      "localesPreviewLoading": "Читаю и проверяю файл..."
     },
     "roles": {
       "title": "Роли",

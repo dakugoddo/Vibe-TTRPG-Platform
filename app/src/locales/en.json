@@ -1445,7 +1445,16 @@
             "localesDescription": "Read-only list of locale override files from <world>/locales. Writing and editing come in a separate slice after QA.",
             "localesReadOnlyBadge": "read-only",
             "localesLoading": "Scanning world translations...",
-            "localesEmpty": "This world has no locale override files yet."
+            "localesEmpty": "This world has no locale override files yet.",
+            "localesPreviewTitle": "Preview merge",
+            "localesBaseLocale": "Base",
+            "localesOverrideKeys": "Override keys",
+            "localesMergedKeys": "Merged keys",
+            "localesDiagnosticsTitle": "Diagnostics",
+            "localesNoDiagnostics": "No errors found.",
+            "localesSampleTitle": "First override keys",
+            "localesNoOverrides": "This file has no string override keys.",
+            "localesPreviewLoading": "Reading and validating file..."
         },
         "roles": {
             "title": "Roles",

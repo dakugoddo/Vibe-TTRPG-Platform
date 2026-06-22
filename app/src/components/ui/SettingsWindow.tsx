@@ -12,13 +12,13 @@ import { useInterfaceDensity } from '../../hooks/useInterfaceDensity';
 import { useLocalePreference } from '../../hooks/useLocalePreference';
 import { useThemePreset } from '../../hooks/useThemePreset';
 import { DEFAULT_ROLE_DEFINITIONS, getEffectivePermissions, type PermissionKey, type UserRole } from '../../utils/permissions';
-import { SUPPORTED_LOCALES } from '../../utils/localization';
+import { SUPPORTED_LOCALES, flattenLocaleMessages, mergeLocaleMessages, normalizeLocale, type LocaleMessageTree, type SupportedLocale } from '../../utils/localization';
 import { listImplementedNotesShellModules } from '../../utils/notesWorkspaceModules';
 import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, glass, interfaceDensityPresets, saveCustomThemeColors, themePresets, type CustomThemeColors } from '../../utils/theme';
 import { getDevPerformanceOverlayEnabled, setDevPerformanceOverlayEnabled } from '../../utils/devPerformanceOverlay';
 import type { AudioChannel, PlayerProfile } from '../../types';
 import { isDesktopRuntime, showTranslationsFolder } from '../../services/desktopBridge';
-import { listPlayerProfiles, listWorldLocaleFiles, updatePlayerProfileRole, type WorldLocaleFile } from '../../services/fileApi';
+import { listPlayerProfiles, listWorldLocaleFiles, readWorldLocaleFile, updatePlayerProfileRole, type WorldLocaleDiagnostic, type WorldLocaleFile } from '../../services/fileApi';
 
 type SettingsTabId = 'interface' | 'audio' | 'canvas' | 'world' | 'roles';
 
@@ -26,6 +26,15 @@ interface SettingsWindowProps {
     isOpen: boolean;
     roomName: string;
     onClose: () => void;
+}
+
+interface WorldLocalePreview {
+    locale: string;
+    baseLocale: SupportedLocale;
+    overrideKeys: number;
+    mergedKeys: number;
+    diagnostics: WorldLocaleDiagnostic[];
+    samples: Array<{ key: string; value: string }>;
 }
 
 const AUDIO_CHANNELS: Array<{ id: AudioChannel; labelKey: string }> = [
@@ -88,7 +97,7 @@ function getSettingsTabs(isGM: boolean) {
 }
 
 export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProps) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const isGM = yjsStore.localRole === 'gm';
     const tabs = useMemo(() => getSettingsTabs(isGM), [isGM]);
     const [activeTab, setActiveTab] = useState<SettingsTabId>('interface');
@@ -126,6 +135,9 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const [worldLocaleFiles, setWorldLocaleFiles] = useState<WorldLocaleFile[]>([]);
     const [loadingWorldLocales, setLoadingWorldLocales] = useState(false);
     const [worldLocaleError, setWorldLocaleError] = useState('');
+    const [selectedWorldLocale, setSelectedWorldLocale] = useState('');
+    const [loadingWorldLocalePreview, setLoadingWorldLocalePreview] = useState(false);
+    const [worldLocalePreview, setWorldLocalePreview] = useState<WorldLocalePreview | null>(null);
 
     useEffect(() => {
         if (!isOpen || !isGM || activeTab !== 'roles') return;
@@ -159,7 +171,13 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
             setWorldLocaleError('');
             try {
                 const files = await listWorldLocaleFiles();
-                if (!cancelled) setWorldLocaleFiles(files);
+                if (!cancelled) {
+                    setWorldLocaleFiles(files);
+                    setSelectedWorldLocale((current) => {
+                        if (current && files.some((file) => file.locale === current)) return current;
+                        return files[0]?.locale ?? '';
+                    });
+                }
             } catch (err) {
                 if (!cancelled) setWorldLocaleError(err instanceof Error ? err.message : String(err));
             } finally {
@@ -172,6 +190,51 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
             cancelled = true;
         };
     }, [activeTab, isGM, isOpen]);
+
+    useEffect(() => {
+        if (!isOpen || !isGM || activeTab !== 'world' || !selectedWorldLocale) {
+            setWorldLocalePreview(null);
+            return;
+        }
+
+        let cancelled = false;
+        const loadWorldLocalePreview = async () => {
+            setLoadingWorldLocalePreview(true);
+            try {
+                const result = await readWorldLocaleFile(selectedWorldLocale);
+                if (cancelled) return;
+
+                if (!result?.exists) {
+                    setWorldLocalePreview(null);
+                    return;
+                }
+
+                const baseLocale = normalizeLocale(result.locale);
+                const baseBundle = (i18n.getResourceBundle(baseLocale, 'translation') ?? {}) as LocaleMessageTree;
+                const merged = mergeLocaleMessages(baseBundle, result.overrides);
+                const overrideFlat = flattenLocaleMessages(result.overrides);
+                const mergedFlat = flattenLocaleMessages(merged);
+
+                setWorldLocalePreview({
+                    locale: result.locale,
+                    baseLocale,
+                    overrideKeys: Object.keys(overrideFlat).length,
+                    mergedKeys: Object.keys(mergedFlat).length,
+                    diagnostics: result.diagnostics,
+                    samples: Object.entries(overrideFlat).slice(0, 5).map(([key, value]) => ({ key, value })),
+                });
+            } catch (err) {
+                if (!cancelled) setWorldLocaleError(err instanceof Error ? err.message : String(err));
+            } finally {
+                if (!cancelled) setLoadingWorldLocalePreview(false);
+            }
+        };
+
+        void loadWorldLocalePreview();
+        return () => {
+            cancelled = true;
+        };
+    }, [activeTab, i18n, isGM, isOpen, selectedWorldLocale]);
 
     useEffect(() => {
         if (!localResetMessage) return;
@@ -832,14 +895,87 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                     ) : (
                                         <div className="grid gap-2 sm:grid-cols-2">
                                             {worldLocaleFiles.map((file) => (
-                                                <div key={file.locale} className={settingsCardClass}>
+                                                <button
+                                                    key={file.locale}
+                                                    type="button"
+                                                    aria-pressed={selectedWorldLocale === file.locale}
+                                                    onClick={() => setSelectedWorldLocale(file.locale)}
+                                                    className={`${settingsCardClass} text-left transition-colors ${
+                                                        selectedWorldLocale === file.locale
+                                                            ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)]'
+                                                            : 'hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)]'
+                                                    }`}
+                                                >
                                                     <div className="flex items-center justify-between gap-2">
                                                         <span className="text-xs font-bold text-[var(--vibe-text-primary)]">{file.locale}</span>
                                                         <span className="font-mono text-[9px] text-[var(--vibe-text-faint)]">{formatSettingsFileSize(file.size)}</span>
                                                     </div>
                                                     <div className="mt-1 truncate font-mono text-[10px] text-[var(--vibe-text-faint)]">{file.filename}</div>
-                                                </div>
+                                                </button>
                                             ))}
+                                        </div>
+                                    )}
+
+                                    {selectedWorldLocale && (
+                                        <div className="mt-3 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3">
+                                            <div className="mb-2 flex items-center justify-between gap-3">
+                                                <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
+                                                    {t('settings.world.localesPreviewTitle')}
+                                                </div>
+                                                {loadingWorldLocalePreview && <Loader2 size={13} className="animate-spin text-[var(--vibe-text-faint)]" />}
+                                            </div>
+
+                                            {!loadingWorldLocalePreview && worldLocalePreview ? (
+                                                <div className="space-y-3">
+                                                    <div className="grid gap-2 sm:grid-cols-3">
+                                                        <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-2">
+                                                            <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('settings.world.localesBaseLocale')}</div>
+                                                            <div className="mt-1 font-mono text-xs text-[var(--vibe-text-primary)]">{worldLocalePreview.baseLocale}</div>
+                                                        </div>
+                                                        <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-2">
+                                                            <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('settings.world.localesOverrideKeys')}</div>
+                                                            <div className="mt-1 font-mono text-xs text-[var(--vibe-text-primary)]">{worldLocalePreview.overrideKeys}</div>
+                                                        </div>
+                                                        <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-2">
+                                                            <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('settings.world.localesMergedKeys')}</div>
+                                                            <div className="mt-1 font-mono text-xs text-[var(--vibe-text-primary)]">{worldLocalePreview.mergedKeys}</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-2">
+                                                        <div className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('settings.world.localesDiagnosticsTitle')}</div>
+                                                        {worldLocalePreview.diagnostics.length > 0 ? (
+                                                            <div className="space-y-1">
+                                                                {worldLocalePreview.diagnostics.map((diagnostic, index) => (
+                                                                    <div key={`${diagnostic.level}-${index}`} className="text-[10px] text-[var(--vibe-danger)]">
+                                                                        {diagnostic.message}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-[10px] text-[var(--vibe-text-faint)]">{t('settings.world.localesNoDiagnostics')}</div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-2">
+                                                        <div className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('settings.world.localesSampleTitle')}</div>
+                                                        {worldLocalePreview.samples.length > 0 ? (
+                                                            <div className="space-y-1">
+                                                                {worldLocalePreview.samples.map((sample) => (
+                                                                    <div key={sample.key} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 font-mono text-[10px]">
+                                                                        <span className="truncate text-[var(--vibe-text-faint)]">{sample.key}</span>
+                                                                        <span className="truncate text-[var(--vibe-text-primary)]">{sample.value}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-[10px] text-[var(--vibe-text-faint)]">{t('settings.world.localesNoOverrides')}</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-[11px] italic text-[var(--vibe-text-faint)]">{t('settings.world.localesPreviewLoading')}</div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
