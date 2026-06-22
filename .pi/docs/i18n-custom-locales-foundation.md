@@ -172,9 +172,10 @@ Rollback в UI:
 - Focused client test: `app/src/utils/localization.test.ts`.
 - Focused runtime test: `app/src/utils/worldLocaleRuntime.test.ts`.
 - Focused test: `server/src/worldLocaleManager.test.ts`.
+- Manual QA: `.pi/docs/world-locale-editor-qa.md`.
 
 ## Следующий безопасный срез
 
 1. Manual QA Settings editor на мире с валидным и битым `<world>/locales/*.json`.
-2. Добавить manual QA checklist для Settings editor.
+2. Пройти manual QA checklist.
 3. После QA решить, нужен ли player delivery world override через Yjs/session metadata.
