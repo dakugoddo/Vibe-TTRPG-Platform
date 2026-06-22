@@ -1,49 +1,159 @@
-# i18n/custom locales foundation
+# Custom world locales and translation editor
 
-> Дата: 2026-06-02
-> Статус: mini-plan для `FEAT-I18N-002`
+> Дата: 2026-06-22  
+> Статус: design-doc для `FEAT-I18N-002`, код world-storage ещё не писать  
+> Решение: встроенные RU/EN переводы остаются core, пользовательские переводы мира проектируются как future mod/data-pack layer.
 
 ## Цель
 
-Сделать перевод приложения управляемым из интерфейса и подготовить фундамент для моддерских переводов мира, не меняя файловый формат мира и не вводя тяжёлый редактор раньше времени.
+Сделать переводы приложения управляемыми для моддеров и авторов миров, но не превратить i18n в источник поломок мира. Пользователь должен иметь:
 
-## Первый безопасный срез
+- локальный выбор языка интерфейса;
+- встроенные переводы приложения из `app/src/locales`;
+- будущие world overrides, которые лежат рядом с миром и едут вместе с ним;
+- редактор переводов с импортом, экспортом и откатом.
 
-- Использовать существующий `react-i18next`.
-- Добавить выбор языка в `SettingsWindow -> Интерфейс`.
-- Хранить выбранный язык локально в `localStorage`, чтобы игрок и ГМ могли иметь разные UI preferences.
-- Инициализировать `i18next` из сохранённого языка.
-- Показать в настройках статус будущего слоя custom world locales, но пока не писать файлы мира.
-- Добавить маленькую pure-утилиту нормализации/хранения языка и focused test.
+Важно: entity names/descriptions/properties являются контентом мира и не переводятся UI-слоем автоматически.
 
-## Что не делаем в первом срезе
+## Что уже есть
 
-- Не создаём `world/locales/*.json`.
-- Не добавляем server endpoints для custom locales.
-- Не делаем полноценный редактор ключей.
-- Не переводим весь существующий UI за один проход.
-- Не меняем структуру `app/src/locales/ru.json` и `app/src/locales/en.json` кроме добавления ключей для нового блока настроек.
+- `app/src/i18n.ts` инициализирует `i18next` из встроенных `ru.json` и `en.json`.
+- `app/src/utils/localization.ts` хранит локальный выбор языка в `localStorage` через `vibe_locale`.
+- `SettingsWindow -> Интерфейс` показывает RU/EN switch и кнопку открытия встроенной папки переводов в Electron.
+- `.pi/docs/code-map.md` фиксирует границу: стабильный chrome приложения переводится через `ru/en.json`, данные мира не трогаются.
 
-## Будущий формат-кандидат
+## Слои
 
-После отдельного product/architecture gate можно хранить пользовательские переводы в мире:
+| Слой | Где хранится | Кто меняет | Назначение |
+|---|---|---|---|
+| Core app locale | `app/src/locales/ru.json`, `app/src/locales/en.json` | разработчик приложения | Базовый стабильный UI chrome |
+| World locale overrides | `<world>/locales/<locale>.json` | автор мира / моддер | Переименование UI-терминов под конкретный мир или систему |
+| User-local overrides | будущий local app data | конкретный пользователь | Личная правка подписи без изменения мира |
+| Entity content | `.md` сущности | автор мира / ГМ / игроки по правам | Не часть i18n, переводится вручную как контент |
+
+## Формат файлов мира
+
+Минимальный формат должен быть обычным JSON object с partial overrides:
 
 ```text
-<world>/locales/ru.custom.json
-<world>/locales/en.custom.json
+<world>/locales/ru.json
+<world>/locales/en.json
 <world>/locales/<custom-locale>.json
 ```
 
-Клиент должен будет получать merged locale через host/server endpoint:
+Пример:
+
+```json
+{
+  "settings.tabs.audio": "Звук",
+  "workspace.notes.modules.vault": "Архив",
+  "assetBrowser.filters.pdf": "Книги"
+}
+```
+
+Правила:
+
+- ключи плоские или вложенные можно поддержать позже, но первый writer должен сохранять плоские dot-keys;
+- неизвестные ключи не падают, а показываются как warnings в редакторе;
+- пустая строка считается валидным override только если пользователь явно включил режим "пустое значение"; по умолчанию пустое поле удаляет override;
+- файл мира не должен копировать весь `ru.json`, только изменённые ключи.
+
+## Merge order
+
+При загрузке клиента итоговый словарь строится так:
 
 1. built-in locale из приложения;
-2. world custom overrides;
-3. optional user-local overrides.
+2. world locale overrides с сервера хоста;
+3. user-local overrides, если этот слой появится позже.
 
-## Acceptance criteria первого среза
+Если world override битый:
 
-- В настройках есть компактный переключатель `Русский / English`.
-- Выбор языка сохраняется между перезагрузками клиента.
-- Новый блок настроек сам меняет текст при переключении языка.
-- Future custom locale status не обещает готовый редактор и ясно показывает, что world storage ещё planned.
-- `tsc`, `lint`, `build` и focused localization test проходят.
+- приложение остаётся на built-in locale;
+- Settings показывает ошибку world locale;
+- файл не перезаписывается автоматически.
+
+## Server endpoints
+
+Первый серверный срез должен быть read/write только для host/GM:
+
+```text
+GET  /api/world/locales
+GET  /api/world/locales/:locale
+PUT  /api/world/locales/:locale
+POST /api/world/locales/:locale/validate
+POST /api/world/locales/:locale/export
+```
+
+Минимальная семантика:
+
+- `GET /api/world/locales` возвращает список доступных world locale override файлов и их размер/mtime;
+- `GET /api/world/locales/:locale` возвращает JSON overrides и diagnostics;
+- `PUT` пишет файл атомарно через temp file + rename;
+- `validate` проверяет JSON, unknown keys, типы значений и размер;
+- `export` отдаёт файл для ручного сохранения.
+
+Player-клиенты на первом этапе только читают merged locale, без записи.
+
+## Editor UX
+
+Редактор переводов должен быть не WYSIWYG, а таблица ключей:
+
+- поиск по ключу и текущему тексту;
+- фильтры: changed, missing, unknown, built-in only;
+- колонки: key, built-in RU, built-in EN, world override;
+- кнопки: reset key, reset locale file, import JSON, export JSON, open folder;
+- предупреждение, что entity content не переводится здесь.
+
+Первый UI-срез можно сделать в Settings как отдельную панель "Переводы мира", без отдельного окна.
+
+## Mod/data-pack model
+
+World locale overrides являются data-pack, а не core schema:
+
+- они не меняют `.md` entity format;
+- их можно отключить или удалить без миграции сущностей;
+- они могут поставляться вместе с system pack/theme pack;
+- конфликт нескольких packs решается order list, но это отдельный future slice.
+
+Не добавлять marketplace/mod loader сейчас. Достаточно формата, валидации и импорт/экспорт JSON.
+
+## Rollback and safety
+
+Перед записью `PUT` сервер должен:
+
+- валидировать JSON;
+- ограничивать размер файла, например 512 KB на locale в первом срезе;
+- писать backup рядом: `<locale>.json.bak`;
+- использовать atomic write;
+- запрещать path traversal и locale id вне allowlist pattern: `^[a-z]{2}(-[A-Z]{2})?$`.
+
+Rollback в UI:
+
+- "Reset key" удаляет один override;
+- "Reset locale" переименовывает текущий файл в backup или очищает overrides после подтверждения через `ConfirmDialog`;
+- "Restore backup" можно добавить вторым срезом.
+
+## Acceptance criteria for first implementation slice
+
+- Built-in RU/EN continue working without world locale files.
+- Host can open Settings -> World translations and see available override files.
+- Host can edit one key, save it to `<world>/locales/<locale>.json`, reload app and see changed chrome label.
+- Player receives the merged locale from host and sees the same changed chrome label.
+- Invalid JSON does not break app startup.
+- `desktop:build`, focused locale tests and server locale endpoint tests pass.
+
+## Do not do yet
+
+- Не делать WYSIWYG translation editor.
+- Не переводить entity content автоматически.
+- Не добавлять remote marketplace/mod loader.
+- Не менять `.md` entity/YAML frontmatter.
+- Не добавлять тяжёлые зависимости ради JSON editor.
+- Не давать player write-доступ к world locale files без отдельной permission QA.
+
+## Следующий безопасный срез
+
+1. Добавить pure utils для flatten/unflatten/merge locale objects и tests.
+2. Добавить server-side locale path validation и read-only `GET /api/world/locales`.
+3. Показать read-only список world locale files в Settings.
+4. Только после этого добавлять `PUT` и editor.

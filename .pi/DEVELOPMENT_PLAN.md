@@ -42,9 +42,9 @@
    - compact card/entity sheet читаемость;
    - theme consistency на разных плотностях.
 5. Custom world locales/editor только после отдельного design-doc:
-   - формат хранения в мире;
-   - server endpoints;
-   - import/export/rollback policy.
+   - design-doc расширен в `.pi/docs/i18n-custom-locales-foundation.md`;
+   - следующий безопасный кодовый срез: pure merge/flatten utils, read-only server endpoints и Settings preview;
+   - write/editor/import/export/rollback — только после read-only QA.
 6. Notes workspace polish и native multi-window после Electron gate:
    - ручная QA shell modules/settings/reset/audio dock, включая перенос `Editor`/`Vault`/`Context` между left/center/right;
    - текущий архитектурный срез: проверить первый Obsidian-like editor leaf model pass, где новая сущность открывается отдельным leaf, center-drop объединяет leaf в tab group, edge-drop создает split;
