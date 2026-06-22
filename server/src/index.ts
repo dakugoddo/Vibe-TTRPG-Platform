@@ -24,7 +24,7 @@ import { createWorld, openWorld, getCurrentWorldPath, getCurrentWorldName, getAs
 import { listAssetRecords, resolveAssetPath } from './assetManager.js';
 import { buildExplorerRevealArgs } from './explorer.js';
 import { claimPlayerProfile, listPlayerProfiles, updatePlayerProfileRole } from './playerProfiles.js';
-import { listWorldLocaleFiles, readWorldLocaleFile } from './worldLocaleManager.js';
+import { listWorldLocaleFiles, readWorldLocaleFile, writeWorldLocaleFile } from './worldLocaleManager.js';
 import {
     listEntities,
     readEntity,
@@ -150,6 +150,24 @@ app.get('/api/world/locales/:locale', (req, res) => {
         res.json(readWorldLocaleFile(worldPath, req.params.locale));
     } catch (err) {
         res.status((err as Error).message.startsWith('Invalid locale id') ? 400 : 500).json({ error: (err as Error).message });
+    }
+});
+
+app.put('/api/world/locales/:locale', (req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        if (!Object.prototype.hasOwnProperty.call(req.body ?? {}, 'overrides')) {
+            res.status(400).json({ error: 'overrides is required' });
+            return;
+        }
+
+        res.json(writeWorldLocaleFile(worldPath, req.params.locale, req.body.overrides));
+    } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
     }
 });
 

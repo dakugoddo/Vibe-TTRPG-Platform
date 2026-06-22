@@ -7,6 +7,7 @@ import {
     listWorldLocaleFiles,
     readWorldLocaleFile,
     resolveWorldLocalePath,
+    writeWorldLocaleFile,
 } from './worldLocaleManager.js';
 
 const worldPath = fs.mkdtempSync(path.join(os.tmpdir(), 'vibe-world-locales-'));
@@ -46,6 +47,50 @@ try {
     const array = readWorldLocaleFile(worldPath, 'de');
     assert.equal(array.exists, true);
     assert.equal(array.diagnostics[0]?.message, 'Locale file must be a JSON object.');
+
+    const created = writeWorldLocaleFile(worldPath, 'es', {
+        settings: {
+            tabs: {
+                world: 'Mundo',
+            },
+        },
+    });
+    assert.equal(created.exists, true);
+    assert.equal(created.backupCreated, false);
+    assert.deepEqual(created.overrides, {
+        settings: {
+            tabs: {
+                world: 'Mundo',
+            },
+        },
+    });
+
+    const updated = writeWorldLocaleFile(worldPath, 'es', {
+        settings: {
+            tabs: {
+                world: 'Mesa',
+            },
+        },
+    });
+    assert.equal(updated.backupCreated, true);
+    assert.equal(fs.existsSync(path.join(worldPath, 'locales', 'es.json.bak')), true);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(worldPath, 'locales', 'es.json.bak'), 'utf-8')), {
+        settings: {
+            tabs: {
+                world: 'Mundo',
+            },
+        },
+    });
+
+    assert.throws(() => writeWorldLocaleFile(worldPath, 'es', []), /Locale overrides must be a JSON object/);
+    assert.deepEqual(readWorldLocaleFile(worldPath, 'es').overrides, {
+        settings: {
+            tabs: {
+                world: 'Mesa',
+            },
+        },
+    });
+    assert.throws(() => writeWorldLocaleFile(worldPath, '../es', {}), /Invalid locale id/);
 } finally {
     fs.rmSync(worldPath, { recursive: true, force: true });
 }

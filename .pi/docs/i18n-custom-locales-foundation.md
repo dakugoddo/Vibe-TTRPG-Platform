@@ -1,7 +1,7 @@
 # Custom world locales and translation editor
 
 > Дата: 2026-06-22  
-> Статус: read-only server/client/settings foundation implemented, write/editor ещё не делать  
+> Статус: read/write server foundation and read-only Settings preview implemented, editor UI ещё не делать  
 > Решение: встроенные RU/EN переводы остаются core, пользовательские переводы мира проектируются как future mod/data-pack layer.
 
 ## Цель
@@ -164,11 +164,13 @@ Rollback в UI:
 - `SettingsWindow -> Мир -> Переводы мира` показывает список файлов, размер и read-only статус.
 - `app/src/utils/localization.ts` содержит pure helpers `flattenLocaleMessages()`, `unflattenLocaleMessages()` и `mergeLocaleMessages()`; они игнорируют unsupported JSON leaves и защищают вложенные ветки от опасных parent/child override conflicts.
 - `SettingsWindow -> Мир -> Переводы мира` умеет выбрать override-файл, read-only прочитать его, показать diagnostics, количество override/merged keys и sample первых строк без смены языка и без записи в мир.
+- `PUT /api/world/locales/:locale` принимает `{ overrides }`, пишет pretty JSON в `<world>/locales/<locale>.json`, создаёт `.bak` при перезаписи и откатывает старый файл при ошибке.
+- `app/src/services/fileApi.ts` содержит typed `writeWorldLocaleFile(locale, overrides)` для будущего editor UI; текущий Settings UI его не вызывает.
 - Focused client test: `app/src/utils/localization.test.ts`.
 - Focused test: `server/src/worldLocaleManager.test.ts`.
 
 ## Следующий безопасный срез
 
 1. Manual QA read-only Settings preview на мире с валидным и битым `<world>/locales/*.json`.
-2. Добавить write endpoint только с backup/rollback и focused server tests.
-3. После write endpoint добавить минимальный editor/import/export UI.
+2. Добавить минимальный editor UI только для существующего typed write endpoint.
+3. После editor добавить import/export и явный rollback action.

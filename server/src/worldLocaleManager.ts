@@ -22,6 +22,10 @@ export interface WorldLocaleReadResult {
     modifiedAt?: string;
 }
 
+export interface WorldLocaleWriteResult extends WorldLocaleReadResult {
+    backupCreated: boolean;
+}
+
 const WORLD_LOCALE_ID_PATTERN = /^[a-z]{2}(-[A-Z]{2})?$/;
 
 export function isWorldLocaleId(value: unknown): value is string {
@@ -102,4 +106,49 @@ export function readWorldLocaleFile(worldPath: string, locale: string): WorldLoc
     }
 
     return result;
+}
+
+function assertLocaleOverrides(value: unknown): asserts value is Record<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new Error('Locale overrides must be a JSON object.');
+    }
+}
+
+export function writeWorldLocaleFile(worldPath: string, locale: string, overrides: unknown): WorldLocaleWriteResult {
+    assertLocaleOverrides(overrides);
+
+    const filePath = resolveWorldLocalePath(worldPath, locale);
+    const localesDir = path.dirname(filePath);
+    const backupPath = `${filePath}.bak`;
+    const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+    const hadExistingFile = fs.existsSync(filePath);
+    const previousContent = hadExistingFile ? fs.readFileSync(filePath, 'utf-8') : null;
+
+    fs.mkdirSync(localesDir, { recursive: true });
+
+    try {
+        if (hadExistingFile) {
+            fs.copyFileSync(filePath, backupPath);
+        }
+
+        fs.writeFileSync(tempPath, `${JSON.stringify(overrides, null, 2)}\n`, 'utf-8');
+        fs.renameSync(tempPath, filePath);
+
+        return {
+            ...readWorldLocaleFile(worldPath, locale),
+            backupCreated: hadExistingFile,
+        };
+    } catch (err) {
+        if (fs.existsSync(tempPath)) {
+            fs.rmSync(tempPath, { force: true });
+        }
+
+        if (previousContent !== null) {
+            fs.writeFileSync(filePath, previousContent, 'utf-8');
+        } else if (fs.existsSync(filePath)) {
+            fs.rmSync(filePath, { force: true });
+        }
+
+        throw err;
+    }
 }

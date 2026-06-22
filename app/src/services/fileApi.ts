@@ -44,6 +44,10 @@ export interface WorldLocaleReadResult {
     modifiedAt?: string;
 }
 
+export interface WorldLocaleWriteResult extends WorldLocaleReadResult {
+    backupCreated: boolean;
+}
+
 // ─── Host detection ───
 // Only the host (who created/opened the room) has a file server running.
 
@@ -152,6 +156,14 @@ export async function listWorldLocaleFiles(): Promise<WorldLocaleFile[]> {
 export async function readWorldLocaleFile(locale: string): Promise<WorldLocaleReadResult | null> {
     if (!(await shouldCallFileApi())) return null;
     return apiFetch<WorldLocaleReadResult>(`/api/world/locales/${encodeURIComponent(locale)}`);
+}
+
+export async function writeWorldLocaleFile(locale: string, overrides: Record<string, unknown>): Promise<WorldLocaleWriteResult | null> {
+    if (!(await shouldCallFileApi())) return null;
+    return apiFetch<WorldLocaleWriteResult>(`/api/world/locales/${encodeURIComponent(locale)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ overrides }),
+    });
 }
 
 // ─── Players ───
