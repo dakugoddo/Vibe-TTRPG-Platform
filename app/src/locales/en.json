@@ -1467,7 +1467,11 @@
             "localesRollbackButton": "Rollback",
             "localesRollbackConfirmTitle": "Rollback world translation",
             "localesRollbackConfirmDescription": "{{locale}}.json will be replaced with {{locale}}.json.bak.",
-            "localesRollbackSuccess": "Translation file restored from backup."
+            "localesRollbackSuccess": "Translation file restored from backup.",
+            "localesImportButton": "Import",
+            "localesExportButton": "Export",
+            "localesImported": "JSON imported into the draft. Click Save to write it.",
+            "localesExported": "JSON exported from the current draft."
         },
         "roles": {
             "title": "Roles",

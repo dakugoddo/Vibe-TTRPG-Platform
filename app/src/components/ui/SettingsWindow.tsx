@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText, FolderOpen, Grid3X3, Monitor, Shield, SlidersHorizontal, Volume2, Settings, X, Globe2, Loader2, Users, Languages, RotateCcw } from 'lucide-react';
 import { yjsStore } from '../../store/yjsStore';
@@ -166,6 +166,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const [worldLocaleDraftError, setWorldLocaleDraftError] = useState('');
     const [savingWorldLocale, setSavingWorldLocale] = useState(false);
     const [worldLocaleSaveMessage, setWorldLocaleSaveMessage] = useState('');
+    const worldLocaleImportInputRef = useRef<HTMLInputElement | null>(null);
     const openConfirm = useUIStore((state) => state.openConfirm);
 
     useEffect(() => {
@@ -439,6 +440,35 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
             isDestructive: true,
             onConfirm: () => void rollbackSelectedWorldLocale(),
         });
+    };
+
+    const exportWorldLocaleDraft = () => {
+        const overrides = parseWorldLocaleDraft();
+        if (!overrides || !selectedWorldLocale) return;
+
+        const blob = new Blob([formatWorldLocaleDraft(overrides)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${selectedWorldLocale}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+        setWorldLocaleSaveMessage(t('settings.world.localesExported'));
+    };
+
+    const importWorldLocaleDraft = async (file: File) => {
+        try {
+            const parsed = JSON.parse(await file.text()) as unknown;
+            if (!isSettingsRecord(parsed)) {
+                setWorldLocaleDraftError(t('settings.world.localesEditorObjectError'));
+                return;
+            }
+            setWorldLocaleDraft(formatWorldLocaleDraft(parsed));
+            setWorldLocaleDraftError('');
+            setWorldLocaleSaveMessage(t('settings.world.localesImported'));
+        } catch (err) {
+            setWorldLocaleDraftError(err instanceof Error ? err.message : String(err));
+        }
     };
 
     return (
@@ -1095,7 +1125,34 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                                 <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('settings.world.localesEditorTitle')}</div>
                                                                 <div className="mt-0.5 text-[10px] text-[var(--vibe-text-faint)]">{t('settings.world.localesEditorDescription')}</div>
                                                             </div>
-                                                            <div className="flex shrink-0 items-center gap-1.5">
+                                                            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                                                                <input
+                                                                    ref={worldLocaleImportInputRef}
+                                                                    type="file"
+                                                                    accept="application/json,.json"
+                                                                    className="hidden"
+                                                                    onChange={(event) => {
+                                                                        const file = event.target.files?.[0];
+                                                                        event.currentTarget.value = '';
+                                                                        if (file) void importWorldLocaleDraft(file);
+                                                                    }}
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={savingWorldLocale}
+                                                                    onClick={() => worldLocaleImportInputRef.current?.click()}
+                                                                    className="flex h-8 items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-45"
+                                                                >
+                                                                    {t('settings.world.localesImportButton')}
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={savingWorldLocale}
+                                                                    onClick={exportWorldLocaleDraft}
+                                                                    className="flex h-8 items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-45"
+                                                                >
+                                                                    {t('settings.world.localesExportButton')}
+                                                                </button>
                                                                 <button
                                                                     type="button"
                                                                     disabled={savingWorldLocale}

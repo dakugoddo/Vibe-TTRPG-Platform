@@ -44,8 +44,8 @@
 5. Custom world locales/editor только после отдельного design-doc:
    - design-doc расширен в `.pi/docs/i18n-custom-locales-foundation.md`;
    - server list/read/write/rollback endpoints, typed client API, Settings preview/editor, pure merge/flatten utils и client-side preview merge реализованы;
-   - write endpoint создаёт `.bak` и откатывает файл при ошибке; Settings editor пишет только JSON object через ConfirmDialog и умеет rollback из `.bak`;
-   - следующий безопасный кодовый срез: import/export и manual QA checklist.
+   - write endpoint создаёт `.bak` и откатывает файл при ошибке; Settings editor пишет только JSON object через ConfirmDialog, умеет rollback из `.bak` и draft import/export;
+   - следующий безопасный кодовый срез: manual QA checklist, затем runtime application of world overrides.
 6. Notes workspace polish и native multi-window после Electron gate:
    - ручная QA shell modules/settings/reset/audio dock, включая перенос `Editor`/`Vault`/`Context` между left/center/right;
    - текущий архитектурный срез: проверить первый Obsidian-like editor leaf model pass, где новая сущность открывается отдельным leaf, center-drop объединяет leaf в tab group, edge-drop создает split;

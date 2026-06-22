@@ -1467,7 +1467,11 @@
       "localesRollbackButton": "Откатить",
       "localesRollbackConfirmTitle": "Откатить перевод мира",
       "localesRollbackConfirmDescription": "Файл {{locale}}.json будет заменён содержимым {{locale}}.json.bak.",
-      "localesRollbackSuccess": "Файл перевода восстановлен из backup."
+      "localesRollbackSuccess": "Файл перевода восстановлен из backup.",
+      "localesImportButton": "Импорт",
+      "localesExportButton": "Экспорт",
+      "localesImported": "JSON импортирован в черновик. Для записи нажмите Сохранить.",
+      "localesExported": "JSON экспортирован из текущего черновика."
     },
     "roles": {
       "title": "Роли",
