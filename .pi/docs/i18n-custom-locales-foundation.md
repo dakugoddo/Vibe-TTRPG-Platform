@@ -162,10 +162,12 @@ Rollback в UI:
 - Сервер не создаёт `<world>/locales`, не пишет backup и не меняет файлы мира.
 - `app/src/services/fileApi.ts` предоставляет `listWorldLocaleFiles()` и `readWorldLocaleFile(locale)`.
 - `SettingsWindow -> Мир -> Переводы мира` показывает список файлов, размер и read-only статус.
+- `app/src/utils/localization.ts` содержит pure helpers `flattenLocaleMessages()`, `unflattenLocaleMessages()` и `mergeLocaleMessages()`; они игнорируют unsupported JSON leaves и защищают вложенные ветки от опасных parent/child override conflicts.
+- Focused client test: `app/src/utils/localization.test.ts`.
 - Focused test: `server/src/worldLocaleManager.test.ts`.
 
 ## Следующий безопасный срез
 
-1. Добавить pure utils для flatten/unflatten/merge locale objects и focused tests.
-2. Добавить client-side preview merge без записи файлов мира.
+1. Добавить client-side preview merge выбранного world locale file без записи файлов мира.
+2. Показать diagnostics/количество override keys в Settings.
 3. Только после этого добавлять `PUT`, editor, import/export и rollback.
