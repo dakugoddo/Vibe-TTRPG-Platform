@@ -1454,7 +1454,16 @@
             "localesNoDiagnostics": "No errors found.",
             "localesSampleTitle": "First override keys",
             "localesNoOverrides": "This file has no string override keys.",
-            "localesPreviewLoading": "Reading and validating file..."
+            "localesPreviewLoading": "Reading and validating file...",
+            "localesEditorTitle": "JSON editor",
+            "localesEditorDescription": "Edits only this world's override JSON. Entity content is not translated here.",
+            "localesEditorObjectError": "Translation file must be a JSON object.",
+            "localesSaveButton": "Save",
+            "localesSaveConfirmTitle": "Save world translation",
+            "localesSaveConfirmDescription": "{{locale}}.json will be overwritten. If the file already existed, the server will create a .bak backup.",
+            "localesSaveUnavailable": "File API is unavailable for saving.",
+            "localesSaved": "Translation file saved.",
+            "localesSavedWithBackup": "Translation file saved and backup created."
         },
         "roles": {
             "title": "Roles",

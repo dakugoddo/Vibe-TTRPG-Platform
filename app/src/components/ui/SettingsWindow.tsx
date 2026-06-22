@@ -4,6 +4,7 @@ import { FileText, FolderOpen, Grid3X3, Monitor, Shield, SlidersHorizontal, Volu
 import { yjsStore } from '../../store/yjsStore';
 import { useCanvasDrawStore } from '../../store/canvasDrawStore';
 import { useNotesWorkspaceStore } from '../../store/notesWorkspaceStore';
+import { useUIStore } from '../../store/uiStore';
 import { resetCurrentWindowLayout } from '../../store/windowStore';
 import { useAudioChannelVolumes } from '../../hooks/useAudioChannelVolumes';
 import { useAudioSessionEnabled } from '../../hooks/useAudioSessionEnabled';
@@ -18,7 +19,7 @@ import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, glass, interfa
 import { getDevPerformanceOverlayEnabled, setDevPerformanceOverlayEnabled } from '../../utils/devPerformanceOverlay';
 import type { AudioChannel, PlayerProfile } from '../../types';
 import { isDesktopRuntime, showTranslationsFolder } from '../../services/desktopBridge';
-import { listPlayerProfiles, listWorldLocaleFiles, readWorldLocaleFile, updatePlayerProfileRole, type WorldLocaleDiagnostic, type WorldLocaleFile } from '../../services/fileApi';
+import { listPlayerProfiles, listWorldLocaleFiles, readWorldLocaleFile, updatePlayerProfileRole, writeWorldLocaleFile, type WorldLocaleDiagnostic, type WorldLocaleFile, type WorldLocaleReadResult } from '../../services/fileApi';
 
 type SettingsTabId = 'interface' | 'audio' | 'canvas' | 'world' | 'roles';
 
@@ -35,6 +36,10 @@ interface WorldLocalePreview {
     mergedKeys: number;
     diagnostics: WorldLocaleDiagnostic[];
     samples: Array<{ key: string; value: string }>;
+}
+
+function isSettingsRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 const AUDIO_CHANNELS: Array<{ id: AudioChannel; labelKey: string }> = [
@@ -79,6 +84,25 @@ const idleControlClass = 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surf
 function formatSettingsFileSize(size: number): string {
     if (size < 1024) return `${size} B`;
     return `${Math.ceil(size / 1024)} KB`;
+}
+
+function formatWorldLocaleDraft(overrides: Record<string, unknown>): string {
+    return `${JSON.stringify(overrides, null, 2)}\n`;
+}
+
+function buildWorldLocalePreview(result: WorldLocaleReadResult, baseLocale: SupportedLocale, baseBundle: LocaleMessageTree): WorldLocalePreview {
+    const merged = mergeLocaleMessages(baseBundle, result.overrides);
+    const overrideFlat = flattenLocaleMessages(result.overrides);
+    const mergedFlat = flattenLocaleMessages(merged);
+
+    return {
+        locale: result.locale,
+        baseLocale,
+        overrideKeys: Object.keys(overrideFlat).length,
+        mergedKeys: Object.keys(mergedFlat).length,
+        diagnostics: result.diagnostics,
+        samples: Object.entries(overrideFlat).slice(0, 5).map(([key, value]) => ({ key, value })),
+    };
 }
 
 function getSettingsTabs(isGM: boolean) {
@@ -138,6 +162,11 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const [selectedWorldLocale, setSelectedWorldLocale] = useState('');
     const [loadingWorldLocalePreview, setLoadingWorldLocalePreview] = useState(false);
     const [worldLocalePreview, setWorldLocalePreview] = useState<WorldLocalePreview | null>(null);
+    const [worldLocaleDraft, setWorldLocaleDraft] = useState('');
+    const [worldLocaleDraftError, setWorldLocaleDraftError] = useState('');
+    const [savingWorldLocale, setSavingWorldLocale] = useState(false);
+    const [worldLocaleSaveMessage, setWorldLocaleSaveMessage] = useState('');
+    const openConfirm = useUIStore((state) => state.openConfirm);
 
     useEffect(() => {
         if (!isOpen || !isGM || activeTab !== 'roles') return;
@@ -211,18 +240,10 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
 
                 const baseLocale = normalizeLocale(result.locale);
                 const baseBundle = (i18n.getResourceBundle(baseLocale, 'translation') ?? {}) as LocaleMessageTree;
-                const merged = mergeLocaleMessages(baseBundle, result.overrides);
-                const overrideFlat = flattenLocaleMessages(result.overrides);
-                const mergedFlat = flattenLocaleMessages(merged);
-
-                setWorldLocalePreview({
-                    locale: result.locale,
-                    baseLocale,
-                    overrideKeys: Object.keys(overrideFlat).length,
-                    mergedKeys: Object.keys(mergedFlat).length,
-                    diagnostics: result.diagnostics,
-                    samples: Object.entries(overrideFlat).slice(0, 5).map(([key, value]) => ({ key, value })),
-                });
+                setWorldLocalePreview(buildWorldLocalePreview(result, baseLocale, baseBundle));
+                setWorldLocaleDraft(formatWorldLocaleDraft(result.overrides));
+                setWorldLocaleDraftError('');
+                setWorldLocaleSaveMessage('');
             } catch (err) {
                 if (!cancelled) setWorldLocaleError(err instanceof Error ? err.message : String(err));
             } finally {
@@ -323,6 +344,62 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
         } catch (err) {
             announceLocalReset(err instanceof Error ? err.message : String(err));
         }
+    };
+
+    const parseWorldLocaleDraft = (): Record<string, unknown> | null => {
+        try {
+            const parsed = JSON.parse(worldLocaleDraft) as unknown;
+            if (!isSettingsRecord(parsed)) {
+                setWorldLocaleDraftError(t('settings.world.localesEditorObjectError'));
+                return null;
+            }
+            setWorldLocaleDraftError('');
+            return parsed;
+        } catch (err) {
+            setWorldLocaleDraftError(err instanceof Error ? err.message : String(err));
+            return null;
+        }
+    };
+
+    const saveWorldLocaleDraft = async (overrides: Record<string, unknown>) => {
+        if (!selectedWorldLocale) return;
+
+        setSavingWorldLocale(true);
+        setWorldLocaleSaveMessage('');
+        try {
+            const saved = await writeWorldLocaleFile(selectedWorldLocale, overrides);
+            if (!saved) {
+                setWorldLocaleDraftError(t('settings.world.localesSaveUnavailable'));
+                return;
+            }
+
+            const baseLocale = normalizeLocale(saved.locale);
+            const baseBundle = (i18n.getResourceBundle(baseLocale, 'translation') ?? {}) as LocaleMessageTree;
+            setWorldLocalePreview(buildWorldLocalePreview(saved, baseLocale, baseBundle));
+            setWorldLocaleDraft(formatWorldLocaleDraft(saved.overrides));
+            setWorldLocaleDraftError('');
+            setWorldLocaleSaveMessage(saved.backupCreated
+                ? t('settings.world.localesSavedWithBackup')
+                : t('settings.world.localesSaved'));
+            setWorldLocaleFiles(await listWorldLocaleFiles());
+        } catch (err) {
+            setWorldLocaleDraftError(err instanceof Error ? err.message : String(err));
+        } finally {
+            setSavingWorldLocale(false);
+        }
+    };
+
+    const confirmSaveWorldLocaleDraft = () => {
+        const overrides = parseWorldLocaleDraft();
+        if (!overrides || !selectedWorldLocale) return;
+
+        openConfirm({
+            title: t('settings.world.localesSaveConfirmTitle'),
+            description: t('settings.world.localesSaveConfirmDescription', { locale: selectedWorldLocale }),
+            confirmText: t('settings.world.localesSaveButton'),
+            cancelText: t('common.cancel'),
+            onConfirm: () => void saveWorldLocaleDraft(overrides),
+        });
     };
 
     return (
@@ -971,6 +1048,44 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                         ) : (
                                                             <div className="text-[10px] text-[var(--vibe-text-faint)]">{t('settings.world.localesNoOverrides')}</div>
                                                         )}
+                                                    </div>
+
+                                                    <div className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-2">
+                                                        <div className="mb-2 flex items-center justify-between gap-2">
+                                                            <div>
+                                                                <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('settings.world.localesEditorTitle')}</div>
+                                                                <div className="mt-0.5 text-[10px] text-[var(--vibe-text-faint)]">{t('settings.world.localesEditorDescription')}</div>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                disabled={savingWorldLocale}
+                                                                onClick={confirmSaveWorldLocaleDraft}
+                                                                className="flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-accent)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] px-2.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--vibe-accent)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-45"
+                                                            >
+                                                                {savingWorldLocale && <Loader2 size={12} className="animate-spin" />}
+                                                                {t('settings.world.localesSaveButton')}
+                                                            </button>
+                                                        </div>
+                                                        {worldLocaleSaveMessage && (
+                                                            <div className="mb-2 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-success)_30%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_12%,transparent)] px-2 py-1.5 text-[10px] text-[var(--vibe-success)]">
+                                                                {worldLocaleSaveMessage}
+                                                            </div>
+                                                        )}
+                                                        {worldLocaleDraftError && (
+                                                            <div className="mb-2 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] px-2 py-1.5 text-[10px] text-[var(--vibe-danger)]">
+                                                                {worldLocaleDraftError}
+                                                            </div>
+                                                        )}
+                                                        <textarea
+                                                            value={worldLocaleDraft}
+                                                            onChange={(event) => {
+                                                                setWorldLocaleDraft(event.target.value);
+                                                                setWorldLocaleDraftError('');
+                                                                setWorldLocaleSaveMessage('');
+                                                            }}
+                                                            spellCheck={false}
+                                                            className="h-44 w-full resize-y rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 font-mono text-[11px] leading-relaxed text-[var(--vibe-text-primary)] outline-none transition-colors placeholder:text-[var(--vibe-text-faint)] focus:border-[var(--vibe-border-strong)]"
+                                                        />
                                                     </div>
                                                 </div>
                                             ) : (

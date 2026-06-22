@@ -1454,7 +1454,16 @@
       "localesNoDiagnostics": "Ошибок не найдено.",
       "localesSampleTitle": "Первые override keys",
       "localesNoOverrides": "В файле нет строковых override keys.",
-      "localesPreviewLoading": "Читаю и проверяю файл..."
+      "localesPreviewLoading": "Читаю и проверяю файл...",
+      "localesEditorTitle": "JSON editor",
+      "localesEditorDescription": "Редактирует только override JSON этого мира. Контент сущностей не переводится.",
+      "localesEditorObjectError": "Файл перевода должен быть JSON object.",
+      "localesSaveButton": "Сохранить",
+      "localesSaveConfirmTitle": "Сохранить перевод мира",
+      "localesSaveConfirmDescription": "Файл {{locale}}.json будет перезаписан. Если файл уже существовал, сервер создаст .bak backup.",
+      "localesSaveUnavailable": "File API недоступен для сохранения.",
+      "localesSaved": "Файл перевода сохранён.",
+      "localesSavedWithBackup": "Файл перевода сохранён, backup создан."
     },
     "roles": {
       "title": "Роли",
