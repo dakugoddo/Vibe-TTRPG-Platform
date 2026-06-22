@@ -121,3 +121,30 @@ The audio module should prove the pattern:
 - Should players be able to disable local module UI if the GM has enabled the world module?
 - Is future third-party mod support a real goal, or only internal modules/data packs?
 - How strict should module permissions be in a trusted tabletop environment?
+
+## Решение 2026-06-22: что core, что модуль, что future mod
+
+Критерий простой: если отключение функции ломает базовую работу мира, это core. Если мир остаётся рабочим, но исчезает отдельный рабочий инструмент, это internal module. Если функция нужна не всем системам/сеттингам или может жить как пакет контента, это future mod/data pack.
+
+| Слой | Что входит | Правило |
+|------|------------|---------|
+| Core platform | Entity/.md format, file sync, permissions, base canvas, notes workspace, asset index, settings/i18n, theme tokens, module registry | Нельзя отключить без поломки мира или данных |
+| Core content schema | Базовые типы entity, wiki links, generic character/object/ability/attack/tag/note/canvas, read-only compact cards | Это общий язык приложения, а не отдельная игровая система |
+| Built-in optional modules | Audio desk, PDF viewer, 3D view, advanced canvas tools, combat/initiative tracker, automation/macros, graph view, import/export tools | Можно выключить локально/в мире; не меняет `.md` контракт без migration gate |
+| System/data packs | D&D-like sheets, конкретные формулы бросков, статусы, предметные шаблоны, стартовые базы правил, локализации, визуальные темы | Должны ставиться как content pack/mod, а не зашиваться в core |
+| External integrations | YouTube/SoundCloud, AI helpers, online importers, marketplace, сторонние API | Только opt-in module/mod, без фоновых запросов при выключении |
+
+### Новые функции: предварительная раскладка
+
+- Combat tracker: built-in optional module. Core хранит generic entities/resources; tracker читает их и не меняет формат мира без design-doc.
+- PDF preview/card on canvas: built-in optional module поверх asset library. Не добавлять тяжёлую viewer-зависимость до design-doc.
+- Graph view: built-in optional Notes module. Связи `[[id]]` остаются core, визуализация отключаемая.
+- D&D 5e / d20 готовые листы: system pack. Core оставляет generic character sheet и formulas.
+- Theme packs: future mod/data pack. Core хранит theme tokens и валидатор, но не обязан нести десятки стилей.
+- Translation packs/editor: future mod/data pack plus world override layer. Core остаётся RU/EN + loader.
+- Audio source providers: optional module per provider. Local audio остаётся текущим built-in audio module.
+- 3D tabletop: built-in optional module after desktop/perf gate, not replacement for 2D canvas.
+
+### Правило для кода
+
+Не добавлять новый `AppModuleId` заранее. Сначала нужен хотя бы один реальный mount point или service gate; пустой toggle в настройках хуже отсутствия toggle.

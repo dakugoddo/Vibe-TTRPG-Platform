@@ -1,6 +1,6 @@
 # Eternity Table: текущий план разработки
 
-> Обновлено: 2026-06-21
+> Обновлено: 2026-06-22
 > Назначение: короткий рабочий план. Этот файл не является журналом всех закрытых срезов.
 
 ## Правила вектора
@@ -20,6 +20,7 @@
 - Electron desktop foundation реализован: shell, preload IPC, native folder dialog, native asset reveal, embedded server path, build artifact metadata, custom app icon, lazy-loaded app shell chunks, player delivery baseline, `desktop:dev`, `desktop:pack`, `desktop:dist`, dev performance overlay.
 - Beta 0.1 preparation started: product name `Eternity Table`, GitHub README and release checklist created.
 - Canvas middle-button pan стабилизирован: compositor-first preview, small commit threshold, global listeners. Stage overscan отменён из-за FPS regression; Konva Stage должен оставаться размером viewport.
+- Module/mod gate зафиксирован: новые крупные функции сначала классифицируются как core platform, built-in optional module или future mod/data pack; пустые module toggles без реального mount point не добавлять.
 
 ## Ближайший безопасный срез
 
