@@ -18,7 +18,7 @@ import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, glass, interfa
 import { getDevPerformanceOverlayEnabled, setDevPerformanceOverlayEnabled } from '../../utils/devPerformanceOverlay';
 import type { AudioChannel, PlayerProfile } from '../../types';
 import { isDesktopRuntime, showTranslationsFolder } from '../../services/desktopBridge';
-import { listPlayerProfiles, updatePlayerProfileRole } from '../../services/fileApi';
+import { listPlayerProfiles, listWorldLocaleFiles, updatePlayerProfileRole, type WorldLocaleFile } from '../../services/fileApi';
 
 type SettingsTabId = 'interface' | 'audio' | 'canvas' | 'world' | 'roles';
 
@@ -66,6 +66,11 @@ const settingsMutedTextClass = 'text-[var(--vibe-text-faint)]';
 const toggleOptionClass = 'flex cursor-pointer items-center justify-between gap-3 rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] p-4 shadow-[var(--vibe-shadow-block)]';
 const activeControlClass = 'border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)]';
 const idleControlClass = 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]';
+
+function formatSettingsFileSize(size: number): string {
+    if (size < 1024) return `${size} B`;
+    return `${Math.ceil(size / 1024)} KB`;
+}
 
 function getSettingsTabs(isGM: boolean) {
     const tabs: Array<{ id: SettingsTabId; labelKey: string; icon: typeof Monitor; gmOnly?: boolean }> = [
@@ -118,6 +123,9 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const [loadingPlayerProfiles, setLoadingPlayerProfiles] = useState(false);
     const [updatingPlayerId, setUpdatingPlayerId] = useState<string | null>(null);
     const [playerProfileError, setPlayerProfileError] = useState('');
+    const [worldLocaleFiles, setWorldLocaleFiles] = useState<WorldLocaleFile[]>([]);
+    const [loadingWorldLocales, setLoadingWorldLocales] = useState(false);
+    const [worldLocaleError, setWorldLocaleError] = useState('');
 
     useEffect(() => {
         if (!isOpen || !isGM || activeTab !== 'roles') return;
@@ -137,6 +145,29 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
         };
 
         void loadProfiles();
+        return () => {
+            cancelled = true;
+        };
+    }, [activeTab, isGM, isOpen]);
+
+    useEffect(() => {
+        if (!isOpen || !isGM || activeTab !== 'world') return;
+
+        let cancelled = false;
+        const loadWorldLocales = async () => {
+            setLoadingWorldLocales(true);
+            setWorldLocaleError('');
+            try {
+                const files = await listWorldLocaleFiles();
+                if (!cancelled) setWorldLocaleFiles(files);
+            } catch (err) {
+                if (!cancelled) setWorldLocaleError(err instanceof Error ? err.message : String(err));
+            } finally {
+                if (!cancelled) setLoadingWorldLocales(false);
+            }
+        };
+
+        void loadWorldLocales();
         return () => {
             cancelled = true;
         };
@@ -772,6 +803,45 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                             <div className={`mt-1 text-[11px] ${settingsMutedTextClass}`}>{t('settings.world.storageDescription')}</div>
                                         </div>
                                     </div>
+                                </div>
+
+                                <div className={settingsPanelClass}>
+                                    <div className="mb-3 flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
+                                            <Languages size={14} />
+                                            {t('settings.world.localesTitle')}
+                                        </div>
+                                        {loadingWorldLocales ? (
+                                            <Loader2 size={14} className="animate-spin text-[var(--vibe-text-faint)]" />
+                                        ) : (
+                                            <span className="rounded border border-[color-mix(in_srgb,var(--vibe-accent)_28%,transparent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-accent)]">
+                                                {t('settings.world.localesReadOnlyBadge')}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className={`mb-3 text-[11px] ${settingsMutedTextClass}`}>{t('settings.world.localesDescription')}</div>
+
+                                    {worldLocaleError ? (
+                                        <div className="rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-danger)_30%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_12%,transparent)] px-3 py-2 text-[11px] text-[var(--vibe-danger)]">
+                                            {worldLocaleError}
+                                        </div>
+                                    ) : worldLocaleFiles.length === 0 ? (
+                                        <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-3 py-3 text-[11px] italic text-[var(--vibe-text-faint)]">
+                                            {loadingWorldLocales ? t('settings.world.localesLoading') : t('settings.world.localesEmpty')}
+                                        </div>
+                                    ) : (
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                            {worldLocaleFiles.map((file) => (
+                                                <div key={file.locale} className={settingsCardClass}>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-xs font-bold text-[var(--vibe-text-primary)]">{file.locale}</span>
+                                                        <span className="font-mono text-[9px] text-[var(--vibe-text-faint)]">{formatSettingsFileSize(file.size)}</span>
+                                                    </div>
+                                                    <div className="mt-1 truncate font-mono text-[10px] text-[var(--vibe-text-faint)]">{file.filename}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </section>
                         )}

@@ -1398,7 +1398,7 @@
         "appBundlesTitle": "Встроенные переводы",
         "appBundlesDescription": "Сейчас клиент загружает ru/en из приложения и хранит выбранный язык локально.",
         "worldLocalesTitle": "Переводы мира",
-        "worldLocalesDescription": "Custom locale files в папке мира спроектированы как следующий local-first слой без записи файлов в этом срезе.",
+        "worldLocalesDescription": "Файлы переводов мира уже можно просмотреть в read-only режиме; запись и редактор пойдут отдельным безопасным срезом.",
         "readyBadge": "готово",
         "plannedBadge": "план"
       },
@@ -1440,7 +1440,12 @@
       "title": "Мир",
       "room": "Комната",
       "storage": "Хранилище",
-      "storageDescription": "Файлы мира на Host-диске"
+      "storageDescription": "Файлы мира на Host-диске",
+      "localesTitle": "Переводы мира",
+      "localesDescription": "Read-only список locale override файлов из <world>/locales. Запись и редактор появятся отдельным срезом после QA.",
+      "localesReadOnlyBadge": "только чтение",
+      "localesLoading": "Сканирую переводы мира...",
+      "localesEmpty": "В этом мире пока нет locale override файлов."
     },
     "roles": {
       "title": "Роли",

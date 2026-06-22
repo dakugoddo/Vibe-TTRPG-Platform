@@ -1,7 +1,7 @@
 # Custom world locales and translation editor
 
 > Дата: 2026-06-22  
-> Статус: read-only server foundation implemented, write/editor ещё не делать  
+> Статус: read-only server/client/settings foundation implemented, write/editor ещё не делать  
 > Решение: встроенные RU/EN переводы остаются core, пользовательские переводы мира проектируются как future mod/data-pack layer.
 
 ## Цель
@@ -20,7 +20,9 @@
 - `app/src/i18n.ts` инициализирует `i18next` из встроенных `ru.json` и `en.json`.
 - `app/src/utils/localization.ts` хранит локальный выбор языка в `localStorage` через `vibe_locale`.
 - `SettingsWindow -> Интерфейс` показывает RU/EN switch и кнопку открытия встроенной папки переводов в Electron.
+- `SettingsWindow -> Мир` показывает read-only список существующих world locale override файлов.
 - `server/src/worldLocaleManager.ts` безопасно читает существующий `<world>/locales/*.json` без записи.
+- `app/src/services/fileApi.ts` содержит typed client API для read-only locale endpoints.
 - `.pi/docs/code-map.md` фиксирует границу: стабильный chrome приложения переводится через `ru/en.json`, данные мира не трогаются.
 
 ## Слои
@@ -158,11 +160,12 @@ Rollback в UI:
 - `GET /api/world/locales/:locale` читает один override-файл, возвращает diagnostics для битого JSON и не ломает запуск.
 - Locale id ограничен pattern `^[a-z]{2}(-[A-Z]{2})?$`, path traversal отклоняется.
 - Сервер не создаёт `<world>/locales`, не пишет backup и не меняет файлы мира.
+- `app/src/services/fileApi.ts` предоставляет `listWorldLocaleFiles()` и `readWorldLocaleFile(locale)`.
+- `SettingsWindow -> Мир -> Переводы мира` показывает список файлов, размер и read-only статус.
 - Focused test: `server/src/worldLocaleManager.test.ts`.
 
 ## Следующий безопасный срез
 
-1. Добавить typed client API для read-only endpoints.
-2. Показать read-only список world locale files в Settings.
-3. Добавить pure utils для flatten/unflatten/merge locale objects и tests перед write/editor.
-4. Только после этого добавлять `PUT` и editor.
+1. Добавить pure utils для flatten/unflatten/merge locale objects и focused tests.
+2. Добавить client-side preview merge без записи файлов мира.
+3. Только после этого добавлять `PUT`, editor, import/export и rollback.

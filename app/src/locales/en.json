@@ -1398,7 +1398,7 @@
                 "appBundlesTitle": "Built-in translations",
                 "appBundlesDescription": "The client currently loads ru/en from the app and stores the selected language locally.",
                 "worldLocalesTitle": "World translations",
-                "worldLocalesDescription": "Custom locale files in the world folder are planned as the next local-first layer; this slice does not write world files.",
+                "worldLocalesDescription": "World translation files can now be inspected in read-only mode; writing and editing will land in a separate safe slice.",
                 "readyBadge": "ready",
                 "plannedBadge": "planned"
             },
@@ -1440,7 +1440,12 @@
             "title": "World",
             "room": "Room",
             "storage": "Storage",
-            "storageDescription": "World files on the Host disk"
+            "storageDescription": "World files on the Host disk",
+            "localesTitle": "World translations",
+            "localesDescription": "Read-only list of locale override files from <world>/locales. Writing and editing come in a separate slice after QA.",
+            "localesReadOnlyBadge": "read-only",
+            "localesLoading": "Scanning world translations...",
+            "localesEmpty": "This world has no locale override files yet."
         },
         "roles": {
             "title": "Roles",

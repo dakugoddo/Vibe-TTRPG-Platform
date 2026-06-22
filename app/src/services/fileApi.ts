@@ -23,6 +23,27 @@ export interface WorldMeta {
     version: string;
 }
 
+export interface WorldLocaleFile {
+    locale: string;
+    filename: string;
+    size: number;
+    modifiedAt: string;
+}
+
+export interface WorldLocaleDiagnostic {
+    level: 'error' | 'warning';
+    message: string;
+}
+
+export interface WorldLocaleReadResult {
+    locale: string;
+    exists: boolean;
+    overrides: Record<string, unknown>;
+    diagnostics: WorldLocaleDiagnostic[];
+    size?: number;
+    modifiedAt?: string;
+}
+
 // ─── Host detection ───
 // Only the host (who created/opened the room) has a file server running.
 
@@ -120,6 +141,17 @@ export async function saveAudioDeck(data: AudioDeckState): Promise<void> {
         method: 'POST',
         body: JSON.stringify(data),
     });
+}
+
+export async function listWorldLocaleFiles(): Promise<WorldLocaleFile[]> {
+    if (!(await shouldCallFileApi())) return [];
+    const data = await apiFetch<{ locales: WorldLocaleFile[] }>('/api/world/locales');
+    return data.locales || [];
+}
+
+export async function readWorldLocaleFile(locale: string): Promise<WorldLocaleReadResult | null> {
+    if (!(await shouldCallFileApi())) return null;
+    return apiFetch<WorldLocaleReadResult>(`/api/world/locales/${encodeURIComponent(locale)}`);
 }
 
 // ─── Players ───
