@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export type AssetType = 'image' | 'audio' | 'model' | 'video' | 'other';
+export type AssetType = 'image' | 'audio' | 'model' | 'video' | 'pdf' | 'other';
 
 export interface AssetRecord {
     id: string;
@@ -34,6 +34,7 @@ const MIME_BY_EXT: Record<string, string> = {
     mp4: 'video/mp4',
     obj: 'model/obj',
     ogg: 'audio/ogg',
+    pdf: 'application/pdf',
     png: 'image/png',
     stl: 'model/stl',
     svg: 'image/svg+xml',
@@ -58,6 +59,7 @@ export function getAssetType(filename: string): AssetType {
     if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'].includes(ext)) return 'audio';
     if (['glb', 'gltf', 'fbx', 'obj', 'stl'].includes(ext)) return 'model';
     if (['mp4', 'webm', 'mov'].includes(ext)) return 'video';
+    if (ext === 'pdf') return 'pdf';
     return 'other';
 }
 

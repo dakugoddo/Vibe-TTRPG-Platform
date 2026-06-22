@@ -226,6 +226,7 @@
             "audio": "Audio",
             "model": "3D",
             "video": "Video",
+            "pdf": "PDF",
             "other": "Other"
         },
         "sort": {

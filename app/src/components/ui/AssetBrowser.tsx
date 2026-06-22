@@ -16,7 +16,7 @@ import { createLargeUploadApprovalRequest } from '../../utils/sessionNotificatio
 import { glass } from '../../utils/theme';
 import type { Entity, SessionNotificationEvent } from '../../types';
 
-type AssetKind = 'all' | 'image' | 'audio' | 'model' | 'video' | 'other';
+type AssetKind = 'all' | 'image' | 'audio' | 'model' | 'video' | 'pdf' | 'other';
 type AssetSort = 'name' | 'modified' | 'size' | 'type';
 
 type AssetItem = AssetRecord & { kind: Exclude<AssetKind, 'all'> };
@@ -27,6 +27,7 @@ const FILTERS: { id: AssetKind; labelKey: string }[] = [
     { id: 'audio', labelKey: 'assetBrowser.filters.audio' },
     { id: 'model', labelKey: 'assetBrowser.filters.model' },
     { id: 'video', labelKey: 'assetBrowser.filters.video' },
+    { id: 'pdf', labelKey: 'assetBrowser.filters.pdf' },
     { id: 'other', labelKey: 'assetBrowser.filters.other' },
 ];
 
@@ -50,6 +51,7 @@ function getAssetKind(filename: string): AssetItem['kind'] {
     if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'].includes(ext)) return 'audio';
     if (['glb', 'gltf', 'fbx', 'obj', 'stl'].includes(ext)) return 'model';
     if (['mp4', 'webm', 'mov'].includes(ext)) return 'video';
+    if (ext === 'pdf') return 'pdf';
     return 'other';
 }
 
@@ -76,7 +78,7 @@ interface AssetMediaPreviewProps {
 
 function AssetMediaPreview({ asset, icon: Icon }: AssetMediaPreviewProps) {
     const { t } = useTranslation();
-    const canPreviewMedia = asset.kind === 'image' || asset.kind === 'video';
+    const canPreviewMedia = asset.kind === 'image' || asset.kind === 'video' || asset.kind === 'pdf';
     const media = useMediaLoadState(canPreviewMedia ? asset.url : '');
 
     if (!canPreviewMedia) {
@@ -93,7 +95,7 @@ function AssetMediaPreview({ asset, icon: Icon }: AssetMediaPreviewProps) {
                     onError={media.markError}
                     className={`h-full w-full object-cover transition-all duration-300 group-hover:scale-105 ${media.isLoading ? 'opacity-35' : 'opacity-100'}`}
                 />
-            ) : (
+            ) : asset.kind === 'video' ? (
                 <video
                     src={media.mediaSrc}
                     className={`h-full w-full object-cover transition-opacity duration-300 ${media.isLoading ? 'opacity-35' : 'opacity-100'}`}
@@ -103,6 +105,13 @@ function AssetMediaPreview({ asset, icon: Icon }: AssetMediaPreviewProps) {
                     onLoadedMetadata={media.markReady}
                     onError={media.markError}
                     onClick={(event) => event.stopPropagation()}
+                />
+            ) : (
+                <iframe
+                    src={media.mediaSrc}
+                    title={asset.name}
+                    onLoad={media.markReady}
+                    className={`h-full w-full border-0 bg-white transition-opacity duration-300 ${media.isLoading ? 'opacity-35' : 'opacity-100'}`}
                 />
             )}
 
@@ -470,7 +479,7 @@ export function AssetBrowser() {
             acc.all += 1;
             acc[item.kind] += 1;
             return acc;
-        }, { all: 0, image: 0, audio: 0, model: 0, video: 0, other: 0 });
+        }, { all: 0, image: 0, audio: 0, model: 0, video: 0, pdf: 0, other: 0 });
     }, [items]);
     const inlineCanvasImages = useMemo(() => findCanvasInlineImages(entitySnapshot), [entitySnapshot]);
     const inlineCanvasImagesSizeKb = useMemo(() => {

@@ -39,6 +39,7 @@ try {
     fs.mkdirSync(path.join(root, 'music', 'sfx'), { recursive: true });
     fs.writeFileSync(path.join(root, 'portrait.png'), 'png');
     fs.writeFileSync(path.join(root, 'music', 'sfx', 'door.mp3'), 'mp3');
+    fs.writeFileSync(path.join(root, 'rules.pdf'), 'pdf');
     fs.writeFileSync(path.join(root, '.ignored'), 'hidden');
 
     console.log('Test 1: Recursive stable asset index');
@@ -47,9 +48,10 @@ try {
         const paths = records.map(record => record.path);
         const audio = records.find(record => record.path === 'music/sfx/door.mp3');
 
-        assert(records.length === 2, 'Hidden files are skipped');
+        assert(records.length === 3, 'Hidden files are skipped');
         assert(paths.includes('portrait.png'), 'Top-level asset is indexed');
         assert(paths.includes('music/sfx/door.mp3'), 'Nested asset is indexed');
+        assert(paths.includes('rules.pdf'), 'PDF asset is indexed');
         assert(audio?.id === createAssetId('music/sfx/door.mp3'), 'Nested asset gets deterministic ID');
         assert(audio?.type === 'audio', 'Audio type is detected');
         assert(audio?.mime === 'audio/mpeg', 'Audio MIME is detected');
@@ -61,7 +63,9 @@ try {
         assert(getAssetType('token.webp') === 'image', 'webp is image');
         assert(getAssetType('battlemap.glb') === 'model', 'glb is model');
         assert(getAssetType('clip.webm') === 'video', 'webm is video');
+        assert(getAssetType('rules.pdf') === 'pdf', 'pdf is detected');
         assert(getAssetMime('clip.webm') === 'video/webm', 'webm MIME is known');
+        assert(getAssetMime('rules.pdf') === 'application/pdf', 'pdf MIME is known');
         assert(getAssetMime('notes.bin') === 'application/octet-stream', 'Unknown MIME falls back');
     }
 

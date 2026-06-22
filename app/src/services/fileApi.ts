@@ -345,7 +345,7 @@ export interface AssetRecord {
     path: string;
     relativePath: string;
     ext: string;
-    type: 'image' | 'audio' | 'model' | 'video' | 'other';
+    type: 'image' | 'audio' | 'model' | 'video' | 'pdf' | 'other';
     mime: string;
     size: number;
     createdAt: string;
@@ -353,7 +353,7 @@ export interface AssetRecord {
     url: string;
 }
 
-export type AssetKind = 'all' | 'image' | 'audio' | 'model' | 'video' | 'other';
+export type AssetKind = 'all' | 'image' | 'audio' | 'model' | 'video' | 'pdf' | 'other';
 
 export interface UploadAssetFileOptions {
     onProgress?: (progress: { loaded: number; total: number; percent: number }) => void;
