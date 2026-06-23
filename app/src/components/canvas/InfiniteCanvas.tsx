@@ -403,6 +403,7 @@ function LineCapDecoration({
   toY,
   stroke,
   size,
+  opacity = 1,
 }: {
   cap: LineCap;
   fromX: number;
@@ -411,6 +412,7 @@ function LineCapDecoration({
   toY: number;
   stroke: string;
   size: number;
+  opacity?: number;
 }) {
   if (cap === 'none') return null;
 
@@ -423,6 +425,7 @@ function LineCapDecoration({
         strokeWidth={Math.max(size / 6, 1.5)}
         lineCap="round"
         lineJoin="round"
+        opacity={opacity}
         listening={false}
       />
     );
@@ -435,6 +438,7 @@ function LineCapDecoration({
         y={toY}
         radius={size / 3}
         fill={stroke}
+        opacity={opacity}
         listening={false}
       />
     );
@@ -450,6 +454,7 @@ function LineCapDecoration({
         radius={size / 2.5}
         fill={stroke}
         rotation={(angle * 180) / Math.PI + 45}
+        opacity={opacity}
         listening={false}
       />
     );
@@ -464,6 +469,7 @@ function LineCapDecoration({
         width={s * 2}
         height={s * 2}
         fill={stroke}
+        opacity={opacity}
         listening={false}
       />
     );
@@ -529,12 +535,18 @@ const DrawElementNode = memo(function DrawElementNode({
     const endFrom = { x: pts[endIdx - 4], y: pts[endIdx - 3] };
     const endTo = { x: pts[endIdx - 2], y: pts[endIdx - 1] };
 
-    const useTension = getLineTension(rawPts, lineMode);
+    const useTension = getLineTension(pts, lineMode);
 
     // Compute stroke opacity
     const sOpacity = element.strokeOpacity ?? 1;
     const sketchPts = visualStyle.sketchJitter > 0
       ? getJitteredLinePoints(pts, element.id, visualStyle.sketchJitter)
+      : null;
+    const startCapSketchOffset = visualStyle.sketchJitter > 0
+      ? getVisualStyleOffset(element.id, 'start-cap', visualStyle.sketchJitter)
+      : null;
+    const endCapSketchOffset = visualStyle.sketchJitter > 0
+      ? getVisualStyleOffset(element.id, 'end-cap', visualStyle.sketchJitter)
       : null;
 
     return (
@@ -597,6 +609,18 @@ const DrawElementNode = memo(function DrawElementNode({
           stroke={element.stroke}
           size={capSize}
         />
+        {startCapSketchOffset && (
+          <LineCapDecoration
+            cap={element.startCap}
+            fromX={startFrom.x + startCapSketchOffset.x}
+            fromY={startFrom.y + startCapSketchOffset.y}
+            toX={startTo.x + startCapSketchOffset.x}
+            toY={startTo.y + startCapSketchOffset.y}
+            stroke={element.stroke}
+            size={capSize}
+            opacity={sOpacity * visualStyle.sketchStrokeOpacity}
+          />
+        )}
         {/* End cap */}
         <LineCapDecoration
           cap={element.endCap}
@@ -607,6 +631,18 @@ const DrawElementNode = memo(function DrawElementNode({
           stroke={element.stroke}
           size={capSize}
         />
+        {endCapSketchOffset && (
+          <LineCapDecoration
+            cap={element.endCap}
+            fromX={endFrom.x + endCapSketchOffset.x}
+            fromY={endFrom.y + endCapSketchOffset.y}
+            toX={endTo.x + endCapSketchOffset.x}
+            toY={endTo.y + endCapSketchOffset.y}
+            stroke={element.stroke}
+            size={capSize}
+            opacity={sOpacity * visualStyle.sketchStrokeOpacity}
+          />
+        )}
         {/* Line label (objectName) at center */}
         {element.objectName && (() => {
           // Calculate midpoint of the line

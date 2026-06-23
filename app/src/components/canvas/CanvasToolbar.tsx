@@ -16,7 +16,7 @@ import { useCanvasStore } from '../../store/canvasStore';
 import { useWindowStore } from '../../store/windowStore';
 import { useUIStore } from '../../store/uiStore';
 import { useEntitiesByParent, getEntitiesSnapshot } from '../../hooks/useEntities';
-import type { CanvasTool, StrokeStyle, LineCap, TextFontFamily, TextAlign, DrawElement, EntityTokenMode } from '../../types/canvasTypes';
+import type { CanvasTool, StrokeStyle, LineCap, TextFontFamily, TextAlign, DrawElement, EntityTokenMode, DrawVisualStyle } from '../../types/canvasTypes';
 import { getElementBounds, reorderElements } from '../../types/canvasTypes';
 import { CANVAS_VISUAL_STYLE_OPTIONS } from '../../utils/canvasVisualStyle';
 import { CANVAS_LINE_MODE_OPTIONS } from '../../utils/canvasLineRouting';
@@ -150,6 +150,32 @@ const STROKE_STYLES: { id: StrokeStyle; labelKey: string; preview: string }[] = 
   { id: 'dashed', labelKey: 'canvasToolbar.strokeStyles.dashed', preview: '– – –' },
   { id: 'dotted', labelKey: 'canvasToolbar.strokeStyles.dotted', preview: '• • •' },
 ];
+
+function getVisualStylePreview(style: DrawVisualStyle): React.ReactNode {
+  if (style === 'soft') {
+    return (
+      <svg width="22" height="14" viewBox="0 0 22 14" fill="none" stroke="currentColor" strokeLinecap="round">
+        <path d="M3 9C7 5 14 5 19 4" strokeWidth="5" opacity="0.22" />
+        <path d="M3 9C7 5 14 5 19 4" strokeWidth="1.8" />
+      </svg>
+    );
+  }
+
+  if (style === 'sketch') {
+    return (
+      <svg width="22" height="14" viewBox="0 0 22 14" fill="none" stroke="currentColor" strokeLinecap="round">
+        <path d="M3 9C7 5 12 10 19 4" strokeWidth="1.7" />
+        <path d="M3 10C8 6 13 9 19 5" strokeWidth="1.3" opacity="0.65" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg width="22" height="14" viewBox="0 0 22 14" fill="none" stroke="currentColor" strokeLinecap="round">
+      <path d="M3 9L19 4" strokeWidth="1.8" />
+    </svg>
+  );
+}
 
 const LINE_CAPS: { id: LineCap; labelKey: string; icon: React.ReactNode }[] = [
   {
@@ -1279,14 +1305,15 @@ export function CanvasToolbar() {
                       <button
                         key={style.id}
                         onClick={() => handleStyleChange({ visualStyle: style.id })}
-                        className={`h-6 px-2 rounded-md flex items-center transition-all text-[10px] cursor-pointer
+                        className={`h-8 w-10 rounded-md flex items-center justify-center transition-all cursor-pointer
                           ${currentStyle.visualStyle === style.id
                             ? 'bg-white/20 text-white shadow-sm'
                             : 'text-white/40 hover:bg-white/10 hover:text-white/70'
                           }`}
                         title={t(`canvasToolbar.visualStyleDescriptions.${style.id}`)}
                       >
-                        {t(`canvasToolbar.visualStyles.${style.id}`)}
+                        {getVisualStylePreview(style.id)}
+                        <span className="sr-only">{t(`canvasToolbar.visualStyles.${style.id}`)}</span>
                       </button>
                     ))}
                   </div>

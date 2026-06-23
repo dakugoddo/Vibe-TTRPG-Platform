@@ -38,6 +38,18 @@ function appendPoint(target: number[], x: number, y: number): void {
 export function getRoutedLinePoints(points: number[], mode?: DrawLineMode): number[] {
   if (points.length < 4) return points;
   const resolved = getLineMode(mode, points.length / 2);
+  if (resolved === 'curved' && points.length === 4) {
+    const [x1, y1, x2, y2] = points;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) return points;
+
+    const bend = Math.min(80, Math.max(20, len * 0.16));
+    const midX = x1 + dx / 2 - (dy / len) * bend;
+    const midY = y1 + dy / 2 + (dx / len) * bend;
+    return [x1, y1, midX, midY, x2, y2];
+  }
   if (resolved !== 'elbow') return points;
 
   const routed: number[] = [];

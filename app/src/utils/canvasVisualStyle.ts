@@ -35,8 +35,8 @@ export const CANVAS_VISUAL_STYLE_OPTIONS: CanvasVisualStyleConfig[] = [
     description: 'Стабильный рукописный дубль обводки без случайного мерцания.',
     softStrokeWidth: 0,
     softStrokeOpacity: 0,
-    sketchJitter: 1.4,
-    sketchStrokeOpacity: 0.42,
+    sketchJitter: 2.2,
+    sketchStrokeOpacity: 0.55,
   },
 ];
 

@@ -61,6 +61,12 @@ Canvas должен остаться быстрым VTT-слоем, но пол�
 - Старые draw elements без `lineMode` получают migration-safe fallback: 2 точки = `straight`, 3+ точки = `curved`.
 - Line point insert/delete теперь идёт через tested helpers: double-click по сегменту вставляет point, double-click рядом с внутренней point удаляет её, endpoints не удаляются.
 
+2026-06-23 polish:
+
+- `curved` теперь рендерит обычную 2-точечную line/arrow как плавную дугу через синтетическую midpoint-точку, поэтому режим кривой виден сразу после одного drag-жеста.
+- `sketch` усилен без новой зависимости: jitter стал заметнее, стрелочные caps получают такой же deterministic sketch-дубль, а toolbar показывает Excalidraw-like preview icons вместо текстовых плашек.
+- Не добавлять rough.js до реального профилирования: текущий lightweight Konva path сохраняет local-first sync contract и не меняет persisted draw element format.
+
 ### Slice 2: Line binding contract
 
 - Расширить `DrawElement` для line/arrow:
