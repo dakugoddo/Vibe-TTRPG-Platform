@@ -13,7 +13,7 @@ import { useInterfaceDensity } from '../../hooks/useInterfaceDensity';
 import { useLocalePreference } from '../../hooks/useLocalePreference';
 import { useThemePreset } from '../../hooks/useThemePreset';
 import { DEFAULT_ROLE_DEFINITIONS, getEffectivePermissions, type PermissionKey, type UserRole } from '../../utils/permissions';
-import { SUPPORTED_LOCALES, flattenLocaleMessages, mergeLocaleMessages, normalizeLocale, type LocaleMessageTree, type SupportedLocale } from '../../utils/localization';
+import { SUPPORTED_LOCALES, flattenLocaleMessages, mergeLocaleMessages, normalizeLocale, unflattenLocaleMessages, type FlatLocaleMessages, type LocaleMessageTree, type SupportedLocale } from '../../utils/localization';
 import { listImplementedNotesShellModules } from '../../utils/notesWorkspaceModules';
 import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, glass, interfaceDensityPresets, saveCustomThemeColors, themePresets, type CustomThemeColors } from '../../utils/theme';
 import { getDevPerformanceOverlayEnabled, setDevPerformanceOverlayEnabled } from '../../utils/devPerformanceOverlay';
@@ -89,6 +89,15 @@ function formatSettingsFileSize(size: number): string {
 
 function formatWorldLocaleDraft(overrides: Record<string, unknown>): string {
     return `${JSON.stringify(overrides, null, 2)}\n`;
+}
+
+function parseWorldLocaleDraftObject(draft: string): Record<string, unknown> | null {
+    try {
+        const parsed = JSON.parse(draft) as unknown;
+        return isSettingsRecord(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
 }
 
 function buildWorldLocalePreview(result: WorldLocaleReadResult, baseLocale: SupportedLocale, baseBundle: LocaleMessageTree): WorldLocalePreview {
@@ -167,8 +176,41 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const [worldLocaleDraftError, setWorldLocaleDraftError] = useState('');
     const [savingWorldLocale, setSavingWorldLocale] = useState(false);
     const [worldLocaleSaveMessage, setWorldLocaleSaveMessage] = useState('');
+    const [worldLocaleKeyFilter, setWorldLocaleKeyFilter] = useState('');
     const worldLocaleImportInputRef = useRef<HTMLInputElement | null>(null);
     const openConfirm = useUIStore((state) => state.openConfirm);
+    const worldLocaleBaseFlat = useMemo(
+        () => worldLocalePreview ? flattenLocaleMessages(getBuiltInLocaleMessages(worldLocalePreview.baseLocale)) : {},
+        [worldLocalePreview],
+    );
+    const worldLocaleDraftFlat = useMemo<FlatLocaleMessages>(
+        () => flattenLocaleMessages(parseWorldLocaleDraftObject(worldLocaleDraft) ?? {}),
+        [worldLocaleDraft],
+    );
+    const worldLocaleEditorRows = useMemo(() => {
+        const query = worldLocaleKeyFilter.trim().toLowerCase();
+        const keys = Array.from(new Set([
+            ...Object.keys(worldLocaleBaseFlat),
+            ...Object.keys(worldLocaleDraftFlat),
+        ])).sort((left, right) => left.localeCompare(right, locale));
+        const filteredKeys = query
+            ? keys.filter((key) => (
+                key.toLowerCase().includes(query)
+                || worldLocaleBaseFlat[key]?.toLowerCase().includes(query)
+                || worldLocaleDraftFlat[key]?.toLowerCase().includes(query)
+            ))
+            : keys;
+
+        return {
+            total: filteredKeys.length,
+            rows: filteredKeys.slice(0, 80).map((key) => ({
+                key,
+                baseValue: worldLocaleBaseFlat[key] ?? '',
+                overrideValue: worldLocaleDraftFlat[key] ?? '',
+                changed: Object.prototype.hasOwnProperty.call(worldLocaleDraftFlat, key),
+            })),
+        };
+    }, [locale, worldLocaleBaseFlat, worldLocaleDraftFlat, worldLocaleKeyFilter]);
 
     useEffect(() => {
         if (!isOpen || !isGM || activeTab !== 'roles') return;
@@ -246,6 +288,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                 setWorldLocaleDraft(formatWorldLocaleDraft(result.overrides));
                 setWorldLocaleDraftError('');
                 setWorldLocaleSaveMessage('');
+                setWorldLocaleKeyFilter('');
             } catch (err) {
                 if (!cancelled) setWorldLocaleError(err instanceof Error ? err.message : String(err));
             } finally {
@@ -349,18 +392,39 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     };
 
     const parseWorldLocaleDraft = (): Record<string, unknown> | null => {
-        try {
-            const parsed = JSON.parse(worldLocaleDraft) as unknown;
-            if (!isSettingsRecord(parsed)) {
-                setWorldLocaleDraftError(t('settings.world.localesEditorObjectError'));
-                return null;
-            }
-            setWorldLocaleDraftError('');
-            return parsed;
-        } catch (err) {
-            setWorldLocaleDraftError(err instanceof Error ? err.message : String(err));
+        const parsed = parseWorldLocaleDraftObject(worldLocaleDraft);
+        if (!parsed) {
+            setWorldLocaleDraftError(t('settings.world.localesEditorObjectError'));
             return null;
         }
+        setWorldLocaleDraftError('');
+        return parsed;
+    };
+
+    const setWorldLocaleDraftKey = (key: string, value: string) => {
+        const parsed = parseWorldLocaleDraft();
+        if (!parsed) return;
+
+        const nextFlat = flattenLocaleMessages(parsed);
+        if (value === '') {
+            delete nextFlat[key];
+        } else {
+            nextFlat[key] = value;
+        }
+        setWorldLocaleDraft(formatWorldLocaleDraft(unflattenLocaleMessages(nextFlat)));
+        setWorldLocaleDraftError('');
+        setWorldLocaleSaveMessage('');
+    };
+
+    const resetWorldLocaleDraftKey = (key: string) => {
+        const parsed = parseWorldLocaleDraft();
+        if (!parsed) return;
+
+        const nextFlat = flattenLocaleMessages(parsed);
+        delete nextFlat[key];
+        setWorldLocaleDraft(formatWorldLocaleDraft(unflattenLocaleMessages(nextFlat)));
+        setWorldLocaleDraftError('');
+        setWorldLocaleSaveMessage('');
     };
 
     const saveWorldLocaleDraft = async (overrides: Record<string, unknown>) => {
@@ -1197,6 +1261,67 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                                 {worldLocaleDraftError}
                                                             </div>
                                                         )}
+                                                        <div className="mb-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)]">
+                                                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--vibe-border-subtle)] px-2 py-2">
+                                                                <div>
+                                                                    <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('settings.world.localesTableTitle')}</div>
+                                                                    <div className="mt-0.5 text-[10px] text-[var(--vibe-text-faint)]">{t('settings.world.localesTableDescription')}</div>
+                                                                </div>
+                                                                <input
+                                                                    value={worldLocaleKeyFilter}
+                                                                    onChange={(event) => setWorldLocaleKeyFilter(event.target.value)}
+                                                                    placeholder={t('settings.world.localesTableSearch')}
+                                                                    className="h-8 min-w-48 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 font-mono text-[10px] text-[var(--vibe-text-primary)] outline-none transition-colors placeholder:text-[var(--vibe-text-faint)] focus:border-[var(--vibe-border-strong)]"
+                                                                />
+                                                            </div>
+                                                            <div className="max-h-72 overflow-auto">
+                                                                <div className="sticky top-0 z-10 grid grid-cols-[minmax(150px,0.9fr)_minmax(160px,1fr)_minmax(180px,1.1fr)_40px] gap-2 border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-1.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                                                    <div>{t('settings.world.localesTableKey')}</div>
+                                                                    <div>{t('settings.world.localesTableBuiltIn')}</div>
+                                                                    <div>{t('settings.world.localesTableOverride')}</div>
+                                                                    <div className="text-right">{t('settings.world.localesTableReset')}</div>
+                                                                </div>
+                                                                {worldLocaleEditorRows.rows.length > 0 ? (
+                                                                    <div className="divide-y divide-[var(--vibe-border-subtle)]">
+                                                                        {worldLocaleEditorRows.rows.map((row) => (
+                                                                            <div key={row.key} className="grid grid-cols-[minmax(150px,0.9fr)_minmax(160px,1fr)_minmax(180px,1.1fr)_40px] gap-2 px-2 py-1.5 text-[10px]">
+                                                                                <div className="min-w-0 font-mono text-[var(--vibe-text-faint)]" title={row.key}>
+                                                                                    <div className="truncate">{row.key}</div>
+                                                                                </div>
+                                                                                <div className="min-w-0 text-[var(--vibe-text-muted)]" title={row.baseValue}>
+                                                                                    <div className="truncate">{row.baseValue}</div>
+                                                                                </div>
+                                                                                <input
+                                                                                    value={row.overrideValue}
+                                                                                    onChange={(event) => setWorldLocaleDraftKey(row.key, event.target.value)}
+                                                                                    placeholder={row.baseValue}
+                                                                                    className={`h-7 min-w-0 rounded-[var(--vibe-radius-sm)] border bg-[var(--vibe-surface-block)] px-2 text-[10px] text-[var(--vibe-text-primary)] outline-none transition-colors placeholder:text-[var(--vibe-text-faint)] focus:border-[var(--vibe-border-strong)] ${
+                                                                                        row.changed ? 'border-[color-mix(in_srgb,var(--vibe-accent)_38%,transparent)]' : 'border-[var(--vibe-border-subtle)]'
+                                                                                    }`}
+                                                                                />
+                                                                                <button
+                                                                                    type="button"
+                                                                                    disabled={!row.changed}
+                                                                                    onClick={() => resetWorldLocaleDraftKey(row.key)}
+                                                                                    className="flex h-7 w-7 items-center justify-center justify-self-end rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] text-[var(--vibe-text-faint)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)] disabled:cursor-not-allowed disabled:opacity-35"
+                                                                                    title={t('settings.world.localesTableReset')}
+                                                                                >
+                                                                                    <X size={12} />
+                                                                                </button>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="px-2 py-3 text-[10px] italic text-[var(--vibe-text-faint)]">{t('settings.world.localesTableEmpty')}</div>
+                                                                )}
+                                                            </div>
+                                                            {worldLocaleEditorRows.total > worldLocaleEditorRows.rows.length && (
+                                                                <div className="border-t border-[var(--vibe-border-subtle)] px-2 py-1.5 text-[10px] text-[var(--vibe-text-faint)]">
+                                                                    {t('settings.world.localesTableLimited', { shown: worldLocaleEditorRows.rows.length, total: worldLocaleEditorRows.total })}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="mb-1 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{t('settings.world.localesJsonFallback')}</div>
                                                         <textarea
                                                             value={worldLocaleDraft}
                                                             onChange={(event) => {

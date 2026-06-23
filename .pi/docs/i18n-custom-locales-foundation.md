@@ -1,7 +1,7 @@
 # Custom world locales and translation editor
 
 > Дата: 2026-06-22  
-> Статус: read/write server foundation, Settings editor и player delivery через Yjs implemented
+> Статус: read/write server foundation, Settings key-table editor и player delivery через Yjs implemented
 > Решение: встроенные RU/EN переводы остаются core, пользовательские переводы мира проектируются как future mod/data-pack layer.
 
 ## Цель
@@ -171,6 +171,7 @@ Rollback в UI:
 - `app/src/store/yjsStore.ts` хранит host-published `worldLocales` snapshots в общем world-доке; публиковать их может только host.
 - `App.tsx` на host читает supported world overrides из файлов и публикует их в Yjs, а player-клиенты применяют текущий snapshot без File API.
 - `SettingsWindow` после save/rollback сразу публикует новый locale snapshot, чтобы игроки получили изменение без reload.
+- `SettingsWindow` содержит key-table editor поверх JSON draft: поиск по ключу/тексту, inline override input, reset key и JSON fallback.
 - Focused client test: `app/src/utils/localization.test.ts`.
 - Focused runtime test: `app/src/utils/worldLocaleRuntime.test.ts`.
 - Focused test: `server/src/worldLocaleManager.test.ts`.
@@ -179,5 +180,5 @@ Rollback в UI:
 ## Следующий безопасный срез
 
 1. Manual QA Settings editor на мире с валидным и битым `<world>/locales/*.json`.
-2. Пройти player delivery smoke: host меняет supported locale override, player с тем же runtime language видит обновлённый UI label без File API.
-3. После QA решить, нужна ли таблица ключей вместо JSON textarea.
+2. Пройти key-table smoke: поиск, inline edit, пустое значение/reset key, save, rollback.
+3. Пройти player delivery smoke: host меняет supported locale override, player с тем же runtime language видит обновлённый UI label без File API.

@@ -1,7 +1,7 @@
 # World locale editor QA
 
 > Дата: 2026-06-22  
-> Статус: manual QA pending; player delivery через Yjs implemented
+> Статус: manual QA pending; key-table editor и player delivery через Yjs implemented
 > Цель: проверить `Settings -> Мир -> Переводы мира` перед beta/0.1 и перед дальнейшим player delivery слоем.
 
 ## Подготовка
@@ -50,6 +50,9 @@
 
 ## Проверка editor/save
 
+- В блоке таблицы ключей найти `settings.tabs.world` через поиск.
+- Изменить override value inline в таблице; JSON fallback ниже должен обновиться тем же ключом.
+- Очистить value или нажать reset key; override key должен исчезнуть из JSON draft.
 - Изменить JSON в textarea на валидный object и нажать `Сохранить`.
 - ConfirmDialog появляется до записи.
 - После подтверждения `<world>/locales/ru.json` обновлён pretty JSON.
