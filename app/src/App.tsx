@@ -26,9 +26,9 @@ import { DevPerformanceOverlay } from './components/ui/DevPerformanceOverlay';
 import { generateEntityId } from './utils/entityId';
 import { NOTES_AUDIO_DOCK_HOST_ID } from './utils/notesWorkspaceConstants';
 import { glass } from './utils/theme';
-import { normalizeLocale } from './utils/localization';
+import { SUPPORTED_LOCALES, normalizeLocale, type LocaleMessageTree } from './utils/localization';
 import { applyWorldLocaleOverrides, resetWorldLocaleOverrides } from './utils/worldLocaleRuntime';
-import type { UserRole } from './types';
+import type { UserRole, WorldLocaleSnapshot } from './types';
 
 const InfiniteCanvas = lazy(() => import('./components/canvas/InfiniteCanvas').then((module) => ({ default: module.InfiniteCanvas })));
 const CanvasToolbar = lazy(() => import('./components/canvas/CanvasToolbar').then((module) => ({ default: module.CanvasToolbar })));
@@ -79,30 +79,57 @@ function App() {
 
   useEffect(() => {
     const locale = normalizeLocale(i18n.language);
-    let cancelled = false;
+
+    const applySnapshot = (snapshot: WorldLocaleSnapshot | null) => {
+      if (snapshot && snapshot.diagnostics.length === 0) {
+        if (applyWorldLocaleOverrides(i18n, snapshot.locale, snapshot.overrides as LocaleMessageTree)) return;
+      }
+      resetWorldLocaleOverrides(i18n, locale);
+    };
 
     if (!inRoom) {
       resetWorldLocaleOverrides(i18n, locale);
       return;
     }
 
-    const loadWorldLocaleOverrides = async () => {
-      try {
-        const result = await readWorldLocaleFile(locale);
-        if (cancelled) return;
+    if (!checkHost()) {
+      applySnapshot(yjsStore.getWorldLocaleSnapshot(locale));
+      return yjsStore.observeWorldLocaleSnapshots((snapshot) => {
+        if (snapshot.locale === locale) applySnapshot(snapshot);
+      });
+    }
 
-        if (result?.exists && result.diagnostics.length === 0) {
-          applyWorldLocaleOverrides(i18n, locale, result.overrides);
-        } else {
-          resetWorldLocaleOverrides(i18n, locale);
+    let cancelled = false;
+
+    const publishWorldLocaleOverrides = async () => {
+      for (const supportedLocale of SUPPORTED_LOCALES) {
+        try {
+          const result = await readWorldLocaleFile(supportedLocale.id);
+          if (cancelled) return;
+
+          yjsStore.publishWorldLocaleSnapshot({
+            locale: supportedLocale.id,
+            exists: Boolean(result?.exists),
+            overrides: result?.overrides ?? {},
+            diagnostics: result?.diagnostics ?? [],
+          });
+
+          if (supportedLocale.id === locale) applySnapshot(yjsStore.getWorldLocaleSnapshot(locale));
+        } catch {
+          if (cancelled) return;
+          yjsStore.publishWorldLocaleSnapshot({
+            locale: supportedLocale.id,
+            exists: false,
+            overrides: {},
+            diagnostics: [{ level: 'warning', message: 'World locale file is unavailable.' }],
+          });
+
+          if (supportedLocale.id === locale) resetWorldLocaleOverrides(i18n, locale);
         }
-      } catch {
-        if (cancelled) return;
-        resetWorldLocaleOverrides(i18n, locale);
       }
     };
 
-    void loadWorldLocaleOverrides();
+    void publishWorldLocaleOverrides();
     return () => {
       cancelled = true;
     };

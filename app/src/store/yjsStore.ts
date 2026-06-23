@@ -1,7 +1,7 @@
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { IndexeddbPersistence } from 'y-indexeddb';
-import type { AudioSessionCommand, Entity, ChatMessage, DatabaseType, SessionNotificationEvent, SessionNotificationStatus } from '../types';
+import type { AudioSessionCommand, Entity, ChatMessage, DatabaseType, SessionNotificationEvent, SessionNotificationStatus, WorldLocaleSnapshot } from '../types';
 import { getIsHost } from '../services/fileApi';
 import { sanitizeCanvasEntityForSharedSync } from '../utils/canvasPersistence';
 import { CURRENT_ENTITY_SCHEMA_VERSION, withCurrentEntitySchema } from '../utils/entitySchema';
@@ -16,6 +16,7 @@ export class YjsStore {
     entitiesMap: Y.Map<Entity>;
     chatArray: Y.Array<ChatMessage>;
     audioMap: Y.Map<AudioSessionCommand>;
+    worldLocalesMap: Y.Map<WorldLocaleSnapshot>;
     sessionNotificationsMap: Y.Map<SessionNotificationEvent>;
     /** Stores user roles: Map<peerId, UserRole> */
     rolesMap: Y.Map<UserRole>;
@@ -40,6 +41,7 @@ export class YjsStore {
         this.entitiesMap = this.doc.getMap<Entity>('entities');
         this.chatArray = this.doc.getArray<ChatMessage>('chat');
         this.audioMap = this.doc.getMap<AudioSessionCommand>('audio');
+        this.worldLocalesMap = this.doc.getMap<WorldLocaleSnapshot>('worldLocales');
         this.sessionNotificationsMap = this.doc.getMap<SessionNotificationEvent>('sessionNotifications');
         this.rolesMap = this.doc.getMap<UserRole>('roles');
     }
@@ -450,6 +452,45 @@ export class YjsStore {
 
         this.audioMap.observe(observer);
         return () => this.audioMap.unobserve(observer);
+    }
+
+    publishWorldLocaleSnapshot(
+        input: Omit<WorldLocaleSnapshot, 'issuedAt' | 'senderId' | 'senderName'>,
+    ): boolean {
+        if (!getIsHost()) {
+            console.warn('Blocked world locale snapshot publish: only host can publish world locale overrides');
+            return false;
+        }
+
+        const locale = input.locale.trim();
+        if (!locale) return false;
+
+        this.worldLocalesMap.set(locale, {
+            locale,
+            exists: input.exists,
+            overrides: input.overrides,
+            diagnostics: input.diagnostics,
+            issuedAt: Date.now(),
+            senderId: this.localPlayerId || undefined,
+            senderName: this.localPlayerName || undefined,
+        });
+        return true;
+    }
+
+    getWorldLocaleSnapshot(locale: string): WorldLocaleSnapshot | null {
+        return this.worldLocalesMap.get(locale) ?? null;
+    }
+
+    observeWorldLocaleSnapshots(handler: (snapshot: WorldLocaleSnapshot) => void): () => void {
+        const observer = (event: Y.YMapEvent<WorldLocaleSnapshot>) => {
+            event.keysChanged.forEach((locale) => {
+                const snapshot = this.worldLocalesMap.get(locale);
+                if (snapshot) handler(snapshot);
+            });
+        };
+
+        this.worldLocalesMap.observe(observer);
+        return () => this.worldLocalesMap.unobserve(observer);
     }
 
     sendSessionNotification(

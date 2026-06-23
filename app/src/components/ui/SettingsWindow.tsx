@@ -379,6 +379,12 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
             const baseBundle = getBuiltInLocaleMessages(baseLocale);
             setWorldLocalePreview(buildWorldLocalePreview(saved, baseLocale, baseBundle));
             applyWorldLocaleOverrides(i18n, saved.locale, saved.overrides);
+            yjsStore.publishWorldLocaleSnapshot({
+                locale: saved.locale,
+                exists: saved.exists,
+                overrides: saved.overrides,
+                diagnostics: saved.diagnostics,
+            });
             setWorldLocaleDraft(formatWorldLocaleDraft(saved.overrides));
             setWorldLocaleDraftError('');
             setWorldLocaleSaveMessage(saved.backupCreated
@@ -409,6 +415,12 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
             const baseBundle = getBuiltInLocaleMessages(baseLocale);
             setWorldLocalePreview(buildWorldLocalePreview(restored, baseLocale, baseBundle));
             applyWorldLocaleOverrides(i18n, restored.locale, restored.overrides);
+            yjsStore.publishWorldLocaleSnapshot({
+                locale: restored.locale,
+                exists: restored.exists,
+                overrides: restored.overrides,
+                diagnostics: restored.diagnostics,
+            });
             setWorldLocaleDraft(formatWorldLocaleDraft(restored.overrides));
             setWorldLocaleSaveMessage(t('settings.world.localesRollbackSuccess'));
             setWorldLocaleFiles(await listWorldLocaleFiles());

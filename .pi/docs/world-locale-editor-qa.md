@@ -1,7 +1,7 @@
 # World locale editor QA
 
 > Дата: 2026-06-22  
-> Статус: manual QA pending  
+> Статус: manual QA pending; player delivery через Yjs implemented
 > Цель: проверить `Settings -> Мир -> Переводы мира` перед beta/0.1 и перед дальнейшим player delivery слоем.
 
 ## Подготовка
@@ -38,6 +38,15 @@
 - При текущем языке `ru` и валидном `ru.json` UI label вкладки мира меняется на override после входа в комнату или после сохранения файла.
 - Если `ru.json` удалить или сделать битым, приложение возвращается к built-in RU label после reload/повторного входа.
 - Entity names/descriptions/properties не переводятся автоматически.
+
+## Проверка player delivery
+
+- Host открывает мир, входит как GM и держит язык интерфейса `ru`.
+- Player подключается к той же комнате, выбирает язык интерфейса `ru` и не должен вызывать `/api/world/locales/*` со своей стороны.
+- Host меняет один supported override, например `settings.tabs.world`, и нажимает `Сохранить`.
+- Host UI обновляется сразу после save.
+- Player UI получает тот же label через Yjs `worldLocales` без reload и без File API.
+- Если Host откатывает файл через `Откатить`, Player получает откат через тот же Yjs snapshot.
 
 ## Проверка editor/save
 

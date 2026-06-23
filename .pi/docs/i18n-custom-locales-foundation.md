@@ -1,7 +1,7 @@
 # Custom world locales and translation editor
 
 > Дата: 2026-06-22  
-> Статус: read/write server foundation and minimal Settings editor implemented  
+> Статус: read/write server foundation, Settings editor и player delivery через Yjs implemented
 > Решение: встроенные RU/EN переводы остаются core, пользовательские переводы мира проектируются как future mod/data-pack layer.
 
 ## Цель
@@ -22,7 +22,7 @@
 - `SettingsWindow -> Интерфейс` показывает RU/EN switch и кнопку открытия встроенной папки переводов в Electron.
 - `SettingsWindow -> Мир` показывает read-only список существующих world locale override файлов.
 - `server/src/worldLocaleManager.ts` безопасно читает существующий `<world>/locales/*.json` без записи.
-- `app/src/services/fileApi.ts` содержит typed client API для read-only locale endpoints.
+- `app/src/services/fileApi.ts` содержит typed client API для locale endpoints; player-клиенты не вызывают эти endpoints и получают runtime overrides через Yjs `worldLocales`.
 - `.pi/docs/code-map.md` фиксирует границу: стабильный chrome приложения переводится через `ru/en.json`, данные мира не трогаются.
 
 ## Слои
@@ -66,7 +66,7 @@
 При загрузке клиента итоговый словарь строится так:
 
 1. built-in locale из приложения;
-2. world locale overrides с сервера хоста;
+2. world locale overrides с файлов хоста, опубликованные в session metadata через Yjs;
 3. user-local overrides, если этот слой появится позже.
 
 Если world override битый:
@@ -95,7 +95,7 @@ POST /api/world/locales/:locale/export
 - `validate` проверяет JSON, unknown keys, типы значений и размер;
 - `export` отдаёт файл для ручного сохранения.
 
-Player-клиенты на первом этапе только читают merged locale, без записи.
+Player-клиенты на первом этапе только читают world locale snapshot из Yjs, без записи и без вызова File API.
 
 ## Editor UX
 
@@ -141,7 +141,7 @@ Rollback в UI:
 - Built-in RU/EN continue working without world locale files.
 - Host can open Settings -> World translations and see available override files.
 - Host can edit one key, save it to `<world>/locales/<locale>.json`, reload app and see changed chrome label.
-- Player receives the merged locale from host and sees the same changed chrome label.
+- Player receives the world locale snapshot from host through Yjs and sees the same changed chrome label.
 - Invalid JSON does not break app startup.
 - `desktop:build`, focused locale tests and server locale endpoint tests pass.
 
@@ -168,7 +168,9 @@ Rollback в UI:
 - `POST /api/world/locales/:locale/rollback` восстанавливает `<locale>.json` из `<locale>.json.bak`.
 - `SettingsWindow -> Мир -> Переводы мира` содержит минимальный JSON editor: object-only validation, draft import/export, explicit save через ConfirmDialog, rollback через ConfirmDialog, success/error feedback.
 - `app/src/utils/worldLocaleRuntime.ts` применяет supported world overrides (`ru`/`en`) поверх встроенного bundle без накопления старых overrides.
-- `App.tsx` загружает текущий supported world override при входе в комнату и смене языка; player/no-file-api path откатывается к built-in bundle.
+- `app/src/store/yjsStore.ts` хранит host-published `worldLocales` snapshots в общем world-доке; публиковать их может только host.
+- `App.tsx` на host читает supported world overrides из файлов и публикует их в Yjs, а player-клиенты применяют текущий snapshot без File API.
+- `SettingsWindow` после save/rollback сразу публикует новый locale snapshot, чтобы игроки получили изменение без reload.
 - Focused client test: `app/src/utils/localization.test.ts`.
 - Focused runtime test: `app/src/utils/worldLocaleRuntime.test.ts`.
 - Focused test: `server/src/worldLocaleManager.test.ts`.
@@ -177,5 +179,5 @@ Rollback в UI:
 ## Следующий безопасный срез
 
 1. Manual QA Settings editor на мире с валидным и битым `<world>/locales/*.json`.
-2. Пройти manual QA checklist.
-3. После QA решить, нужен ли player delivery world override через Yjs/session metadata.
+2. Пройти player delivery smoke: host меняет supported locale override, player с тем же runtime language видит обновлённый UI label без File API.
+3. После QA решить, нужна ли таблица ключей вместо JSON textarea.

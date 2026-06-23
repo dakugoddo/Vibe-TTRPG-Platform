@@ -64,6 +64,19 @@ export interface AudioSessionCommand {
     senderName?: string;
 }
 
+export interface WorldLocaleSnapshot {
+    locale: string;
+    exists: boolean;
+    overrides: Record<string, unknown>;
+    diagnostics: Array<{
+        level: 'error' | 'warning';
+        message: string;
+    }>;
+    issuedAt: number;
+    senderId?: string;
+    senderName?: string;
+}
+
 export type SessionNotificationType = 'large-upload-approval';
 export type SessionNotificationScope = 'gm' | 'player' | 'session';
 export type SessionNotificationStatus = 'pending' | 'approved' | 'rejected' | 'uploading' | 'done' | 'failed';
