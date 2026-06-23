@@ -171,7 +171,7 @@ Rollback в UI:
 - `app/src/store/yjsStore.ts` хранит host-published `worldLocales` snapshots в общем world-доке; публиковать их может только host.
 - `App.tsx` на host читает supported world overrides из файлов и публикует их в Yjs, а player-клиенты применяют текущий snapshot без File API.
 - `SettingsWindow` после save/rollback сразу публикует новый locale snapshot, чтобы игроки получили изменение без reload.
-- `SettingsWindow` содержит key-table editor поверх JSON draft: поиск по ключу/тексту, inline override input, reset key и JSON fallback.
+- `SettingsWindow` содержит key-table editor поверх JSON draft: поиск по ключу/тексту, фильтры all/changed/missing/unknown, inline override input, reset key и JSON fallback.
 - Focused client test: `app/src/utils/localization.test.ts`.
 - Focused runtime test: `app/src/utils/worldLocaleRuntime.test.ts`.
 - Focused test: `server/src/worldLocaleManager.test.ts`.

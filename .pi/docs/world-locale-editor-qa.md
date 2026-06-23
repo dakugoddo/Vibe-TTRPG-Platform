@@ -53,6 +53,7 @@
 - В блоке таблицы ключей найти `settings.tabs.world` через поиск.
 - Изменить override value inline в таблице; JSON fallback ниже должен обновиться тем же ключом.
 - Очистить value или нажать reset key; override key должен исчезнуть из JSON draft.
+- Проверить фильтры таблицы: `Все`, `Изменённые`, `Без переопределения`, `Неизвестные`.
 - Изменить JSON в textarea на валидный object и нажать `Сохранить`.
 - ConfirmDialog появляется до записи.
 - После подтверждения `<world>/locales/ru.json` обновлён pretty JSON.

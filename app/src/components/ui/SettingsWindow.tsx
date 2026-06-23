@@ -23,6 +23,7 @@ import { isDesktopRuntime, showTranslationsFolder } from '../../services/desktop
 import { listPlayerProfiles, listWorldLocaleFiles, readWorldLocaleFile, rollbackWorldLocaleFile, updatePlayerProfileRole, writeWorldLocaleFile, type WorldLocaleDiagnostic, type WorldLocaleFile, type WorldLocaleReadResult } from '../../services/fileApi';
 
 type SettingsTabId = 'interface' | 'audio' | 'canvas' | 'world' | 'roles';
+type WorldLocaleKeyFilterMode = 'all' | 'changed' | 'missing' | 'unknown';
 
 interface SettingsWindowProps {
     isOpen: boolean;
@@ -63,6 +64,13 @@ const ASSIGNABLE_PLAYER_ROLES: Array<{ id: Exclude<UserRole, 'gm'>; label: strin
     { id: 'player', label: 'Player' },
     { id: 'trusted-player', label: 'Trusted Player' },
     { id: 'spectator', label: 'Spectator' },
+];
+
+const WORLD_LOCALE_KEY_FILTERS: Array<{ id: WorldLocaleKeyFilterMode; labelKey: string }> = [
+    { id: 'all', labelKey: 'settings.world.localesFilterAll' },
+    { id: 'changed', labelKey: 'settings.world.localesFilterChanged' },
+    { id: 'missing', labelKey: 'settings.world.localesFilterMissing' },
+    { id: 'unknown', labelKey: 'settings.world.localesFilterUnknown' },
 ];
 
 const CUSTOM_THEME_COLOR_FIELDS: Array<{ key: keyof CustomThemeColors; label: string }> = [
@@ -177,6 +185,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
     const [savingWorldLocale, setSavingWorldLocale] = useState(false);
     const [worldLocaleSaveMessage, setWorldLocaleSaveMessage] = useState('');
     const [worldLocaleKeyFilter, setWorldLocaleKeyFilter] = useState('');
+    const [worldLocaleKeyFilterMode, setWorldLocaleKeyFilterMode] = useState<WorldLocaleKeyFilterMode>('all');
     const worldLocaleImportInputRef = useRef<HTMLInputElement | null>(null);
     const openConfirm = useUIStore((state) => state.openConfirm);
     const worldLocaleBaseFlat = useMemo(
@@ -193,13 +202,21 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
             ...Object.keys(worldLocaleBaseFlat),
             ...Object.keys(worldLocaleDraftFlat),
         ])).sort((left, right) => left.localeCompare(right, locale));
+        const keysByMode = keys.filter((key) => {
+            const hasBase = Object.prototype.hasOwnProperty.call(worldLocaleBaseFlat, key);
+            const hasOverride = Object.prototype.hasOwnProperty.call(worldLocaleDraftFlat, key);
+            if (worldLocaleKeyFilterMode === 'changed') return hasOverride;
+            if (worldLocaleKeyFilterMode === 'missing') return hasBase && !hasOverride;
+            if (worldLocaleKeyFilterMode === 'unknown') return !hasBase && hasOverride;
+            return true;
+        });
         const filteredKeys = query
-            ? keys.filter((key) => (
+            ? keysByMode.filter((key) => (
                 key.toLowerCase().includes(query)
                 || worldLocaleBaseFlat[key]?.toLowerCase().includes(query)
                 || worldLocaleDraftFlat[key]?.toLowerCase().includes(query)
             ))
-            : keys;
+            : keysByMode;
 
         return {
             total: filteredKeys.length,
@@ -210,7 +227,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                 changed: Object.prototype.hasOwnProperty.call(worldLocaleDraftFlat, key),
             })),
         };
-    }, [locale, worldLocaleBaseFlat, worldLocaleDraftFlat, worldLocaleKeyFilter]);
+    }, [locale, worldLocaleBaseFlat, worldLocaleDraftFlat, worldLocaleKeyFilter, worldLocaleKeyFilterMode]);
 
     useEffect(() => {
         if (!isOpen || !isGM || activeTab !== 'roles') return;
@@ -289,6 +306,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                 setWorldLocaleDraftError('');
                 setWorldLocaleSaveMessage('');
                 setWorldLocaleKeyFilter('');
+                setWorldLocaleKeyFilterMode('all');
             } catch (err) {
                 if (!cancelled) setWorldLocaleError(err instanceof Error ? err.message : String(err));
             } finally {
@@ -1273,6 +1291,21 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
                                                                     placeholder={t('settings.world.localesTableSearch')}
                                                                     className="h-8 min-w-48 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 font-mono text-[10px] text-[var(--vibe-text-primary)] outline-none transition-colors placeholder:text-[var(--vibe-text-faint)] focus:border-[var(--vibe-border-strong)]"
                                                                 />
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-1 border-b border-[var(--vibe-border-subtle)] px-2 py-1.5">
+                                                                {WORLD_LOCALE_KEY_FILTERS.map((filter) => (
+                                                                    <button
+                                                                        key={filter.id}
+                                                                        type="button"
+                                                                        aria-pressed={worldLocaleKeyFilterMode === filter.id}
+                                                                        onClick={() => setWorldLocaleKeyFilterMode(filter.id)}
+                                                                        className={`h-7 rounded-[var(--vibe-radius-sm)] border px-2 text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                                                                            worldLocaleKeyFilterMode === filter.id ? activeControlClass : idleControlClass
+                                                                        }`}
+                                                                    >
+                                                                        {t(filter.labelKey)}
+                                                                    </button>
+                                                                ))}
                                                             </div>
                                                             <div className="max-h-72 overflow-auto">
                                                                 <div className="sticky top-0 z-10 grid grid-cols-[minmax(150px,0.9fr)_minmax(160px,1fr)_minmax(180px,1.1fr)_40px] gap-2 border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-2 py-1.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
