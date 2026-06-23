@@ -44,6 +44,7 @@
 | Pointer flow, drawing, lasso, selection, drag, resize, rotate | `app/src/components/canvas/InfiniteCanvas.tsx` |
 | Canvas camera navigation | `app/src/components/canvas/InfiniteCanvas.tsx`, `app/src/store/canvasStore.ts` — wheel zoom, `setTransform`, stage offset/scale, middle-button pan lifecycle; middle-pan starts on Stage but move/up must stay global until the real middle-button release |
 | Canvas image picker | `app/src/components/canvas/CanvasImagePicker.tsx`, `app/src/components/canvas/InfiniteCanvas.tsx` |
+| Canvas clipboard paste | `app/src/components/canvas/InfiniteCanvas.tsx`, `app/src/services/fileApi.ts`, `app/src/types/canvasTypes.ts` | Системная вставка в canvas: активная область определяется последним pointerdown по canvas, image/GIF clipboard files проходят через общий asset upload/insert path, plain text создаёт `rectangle.description` с текущими rect/text стилями. Не перехватывать paste из `input`, `textarea`, `contenteditable` или чужих окон. |
 | Draw element bounds, z-order, selection math, fog geometry | `app/src/types/canvasTypes.ts` |
 | Canvas object anchors / line endpoint snap | `app/src/utils/canvasAnchors.ts`, `app/src/components/canvas/InfiniteCanvas.tsx` |
 | Canvas line routing/editing helpers | `app/src/utils/canvasLineRouting.ts`, `app/src/types/canvasTypes.ts`, `app/src/components/canvas/CanvasToolbar.tsx`, `app/src/components/canvas/InfiniteCanvas.tsx` |

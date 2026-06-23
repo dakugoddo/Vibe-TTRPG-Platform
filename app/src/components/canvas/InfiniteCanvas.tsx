@@ -143,6 +143,64 @@ function getScaledImageDimensions(width: number, height: number, maxDim = 600): 
   return { width: scaledWidth, height: scaledHeight };
 }
 
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getClipboardTextRectangleSize(text: string, fontSize: number): { width: number; height: number } {
+  const lines = text.split(/\r?\n/);
+  const longestLine = lines.reduce((max, line) => Math.max(max, line.length), 0);
+  const width = clampNumber(Math.round(longestLine * fontSize * 0.58 + 36), 180, 640);
+  const height = clampNumber(Math.round(lines.length * fontSize * 1.35 + 36), 80, 420);
+  return { width, height };
+}
+
+function isEditablePasteTarget(target: EventTarget | Element | null): boolean {
+  if (!(target instanceof Element)) return false;
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  ) {
+    return true;
+  }
+  return Boolean(target.closest('[contenteditable="true"], [contenteditable=""], [role="textbox"]'));
+}
+
+function getClipboardImageExtension(mime: string): string {
+  if (mime === 'image/gif') return 'gif';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/jpeg') return 'jpg';
+  if (mime === 'image/svg+xml') return 'svg';
+  return 'png';
+}
+
+function ensureNamedClipboardImage(file: File, index: number): File {
+  if (file.name) return file;
+  const mime = file.type || 'image/png';
+  return new File([file], `clipboard-image-${Date.now()}-${index}.${getClipboardImageExtension(mime)}`, {
+    type: mime,
+    lastModified: Date.now(),
+  });
+}
+
+function getClipboardImageFiles(data: DataTransfer): File[] {
+  const files: File[] = [];
+  const items = Array.from(data.items || []);
+
+  for (const item of items) {
+    if (item.kind !== 'file' || !item.type.startsWith('image/')) continue;
+    const file = item.getAsFile();
+    if (file) files.push(ensureNamedClipboardImage(file, files.length));
+  }
+
+  if (files.length > 0) return files;
+
+  return Array.from(data.files || [])
+    .filter((file) => file.type.startsWith('image/'))
+    .map((file, index) => ensureNamedClipboardImage(file, index));
+}
+
 function loadBrowserImage(sourceUrl: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
@@ -2191,6 +2249,8 @@ export function InfiniteCanvas() {
   const pendingCanvasImageUploadsRef = useRef<Map<string, { file: File; target: CanvasImageTarget; centerOnPoint: boolean }>>(new Map());
   const uploadAndInsertCanvasImageRef = useRef<CanvasImageUploadHandler | null>(null);
   const uploadProgressThrottleRef = useRef<Map<string, { percent: number; updatedAt: number }>>(new Map());
+  const canvasPasteActiveRef = useRef(false);
+  const lastCanvasPointerRef = useRef<{ x: number; y: number } | null>(null);
   
   // ─── Grid settings ───
   const gridEnabled = useCanvasDrawStore((s) => s.gridEnabled);
@@ -2366,6 +2426,46 @@ export function InfiniteCanvas() {
     setTool('select');
     selectElement(newEl.id);
   }, [activeCanvasId, currentStyle.visualStyle, pushHistory, selectElement, setTool]);
+
+  const insertTextRectangleAtPoint = useCallback((text: string, point: { x: number; y: number }): boolean => {
+    const trimmed = text.trim();
+    if (!trimmed || !canEditCanvasEntityById(activeCanvasId)) return false;
+
+    const { width, height } = getClipboardTextRectangleSize(trimmed, currentStyle.fontSize);
+    const elements = getDrawElements(activeCanvasId);
+    pushHistory(elements);
+
+    const newEl: DrawElement = {
+      id: generateDrawId(),
+      type: 'rectangle',
+      x: point.x - width / 2,
+      y: point.y - height / 2,
+      width,
+      height,
+      stroke: currentStyle.stroke,
+      strokeWidth: currentStyle.strokeWidth,
+      strokeStyle: currentStyle.strokeStyle,
+      visualStyle: currentStyle.visualStyle,
+      fill: currentStyle.fill || undefined,
+      opacity: currentStyle.opacity,
+      fillOpacity: currentStyle.fillOpacity,
+      strokeOpacity: currentStyle.strokeOpacity,
+      startCap: currentStyle.startCap,
+      endCap: currentStyle.endCap,
+      fontSize: currentStyle.fontSize,
+      fontFamily: currentStyle.fontFamily,
+      textAlign: currentStyle.textAlign,
+      textColor: currentStyle.textColor,
+      textOpacity: currentStyle.textOpacity,
+      description: trimmed,
+      zIndex: elements.length,
+    };
+
+    saveDrawElements(activeCanvasId, [...elements, newEl]);
+    setTool('select');
+    selectElement(newEl.id);
+    return true;
+  }, [activeCanvasId, currentStyle, pushHistory, selectElement, setTool]);
 
   const insertEntityTokenElement = useCallback(async (entityId: string, point: { x: number; y: number }, mode?: EntityTokenMode): Promise<boolean> => {
     if (!canEditCanvasEntityById(activeCanvasId)) return false;
@@ -3268,6 +3368,99 @@ export function InfiniteCanvas() {
 
   // ─── Middle-click pan (works in ALL modes) ───
 
+  const clientToCanvasPoint = useCallback((clientX: number, clientY: number): { x: number; y: number } | null => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+
+    const stage = stageRef.current;
+    const scale = stage?.scaleX() || useCanvasStore.getState().scale || 1;
+    const offset = stage
+      ? { x: stage.x(), y: stage.y() }
+      : useCanvasStore.getState().offset;
+
+    return {
+      x: (clientX - rect.left - offset.x) / scale,
+      y: (clientY - rect.top - offset.y) / scale,
+    };
+  }, []);
+
+  const getPasteCanvasPoint = useCallback((): { x: number; y: number } | null => {
+    const lastPoint = lastCanvasPointerRef.current;
+    if (lastPoint) return snapCanvasPoint(lastPoint);
+
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    const centerPoint = clientToCanvasPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return centerPoint ? snapCanvasPoint(centerPoint) : null;
+  }, [clientToCanvasPoint, snapCanvasPoint]);
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const root = containerRef.current;
+      const target = event.target;
+      const isInsideCanvas = Boolean(root && target instanceof Node && root.contains(target));
+      canvasPasteActiveRef.current = isInsideCanvas && !isEditablePasteTarget(target);
+
+      if (!isInsideCanvas) return;
+      const point = clientToCanvasPoint(event.clientX, event.clientY);
+      if (point) lastCanvasPointerRef.current = point;
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown, true);
+    return () => window.removeEventListener('pointerdown', handlePointerDown, true);
+  }, [clientToCanvasPoint]);
+
+  useEffect(() => {
+    const handlePaste = (event: ClipboardEvent) => {
+      if (!canvasPasteActiveRef.current) return;
+      if (getClipboard().length > 0) return;
+      if (
+        isEditablePasteTarget(event.target) ||
+        isEditablePasteTarget(document.activeElement)
+      ) {
+        return;
+      }
+      if (!canEditCanvasEntityById(activeCanvasId)) return;
+
+      const data = event.clipboardData;
+      if (!data) return;
+
+      const pastePoint = getPasteCanvasPoint();
+      if (!pastePoint) return;
+
+      const rect = containerRef.current?.getBoundingClientRect();
+      const screenX = rect ? rect.left + rect.width / 2 : 0;
+      const screenY = rect ? rect.top + rect.height / 2 : 0;
+      const imageFiles = getClipboardImageFiles(data);
+
+      if (imageFiles.length > 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        imageFiles.forEach((file, index) => {
+          const offset = index * 24;
+          insertFileImageAtPoint(file, {
+            canvasId: activeCanvasId,
+            canvasX: pastePoint.x + offset,
+            canvasY: pastePoint.y + offset,
+            screenX,
+            screenY,
+          }, true);
+        });
+        return;
+      }
+
+      const text = data.getData('text/plain');
+      if (!text.trim()) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      insertTextRectangleAtPoint(text, pastePoint);
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [activeCanvasId, getClipboard, getPasteCanvasPoint, insertFileImageAtPoint, insertTextRectangleAtPoint]);
+
   const setMiddlePanCursor = useCallback((cursor: string) => {
     const stage = stageRef.current;
     const container = stage?.container();
@@ -4026,12 +4219,14 @@ export function InfiniteCanvas() {
 
   const handleMouseMove = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
+      const hoverPoint = getCanvasPoint(e);
+      if (hoverPoint) lastCanvasPointerRef.current = hoverPoint;
+
       // ─── Awareness: update local cursor position (throttled to ~30fps) ───
       const now = Date.now();
       if (now - cursorThrottleRef.current >= 33) {
         cursorThrottleRef.current = now;
-        const pt = getCanvasPoint(e);
-        if (pt) setLocalCursor(pt.x, pt.y);
+        if (hoverPoint) setLocalCursor(hoverPoint.x, hoverPoint.y);
       }
 
       // Middle-click pan is handled by global window listeners after it starts.
