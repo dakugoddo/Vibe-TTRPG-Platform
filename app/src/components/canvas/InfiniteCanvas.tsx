@@ -16,7 +16,7 @@ import { useNotificationStore } from '../../store/notificationStore';
 import { getAssetUrl, getIsHost, uploadAssetFile, uploadAssetFileToHost, type AssetRecord } from '../../services/fileApi';
 import { canViewEntity } from '../../utils/permissions';
 import { readAssetDragPayload } from '../../utils/assetDrag';
-import { findNearestCanvasAnchor, updateBoundLineEndpoints } from '../../utils/canvasAnchors';
+import { findNearestCanvasAnchor, updateBoundLineEndpoints, type CanvasAnchorPoint } from '../../utils/canvasAnchors';
 import { getEntityCanvasTokenDefaults, getEntityCanvasTokenImageSource, type EntityCanvasTokenDefaults } from '../../utils/entityCanvasDefaults';
 import { fitEntityArtSizeToImage } from '../../utils/entityTokenSizing';
 import { ENTITY_TOKEN_FRAME_OPTIONS, getEntityTokenFrameConfig } from '../../utils/canvasEntityTokenFrame';
@@ -30,7 +30,7 @@ import { LARGE_ASSET_UPLOAD_APPROVAL_BYTES, formatNotificationFileSize } from '.
 import { createLargeUploadApprovalRequest } from '../../utils/sessionNotificationModel';
 import { CanvasImagePicker } from './CanvasImagePicker';
 import type { DatabaseType, Entity, SessionNotificationEvent } from '../../types';
-import type { DrawElement, DrawElementBinding, EntityTokenFrame, EntityTokenMode, LineCap, StrokeStyle } from '../../types/canvasTypes';
+import type { CanvasTool, DrawElement, DrawElementBinding, EntityTokenFrame, EntityTokenMode, LineCap, StrokeStyle } from '../../types/canvasTypes';
 import { getKonvaDash, getArrowPoints, translateElement, elementsInRect, getKonvaFontFamily, getElementBounds, getChildrenOfFrame, fogRevealsOverlap } from '../../types/canvasTypes';
 import type { FogReveal } from '../../types/canvasTypes';
 
@@ -43,6 +43,7 @@ const OBJECT_SNAP_SCREEN_RADIUS = 18;
 const MAX_CANVAS_IMAGE_UPLOAD_BYTES = 250 * 1024 * 1024;
 const MIDDLE_PAN_COMMIT_THRESHOLD_X = 72;
 const MIDDLE_PAN_COMMIT_THRESHOLD_Y = 56;
+const NUMBER_TOOL_SHORTCUTS: CanvasTool[] = ['select', 'pen', 'line', 'rect', 'ellipse', 'image', 'frame'];
 
 type CharacterCompactTab = 'stats' | 'actions' | 'resources' | 'notes';
 
@@ -83,6 +84,12 @@ interface EntityDropChoiceTarget {
 interface LinePointSnapResult {
   point: { x: number; y: number };
   binding?: DrawElementBinding;
+}
+
+interface ObjectSnapPreview {
+  x: number;
+  y: number;
+  anchor?: CanvasAnchorPoint;
 }
 
 // ─── Utility: Simple throttle for drag operations ───
@@ -1865,7 +1872,7 @@ function ResizeHandles({
   onResizeDragEnd,
 }: {
   element: DrawElement;
-  onResizeDragMove: (corner: string, x: number, y: number) => void;
+  onResizeDragMove: (corner: string, x: number, y: number, shiftKey?: boolean) => void;
   onResizeDragEnd: () => void;
 }) {
   if (element.type !== 'rectangle' && element.type !== 'ellipse' && element.type !== 'text' && element.type !== 'image' && element.type !== 'entityToken' && element.type !== 'frame') return null;
@@ -1901,7 +1908,7 @@ function ResizeHandles({
           draggable
           onDragMove={(e) => {
             const pos = e.target.position();
-            onResizeDragMove(c.id, pos.x + RESIZE_HANDLE_SIZE / 2, pos.y + RESIZE_HANDLE_SIZE / 2);
+            onResizeDragMove(c.id, pos.x + RESIZE_HANDLE_SIZE / 2, pos.y + RESIZE_HANDLE_SIZE / 2, e.evt.shiftKey);
           }}
           onDragEnd={onResizeDragEnd}
           onMouseEnter={(e) => {
@@ -2404,7 +2411,7 @@ export function InfiniteCanvas() {
 
   const drawElements = useCanvasSyncStore((s) => s.elements);
   const [dragPreview, setDragPreview] = useState<{ canvasId: string; elements: DrawElement[] } | null>(null);
-  const [objectSnapPreview, setObjectSnapPreview] = useState<{ x: number; y: number } | null>(null);
+  const [objectSnapPreview, setObjectSnapPreview] = useState<ObjectSnapPreview | null>(null);
   const renderedDrawElements = dragPreview?.canvasId === activeCanvasId ? dragPreview.elements : drawElements;
   const dragPreviewRef = useRef<{ canvasId: string; elements: DrawElement[] } | null>(null);
 
@@ -3006,12 +3013,13 @@ export function InfiniteCanvas() {
         return { point: snappedGridPoint } satisfies LinePointSnapResult;
       }
 
-      setObjectSnapPreview(anchorSnap.point);
+      setObjectSnapPreview({ ...anchorSnap.point, anchor: anchorSnap.anchor });
       return {
         point: anchorSnap.point,
         binding: {
           elementId: anchorSnap.anchor.elementId,
           anchor: anchorSnap.anchor.id,
+          focus: anchorSnap.anchor.focus,
         },
       } satisfies LinePointSnapResult;
     },
@@ -3088,11 +3096,7 @@ export function InfiniteCanvas() {
   // ─── Keyboard shortcuts ───
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      )
-        return;
+      if (isEditablePasteTarget(e.target) || isEditablePasteTarget(document.activeElement)) return;
 
       const key = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;
@@ -3188,6 +3192,15 @@ export function InfiniteCanvas() {
       // No-modifier tool shortcuts
       if (ctrl) return;
 
+      if (/^[1-9]$/.test(key) && canvasPasteActiveRef.current) {
+        const tool = NUMBER_TOOL_SHORTCUTS[Number(key) - 1];
+        if (tool && canEditCanvasEntityById(activeCanvasId)) {
+          e.preventDefault();
+          setTool(tool);
+        }
+        return;
+      }
+
       switch (key) {
         case 'v': setTool('select'); break;
         case 'p': setTool('pen'); break;
@@ -3217,7 +3230,7 @@ export function InfiniteCanvas() {
     window.addEventListener('keydown', onKeyDown);
     
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isEditablePasteTarget(e.target) || isEditablePasteTarget(document.activeElement)) return;
       if (e.key.toLowerCase() === 'g') pingKeyRef.current = false;
     };
     window.addEventListener('keyup', onKeyUp);
@@ -3901,7 +3914,7 @@ export function InfiniteCanvas() {
   const resizeSnapshotRef = useRef<DrawElement | null>(null);
 
   const handleResizeDragMove = useCallback(
-    (corner: string, x: number, y: number) => {
+    (corner: string, x: number, y: number, shiftKey?: boolean) => {
       if (selectedElementIds.length !== 1) return;
       const id = selectedElementIds[0];
       const elements = getDrawElements(activeCanvasId);
@@ -3918,6 +3931,9 @@ export function InfiniteCanvas() {
       const sy = snap.y || 0;
       const sw = snap.width || 0;
       const sh = snap.height || 0;
+      const snappedPoint = snapCanvasPoint({ x, y }, shiftKey);
+      x = snappedPoint.x;
+      y = snappedPoint.y;
 
       let newX = sx, newY = sy, newW = sw, newH = sh;
 
@@ -3979,9 +3995,9 @@ export function InfiniteCanvas() {
       const updated = elements.map((e) =>
         e.id === id ? { ...e, x: newX, y: newY, width: newW, height: newH } : e
       );
-      setCanvasDragPreview({ canvasId: activeCanvasId, elements: updated });
+      setCanvasDragPreview({ canvasId: activeCanvasId, elements: updateBoundLineEndpoints(updated, [id]) });
     },
-    [selectedElementIds, activeCanvasId, pushHistory, setCanvasDragPreview]
+    [selectedElementIds, activeCanvasId, pushHistory, setCanvasDragPreview, snapCanvasPoint]
   );
 
   const handleResizeDragEnd = useCallback(() => {
@@ -4001,7 +4017,7 @@ export function InfiniteCanvas() {
       if (height < 0) { y += height; height = Math.abs(height); }
       return { ...el, x, y, width, height };
     });
-    saveDrawElements(activeCanvasId, updated);
+    saveDrawElements(activeCanvasId, updateBoundLineEndpoints(updated, [id]));
     clearCanvasDragPreview();
   }, [selectedElementIds, activeCanvasId, clearCanvasDragPreview]);
 
@@ -5322,24 +5338,51 @@ export function InfiniteCanvas() {
             />
           )}
 
-          {objectSnapPreview && (
-            <Group listening={false}>
-              <Circle
-                x={objectSnapPreview.x}
-                y={objectSnapPreview.y}
-                radius={9 / Math.max(0.1, stageScale)}
-                fill="rgba(34, 211, 238, 0.14)"
-                stroke="rgba(165, 243, 252, 0.85)"
-                strokeWidth={1.5 / Math.max(0.1, stageScale)}
-              />
-              <Circle
-                x={objectSnapPreview.x}
-                y={objectSnapPreview.y}
-                radius={2.5 / Math.max(0.1, stageScale)}
-                fill="rgba(165, 243, 252, 0.95)"
-              />
-            </Group>
-          )}
+          {objectSnapPreview && (() => {
+            const anchor = objectSnapPreview.anchor;
+            const target = anchor ? renderedDrawElements.find((el) => el.id === anchor.elementId) : null;
+            const side = anchor && ['top', 'right', 'bottom', 'left'].includes(anchor.id) ? anchor.id : null;
+            const bounds = target && side ? getElementBounds(target) : null;
+            const x1 = bounds ? Math.min(bounds.x, bounds.x + bounds.w) : 0;
+            const y1 = bounds ? Math.min(bounds.y, bounds.y + bounds.h) : 0;
+            const x2 = bounds ? Math.max(bounds.x, bounds.x + bounds.w) : 0;
+            const y2 = bounds ? Math.max(bounds.y, bounds.y + bounds.h) : 0;
+            const edgePoints = side === 'top'
+              ? [x1, y1, x2, y1]
+              : side === 'right'
+                ? [x2, y1, x2, y2]
+                : side === 'bottom'
+                  ? [x1, y2, x2, y2]
+                  : side === 'left'
+                    ? [x1, y1, x1, y2]
+                    : null;
+            return (
+              <Group listening={false}>
+                {edgePoints && (
+                  <Line
+                    points={edgePoints}
+                    stroke="rgba(34, 211, 238, 0.72)"
+                    strokeWidth={3 / Math.max(0.1, stageScale)}
+                    lineCap="round"
+                  />
+                )}
+                <Circle
+                  x={objectSnapPreview.x}
+                  y={objectSnapPreview.y}
+                  radius={9 / Math.max(0.1, stageScale)}
+                  fill="rgba(34, 211, 238, 0.14)"
+                  stroke="rgba(165, 243, 252, 0.85)"
+                  strokeWidth={1.5 / Math.max(0.1, stageScale)}
+                />
+                <Circle
+                  x={objectSnapPreview.x}
+                  y={objectSnapPreview.y}
+                  radius={2.5 / Math.max(0.1, stageScale)}
+                  fill="rgba(165, 243, 252, 0.95)"
+                />
+              </Group>
+            );
+          })()}
 
           {/* Editing handles for selected element */}
           {singleSelectedElement && activeTool === 'select' && (

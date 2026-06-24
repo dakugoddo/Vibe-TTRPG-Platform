@@ -154,25 +154,25 @@ const STROKE_STYLES: { id: StrokeStyle; labelKey: string; preview: string }[] = 
 function getVisualStylePreview(style: DrawVisualStyle): React.ReactNode {
   if (style === 'soft') {
     return (
-      <svg width="22" height="14" viewBox="0 0 22 14" fill="none" stroke="currentColor" strokeLinecap="round">
-        <path d="M3 9C7 5 14 5 19 4" strokeWidth="5" opacity="0.22" />
-        <path d="M3 9C7 5 14 5 19 4" strokeWidth="1.8" />
+      <svg width="24" height="16" viewBox="0 0 24 16" fill="none" stroke="currentColor" strokeLinecap="round">
+        <path d="M3 10C8 5 14 6 21 4" strokeWidth="1.7" />
+        <path d="M3 10.8C8 6 14 6.6 21 4.8" strokeWidth="1.2" opacity="0.68" />
       </svg>
     );
   }
 
   if (style === 'sketch') {
     return (
-      <svg width="22" height="14" viewBox="0 0 22 14" fill="none" stroke="currentColor" strokeLinecap="round">
-        <path d="M3 9C7 5 12 10 19 4" strokeWidth="1.7" />
-        <path d="M3 10C8 6 13 9 19 5" strokeWidth="1.3" opacity="0.65" />
+      <svg width="24" height="16" viewBox="0 0 24 16" fill="none" stroke="currentColor" strokeLinecap="round">
+        <path d="M3 11C8 4 14 9 21 4" strokeWidth="1.7" />
+        <path d="M3 8.8C8 7 14 4.5 21 7" strokeWidth="1.25" opacity="0.7" />
       </svg>
     );
   }
 
   return (
-    <svg width="22" height="14" viewBox="0 0 22 14" fill="none" stroke="currentColor" strokeLinecap="round">
-      <path d="M3 9L19 4" strokeWidth="1.8" />
+    <svg width="24" height="16" viewBox="0 0 24 16" fill="none" stroke="currentColor" strokeLinecap="round">
+      <path d="M3 10L21 4" strokeWidth="1.8" />
     </svg>
   );
 }

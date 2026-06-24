@@ -29,7 +29,7 @@
 | `FEAT-PDF-001` | `F2` | Asset Library / CanvasModule | First native optional preview slice implemented | PDF индексируется как asset type и открывается в Asset Browser через нативное превью без viewer-зависимости; превью можно локально отключить как built-in optional module. Linked PDF card/page preview на canvas остаётся отдельным optional module slice. | Design-doc нужен перед zoom/search/page preview, canvas linked cards или тяжёлой viewer-зависимостью. |
 | `FEAT-AUDIO-003` | `F1` | AudioModule | Foundation implemented, polish remains | Standalone local-first audio module с bottom dock, AudioDesk, ambience multi-loop, deck persistence и bottom-dock channel mixer popup. | Reconnect-safe snapshots, permissions/delegation, artwork metadata policy. |
 | `FEAT-ROLES-PLAYERS-001` | `F1` | SessionModule / Permissions | Foundation implemented, polish remains | Player identity foundation и role assignment есть. | Переименование, online/offline conflicts, `_playerOwner -> playerId` migration, explicit session feedback. |
-| `FEAT-CANVAS-EXCALIDRAW-001` | `F2` | CanvasModule | Planned continuation | Advanced connector routing, line handles, binding UX, perf QA. | Делать отдельным canvas slice после desktop/UI stabilization. |
+| `FEAT-CANVAS-EXCALIDRAW-001` | `F2` | CanvasModule | Active slice implemented, owner QA pending | Excalidraw-like visual style tiers, numeric tool hotkeys, resize grid snap and edge-focused line binding foundation. | Ручная QA: `1-7` на активном canvas переключают toolbar tools; resize углов snap-ится к grid; line endpoint цепляется к подсвеченной стороне объекта и двигается вместе с ним. |
 
 ## Product gates
 

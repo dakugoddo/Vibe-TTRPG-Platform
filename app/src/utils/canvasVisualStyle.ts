@@ -23,11 +23,11 @@ export const CANVAS_VISUAL_STYLE_OPTIONS: CanvasVisualStyleConfig[] = [
   {
     id: 'soft',
     label: 'Мягко',
-    description: 'Легкий подсвет обводки, чтобы важные связи читались на темной карте.',
-    softStrokeWidth: 5,
-    softStrokeOpacity: 0.18,
-    sketchJitter: 0,
-    sketchStrokeOpacity: 0,
+    description: 'Легкий рукописный дубль: две почти совпадающие линии.',
+    softStrokeWidth: 0,
+    softStrokeOpacity: 0,
+    sketchJitter: 1.1,
+    sketchStrokeOpacity: 0.42,
   },
   {
     id: 'sketch',
@@ -35,8 +35,8 @@ export const CANVAS_VISUAL_STYLE_OPTIONS: CanvasVisualStyleConfig[] = [
     description: 'Стабильный рукописный дубль обводки без случайного мерцания.',
     softStrokeWidth: 0,
     softStrokeOpacity: 0,
-    sketchJitter: 2.2,
-    sketchStrokeOpacity: 0.55,
+    sketchJitter: 3.2,
+    sketchStrokeOpacity: 0.62,
   },
 ];
 

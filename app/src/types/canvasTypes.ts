@@ -38,6 +38,7 @@ export type CanvasAnchorId =
 export interface DrawElementBinding {
   elementId: string;
   anchor: CanvasAnchorId;
+  focus?: number;
 }
 
 export interface DrawElement {

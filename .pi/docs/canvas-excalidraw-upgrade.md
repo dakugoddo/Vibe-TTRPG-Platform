@@ -47,8 +47,8 @@ Canvas должен остаться быстрым VTT-слоем, но пол�
 - Добавлен `DrawElement.visualStyle?: 'clean' | 'soft' | 'sketch'` и default `clean`.
 - `CanvasToolbar` получил compact preset control `Ровно/Мягко/Скетч` в панели stroke styles.
 - `clean` сохраняет текущую чистую геометрию.
-- `soft` добавляет лёгкую translucent halo-обводку для читаемости на тёмных картах.
-- `sketch` добавляет deterministic jitter-дубль обводки для line/rectangle/ellipse/image/frame без случайного мерцания и без новой зависимости.
+- `soft` добавляет слабый deterministic jitter-дубль обводки: две почти совпадающие линии.
+- `sketch` добавляет более сильный deterministic jitter-дубль обводки для line/rectangle/ellipse/image/frame без случайного мерцания и без новой зависимости.
 - Старые draw elements без `visualStyle` рендерятся как `clean`.
 
 2026-05-23 line mode partial:
@@ -61,17 +61,20 @@ Canvas должен остаться быстрым VTT-слоем, но пол�
 - Старые draw elements без `lineMode` получают migration-safe fallback: 2 точки = `straight`, 3+ точки = `curved`.
 - Line point insert/delete теперь идёт через tested helpers: double-click по сегменту вставляет point, double-click рядом с внутренней point удаляет её, endpoints не удаляются.
 
-2026-06-23 polish:
+2026-06-24 polish:
 
-- `curved` теперь рендерит обычную 2-точечную line/arrow как плавную дугу через синтетическую midpoint-точку, поэтому режим кривой виден сразу после одного drag-жеста.
-- `sketch` усилен без новой зависимости: jitter стал заметнее, стрелочные caps получают такой же deterministic sketch-дубль, а toolbar показывает Excalidraw-like preview icons вместо текстовых плашек.
+- `curved` для 2-точечной line/arrow снова остаётся прямым сегментом. Режим `Кривая` только сглаживает уже существующие опорные точки; не синтезировать midpoint автоматически.
+- `soft/sketch` настроены как Excalidraw sloppiness tiers: clean = одна ровная линия, soft = слабый рукописный дубль, sketch = более сильное расхождение дубля.
+- Line/arrow endpoints теперь могут привязываться к произвольной точке вдоль стороны объекта через optional `binding.focus`; при наведении подсвечивается сторона и точка крепления.
+- Resize shape corners проходит через grid snap и пересчитывает bound line endpoints в preview/final save.
+- Цифры `1-7` переключают инструменты toolbar, когда последняя активная область — canvas.
 - Не добавлять rough.js до реального профилирования: текущий lightweight Konva path сохраняет local-first sync contract и не меняет persisted draw element format.
 
 ### Slice 2: Line binding contract
 
 - Расширить `DrawElement` для line/arrow:
-  - `startBinding?: { elementId: string; anchor: string }`
-  - `endBinding?: { elementId: string; anchor: string }`
+  - `startBinding?: { elementId: string; anchor: string; focus?: number }`
+  - `endBinding?: { elementId: string; anchor: string; focus?: number }`
 - При перемещении bound object пересчитывать крайние точки линии.
 - Undo/redo должен видеть binding как часть draw element state.
 

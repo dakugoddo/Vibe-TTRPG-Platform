@@ -36,7 +36,13 @@ assert.deepEqual(
 const nearest = findNearestCanvasAnchor({ x: 162, y: 78 }, [rect], { radius: 8 });
 assert(nearest, 'near top anchor should snap');
 assert.equal(nearest.anchor.id, 'top');
-assert.deepEqual(nearest.point, { x: 160, y: 80 });
+assert.deepEqual(nearest.point, { x: 162, y: 80 });
+
+const edgeNearest = findNearestCanvasAnchor({ x: 130, y: 83 }, [rect], { radius: 8 });
+assert(edgeNearest, 'near top edge should snap');
+assert.equal(edgeNearest.anchor.id, 'top');
+assert.equal(edgeNearest.anchor.focus, 0.25);
+assert.deepEqual(edgeNearest.point, { x: 130, y: 80 });
 
 const outside = findNearestCanvasAnchor({ x: 162, y: 60 }, [rect], { radius: 8 });
 assert.equal(outside, null);
@@ -65,5 +71,15 @@ assert.deepEqual(updatedLine.points, [100, 110, 220, 140]);
 
 const unchanged = updateBoundLineEndpoints(updated, ['other']);
 assert.equal(unchanged, updated, 'returns same array when moved IDs do not affect bindings');
+
+const focusedLine = element({
+  id: 'focused_line',
+  type: 'line',
+  points: [0, 0, 10, 10],
+  startBinding: { elementId: 'rect_1', anchor: 'top', focus: 0.25 },
+});
+const focusedUpdated = updateBoundLineEndpoints([rect, focusedLine], ['rect_1']);
+const updatedFocusedLine = focusedUpdated.find((item) => item.id === 'focused_line');
+assert.deepEqual(updatedFocusedLine?.points, [130, 80, 10, 10]);
 
 console.log('ok - canvas anchors and nearest snap');

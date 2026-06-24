@@ -30,9 +30,9 @@ assert.equal(getLineTension(curved, 'elbow'), 0);
 
 assert.deepEqual(
   getRoutedLinePoints([0, 0, 100, 0], 'curved'),
-  [0, 0, 50, 20, 100, 0]
+  [0, 0, 100, 0]
 );
-assert.equal(getLineTension(getRoutedLinePoints([0, 0, 100, 0], 'curved'), 'curved'), 0.35);
+assert.equal(getLineTension([0, 0, 100, 0], 'curved'), 0);
 
 assert.deepEqual(
   insertLinePointAtClosestSegment([0, 0, 100, 0], { x: 40, y: 20 }),

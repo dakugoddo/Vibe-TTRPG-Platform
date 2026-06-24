@@ -7,6 +7,7 @@ export interface CanvasAnchorPoint {
   elementType: DrawElementType;
   x: number;
   y: number;
+  focus?: number;
 }
 
 export interface CanvasAnchorSnap {
@@ -31,6 +32,10 @@ function normalizeBounds(bounds: { x: number; y: number; w: number; h: number })
     w: x2 - x1,
     h: y2 - y1,
   };
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
 }
 
 export function canUseElementAnchors(element: DrawElement): boolean {
@@ -73,14 +78,67 @@ export function getCanvasAnchorPoints(element: DrawElement): CanvasAnchorPoint[]
   ];
 }
 
-export function getCanvasAnchorPoint(element: DrawElement, anchorId: CanvasAnchorId): CanvasAnchorPoint | null {
+export function getCanvasAnchorPoint(element: DrawElement, anchorId: CanvasAnchorId, focus?: number): CanvasAnchorPoint | null {
+  if (focus !== undefined && (anchorId === 'top' || anchorId === 'right' || anchorId === 'bottom' || anchorId === 'left')) {
+    const bounds = normalizeBounds(getElementBounds(element));
+    if (bounds.w <= 0 || bounds.h <= 0) return null;
+    const left = bounds.x;
+    const right = bounds.x + bounds.w;
+    const top = bounds.y;
+    const bottom = bounds.y + bounds.h;
+    const t = clamp01(focus);
+    const base = { elementId: element.id, elementType: element.type, id: anchorId, focus: t };
+
+    if (anchorId === 'top') return { ...base, x: left + bounds.w * t, y: top };
+    if (anchorId === 'bottom') return { ...base, x: left + bounds.w * t, y: bottom };
+    if (anchorId === 'right') return { ...base, x: right, y: top + bounds.h * t };
+    return { ...base, x: left, y: top + bounds.h * t };
+  }
+
   return getCanvasAnchorPoints(element).find((anchor) => anchor.id === anchorId) || null;
 }
 
 export function resolveCanvasBinding(elements: DrawElement[], binding: DrawElementBinding | undefined): CanvasAnchorPoint | null {
   if (!binding) return null;
   const target = elements.find((element) => element.id === binding.elementId);
-  return target ? getCanvasAnchorPoint(target, binding.anchor) : null;
+  return target ? getCanvasAnchorPoint(target, binding.anchor, binding.focus) : null;
+}
+
+function getNearestEdgeAnchor(point: { x: number; y: number }, element: DrawElement): CanvasAnchorSnap | null {
+  if (!canUseElementAnchors(element)) return null;
+  const bounds = normalizeBounds(getElementBounds(element));
+  if (bounds.w <= 0 || bounds.h <= 0) return null;
+
+  const left = bounds.x;
+  const right = bounds.x + bounds.w;
+  const top = bounds.y;
+  const bottom = bounds.y + bounds.h;
+  const candidates: Array<{ id: CanvasAnchorId; x: number; y: number; focus: number }> = [
+    { id: 'top', x: Math.max(left, Math.min(right, point.x)), y: top, focus: clamp01((point.x - left) / bounds.w) },
+    { id: 'bottom', x: Math.max(left, Math.min(right, point.x)), y: bottom, focus: clamp01((point.x - left) / bounds.w) },
+    { id: 'right', x: right, y: Math.max(top, Math.min(bottom, point.y)), focus: clamp01((point.y - top) / bounds.h) },
+    { id: 'left', x: left, y: Math.max(top, Math.min(bottom, point.y)), focus: clamp01((point.y - top) / bounds.h) },
+  ];
+
+  let nearest: CanvasAnchorSnap | null = null;
+  for (const candidate of candidates) {
+    const distance = Math.hypot(point.x - candidate.x, point.y - candidate.y);
+    if (!nearest || distance < nearest.distance) {
+      nearest = {
+        anchor: {
+          id: candidate.id,
+          elementId: element.id,
+          elementType: element.type,
+          x: candidate.x,
+          y: candidate.y,
+          focus: candidate.focus,
+        },
+        point: { x: candidate.x, y: candidate.y },
+        distance,
+      };
+    }
+  }
+  return nearest;
 }
 
 export function updateBoundLineEndpoints(elements: DrawElement[], movedElementIds?: Iterable<string>): DrawElement[] {
@@ -135,6 +193,10 @@ export function findNearestCanvasAnchor(
 
   for (const element of elements) {
     if (excludeIds.has(element.id)) continue;
+    const edgeSnap = getNearestEdgeAnchor(point, element);
+    if (edgeSnap && edgeSnap.distance <= options.radius) {
+      nearest = edgeSnap;
+    }
     for (const anchor of getCanvasAnchorPoints(element)) {
       const distance = Math.hypot(point.x - anchor.x, point.y - anchor.y);
       if (distance > options.radius) continue;
