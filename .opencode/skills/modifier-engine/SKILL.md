@@ -1,37 +1,16 @@
 ---
 name: modifier-engine
-description: Математический движок: вычисление статов, модификаторы от тегов, context bubbling (наследование по parentId), формулы
+description: Compatibility forwarding stub for .opencode/skills. Canonical project skill lives at ../../skills/mechanics-engine/SKILL.md.
+version: 1.0.0
+author: Vibe TTRPG Platform
+license: MIT
+metadata:
+  hermes:
+    tags: [vibe-ttrpg, compatibility-stub]
 ---
 
-## Формула
-Total = Base Value + Modifiers (from Tags) + Modifiers (from Mechanic Blocks) + AdHoc
+# Compatibility stub: modifier-engine
 
-## Context Bubbling (наследование)
-Движок поднимается по дереву parentId в поисках характеристики:
-Атака → Оружие → Персонаж
-Если стат не найден в сущности — ищет в родителе, затем в родителе родителя.
+Canonical skill: `skills/mechanics-engine/SKILL.md`.
 
-## useCalculatedStat(entityId, statName)
-Возвращает: { total: number, breakdown: Array<{source: string, value: number}> }
-
-Шаги:
-1. Базовое значение из объекта
-2. Проверить все tags объекта → применить modifiers
-3. Проверить mechanic blocks
-4. Подняться по parentId если не найдено
-5. Добавить AdHoc (ручной ввод)
-
-## Блоки характеристик
-- **Атрибуты**: Телосложение, Когниция, Фигура, Мышление, Скорость, Голод
-- **Мощь**: Астрал, Эфир, Аура (селектор текущего источника, приоритет при двойном)
-- **Защита**: Уклонение = floor(Мощь / 2), Защита
-
-## UI требования
-- Tooltip при наведении на число: breakdown (База: 3, Тег 'Разрез': +3 = Итого: 6)
-- Редактирование базового значения и AdHoc модификатора
-- Wiki-linking: клик на название стата → открывает note с таким именем (регистронезависимо)
-
-## Теги и модификаторы
-- Скрытые теги: технические метки, видны только в Debug
-- Статусы: только на персонажах, ранги (Слепота 1 → -1 уклонение)
-- Свойства: для предметов, ранги, меняют статы предмета/персонажа
+Do not add new knowledge here. Load/read the canonical root skill instead. This stub exists only so older agent clients that still scan `.opencode/skills` paths do not break.

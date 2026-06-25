@@ -17,6 +17,8 @@ graphify-out/
 # Local Codex desktop/runtime metadata
 .codex/*
 !.codex/hooks.json
+!.codex/environments/
+!.codex/environments/environment.toml
 !.codex/skills/
 !.codex/skills/graphify/
 !.codex/skills/graphify/**
@@ -33,3 +35,9 @@ nul
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+# Agent local/generated artifacts
+.context-mode/
+.ctx/
+context-mode.db
+opencode.local.jsonc
+!opencode.example.jsonc
