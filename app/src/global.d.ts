@@ -27,6 +27,7 @@ declare global {
         isElectron: true;
         platform: string;
         selectWorldFolder: () => Promise<string | null>;
+        openPreviewWorld?: () => Promise<string | null>;
         showAssetInFolder: (assetPath: string) => Promise<boolean>;
         showTranslationsFolder: () => Promise<string>;
     }

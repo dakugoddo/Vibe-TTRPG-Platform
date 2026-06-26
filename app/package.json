@@ -98,6 +98,10 @@
       {
         "from": "src/locales",
         "to": "locales"
+      },
+      {
+        "from": "preview-world",
+        "to": "preview-world"
       }
     ],
     "win": {

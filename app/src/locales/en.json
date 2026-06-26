@@ -18,7 +18,8 @@
             "connectionError": "Connection error",
             "enterPlayerName": "Please enter your name before connecting",
             "fileServerHttp": "File server returned HTTP {{status}}",
-            "serverOnlineNoWorld": "Server is online, but the GM has not opened a world yet. Ask the GM to open a world on the host."
+            "serverOnlineNoWorld": "Server is online, but the GM has not opened a world yet. Ask the GM to open a world on the host.",
+            "previewWorldUnavailable": "The preview world is available only in the Electron build and was not found in app resources."
         },
         "status": {
             "desktopServerPreparing": "Desktop runtime is preparing the local server.",
@@ -37,6 +38,11 @@
         "hostWorldAsGm": "Host world as GM",
         "joinAsPlayer": "Join as player",
         "uiDemo": "UI style demo",
+        "previewWorld": {
+            "name": "Preview World",
+            "open": "Open preview world",
+            "description": "Bundled demonstration world. Each launch uses a fresh temporary copy; changes do not persist between preview sessions."
+        },
         "worlds": "Worlds",
         "localServer": "Local server",
         "checkServer": "Check",

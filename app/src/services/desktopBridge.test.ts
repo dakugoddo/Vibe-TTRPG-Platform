@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { isDesktopRuntime, selectWorldFolder, showAssetInFolder } from './desktopBridge';
+import { isDesktopRuntime, openPreviewWorld, selectWorldFolder, showAssetInFolder } from './desktopBridge';
 
 async function test(name: string, fn: () => void | Promise<void>) {
     try {
@@ -18,6 +18,7 @@ await test('desktop bridge is optional in browser runtime', async () => {
     try {
         assert.equal(isDesktopRuntime(), false);
         assert.equal(await selectWorldFolder(), null);
+        assert.equal(await openPreviewWorld(), null);
         assert.equal(await showAssetInFolder('maps/city.png'), false);
     } finally {
         (globalThis as { window?: unknown }).window = previousWindow;
@@ -32,12 +33,14 @@ await test('desktop bridge delegates folder selection when Electron preload is p
             platform: 'win32',
             selectWorldFolder: async () => 'C:\\Games\\VibeWorld',
             showAssetInFolder: async (assetPath: string) => assetPath === 'maps/city.png',
+            openPreviewWorld: async () => 'C:\\Temp\\EternityPreview',
         },
     };
 
     try {
         assert.equal(isDesktopRuntime(), true);
         assert.equal(await selectWorldFolder(), 'C:\\Games\\VibeWorld');
+        assert.equal(await openPreviewWorld(), 'C:\\Temp\\EternityPreview');
         assert.equal(await showAssetInFolder('maps/city.png'), true);
     } finally {
         (globalThis as { window?: unknown }).window = previousWindow;

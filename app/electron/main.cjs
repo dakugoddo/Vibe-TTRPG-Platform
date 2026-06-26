@@ -118,6 +118,60 @@ function resolveTranslationsFolderPath() {
   }) || null;
 }
 
+
+function resolvePreviewWorldTemplatePath() {
+  const candidates = [
+    path.join(__dirname, '..', 'preview-world'),
+    path.join(app.getAppPath(), 'preview-world'),
+    path.join(process.cwd(), 'preview-world'),
+    ...(process.resourcesPath ? [path.join(process.resourcesPath, 'preview-world')] : []),
+  ];
+
+  return candidates.find((candidate) => {
+    try {
+      return fs.existsSync(path.join(candidate, 'world.yaml')) && fs.statSync(candidate).isDirectory();
+    } catch {
+      return false;
+    }
+  }) || null;
+}
+
+function copyDirectoryRecursive(source, destination) {
+  fs.mkdirSync(destination, { recursive: true });
+  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
+    const sourcePath = path.join(source, entry.name);
+    const destinationPath = path.join(destination, entry.name);
+    if (entry.isDirectory()) {
+      copyDirectoryRecursive(sourcePath, destinationPath);
+    } else if (entry.isFile()) {
+      fs.copyFileSync(sourcePath, destinationPath);
+    }
+  }
+}
+
+function createPreviewWorldSession() {
+  const templatePath = resolvePreviewWorldTemplatePath();
+  if (!templatePath) {
+    throw new Error('Bundled preview world template was not found');
+  }
+
+  const sessionPath = path.join(app.getPath('temp'), 'eternity-table-preview-world');
+  fs.rmSync(sessionPath, { recursive: true, force: true });
+  copyDirectoryRecursive(templatePath, sessionPath);
+  fs.writeFileSync(
+    path.join(sessionPath, '.preview-session.txt'),
+    [
+      'Eternity Table preview world session.',
+      'This folder is recreated whenever the bundled preview world is opened.',
+      'Changes here are temporary and are not part of your saved worlds.',
+      new Date().toISOString(),
+      '',
+    ].join('\n'),
+    'utf-8',
+  );
+  return sessionPath;
+}
+
 function startFileServer() {
   if (process.env.VIBE_ELECTRON_SKIP_SERVER === '1') return null;
 
@@ -241,6 +295,11 @@ ipcMain.handle('vibe:select-world-folder', async (event) => {
 
   if (result.canceled || result.filePaths.length === 0) return null;
   return result.filePaths[0] ?? null;
+});
+
+
+ipcMain.handle('vibe:open-preview-world', async () => {
+  return createPreviewWorldSession();
 });
 
 ipcMain.handle('vibe:show-asset-in-folder', async (_event, assetPath) => {

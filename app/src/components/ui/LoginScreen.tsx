@@ -1,10 +1,10 @@
 import { useCallback, useState, useEffect } from 'react';
 import i18next from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, CheckCircle2, FolderOpen, Loader2, Monitor, PlugZap, Server, UserRound } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FolderOpen, Loader2, Monitor, PlugZap, Server, Sparkles, UserRound } from 'lucide-react';
 import { claimPlayerProfile, setIsHost, resetServerCache } from '../../services/fileApi';
 import { loadWorld, onSyncProgress, onSyncStatus } from '../../services/fileSyncService';
-import { isDesktopRuntime, selectWorldFolder } from '../../services/desktopBridge';
+import { isDesktopRuntime, openPreviewWorld, selectWorldFolder } from '../../services/desktopBridge';
 import { StyleDemo } from '../ui-demo/StyleDemo';
 import { glass } from '../../utils/theme';
 import type { UserRole } from '../../types';
@@ -149,7 +149,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
     };
 
     // ─── Step 2a: Host World ───
-    const handleOpenWorld = async (path: string, name: string, isCreate: boolean) => {
+    const handleOpenWorld = async (path: string, name: string, isCreate: boolean, options: { saveToRecent?: boolean } = {}) => {
         if (!path.trim()) return;
 
         setError('');
@@ -174,7 +174,7 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
 
             if (meta) {
                 // Add to saved worlds if not exists
-                if (!savedWorlds.some(w => w.path === path.trim())) {
+                if (options.saveToRecent !== false && !savedWorlds.some(w => w.path === path.trim())) {
                     setSavedWorlds([...savedWorlds, { name: meta.name, path: path.trim() }]);
                 }
                 
@@ -197,6 +197,22 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
     const handleDeleteSavedWorld = (path: string, e: React.MouseEvent) => {
         e.stopPropagation();
         setSavedWorlds(savedWorlds.filter(w => w.path !== path));
+    };
+
+
+    const handleOpenPreviewWorld = async () => {
+        try {
+            setError('');
+            const previewPath = await openPreviewWorld();
+            if (!previewPath) {
+                setError(t('login.errors.previewWorldUnavailable'));
+                return;
+            }
+            await handleOpenWorld(previewPath, t('login.previewWorld.name'), false, { saveToRecent: false });
+        } catch (err) {
+            setError(readErrorMessage(err) || t('login.errors.previewWorldUnavailable'));
+            setStep('host');
+        }
     };
 
     const handleSelectWorldFolder = async () => {
@@ -371,6 +387,23 @@ export function LoginScreen({ onJoin }: LoginScreenProps) {
                                 {t('login.checkServer')}
                             </button>
                         </div>
+
+
+                        {desktopRuntime && (
+                            <button
+                                type="button"
+                                onClick={() => void handleOpenPreviewWorld()}
+                                className="flex w-full items-start gap-3 rounded-xl border border-amber-300/20 bg-amber-400/10 p-3 text-left transition-colors hover:border-amber-300/35 hover:bg-amber-400/15"
+                            >
+                                <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-amber-300/25 bg-amber-300/10 text-amber-200">
+                                    <Sparkles size={15} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <div className="text-sm font-bold text-amber-100">{t('login.previewWorld.open')}</div>
+                                    <div className="mt-0.5 text-[11px] leading-snug text-amber-50/55">{t('login.previewWorld.description')}</div>
+                                </div>
+                            </button>
+                        )}
 
                         {/* Saved Worlds List */}
                         {savedWorlds.length > 0 && (

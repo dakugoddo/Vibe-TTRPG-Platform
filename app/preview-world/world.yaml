@@ -1,0 +1,4 @@
+name: "Preview World"
+version: "1.0.0"
+createdAt: "2026-06-26T00:00:00.000Z"
+description: "Bundled read-only template copied to a temporary session folder when opened."

@@ -18,7 +18,8 @@
       "connectionError": "Ошибка подключения",
       "enterPlayerName": "Пожалуйста, введите ваше имя перед подключением",
       "fileServerHttp": "Файловый сервер ответил HTTP {{status}}",
-      "serverOnlineNoWorld": "Сервер онлайн, но ГМ ещё не открыл мир. Попроси ГМа открыть мир на хосте."
+      "serverOnlineNoWorld": "Сервер онлайн, но ГМ ещё не открыл мир. Попроси ГМа открыть мир на хосте.",
+      "previewWorldUnavailable": "Preview-мир доступен только в Electron-сборке и не найден в ресурсах приложения."
     },
     "status": {
       "desktopServerPreparing": "Desktop runtime готовит локальный сервер.",
@@ -37,6 +38,11 @@
     "hostWorldAsGm": "Вести мир как ГМ",
     "joinAsPlayer": "Подключиться как игрок",
     "uiDemo": "Демонстрация стилей UI",
+    "previewWorld": {
+      "name": "Preview World",
+      "open": "Открыть preview-мир",
+      "description": "Демонстрационный мир из комплекта приложения. При каждом открытии создаётся временная копия; изменения не сохраняются между запусками preview."
+    },
     "worlds": "Миры",
     "localServer": "Локальный сервер",
     "checkServer": "Проверить",

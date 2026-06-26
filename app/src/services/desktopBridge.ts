@@ -16,3 +16,8 @@ export async function showTranslationsFolder(): Promise<string | null> {
     if (!window.vibeDesktop?.showTranslationsFolder) return null;
     return window.vibeDesktop.showTranslationsFolder();
 }
+
+export async function openPreviewWorld(): Promise<string | null> {
+    if (!window.vibeDesktop?.openPreviewWorld) return null;
+    return window.vibeDesktop.openPreviewWorld();
+}
