@@ -2,8 +2,8 @@ export const DEV_PERFORMANCE_OVERLAY_STORAGE_KEY = 'vibe-dev-performance-overlay
 export const DEV_PERFORMANCE_OVERLAY_EVENT = 'vibe-dev-performance-overlay-change';
 
 export function getDevPerformanceOverlayEnabled(): boolean {
-  if (typeof window === 'undefined') return true;
-  return window.localStorage.getItem(DEV_PERFORMANCE_OVERLAY_STORAGE_KEY) !== 'false';
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(DEV_PERFORMANCE_OVERLAY_STORAGE_KEY) === 'true';
 }
 
 export function setDevPerformanceOverlayEnabled(enabled: boolean): void {
