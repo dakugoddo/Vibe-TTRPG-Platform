@@ -1,6 +1,8 @@
 import { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo, memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Stage, Layer, Text, Group, Circle, Line, Rect, Ellipse, RegularPolygon, Image as KonvaImage, Shape } from 'react-konva';
-import { ExternalLink } from 'lucide-react';
+import { Html } from 'react-konva-utils';
+import { Box, Copy, ExternalLink, Eye, EyeOff, Image as ImageIcon, MoveRight, Trash2 } from 'lucide-react';
 import Konva from 'konva';
 import useImage from 'use-image';
 import { useCanvasStore } from '../../store/canvasStore';
@@ -9,10 +11,27 @@ import { yjsStore } from '../../store/yjsStore';
 import { useEntitiesByParent } from '../../hooks/useEntities';
 import { useWindowStore } from '../../store/windowStore';
 import { useCanvasSyncStore, PING_DURATION_MS } from '../../store/canvasSyncStore';
-import type { Entity } from '../../types';
-import type { DrawElement, LineCap, StrokeStyle } from '../../types/canvasTypes';
-import { getKonvaDash, getArrowPoints, translateElement, elementsInRect, getKonvaFontFamily, getElementBounds, getChildrenOfFrame } from '../../types/canvasTypes';
-import type { RemoteCursor } from '../../store/canvasSyncStore';
+import { useUIStore } from '../../store/uiStore';
+import { useNotificationStore } from '../../store/notificationStore';
+import { getAssetUrl, getIsHost, uploadAssetFile, uploadAssetFileToHost, type AssetRecord } from '../../services/fileApi';
+import { canViewEntity } from '../../utils/permissions';
+import { readAssetDragPayload } from '../../utils/assetDrag';
+import { findNearestCanvasAnchor, updateBoundLineEndpoints, type CanvasAnchorPoint } from '../../utils/canvasAnchors';
+import { getEntityCanvasTokenDefaults, getEntityCanvasTokenImageSource, type EntityCanvasTokenDefaults } from '../../utils/entityCanvasDefaults';
+import { fitEntityArtSizeToImage } from '../../utils/entityTokenSizing';
+import { ENTITY_TOKEN_FRAME_OPTIONS, getEntityTokenFrameConfig } from '../../utils/canvasEntityTokenFrame';
+import { buildCharacterCompactSummary, type CharacterCompactSummary } from '../../utils/characterCardSummary';
+import { getCanvasVisualStyleConfig, getJitteredLinePoints, getVisualStyleOffset } from '../../utils/canvasVisualStyle';
+import { findEditableLinePointNear, getLineMode, getLineTension, getRoutedLinePoints, insertLinePointAtClosestSegment, removeLinePointAtIndex } from '../../utils/canvasLineRouting';
+import { getEntityDropActions } from '../../utils/entityDropRouter';
+import { getEntityOwnerId, moveEntityTreeToParent } from '../../utils/entityTreeMutations';
+import { isAnimatedGifSource } from '../../utils/imageSource';
+import { LARGE_ASSET_UPLOAD_APPROVAL_BYTES, formatNotificationFileSize } from '../../utils/notificationModel';
+import { createLargeUploadApprovalRequest } from '../../utils/sessionNotificationModel';
+import { CanvasImagePicker } from './CanvasImagePicker';
+import type { DatabaseType, Entity, SessionNotificationEvent } from '../../types';
+import type { CanvasTool, DrawElement, DrawElementBinding, EntityTokenFrame, EntityTokenMode, LineCap, StrokeStyle } from '../../types/canvasTypes';
+import { getKonvaDash, getArrowPoints, translateElement, elementsInRect, getKonvaFontFamily, getElementBounds, getChildrenOfFrame, fogRevealsOverlap } from '../../types/canvasTypes';
 import type { FogReveal } from '../../types/canvasTypes';
 
 const SCALE_BY = 1.1;
@@ -20,14 +39,66 @@ const POINT_HANDLE_RADIUS = 5;
 const RESIZE_HANDLE_SIZE = 7;
 const MIN_PEN_POINT_DISTANCE = 8; // Minimum px between pen points during drawing
 const RDP_EPSILON = 3; // Ramer-Douglas-Peucker simplification tolerance
+const OBJECT_SNAP_SCREEN_RADIUS = 18;
+const MAX_CANVAS_IMAGE_UPLOAD_BYTES = 250 * 1024 * 1024;
+const MIDDLE_PAN_COMMIT_THRESHOLD_X = 72;
+const MIDDLE_PAN_COMMIT_THRESHOLD_Y = 56;
+const NUMBER_TOOL_SHORTCUTS: CanvasTool[] = ['select', 'pen', 'line', 'rect', 'ellipse', 'image', 'frame'];
+
+type CharacterCompactTab = 'stats' | 'actions' | 'resources' | 'notes';
+
+const CHARACTER_COMPACT_TABS: Array<{ id: CharacterCompactTab; labelKey: string }> = [
+  { id: 'stats', labelKey: 'canvas.compact.tabs.stats' },
+  { id: 'actions', labelKey: 'canvas.compact.tabs.actions' },
+  { id: 'resources', labelKey: 'canvas.compact.tabs.resources' },
+  { id: 'notes', labelKey: 'canvas.compact.tabs.notes' },
+];
+
+const ENTITY_TOKEN_LABEL_MIN_WIDTH = 96;
+const ENTITY_TOKEN_LABEL_MAX_WIDTH = 180;
+const ENTITY_TOKEN_LABEL_HEIGHT = 26;
+
+interface CanvasImageTarget {
+  canvasId: string;
+  canvasX: number;
+  canvasY: number;
+  screenX: number;
+  screenY: number;
+}
+
+type CanvasImageUploadHandler = (
+  file: File,
+  target: CanvasImageTarget,
+  centerOnPoint?: boolean,
+  sessionNotificationId?: string,
+  existingNotificationId?: string,
+) => Promise<void>;
+
+interface EntityDropChoiceTarget {
+  entityId: string;
+  canvasPoint: { x: number; y: number };
+  screenX: number;
+  screenY: number;
+}
+
+interface LinePointSnapResult {
+  point: { x: number; y: number };
+  binding?: DrawElementBinding;
+}
+
+interface ObjectSnapPreview {
+  x: number;
+  y: number;
+  anchor?: CanvasAnchorPoint;
+}
 
 // ─── Utility: Simple throttle for drag operations ───
 
-function throttle<T extends (...args: any[]) => any>(fn: T, limitMs: number): T {
+function throttle<Args extends unknown[]>(fn: (...args: Args) => void, limitMs: number): (...args: Args) => void {
   let lastCall = 0;
   let rafId: number | null = null;
-  let pendingArgs: any[] | null = null;
-  return ((...args: any[]) => {
+  let pendingArgs: Args | null = null;
+  return ((...args: Args) => {
     pendingArgs = args;
     if (rafId !== null) return;
     const now = Date.now();
@@ -44,7 +115,7 @@ function throttle<T extends (...args: any[]) => any>(fn: T, limitMs: number): T 
         }
       });
     }
-  }) as T;
+  });
 }
 
 // ─── Utility: Point-in-polygon test (ray casting) ───
@@ -68,7 +139,215 @@ function generateDrawId(): string {
   return `draw_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function getScaledImageDimensions(width: number, height: number, maxDim = 600): { width: number; height: number } {
+  let scaledWidth = width;
+  let scaledHeight = height;
+  if (scaledWidth > maxDim || scaledHeight > maxDim) {
+    const ratio = Math.min(maxDim / scaledWidth, maxDim / scaledHeight);
+    scaledWidth = Math.round(scaledWidth * ratio);
+    scaledHeight = Math.round(scaledHeight * ratio);
+  }
+  return { width: scaledWidth, height: scaledHeight };
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getClipboardTextRectangleSize(text: string, fontSize: number): { width: number; height: number } {
+  const lines = text.split(/\r?\n/);
+  const longestLine = lines.reduce((max, line) => Math.max(max, line.length), 0);
+  const width = clampNumber(Math.round(longestLine * fontSize * 0.58 + 36), 180, 640);
+  const height = clampNumber(Math.round(lines.length * fontSize * 1.35 + 36), 80, 420);
+  return { width, height };
+}
+
+function isEditablePasteTarget(target: EventTarget | Element | null): boolean {
+  if (!(target instanceof Element)) return false;
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  ) {
+    return true;
+  }
+  return Boolean(target.closest('[contenteditable="true"], [contenteditable=""], [role="textbox"]'));
+}
+
+function getClipboardImageExtension(mime: string): string {
+  if (mime === 'image/gif') return 'gif';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/jpeg') return 'jpg';
+  if (mime === 'image/svg+xml') return 'svg';
+  return 'png';
+}
+
+function ensureNamedClipboardImage(file: File, index: number): File {
+  if (file.name) return file;
+  const mime = file.type || 'image/png';
+  return new File([file], `clipboard-image-${Date.now()}-${index}.${getClipboardImageExtension(mime)}`, {
+    type: mime,
+    lastModified: Date.now(),
+  });
+}
+
+function getClipboardImageFiles(data: DataTransfer): File[] {
+  const files: File[] = [];
+  const items = Array.from(data.items || []);
+
+  for (const item of items) {
+    if (item.kind !== 'file' || !item.type.startsWith('image/')) continue;
+    const file = item.getAsFile();
+    if (file) files.push(ensureNamedClipboardImage(file, files.length));
+  }
+
+  if (files.length > 0) return files;
+
+  return Array.from(data.files || [])
+    .filter((file) => file.type.startsWith('image/'))
+    .map((file, index) => ensureNamedClipboardImage(file, index));
+}
+
+function loadBrowserImage(sourceUrl: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Image failed to load'));
+    img.src = sourceUrl;
+  });
+}
+
+function resolveCanvasImageSource(rawImageSource: string): string {
+  if (!rawImageSource) return '';
+  return rawImageSource.startsWith('http') || rawImageSource.startsWith('data:')
+    ? rawImageSource
+    : getAssetUrl(rawImageSource);
+}
+
+function isPointerOverNonCanvasUi(clientX: number, clientY: number, canvasRoot: HTMLElement | null): boolean {
+  const topElement = document.elementFromPoint(clientX, clientY);
+  return Boolean(topElement && canvasRoot && !canvasRoot.contains(topElement));
+}
+
+function getPlainEntityDescription(entity: Entity): string {
+  return (entity.description || '')
+    .replace(/[#*_`>\-[\]()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getCanvasEntityTypeLabel(entity: Entity, t: (key: string) => string): string {
+  if (entity.type === 'character') return t('notesWorkspace.entityTypes.character');
+  if (entity.type === 'object') return t('notesWorkspace.entityTypes.object');
+  if (entity.type === 'ability') return t('notesWorkspace.entityTypes.ability');
+  if (entity.type === 'competency') return t('notesWorkspace.entityTypes.competency');
+  if (entity.type === 'attack') return t('notesWorkspace.entityTypes.attack');
+  if (entity.type === 'tag') return t('notesWorkspace.entityTypes.tag');
+  if (entity.type === 'note') return t('notesWorkspace.entityTypes.note');
+  if (entity.type === 'canvas') return t('notesWorkspace.entityTypes.canvas');
+  if (entity.type === 'folder') return t('notesWorkspace.entityTypes.folder');
+  if (entity.type === 'portal') return t('notesWorkspace.entityTypes.portal');
+  return entity.type;
+}
+
+async function getEntityTokenCanvasSize(
+  entity: Entity,
+  mode: EntityTokenMode,
+  defaults: EntityCanvasTokenDefaults
+): Promise<{ width: number; height: number }> {
+  if (mode !== 'art') {
+    return { width: defaults.width, height: defaults.height };
+  }
+
+  const imageSource = resolveCanvasImageSource(getEntityCanvasTokenImageSource(entity, 'art'));
+  if (!imageSource) {
+    return { width: defaults.width, height: defaults.height };
+  }
+
+  try {
+    const image = await loadBrowserImage(imageSource);
+    const naturalWidth = image.naturalWidth || image.width;
+    const naturalHeight = image.naturalHeight || image.height;
+    if (naturalWidth <= 0 || naturalHeight <= 0) {
+      return { width: defaults.width, height: defaults.height };
+    }
+
+    return fitEntityArtSizeToImage(
+      { width: defaults.artWidth, height: defaults.artHeight },
+      { width: naturalWidth, height: naturalHeight }
+    );
+  } catch {
+    return { width: defaults.width, height: defaults.height };
+  }
+}
+
+function snapPointToConfiguredGrid(
+  point: { x: number; y: number },
+  gridEnabled: boolean,
+  gridType: 'square' | 'hex',
+  gridSpacing: number,
+  disabled = false
+): { x: number; y: number } {
+  if (!gridEnabled || disabled || gridSpacing <= 0) return point;
+
+  if (gridType === 'square') {
+    return {
+      x: Math.round(point.x / gridSpacing) * gridSpacing,
+      y: Math.round(point.y / gridSpacing) * gridSpacing,
+    };
+  }
+
+  const hexH = gridSpacing * 0.866;
+  const hexStepX = gridSpacing * 0.75;
+  const approxCol = Math.round(point.x / hexStepX);
+  const approxRow = Math.round(point.y / hexH);
+  let best = point;
+  let bestDist = Infinity;
+
+  for (let col = approxCol - 2; col <= approxCol + 2; col++) {
+    for (let row = approxRow - 2; row <= approxRow + 2; row++) {
+      const cx = col * hexStepX;
+      const cy = row * hexH + (col % 2 === 0 ? 0 : hexH / 2);
+      const dist = Math.hypot(point.x - cx, point.y - cy);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = { x: cx, y: cy };
+      }
+    }
+  }
+
+  return best;
+}
+
 // ─── Ramer-Douglas-Peucker line simplification ───
+
+function canEditEntity(entity: Entity): boolean {
+  return yjsStore.canModify(entity.database, getEntityOwnerId(entity));
+}
+
+function canViewCanvasEntity(entity?: Entity): entity is Entity {
+  if (!entity) return false;
+  return canViewEntity(
+    yjsStore.localRole,
+    entity.database,
+    getEntityOwnerId(entity),
+    yjsStore.localPlayerId,
+    yjsStore.localPlayerName
+  );
+}
+
+function canEditCanvasEntityById(canvasId: string | null): boolean {
+  if (!canvasId) return false;
+  const entity = yjsStore.entitiesMap.get(canvasId);
+  if (!entity || entity.type !== 'canvas') return true;
+  return canEditEntity(entity);
+}
+
+function getCanvasTargetDatabase(canvasId: string | null, fallback?: DatabaseType): DatabaseType {
+  const canvasEntity = canvasId ? yjsStore.entitiesMap.get(canvasId) : undefined;
+  return canvasEntity?.database || fallback || 'general';
+}
 
 function perpendicularDistance(
   px: number, py: number,
@@ -112,20 +391,14 @@ function rdpSimplify(points: number[], epsilon: number): number[] {
 // ─── Helper: Get/save draw elements from canvas entity ───
 
 function getDrawElements(_activeCanvasId: string): DrawElement[] {
+  void _activeCanvasId;
   return useCanvasSyncStore.getState().elements;
 }
 
 function saveDrawElements(_activeCanvasId: string, elements: DrawElement[]): void {
+  void _activeCanvasId;
   useCanvasSyncStore.getState().syncElementsArray(elements);
 }
-
-// Throttled version for drag operations — can be invalidated by drag end
-let _throttleGeneration = 0;
-const throttledSaveDrawElements = throttle((activeCanvasId: string, elements: DrawElement[], gen?: number) => {
-  // Only skip if gen is provided AND doesn't match current generation
-  if (gen !== undefined && gen !== _throttleGeneration) return;
-  saveDrawElements(activeCanvasId, elements);
-}, 16);
 
 // ─── Sub-component: Render a line cap (arrowhead / circle / diamond / square) ───
 
@@ -137,6 +410,7 @@ function LineCapDecoration({
   toY,
   stroke,
   size,
+  opacity = 1,
 }: {
   cap: LineCap;
   fromX: number;
@@ -145,6 +419,7 @@ function LineCapDecoration({
   toY: number;
   stroke: string;
   size: number;
+  opacity?: number;
 }) {
   if (cap === 'none') return null;
 
@@ -157,6 +432,7 @@ function LineCapDecoration({
         strokeWidth={Math.max(size / 6, 1.5)}
         lineCap="round"
         lineJoin="round"
+        opacity={opacity}
         listening={false}
       />
     );
@@ -169,6 +445,7 @@ function LineCapDecoration({
         y={toY}
         radius={size / 3}
         fill={stroke}
+        opacity={opacity}
         listening={false}
       />
     );
@@ -184,6 +461,7 @@ function LineCapDecoration({
         radius={size / 2.5}
         fill={stroke}
         rotation={(angle * 180) / Math.PI + 45}
+        opacity={opacity}
         listening={false}
       />
     );
@@ -198,6 +476,7 @@ function LineCapDecoration({
         width={s * 2}
         height={s * 2}
         fill={stroke}
+        opacity={opacity}
         listening={false}
       />
     );
@@ -214,13 +493,20 @@ const DrawElementNode = memo(function DrawElementNode({
   onSelect,
   isEditingText,
   onDblClickText,
+  onOpenLinkedEntity,
+  onShowLinkedEntityInfo,
+  isEntityInfoOpen,
 }: {
   element: DrawElement;
   isSelected: boolean;
   onSelect: (id: string, shiftKey: boolean) => void;
   isEditingText?: boolean;
   onDblClickText?: (id: string, e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onOpenLinkedEntity?: (entityId: string, e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onShowLinkedEntityInfo?: (elementId: string, e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
+  isEntityInfoOpen?: boolean;
 }) {
+  const { t } = useTranslation();
   const bounds = getElementBounds(element);
   const cx = bounds.x + bounds.w / 2;
   const cy = bounds.y + bounds.h / 2;
@@ -238,10 +524,13 @@ const DrawElementNode = memo(function DrawElementNode({
 
   const dash = getKonvaDash(element.strokeStyle, element.strokeWidth);
   const isLineType = element.type === 'line' || element.type === 'arrow';
+  const visualStyle = getCanvasVisualStyleConfig(element.visualStyle);
 
   if (isLineType) {
     if (!element.points || element.points.length < 4) return null;
-    const pts = element.points;
+    const rawPts = element.points;
+    const lineMode = getLineMode(element.lineMode, rawPts.length / 2);
+    const pts = getRoutedLinePoints(rawPts, lineMode);
     const capSize = Math.max(element.strokeWidth * 4, 12);
 
     // Start cap direction
@@ -253,11 +542,19 @@ const DrawElementNode = memo(function DrawElementNode({
     const endFrom = { x: pts[endIdx - 4], y: pts[endIdx - 3] };
     const endTo = { x: pts[endIdx - 2], y: pts[endIdx - 1] };
 
-    // Use tension for smooth curves on pen-drawn polylines (>2 points)
-    const useTension = pts.length > 4 ? 0.35 : 0;
+    const useTension = getLineTension(pts, lineMode);
 
     // Compute stroke opacity
     const sOpacity = element.strokeOpacity ?? 1;
+    const sketchPts = visualStyle.sketchJitter > 0
+      ? getJitteredLinePoints(pts, element.id, visualStyle.sketchJitter)
+      : null;
+    const startCapSketchOffset = visualStyle.sketchJitter > 0
+      ? getVisualStyleOffset(element.id, 'start-cap', visualStyle.sketchJitter)
+      : null;
+    const endCapSketchOffset = visualStyle.sketchJitter > 0
+      ? getVisualStyleOffset(element.id, 'end-cap', visualStyle.sketchJitter)
+      : null;
 
     return (
       <Group {...commonProps}>
@@ -272,6 +569,19 @@ const DrawElementNode = memo(function DrawElementNode({
             listening={false}
           />
         )}
+        {visualStyle.softStrokeWidth > 0 && (
+          <Line
+            points={pts}
+            stroke={element.stroke}
+            strokeWidth={element.strokeWidth + visualStyle.softStrokeWidth}
+            dash={dash}
+            lineCap="round"
+            lineJoin="round"
+            tension={useTension}
+            opacity={sOpacity * visualStyle.softStrokeOpacity}
+            listening={false}
+          />
+        )}
         <Line
           points={pts}
           stroke={element.stroke}
@@ -283,6 +593,19 @@ const DrawElementNode = memo(function DrawElementNode({
           tension={useTension}
           opacity={sOpacity}
         />
+        {sketchPts && (
+          <Line
+            points={sketchPts}
+            stroke={element.stroke}
+            strokeWidth={Math.max(1, element.strokeWidth * 0.9)}
+            dash={dash}
+            lineCap="round"
+            lineJoin="round"
+            tension={useTension}
+            opacity={sOpacity * visualStyle.sketchStrokeOpacity}
+            listening={false}
+          />
+        )}
         {/* Start cap */}
         <LineCapDecoration
           cap={element.startCap}
@@ -293,6 +616,18 @@ const DrawElementNode = memo(function DrawElementNode({
           stroke={element.stroke}
           size={capSize}
         />
+        {startCapSketchOffset && (
+          <LineCapDecoration
+            cap={element.startCap}
+            fromX={startFrom.x + startCapSketchOffset.x}
+            fromY={startFrom.y + startCapSketchOffset.y}
+            toX={startTo.x + startCapSketchOffset.x}
+            toY={startTo.y + startCapSketchOffset.y}
+            stroke={element.stroke}
+            size={capSize}
+            opacity={sOpacity * visualStyle.sketchStrokeOpacity}
+          />
+        )}
         {/* End cap */}
         <LineCapDecoration
           cap={element.endCap}
@@ -303,6 +638,18 @@ const DrawElementNode = memo(function DrawElementNode({
           stroke={element.stroke}
           size={capSize}
         />
+        {endCapSketchOffset && (
+          <LineCapDecoration
+            cap={element.endCap}
+            fromX={endFrom.x + endCapSketchOffset.x}
+            fromY={endFrom.y + endCapSketchOffset.y}
+            toX={endTo.x + endCapSketchOffset.x}
+            toY={endTo.y + endCapSketchOffset.y}
+            stroke={element.stroke}
+            size={capSize}
+            opacity={sOpacity * visualStyle.sketchStrokeOpacity}
+          />
+        )}
         {/* Line label (objectName) at center */}
         {element.objectName && (() => {
           // Calculate midpoint of the line
@@ -347,6 +694,7 @@ const DrawElementNode = memo(function DrawElementNode({
     const rh = element.height || 0;
     const fOpacity = element.fillOpacity ?? 1;
     const sOpacity = element.strokeOpacity ?? 1;
+    const sketchOffset = getVisualStyleOffset(element.id, 'rectangle-stroke', visualStyle.sketchJitter);
     return (
       <Group {...commonProps}>
         {isSelected && (
@@ -376,6 +724,21 @@ const DrawElementNode = memo(function DrawElementNode({
             listening={false}
           />
         )}
+        {visualStyle.softStrokeWidth > 0 && (
+          <Rect
+            x={rx}
+            y={ry}
+            width={rw}
+            height={rh}
+            stroke={element.stroke}
+            strokeWidth={element.strokeWidth + visualStyle.softStrokeWidth}
+            opacity={sOpacity * visualStyle.softStrokeOpacity}
+            dash={dash}
+            cornerRadius={2}
+            fill="transparent"
+            listening={false}
+          />
+        )}
         {/* Stroke layer */}
         <Rect
           x={rx}
@@ -389,6 +752,21 @@ const DrawElementNode = memo(function DrawElementNode({
           cornerRadius={2}
           fill="transparent"
         />
+        {visualStyle.sketchJitter > 0 && (
+          <Rect
+            x={rx + sketchOffset.x}
+            y={ry + sketchOffset.y}
+            width={rw}
+            height={rh}
+            stroke={element.stroke}
+            strokeWidth={Math.max(1, element.strokeWidth * 0.9)}
+            opacity={sOpacity * visualStyle.sketchStrokeOpacity}
+            dash={dash}
+            cornerRadius={2}
+            fill="transparent"
+            listening={false}
+          />
+        )}
         {/* Object name above the shape */}
         {element.objectName && element.showName !== false && (
           <Text
@@ -432,6 +810,7 @@ const DrawElementNode = memo(function DrawElementNode({
     const ery = Math.abs((element.height || 0) / 2);
     const fOpacity = element.fillOpacity ?? 1;
     const sOpacity = element.strokeOpacity ?? 1;
+    const sketchOffset = getVisualStyleOffset(element.id, 'ellipse-stroke', visualStyle.sketchJitter);
     return (
       <Group {...commonProps}>
         {isSelected && (
@@ -459,6 +838,20 @@ const DrawElementNode = memo(function DrawElementNode({
             listening={false}
           />
         )}
+        {visualStyle.softStrokeWidth > 0 && (
+          <Ellipse
+            x={ecx}
+            y={ecy}
+            radiusX={erx}
+            radiusY={ery}
+            stroke={element.stroke}
+            strokeWidth={element.strokeWidth + visualStyle.softStrokeWidth}
+            opacity={sOpacity * visualStyle.softStrokeOpacity}
+            dash={dash}
+            fill="transparent"
+            listening={false}
+          />
+        )}
         {/* Stroke layer */}
         <Ellipse
           x={ecx}
@@ -471,6 +864,20 @@ const DrawElementNode = memo(function DrawElementNode({
           dash={dash}
           fill="transparent"
         />
+        {visualStyle.sketchJitter > 0 && (
+          <Ellipse
+            x={ecx + sketchOffset.x}
+            y={ecy + sketchOffset.y}
+            radiusX={erx}
+            radiusY={ery}
+            stroke={element.stroke}
+            strokeWidth={Math.max(1, element.strokeWidth * 0.9)}
+            opacity={sOpacity * visualStyle.sketchStrokeOpacity}
+            dash={dash}
+            fill="transparent"
+            listening={false}
+          />
+        )}
         {/* Object name above the shape */}
         {element.objectName && element.showName !== false && (
           <Text
@@ -545,11 +952,416 @@ const DrawElementNode = memo(function DrawElementNode({
     );
   }
 
+  if (element.type === 'entityToken') {
+    const ex = element.x || 0;
+    const ey = element.y || 0;
+    const ew = element.width || 72;
+    const eh = element.height || 92;
+    const linkedEntity = element.linkedEntityId ? yjsStore.entitiesMap.get(element.linkedEntityId) : undefined;
+    const canViewLinked = canViewCanvasEntity(linkedEntity);
+    const mode = element.entityTokenMode || 'token';
+    const frame = getEntityTokenFrameConfig(element.entityTokenFrame);
+    const showEntityName = element.showName !== false;
+    const displayName = canViewLinked ? linkedEntity.name : t('entityWindow.hiddenEntity');
+    const initial = displayName.trim().charAt(0).toUpperCase() || '?';
+    const accentStroke = canViewLinked ? element.stroke || '#a5b4fc' : 'rgba(248,113,113,0.65)';
+    const tokenFill = canViewLinked ? element.fill || 'rgba(30,41,59,0.96)' : 'rgba(63,23,23,0.9)';
+    const glowBlur = frame.glowOpacity > 0 ? 14 : 0;
+    const rawImageSource = canViewLinked ? getEntityCanvasTokenImageSource(linkedEntity, mode) : '';
+    const imageSource = resolveCanvasImageSource(rawImageSource);
+    const strokeOpacity = element.strokeOpacity ?? 1;
+    const entityStrokeWidth = Math.max(0, element.strokeWidth ?? (mode === 'art' ? frame.artStrokeWidth : frame.tokenStrokeWidth));
+    const entityDash = getKonvaDash(element.strokeStyle ?? 'solid', Math.max(1, entityStrokeWidth));
+    const characterArtSummary = mode === 'art' && canViewLinked && linkedEntity.type === 'character' && canEditEntity(linkedEntity)
+      ? buildCharacterCompactSummary(linkedEntity, Array.from(yjsStore.entitiesMap.values()))
+      : null;
+
+    const openLinkedEntity = (e: Konva.KonvaEventObject<MouseEvent>) => {
+      e.cancelBubble = true;
+      if (canViewLinked && element.linkedEntityId) onOpenLinkedEntity?.(element.linkedEntityId, e);
+    };
+
+    if (mode === 'art') {
+      const cardHasCompactSummary = Boolean(characterArtSummary && linkedEntity);
+      const artCornerRadius = frame.id === 'plain' ? 4 : 8;
+      const artLabelHeight = Math.min(42, Math.max(30, eh * 0.2));
+      const artLabelY = ey + eh - artLabelHeight;
+      const artLabelFontSize = Math.min(13, Math.max(10, ew / 18));
+      return (
+        <Group {...commonProps} onDblClick={openLinkedEntity}>
+          {isSelected && (
+            <Rect
+              x={ex - 3}
+              y={ey - 3}
+              width={ew + 6}
+              height={eh + 6}
+              stroke="rgba(167,139,250,0.4)"
+              strokeWidth={2}
+              dash={[4, 4]}
+              listening={false}
+            />
+          )}
+          <Rect
+            x={ex}
+            y={ey}
+            width={ew}
+            height={eh}
+            fill="rgba(15,23,42,0.86)"
+            cornerRadius={artCornerRadius}
+            listening={false}
+          />
+          {imageSource ? (
+            <ImageNode url={imageSource} x={ex} y={ey} width={ew} height={eh} fit="contain" />
+          ) : (
+            <Text
+              x={ex}
+              y={ey + eh / 2 - 18}
+              width={ew}
+              text={initial}
+              fontSize={36}
+              fontStyle="bold"
+              fill="rgba(226,232,240,0.72)"
+              align="center"
+              listening={false}
+            />
+          )}
+          <Rect
+            x={ex}
+            y={ey}
+            width={ew}
+            height={eh}
+            fill="transparent"
+            stroke={canViewLinked ? accentStroke : 'rgba(248,113,113,0.45)'}
+            strokeWidth={entityStrokeWidth}
+            dash={entityDash}
+            opacity={strokeOpacity}
+            cornerRadius={artCornerRadius}
+            shadowColor={accentStroke}
+            shadowBlur={glowBlur}
+            shadowOpacity={frame.glowOpacity * strokeOpacity}
+            shadowOffsetY={2}
+            listening={false}
+          />
+          {frame.id === 'ring' && (
+            <Rect
+              x={ex + 5}
+              y={ey + 5}
+              width={Math.max(0, ew - 10)}
+              height={Math.max(0, eh - 10)}
+              stroke={accentStroke}
+              strokeWidth={1}
+              opacity={0.36 * strokeOpacity}
+              cornerRadius={6}
+              listening={false}
+            />
+          )}
+          {frame.id === 'badge' && (
+            <Rect
+              x={ex + 8}
+              y={ey + 8}
+              width={Math.max(0, ew - 16)}
+              height={Math.max(0, eh - 16)}
+              stroke={accentStroke}
+              strokeWidth={1}
+              dash={[8, 6]}
+              opacity={0.3 * strokeOpacity}
+              cornerRadius={5}
+              listening={false}
+            />
+          )}
+          {frame.id === 'hex' && (
+            <Line
+              points={[
+                ex + 16, ey + 3,
+                ex + ew - 16, ey + 3,
+                ex + ew - 3, ey + 16,
+                ex + ew - 3, ey + eh - 16,
+                ex + ew - 16, ey + eh - 3,
+                ex + 16, ey + eh - 3,
+                ex + 3, ey + eh - 16,
+                ex + 3, ey + 16,
+              ]}
+              closed
+              stroke={accentStroke}
+              strokeWidth={1.5}
+              opacity={0.52 * strokeOpacity}
+              listening={false}
+            />
+          )}
+          {characterArtSummary && linkedEntity && (
+            <CharacterCanvasCardOverlay
+              x={ex}
+              y={ey}
+              width={ew}
+              height={eh}
+              entityName={linkedEntity.name}
+              entityTypeLabel={getCanvasEntityTypeLabel(linkedEntity, t)}
+              summary={characterArtSummary}
+              description={getPlainEntityDescription(linkedEntity)}
+            />
+          )}
+          {showEntityName && !cardHasCompactSummary && (
+            <>
+              <Rect
+                x={ex}
+                y={artLabelY}
+                width={ew}
+                height={artLabelHeight}
+                fill="rgba(2,6,23,0.72)"
+                cornerRadius={artCornerRadius === 4 ? [0, 0, 4, 4] : [0, 0, 8, 8]}
+                listening={false}
+              />
+              <Text
+                x={ex + 8}
+                y={artLabelY + 6}
+                width={ew - 16}
+                height={Math.max(12, artLabelHeight - 20)}
+                text={displayName}
+                fontSize={artLabelFontSize}
+                fontStyle="bold"
+                fill="rgba(241,245,249,0.9)"
+                align="center"
+                wrap="none"
+                ellipsis
+                listening={false}
+              />
+              <Text
+                x={ex + 8}
+                y={artLabelY + artLabelHeight - 13}
+                width={ew - 16}
+                height={9}
+                text={canViewLinked && linkedEntity ? getCanvasEntityTypeLabel(linkedEntity, t) : t('entityWindow.hiddenEntity')}
+                fontSize={8}
+                fill="rgba(203,213,225,0.55)"
+                align="center"
+                wrap="none"
+                ellipsis
+                listening={false}
+              />
+            </>
+          )}
+          {isEntityInfoOpen && canViewLinked && linkedEntity && (
+            <>
+              <Rect
+                x={ex}
+                y={ey}
+                width={ew}
+                height={eh}
+                fill="rgba(2,6,23,0.78)"
+                cornerRadius={frame.id === 'plain' ? 4 : 8}
+                listening={false}
+              />
+              <Text
+                x={ex + 12}
+                y={ey + 14}
+                width={Math.max(20, ew - 24)}
+                text={linkedEntity.name}
+                fontSize={Math.min(18, Math.max(12, ew / 12))}
+                fontStyle="bold"
+                fill="rgba(241,245,249,0.96)"
+                wrap="word"
+                listening={false}
+              />
+              <Text
+                x={ex + 12}
+                y={ey + 42}
+                width={Math.max(20, ew - 24)}
+                height={Math.max(24, eh - 58)}
+                text={getPlainEntityDescription(linkedEntity) || t('abilitySheet.emptyDescription')}
+                fontSize={Math.min(13, Math.max(10, ew / 18))}
+                fill="rgba(226,232,240,0.74)"
+                lineHeight={1.25}
+                wrap="word"
+                ellipsis
+                listening={false}
+              />
+            </>
+          )}
+          {canViewLinked && (
+            <Group
+              x={ex + ew - 22}
+              y={ey + eh - 22}
+              onClick={(e) => {
+                e.cancelBubble = true;
+                onShowLinkedEntityInfo?.(element.id, e);
+              }}
+              onTap={(e) => {
+                e.cancelBubble = true;
+                onShowLinkedEntityInfo?.(element.id, e);
+              }}
+            >
+              <Circle radius={10} fill={isEntityInfoOpen ? "rgba(14,165,233,0.72)" : "rgba(2,6,23,0.72)"} stroke="rgba(255,255,255,0.28)" strokeWidth={1} />
+              <Text x={-5} y={-7} width={10} text="i" fontSize={12} fontStyle="bold" fill="#e0f2fe" align="center" />
+            </Group>
+          )}
+        </Group>
+      );
+    }
+
+    const reservedTokenLabelHeight = showEntityName ? ENTITY_TOKEN_LABEL_HEIGHT + 9 : 0;
+    const tokenSize = Math.min(ew, Math.max(40, eh - reservedTokenLabelHeight));
+    const radius = tokenSize / 2;
+    const cxToken = ex + ew / 2;
+    const cyToken = showEntityName ? ey + radius : ey + eh / 2;
+    const tokenLabelWidth = Math.min(ENTITY_TOKEN_LABEL_MAX_WIDTH, Math.max(ENTITY_TOKEN_LABEL_MIN_WIDTH, ew + 48));
+    const tokenLabelX = ex + ew / 2 - tokenLabelWidth / 2;
+    const tokenLabelY = ey + tokenSize + 7;
+    const tokenLabelFontSize = Math.min(12, Math.max(9, ew / 7));
+
+    return (
+      <Group {...commonProps} onDblClick={openLinkedEntity}>
+        {isSelected && (
+          <Rect
+            x={ex - 3}
+            y={ey - 3}
+            width={ew + 6}
+            height={eh + 6}
+            stroke="rgba(167,139,250,0.4)"
+            strokeWidth={2}
+            dash={[4, 4]}
+            listening={false}
+          />
+        )}
+        {frame.id === 'badge' && (
+          <Rect
+            x={ex}
+            y={ey + Math.max(0, radius * 0.55)}
+            width={ew}
+            height={Math.max(28, eh - radius * 0.55)}
+            fill="rgba(15,23,42,0.72)"
+            stroke={accentStroke}
+            strokeWidth={1}
+            cornerRadius={12}
+            opacity={0.92}
+            listening={false}
+          />
+        )}
+        {frame.id === 'hex' && (
+          <RegularPolygon
+            x={cxToken}
+            y={cyToken}
+            sides={6}
+            radius={radius + 7}
+            rotation={30}
+            fill="rgba(15,23,42,0.82)"
+            stroke={accentStroke}
+            strokeWidth={2}
+            opacity={0.95}
+            listening={false}
+          />
+        )}
+        {frame.id === 'ring' && (
+          <Circle
+            x={cxToken}
+            y={cyToken}
+            radius={radius + 5}
+            fill="rgba(15,23,42,0.42)"
+            stroke={accentStroke}
+            strokeWidth={2}
+            opacity={0.78}
+            listening={false}
+          />
+        )}
+        <Circle
+          x={cxToken}
+          y={cyToken}
+          radius={radius}
+          fill={tokenFill}
+          stroke={accentStroke}
+          strokeWidth={frame.tokenStrokeWidth}
+          shadowColor="#000000"
+          shadowBlur={frame.id === 'plain' ? 0 : 12}
+          shadowOpacity={frame.id === 'plain' ? 0 : 0.5}
+          shadowOffsetY={2}
+        />
+        {imageSource ? (
+          <Group
+            clipFunc={(ctx) => {
+              ctx.arc(cxToken, cyToken, Math.max(0, radius - 2), 0, Math.PI * 2, false);
+            }}
+          >
+            <ImageNode url={imageSource} x={cxToken - radius} y={cyToken - radius} width={tokenSize} height={tokenSize} fit="cover" />
+          </Group>
+        ) : (
+          <Text
+            text={initial}
+            x={cxToken - radius}
+            y={cyToken - 14}
+            fill="rgba(241,245,249,0.9)"
+            fontSize={28}
+            fontStyle="bold"
+            align="center"
+            width={tokenSize}
+            listening={false}
+          />
+        )}
+        <Circle
+          x={cxToken}
+          y={cyToken}
+          radius={radius}
+          stroke={accentStroke}
+          strokeWidth={Math.max(1, frame.tokenStrokeWidth)}
+          fill="transparent"
+          listening={false}
+        />
+        {showEntityName && (
+          <>
+            <Rect
+              x={tokenLabelX}
+              y={tokenLabelY - 4}
+              width={tokenLabelWidth}
+              height={ENTITY_TOKEN_LABEL_HEIGHT}
+              fill="rgba(2,6,23,0.74)"
+              stroke="rgba(148,163,184,0.16)"
+              strokeWidth={1}
+              cornerRadius={8}
+              listening={false}
+            />
+            <Text
+              text={displayName}
+              x={tokenLabelX + 7}
+              y={tokenLabelY + 2}
+              fill="rgba(226,232,240,0.9)"
+              fontSize={tokenLabelFontSize}
+              fontStyle="bold"
+              align="center"
+              width={tokenLabelWidth - 14}
+              height={ENTITY_TOKEN_LABEL_HEIGHT - 8}
+              wrap="none"
+              ellipsis
+              listening={false}
+            />
+          </>
+        )}
+        {canViewLinked && (
+          <Group
+            x={cxToken + radius - 10}
+            y={cyToken + radius - 10}
+            onClick={(e) => {
+              e.cancelBubble = true;
+              onShowLinkedEntityInfo?.(element.id, e);
+            }}
+            onTap={(e) => {
+              e.cancelBubble = true;
+              onShowLinkedEntityInfo?.(element.id, e);
+            }}
+          >
+            <Circle radius={10} fill="rgba(2,6,23,0.76)" stroke="rgba(255,255,255,0.28)" strokeWidth={1} />
+            <Text x={-5} y={-7} width={10} text="i" fontSize={12} fontStyle="bold" fill="#e0f2fe" align="center" />
+          </Group>
+        )}
+      </Group>
+    );
+  }
+
   if (element.type === 'image') {
     const ix = element.x || 0;
     const iy = element.y || 0;
     const iw = element.width || 200;
     const ih = element.height || 200;
+    const imageSource = element.imageAssetPath ? getAssetUrl(element.imageAssetPath) : element.imageUrl || '';
+    const sOpacity = element.strokeOpacity ?? 1;
+    const sketchOffset = getVisualStyleOffset(element.id, 'image-stroke', visualStyle.sketchJitter);
 
     return (
       <Group {...commonProps}>
@@ -565,19 +1377,47 @@ const DrawElementNode = memo(function DrawElementNode({
             listening={false}
           />
         )}
-        <ImageNode url={element.imageUrl || ''} x={ix} y={iy} width={iw} height={ih} />
+        <ImageNode url={imageSource} x={ix} y={iy} width={iw} height={ih} />
         {element.strokeWidth > 0 && element.stroke !== 'transparent' && (
-          <Rect
-            x={ix}
-            y={iy}
-            width={iw}
-            height={ih}
-            stroke={element.stroke}
-            strokeWidth={element.strokeWidth}
-            opacity={element.strokeOpacity ?? 1}
-            dash={getKonvaDash(element.strokeStyle, element.strokeWidth)}
-            listening={false}
-          />
+          <>
+            {visualStyle.softStrokeWidth > 0 && (
+              <Rect
+                x={ix}
+                y={iy}
+                width={iw}
+                height={ih}
+                stroke={element.stroke}
+                strokeWidth={element.strokeWidth + visualStyle.softStrokeWidth}
+                opacity={sOpacity * visualStyle.softStrokeOpacity}
+                dash={getKonvaDash(element.strokeStyle, element.strokeWidth)}
+                listening={false}
+              />
+            )}
+            <Rect
+              x={ix}
+              y={iy}
+              width={iw}
+              height={ih}
+              stroke={element.stroke}
+              strokeWidth={element.strokeWidth}
+              opacity={sOpacity}
+              dash={getKonvaDash(element.strokeStyle, element.strokeWidth)}
+              listening={false}
+            />
+            {visualStyle.sketchJitter > 0 && (
+              <Rect
+                x={ix + sketchOffset.x}
+                y={iy + sketchOffset.y}
+                width={iw}
+                height={ih}
+                stroke={element.stroke}
+                strokeWidth={Math.max(1, element.strokeWidth * 0.9)}
+                opacity={sOpacity * visualStyle.sketchStrokeOpacity}
+                dash={getKonvaDash(element.strokeStyle, element.strokeWidth)}
+                listening={false}
+              />
+            )}
+          </>
         )}
       </Group>
     );
@@ -596,6 +1436,8 @@ const DrawElementNode = memo(function DrawElementNode({
     const headerFill = baseColor.includes('rgba') ? baseColor.replace(/[\d.]+\)$/, '0.15)') : baseColor + '26';
     const labelColor = baseColor.includes('rgba') ? baseColor.replace(/[\d.]+\)$/, '0.7)') : baseColor;
     const dash = getKonvaDash(element.strokeStyle, element.strokeWidth);
+    const sOpacity = element.strokeOpacity ?? 1;
+    const sketchOffset = getVisualStyleOffset(element.id, 'frame-stroke', visualStyle.sketchJitter);
 
     return (
       <Group {...commonProps}>
@@ -630,6 +1472,20 @@ const DrawElementNode = memo(function DrawElementNode({
           fill={labelColor}
           listening={false}
         />
+        {visualStyle.softStrokeWidth > 0 && (
+          <Rect
+            x={fx}
+            y={fy}
+            width={fw}
+            height={fh}
+            stroke={element.stroke || 'rgba(165,180,252,0.25)'}
+            strokeWidth={(element.strokeWidth || 1) + visualStyle.softStrokeWidth}
+            opacity={sOpacity * visualStyle.softStrokeOpacity}
+            dash={dash || [8, 4]}
+            cornerRadius={[0, 0, 4, 4]}
+            listening={false}
+          />
+        )}
         {/* Frame body — transparent to clicks, let inner objects be clicked */}
         <Rect
           x={fx}
@@ -643,6 +1499,20 @@ const DrawElementNode = memo(function DrawElementNode({
           cornerRadius={[0, 0, 4, 4]}
           listening={false}
         />
+        {visualStyle.sketchJitter > 0 && (
+          <Rect
+            x={fx + sketchOffset.x}
+            y={fy + sketchOffset.y}
+            width={fw}
+            height={fh}
+            stroke={element.stroke || 'rgba(165,180,252,0.25)'}
+            strokeWidth={Math.max(1, (element.strokeWidth || 1) * 0.9)}
+            opacity={sOpacity * visualStyle.sketchStrokeOpacity}
+            dash={dash || [8, 4]}
+            cornerRadius={[0, 0, 4, 4]}
+            listening={false}
+          />
+        )}
       </Group>
     );
   }
@@ -652,8 +1522,246 @@ const DrawElementNode = memo(function DrawElementNode({
 
 // ─── Sub-component: Render a Konva image from URL (uses hook) ───
 
-function ImageNode({ url, x, y, width, height }: { url: string; x: number; y: number; width: number; height: number }) {
+function ImageNode(props: {
+  url: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fit?: 'stretch' | 'contain' | 'cover';
+}) {
+  if (isAnimatedGifSource(props.url)) {
+    return <AnimatedGifImageNode {...props} />;
+  }
+
+  return <StaticImageNode {...props} />;
+}
+
+function AnimatedGifImageNode({
+  url,
+  x,
+  y,
+  width,
+  height,
+  fit = 'stretch',
+}: {
+  url: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fit?: 'stretch' | 'contain' | 'cover';
+}) {
+  return (
+    <Group>
+      <Rect x={x} y={y} width={width} height={height} fill="rgba(0,0,0,0.001)" />
+      <Html
+        groupProps={{ x, y, listening: false }}
+        divProps={{
+          style: {
+            width: `${Math.max(1, width)}px`,
+            height: `${Math.max(1, height)}px`,
+            overflow: 'hidden',
+            pointerEvents: 'none',
+            userSelect: 'none',
+          },
+        }}
+      >
+        <img
+          src={url}
+          alt=""
+          draggable={false}
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'block',
+            objectFit: fit === 'cover' ? 'cover' : fit === 'contain' ? 'contain' : 'fill',
+            pointerEvents: 'none',
+            userSelect: 'none',
+          }}
+        />
+      </Html>
+    </Group>
+  );
+}
+
+function CharacterCanvasCardOverlay({
+  x,
+  y,
+  width,
+  height,
+  entityName,
+  entityTypeLabel,
+  summary,
+  description,
+}: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  entityName: string;
+  entityTypeLabel: string;
+  summary: CharacterCompactSummary;
+  description: string;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Html
+      groupProps={{ x, y, listening: false }}
+      divProps={{
+        style: {
+          width: `${Math.max(1, width)}px`,
+          height: `${Math.max(1, height)}px`,
+          overflow: 'hidden',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        },
+      }}
+    >
+      <div className="h-full w-full overflow-hidden rounded-[8px] border border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-surface-window)_86%,rgba(2,6,23,0.92))] text-[var(--vibe-text-primary)] shadow-[inset_0_0_34px_rgba(2,6,23,0.72)] backdrop-blur-sm">
+        <div className="flex h-full flex-col gap-1.5 overflow-y-auto p-2 custom-scrollbar">
+          <div className="min-w-0 border-b border-[var(--vibe-border-subtle)] pb-1.5">
+            <div className="truncate text-[12px] font-black text-[var(--vibe-text-primary)]">{entityName}</div>
+            <div className="mt-0.5 flex items-center justify-between gap-1 text-[8px] font-bold text-[var(--vibe-text-faint)]">
+              <span className="truncate">{entityTypeLabel}</span>
+              <span className="flex-shrink-0 font-mono">{summary.attackCount}/{summary.abilityCount}/{summary.inventoryCount}</span>
+            </div>
+          </div>
+
+          {summary.metrics.length > 0 && (
+            <div className="grid gap-1" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(42px, 1fr))' }}>
+              {summary.metrics.map((metric) => (
+                <div key={metric.id} className="min-w-0 rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1 py-1 text-center">
+                  <div className="truncate text-[7px] font-black text-[var(--vibe-text-faint)]">{metric.label}</div>
+                  <div className="font-mono text-[12px] font-black leading-none text-[var(--vibe-text-primary)]">{metric.value}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {summary.resources.length > 0 && (
+            <div className="space-y-1">
+              {summary.resources.map((resource) => (
+                <div key={resource.id} className="rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-1">
+                  <div className="mb-0.5 flex items-center justify-between gap-1 text-[8px] font-bold text-[var(--vibe-text-faint)]">
+                    <span className="truncate">{resource.label}</span>
+                    <span className="font-mono text-[var(--vibe-text-muted)]">{resource.current}/{resource.max || '∞'}</span>
+                  </div>
+                  <div className="h-1 overflow-hidden rounded-full bg-[var(--vibe-surface-block)]">
+                    <div
+                      className={resource.id === 'wounds' ? 'h-full rounded-full bg-[var(--vibe-danger)]' : 'h-full rounded-full bg-[var(--vibe-accent)]'}
+                      style={{ width: `${Math.max(4, resource.ratio * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {summary.actions.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-[8px] font-black text-[var(--vibe-text-faint)]">{t('canvas.compact.tabs.actions')}</div>
+              {summary.actions.map((action) => (
+                <div key={action.id} className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-1 rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-1">
+                  <span className="rounded bg-[var(--vibe-accent-soft)] px-1 text-center text-[7px] font-black text-[var(--vibe-text-muted)]">
+                    {action.kind === 'attack' ? t('canvas.compact.actionBadges.attack') : t('canvas.compact.actionBadges.ability')}
+                  </span>
+                  <span className="min-w-0 truncate text-[10px] font-bold text-[var(--vibe-text-primary)]">{action.name}</span>
+                  <span className="max-w-[78px] truncate font-mono text-[9px] text-[var(--vibe-text-faint)]">{action.formula || '-'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {summary.inventory.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-[8px] font-black text-[var(--vibe-text-faint)]">{t('inventoryBlock.title')}</div>
+              {summary.inventory.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-1 rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-1">
+                  <div className="min-w-0">
+                    <div className="truncate text-[10px] font-bold text-[var(--vibe-text-primary)]">{item.name}</div>
+                    <div className="truncate text-[8px] text-[var(--vibe-text-faint)]">{item.category}</div>
+                  </div>
+                  {item.equipped && <span className="rounded bg-[color-mix(in_srgb,var(--vibe-success)_18%,transparent)] px-1 text-[7px] font-black text-[var(--vibe-success)]">{t('markdownRenderer.inventory.equipped')}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {description && (
+            <div className="rounded border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-1 text-[9px] leading-snug text-[var(--vibe-text-muted)]">
+              {description}
+            </div>
+          )}
+        </div>
+      </div>
+    </Html>
+  );
+}
+
+function StaticImageNode({
+  url,
+  x,
+  y,
+  width,
+  height,
+  fit = 'stretch',
+}: {
+  url: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fit?: 'stretch' | 'contain' | 'cover';
+}) {
   const [img] = useImage(url, 'anonymous');
+  const imageRef = useRef<Konva.Image>(null);
+  const isAnimatedGif = isAnimatedGifSource(url);
+
+  const renderAnimatedGif = (nodeX: number, nodeY: number, nodeWidth: number, nodeHeight: number) => (
+    <Group>
+      <Rect x={nodeX} y={nodeY} width={nodeWidth} height={nodeHeight} fill="rgba(0,0,0,0.001)" />
+      <Html
+        groupProps={{ x: nodeX, y: nodeY, listening: false }}
+        divProps={{
+          style: {
+            width: `${Math.max(1, nodeWidth)}px`,
+            height: `${Math.max(1, nodeHeight)}px`,
+            overflow: 'hidden',
+            pointerEvents: 'none',
+            userSelect: 'none',
+          },
+        }}
+      >
+        <img
+          src={url}
+          alt=""
+          draggable={false}
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'block',
+            objectFit: 'fill',
+            pointerEvents: 'none',
+            userSelect: 'none',
+          }}
+        />
+      </Html>
+    </Group>
+  );
+
+  useEffect(() => {
+    if (!img || !isAnimatedGif) return;
+    let frameId = 0;
+    const drawFrame = () => {
+      imageRef.current?.getLayer()?.batchDraw();
+      frameId = window.requestAnimationFrame(drawFrame);
+    };
+    frameId = window.requestAnimationFrame(drawFrame);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [img, isAnimatedGif]);
+
   if (!img) {
     // Placeholder while loading
     return (
@@ -663,7 +1771,39 @@ function ImageNode({ url, x, y, width, height }: { url: string; x: number; y: nu
       </Group>
     );
   }
-  return <KonvaImage image={img} x={x} y={y} width={width} height={height} />;
+
+  if (fit === 'stretch') {
+    if (isAnimatedGif) return renderAnimatedGif(x, y, width, height);
+    return <KonvaImage ref={imageRef} image={img} x={x} y={y} width={width} height={height} />;
+  }
+
+  const imageWidth = img.naturalWidth || img.width;
+  const imageHeight = img.naturalHeight || img.height;
+  if (!imageWidth || !imageHeight || !width || !height) {
+    if (isAnimatedGif) return renderAnimatedGif(x, y, width, height);
+    return <KonvaImage ref={imageRef} image={img} x={x} y={y} width={width} height={height} />;
+  }
+
+  const scale = fit === 'cover'
+    ? Math.max(width / imageWidth, height / imageHeight)
+    : Math.min(width / imageWidth, height / imageHeight);
+  const fittedWidth = imageWidth * scale;
+  const fittedHeight = imageHeight * scale;
+
+  if (isAnimatedGif) {
+    return renderAnimatedGif(x + (width - fittedWidth) / 2, y + (height - fittedHeight) / 2, fittedWidth, fittedHeight);
+  }
+
+  return (
+    <KonvaImage
+      ref={imageRef}
+      image={img}
+      x={x + (width - fittedWidth) / 2}
+      y={y + (height - fittedHeight) / 2}
+      width={fittedWidth}
+      height={fittedHeight}
+    />
+  );
 }
 
 // ─── Sub-component: Point handles for vector editing ───
@@ -673,11 +1813,13 @@ function PointHandles({
   onPointDragStart,
   onPointDragMove,
   onPointDragEnd,
+  onPointDoubleClick,
 }: {
   element: DrawElement;
   onPointDragStart: (idx: number) => void;
-  onPointDragMove: (idx: number, x: number, y: number) => void;
+  onPointDragMove: (idx: number, x: number, y: number, shiftKey?: boolean) => void;
   onPointDragEnd: () => void;
+  onPointDoubleClick: (idx: number) => void;
 }) {
   if (!element.points || element.points.length < 4) return null;
 
@@ -701,9 +1843,13 @@ function PointHandles({
           onDragStart={() => onPointDragStart(h.idx)}
           onDragMove={(e) => {
             const pos = e.target.position();
-            onPointDragMove(h.idx, pos.x, pos.y);
+            onPointDragMove(h.idx, pos.x, pos.y, e.evt.shiftKey);
           }}
           onDragEnd={onPointDragEnd}
+          onDblClick={(e) => {
+            e.cancelBubble = true;
+            onPointDoubleClick(h.idx);
+          }}
           onMouseEnter={(e) => {
             const container = e.target.getStage()?.container();
             if (container) container.style.cursor = 'move';
@@ -726,15 +1872,15 @@ function ResizeHandles({
   onResizeDragEnd,
 }: {
   element: DrawElement;
-  onResizeDragMove: (corner: string, x: number, y: number) => void;
+  onResizeDragMove: (corner: string, x: number, y: number, shiftKey?: boolean) => void;
   onResizeDragEnd: () => void;
 }) {
-  if (element.type !== 'rectangle' && element.type !== 'ellipse' && element.type !== 'text' && element.type !== 'image' && element.type !== 'frame') return null;
+  if (element.type !== 'rectangle' && element.type !== 'ellipse' && element.type !== 'text' && element.type !== 'image' && element.type !== 'entityToken' && element.type !== 'frame') return null;
 
   const ex = element.x || 0;
   const ey = element.y || 0;
-  const ew = element.width || (element.type === 'text' ? 200 : element.type === 'image' ? 200 : element.type === 'frame' ? 300 : 0);
-  const eh = element.height || (element.type === 'text' ? (element.fontSize || 24) * 1.4 : element.type === 'image' ? 200 : element.type === 'frame' ? 200 : 0);
+  const ew = element.width || (element.type === 'text' ? 200 : element.type === 'image' || element.type === 'entityToken' ? 200 : element.type === 'frame' ? 300 : 0);
+  const eh = element.height || (element.type === 'text' ? (element.fontSize || 24) * 1.4 : element.type === 'image' || element.type === 'entityToken' ? 200 : element.type === 'frame' ? 200 : 0);
 
   const corners = [
     { id: 'tl', x: ex, y: ey, cursor: 'nwse-resize' },
@@ -762,7 +1908,7 @@ function ResizeHandles({
           draggable
           onDragMove={(e) => {
             const pos = e.target.position();
-            onResizeDragMove(c.id, pos.x + RESIZE_HANDLE_SIZE / 2, pos.y + RESIZE_HANDLE_SIZE / 2);
+            onResizeDragMove(c.id, pos.x + RESIZE_HANDLE_SIZE / 2, pos.y + RESIZE_HANDLE_SIZE / 2, e.evt.shiftKey);
           }}
           onDragEnd={onResizeDragEnd}
           onMouseEnter={(e) => {
@@ -799,7 +1945,7 @@ function RotationHandle({
 
   const cx = ex + ew / 2;
   const cy = ey + eh / 2;
-  
+
   // Connect line from top center bounds to rotation handle (30px above)
   const handleX = cx;
   const handleY = ey - 30;
@@ -824,22 +1970,22 @@ function RotationHandle({
           const transform = stage.getAbsoluteTransform().copy().invert();
           const pointerPos = stage.getPointerPosition();
           if (!pointerPos) return;
-          
+
           const relativePointer = transform.point(pointerPos);
-          
+
           const dx = relativePointer.x - cx;
           const dy = relativePointer.y - cy;
           let angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90; // +90 because handle is visually "above"
-          
+
           // Shift → snap to 30° increments
           if (e.evt.shiftKey) {
             angle = Math.round(angle / 30) * 30;
           }
 
-          // Reset circle's local position because we don't actually want it to move locally, 
+          // Reset circle's local position because we don't actually want it to move locally,
           // we just want to update the parent Group's rotation!
           e.target.position({ x: handleX, y: handleY });
-          
+
           onRotateDragMove(angle);
         }}
         onDragEnd={() => onRotateDragEnd?.()}
@@ -864,10 +2010,10 @@ function PortalPulseRing() {
   useEffect(() => {
     const node = ringRef.current;
     if (!node) return;
-    
+
     let animFrame: number;
     const startTime = Date.now();
-    
+
     const animate = () => {
       const elapsed = (Date.now() - startTime) / 1000;
       const t = (Math.sin(elapsed * 1.5) + 1) / 2; // 0..1 oscillation
@@ -879,7 +2025,7 @@ function PortalPulseRing() {
       node.getLayer()?.batchDraw();
       animFrame = requestAnimationFrame(animate);
     };
-    
+
     animFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animFrame);
   }, []);
@@ -977,6 +2123,7 @@ const FOG_GM_OPACITY = 0.35;
 const FOG_PAD_FACTOR = 2.5;
 /** Maximum texture dimension in pixels (balance quality vs memory) */
 const FOG_MAX_TEX = 4096;
+const SHARED_FOG_CANVAS = typeof document !== 'undefined' ? document.createElement('canvas') : null;
 
 function FogOfWarLayer({
   fogReveals,
@@ -998,21 +2145,22 @@ function FogOfWarLayer({
   const gmFogVisible = useCanvasDrawStore((s) => s.gmFogVisible);
   const playerFogVisible = useCanvasDrawStore((s) => s.playerFogVisible);
   const shouldShow = isGM ? gmFogVisible : playerFogVisible;
+  const fogLayerRef = useRef<Konva.Layer>(null);
 
   // Persistent offscreen canvas (reused, not recreated)
-  const fogCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  if (!fogCanvasRef.current) fogCanvasRef.current = document.createElement('canvas');
+  const fogCanvas = SHARED_FOG_CANVAS;
+  const safeStageScale = Number.isFinite(stageScale) && stageScale > 0 ? stageScale : 1;
 
   // ── Calculate world area ──
   // Viewport in world coords
-  const viewWorldW = stageWidth / stageScale;
-  const viewWorldH = stageHeight / stageScale;
+  const viewWorldW = stageWidth / safeStageScale;
+  const viewWorldH = stageHeight / safeStageScale;
   // Texture covers PAD_FACTOR × viewport
   const worldW = viewWorldW * FOG_PAD_FACTOR;
   const worldH = viewWorldH * FOG_PAD_FACTOR;
   // Center on current viewport
-  const viewCxWorld = (-stageX + stageWidth / 2) / stageScale;
-  const viewCyWorld = (-stageY + stageHeight / 2) / stageScale;
+  const viewCxWorld = (-stageX + stageWidth / 2) / safeStageScale;
+  const viewCyWorld = (-stageY + stageHeight / 2) / safeStageScale;
   const worldLeft = viewCxWorld - worldW / 2;
   const worldTop = viewCyWorld - worldH / 2;
 
@@ -1020,14 +2168,21 @@ function FogOfWarLayer({
   // Maintain roughly 1:1 screen-to-texture pixel ratio, capped
   const texW = Math.min(Math.round(stageWidth * FOG_PAD_FACTOR * 0.8), FOG_MAX_TEX);
   const texH = Math.min(Math.round(stageHeight * FOG_PAD_FACTOR * 0.8), FOG_MAX_TEX);
+  const hasDrawableFogTexture = Boolean(
+    shouldShow
+    && fogCanvas
+    && stageWidth > 0
+    && stageHeight > 0
+    && worldW > 0
+    && worldH > 0
+    && texW > 0
+    && texH > 0
+  );
 
   // ── Draw fog onto offscreen canvas (useLayoutEffect for synchronous update before paint) ──
-  const [fogVersion, setFogVersion] = useState(0);
   useLayoutEffect(() => {
-    if (!shouldShow) return;
-    // Guard against zero dimensions (stage not yet initialized)
-    if (texW <= 0 || texH <= 0) return;
-    const canvas = fogCanvasRef.current!;
+    if (!hasDrawableFogTexture || !fogCanvas) return;
+    const canvas = fogCanvas;
     if (canvas.width !== texW || canvas.height !== texH) {
       canvas.width = texW;
       canvas.height = texH;
@@ -1039,7 +2194,7 @@ function FogOfWarLayer({
 
     // If no fog patches, canvas stays transparent (no fog at all)
     if (!fogReveals || fogReveals.length === 0) {
-      setFogVersion(v => v + 1);
+      fogLayerRef.current?.batchDraw();
       return;
     }
 
@@ -1067,16 +2222,15 @@ function FogOfWarLayer({
         ctx.fill();
       }
     }
-    setFogVersion(v => v + 1);
-  }, [shouldShow, fogReveals, worldLeft, worldTop, worldW, worldH, texW, texH]);
+    fogLayerRef.current?.batchDraw();
+  }, [hasDrawableFogTexture, fogReveals, worldLeft, worldTop, worldW, worldH, texW, texH, fogCanvas]);
 
-  if (!shouldShow) return null;
+  if (!hasDrawableFogTexture || !fogCanvas) return null;
 
   return (
-    <Layer listening={false} opacity={isGM ? FOG_GM_OPACITY : 1}>
+    <Layer ref={fogLayerRef} listening={false} opacity={isGM ? FOG_GM_OPACITY : 1}>
       <KonvaImage
-        key={fogVersion}
-        image={fogCanvasRef.current}
+        image={fogCanvas}
         x={worldLeft}
         y={worldTop}
         width={worldW}
@@ -1090,8 +2244,11 @@ function FogOfWarLayer({
 // ─── Main Component ───
 
 export function InfiniteCanvas() {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [imagePickerTarget, setImagePickerTarget] = useState<CanvasImageTarget | null>(null);
+  const [entityDropChoice, setEntityDropChoice] = useState<EntityDropChoiceTarget | null>(null);
   const { activeCanvasId, setTransform, navigate } = useCanvasStore();
   const { openWindow } = useWindowStore();
   const {
@@ -1123,7 +2280,21 @@ export function InfiniteCanvas() {
     setEditingFrameLabelId,
     setDraggingGlobal,
   } = useCanvasDrawStore();
-  
+  const { openConfirm } = useUIStore();
+  const addNotification = useNotificationStore((state) => state.addNotification);
+  const upsertNotification = useNotificationStore((state) => state.upsertNotification);
+  const updateNotification = useNotificationStore((state) => state.updateNotification);
+  const updateNotificationProgress = useNotificationStore((state) => state.updateProgress);
+  const registerAbortCallback = useNotificationStore((state) => state.registerAbortCallback);
+  const unregisterAbortCallback = useNotificationStore((state) => state.unregisterAbortCallback);
+  const registerRetryCallback = useNotificationStore((state) => state.registerRetryCallback);
+  const unregisterRetryCallback = useNotificationStore((state) => state.unregisterRetryCallback);
+  const pendingCanvasImageUploadsRef = useRef<Map<string, { file: File; target: CanvasImageTarget; centerOnPoint: boolean }>>(new Map());
+  const uploadAndInsertCanvasImageRef = useRef<CanvasImageUploadHandler | null>(null);
+  const uploadProgressThrottleRef = useRef<Map<string, { percent: number; updatedAt: number }>>(new Map());
+  const canvasPasteActiveRef = useRef(false);
+  const lastCanvasPointerRef = useRef<{ x: number; y: number } | null>(null);
+
   // ─── Grid settings ───
   const gridEnabled = useCanvasDrawStore((s) => s.gridEnabled);
   const gridType = useCanvasDrawStore((s) => s.gridType);
@@ -1131,20 +2302,33 @@ export function InfiniteCanvas() {
 
   // ─── Fog of War ───
   const fogReveals = useCanvasSyncStore((s) => s.fogReveals);
+  const syncFogArray = useCanvasSyncStore((s) => s.syncFogArray);
   const fogTool = useCanvasDrawStore((s) => s.fogTool);
-  const fogEditMode = useCanvasDrawStore((s) => s.fogEditMode);
-  const setFogEditMode = useCanvasDrawStore((s) => s.setFogEditMode);
   const playerFogVisible = useCanvasDrawStore((s) => s.playerFogVisible);
   const togglePlayerFog = useCanvasDrawStore((s) => s.togglePlayerFog);
   const isGM = yjsStore.localRole === 'gm';
   const fogDrawingRef = useRef(false);
   const fogBrushTipRef = useRef({ x: 0, y: 0 });
-  
+  const [fogPreview, setFogPreview] = useState<{ canvasId: string; reveals: FogReveal[] } | null>(null);
+  const fogPreviewRef = useRef<{ canvasId: string; reveals: FogReveal[] } | null>(null);
+  const renderedFogReveals = fogPreview?.canvasId === activeCanvasId ? fogPreview.reveals : fogReveals;
+
   const { joinCanvas, leaveCanvas, syncElementsArray: pushHistory, undo, redo } = useCanvasSyncStore();
   const [portalMenu, setPortalMenu] = useState<{
     x: number;
     y: number;
     portal: Entity;
+  } | null>(null);
+  const [entityTokenInfo, setEntityTokenInfo] = useState<{
+    x: number;
+    y: number;
+    elementId: string;
+  } | null>(null);
+  const [entityTokenInfoTab, setEntityTokenInfoTab] = useState<CharacterCompactTab>('stats');
+  const [entityTokenMenu, setEntityTokenMenu] = useState<{
+    x: number;
+    y: number;
+    elementId: string;
   } | null>(null);
   const canvasElements = useEntitiesByParent(activeCanvasId);
 
@@ -1153,7 +2337,53 @@ export function InfiniteCanvas() {
   const setLocalCursor = useCanvasSyncStore((s) => s.setLocalCursor);
   const sendPing = useCanvasSyncStore((s) => s.sendPing);
   const cursorThrottleRef = useRef(0);
-  
+  const [cursorNow, setCursorNow] = useState(() => Date.now());
+  const hasRemotePings = useMemo(
+    () => Object.values(remoteCursors).some(cursor => Boolean(cursor.ping)),
+    [remoteCursors]
+  );
+
+  useEffect(() => {
+    if (!hasRemotePings) return;
+    const timer = window.setInterval(() => setCursorNow(Date.now()), 100);
+    return () => window.clearInterval(timer);
+  }, [hasRemotePings]);
+
+  const setCanvasFogPreview = useCallback((preview: { canvasId: string; reveals: FogReveal[] }) => {
+    fogPreviewRef.current = preview;
+    setFogPreview(preview);
+  }, []);
+
+  const clearCanvasFogPreview = useCallback(() => {
+    fogPreviewRef.current = null;
+    setFogPreview(null);
+  }, []);
+
+  const applyFogBrushOperation = useCallback(
+    (tool: 'revealBrush' | 'coverBrush', patch: FogReveal) => {
+      const currentPreview = fogPreviewRef.current;
+      const base = currentPreview?.canvasId === activeCanvasId
+        ? currentPreview.reveals
+        : useCanvasSyncStore.getState().fogReveals;
+      const reveals = tool === 'coverBrush'
+        ? [...base, patch]
+        : base.filter((reveal) => !fogRevealsOverlap(reveal, patch));
+      setCanvasFogPreview({ canvasId: activeCanvasId, reveals });
+    },
+    [activeCanvasId, setCanvasFogPreview]
+  );
+
+  const commitCanvasFogPreview = useCallback(() => {
+    const preview = fogPreviewRef.current;
+    if (!preview || preview.canvasId !== activeCanvasId) {
+      clearCanvasFogPreview();
+      return false;
+    }
+    syncFogArray(preview.reveals);
+    clearCanvasFogPreview();
+    return true;
+  }, [activeCanvasId, syncFogArray, clearCanvasFogPreview]);
+
   // ─── Ping: 'G' key hold state ───
   const pingKeyRef = useRef(false);
 
@@ -1165,6 +2395,12 @@ export function InfiniteCanvas() {
     }
   }, [activeCanvasId, joinCanvas, leaveCanvas]);
 
+  useEffect(() => {
+    if (activeTool === 'image') return;
+    const timeoutId = window.setTimeout(() => setImagePickerTarget(null), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [activeTool]);
+
   // Force re-render when draw elements change in Yjs
   const [, setDrawVer] = useState(0);
   useEffect(() => {
@@ -1173,15 +2409,455 @@ export function InfiniteCanvas() {
     return () => yjsStore.entitiesMap.unobserve(handler);
   }, []);
 
-  const drawElements = getDrawElements(activeCanvasId);
+  const drawElements = useCanvasSyncStore((s) => s.elements);
+  const [dragPreview, setDragPreview] = useState<{ canvasId: string; elements: DrawElement[] } | null>(null);
+  const [objectSnapPreview, setObjectSnapPreview] = useState<ObjectSnapPreview | null>(null);
+  const renderedDrawElements = dragPreview?.canvasId === activeCanvasId ? dragPreview.elements : drawElements;
+  const dragPreviewRef = useRef<{ canvasId: string; elements: DrawElement[] } | null>(null);
+
+  const setCanvasDragPreview = useCallback((preview: { canvasId: string; elements: DrawElement[] }) => {
+    dragPreviewRef.current = preview;
+    setDragPreview(preview);
+  }, []);
+
+  const clearCanvasDragPreview = useCallback(() => {
+    dragPreviewRef.current = null;
+    setDragPreview(null);
+  }, []);
+
+  const commitCanvasDragPreview = useCallback(() => {
+    const preview = dragPreviewRef.current;
+    if (!preview || preview.canvasId !== activeCanvasId) return false;
+    saveDrawElements(activeCanvasId, preview.elements);
+    clearCanvasDragPreview();
+    return true;
+  }, [activeCanvasId, clearCanvasDragPreview]);
+
+  const insertImageElement = useCallback((options: {
+    sourceUrl: string;
+    assetPath?: string;
+    objectName?: string;
+    canvasX: number;
+    canvasY: number;
+    naturalWidth: number;
+    naturalHeight: number;
+    centerOnPoint?: boolean;
+  }) => {
+    const { width, height } = getScaledImageDimensions(options.naturalWidth, options.naturalHeight);
+    const elements = getDrawElements(activeCanvasId);
+    pushHistory(elements);
+    const newEl: DrawElement = {
+      id: generateDrawId(),
+      type: 'image',
+      x: options.centerOnPoint ? options.canvasX - width / 2 : options.canvasX,
+      y: options.centerOnPoint ? options.canvasY - height / 2 : options.canvasY,
+      width,
+      height,
+      imageUrl: options.assetPath ? undefined : options.sourceUrl,
+      imageAssetPath: options.assetPath,
+      objectName: options.objectName,
+      stroke: 'transparent',
+      strokeWidth: 0,
+      strokeStyle: 'solid',
+      visualStyle: currentStyle.visualStyle,
+      opacity: 1,
+      startCap: 'none',
+      endCap: 'none',
+      zIndex: elements.length,
+    };
+    saveDrawElements(activeCanvasId, [...elements, newEl]);
+    setTool('select');
+    selectElement(newEl.id);
+  }, [activeCanvasId, currentStyle.visualStyle, pushHistory, selectElement, setTool]);
+
+  const insertTextRectangleAtPoint = useCallback((text: string, point: { x: number; y: number }): boolean => {
+    const trimmed = text.trim();
+    if (!trimmed || !canEditCanvasEntityById(activeCanvasId)) return false;
+
+    const { width, height } = getClipboardTextRectangleSize(trimmed, currentStyle.fontSize);
+    const elements = getDrawElements(activeCanvasId);
+    pushHistory(elements);
+
+    const newEl: DrawElement = {
+      id: generateDrawId(),
+      type: 'rectangle',
+      x: point.x - width / 2,
+      y: point.y - height / 2,
+      width,
+      height,
+      stroke: currentStyle.stroke,
+      strokeWidth: currentStyle.strokeWidth,
+      strokeStyle: currentStyle.strokeStyle,
+      visualStyle: currentStyle.visualStyle,
+      fill: currentStyle.fill || undefined,
+      opacity: currentStyle.opacity,
+      fillOpacity: currentStyle.fillOpacity,
+      strokeOpacity: currentStyle.strokeOpacity,
+      startCap: currentStyle.startCap,
+      endCap: currentStyle.endCap,
+      fontSize: currentStyle.fontSize,
+      fontFamily: currentStyle.fontFamily,
+      textAlign: currentStyle.textAlign,
+      textColor: currentStyle.textColor,
+      textOpacity: currentStyle.textOpacity,
+      description: trimmed,
+      zIndex: elements.length,
+    };
+
+    saveDrawElements(activeCanvasId, [...elements, newEl]);
+    setTool('select');
+    selectElement(newEl.id);
+    return true;
+  }, [activeCanvasId, currentStyle, pushHistory, selectElement, setTool]);
+
+  const insertEntityTokenElement = useCallback(async (entityId: string, point: { x: number; y: number }, mode?: EntityTokenMode): Promise<boolean> => {
+    if (!canEditCanvasEntityById(activeCanvasId)) return false;
+    const entity = yjsStore.entitiesMap.get(entityId);
+    if (!entity || entity.type === 'canvas' || entity.type === 'folder') return false;
+    if (!canViewCanvasEntity(entity)) return false;
+
+    const defaults = getEntityCanvasTokenDefaults(entity, mode);
+    const size = await getEntityTokenCanvasSize(entity, defaults.mode, defaults);
+    const elements = getDrawElements(activeCanvasId);
+    pushHistory(elements);
+
+    const newEl: DrawElement = {
+      id: generateDrawId(),
+      type: 'entityToken',
+      x: point.x - size.width / 2,
+      y: point.y - size.height / 2,
+      width: size.width,
+      height: size.height,
+      linkedEntityId: entity.id,
+      entityTokenMode: defaults.mode,
+      entityTokenFrame: defaults.frame,
+      objectName: entity.name,
+      showName: defaults.showName,
+      stroke: defaults.stroke,
+      strokeWidth: 2,
+      strokeStyle: 'solid',
+      visualStyle: 'clean',
+      fill: defaults.fill,
+      opacity: 1,
+      fillOpacity: 1,
+      strokeOpacity: 1,
+      startCap: 'none',
+      endCap: 'none',
+      zIndex: elements.length,
+    };
+
+    saveDrawElements(activeCanvasId, [...elements, newEl]);
+    setTool('select');
+    selectElement(newEl.id);
+    return true;
+  }, [activeCanvasId, pushHistory, selectElement, setTool]);
+
+  const uploadAndInsertCanvasImage = useCallback(async (
+    file: File,
+    target: CanvasImageTarget,
+    centerOnPoint = false,
+    sessionNotificationId?: string,
+    existingNotificationId?: string,
+  ) => {
+    if (!file.type.startsWith('image/')) {
+      addNotification({
+        kind: 'warning',
+        scope: 'local',
+        status: 'failed',
+        title: t('canvas.notifications.unsupportedFileTitle'),
+        message: t('canvas.notifications.imageFileRequired', { name: file.name }),
+      });
+      return;
+    }
+
+    if (file.size > MAX_CANVAS_IMAGE_UPLOAD_BYTES) {
+      addNotification({
+        kind: 'warning',
+        scope: 'local',
+        status: 'failed',
+        title: t('canvas.notifications.fileTooLargeTitle'),
+        message: t('canvas.notifications.quickUploadLimit', { name: file.name, size: formatNotificationFileSize(file.size) }),
+      });
+      return;
+    }
+
+    const isLargeUpload = file.size > LARGE_ASSET_UPLOAD_APPROVAL_BYTES;
+    const notificationInput = {
+      id: existingNotificationId,
+      kind: 'progress' as const,
+      scope: 'local' as const,
+      status: 'pending' as const,
+      title: isLargeUpload ? t('canvas.notifications.largeImageUpload') : t('canvas.notifications.imageUpload'),
+      message: `${file.name} • ${formatNotificationFileSize(file.size)}`,
+      progress: 0,
+      actions: [{ id: 'cancel-upload', label: t('common.cancel'), tone: 'danger' as const }],
+      payload: {
+        canvasId: target.canvasId,
+        fileName: file.name,
+        size: file.size,
+        requiresGmApproval: isLargeUpload,
+        sessionNotificationId,
+      },
+    };
+
+    const uploadNotification = existingNotificationId
+      ? upsertNotification(notificationInput)
+      : addNotification(notificationInput);
+
+    const notificationId = uploadNotification.id;
+
+    pendingCanvasImageUploadsRef.current.set(notificationId, { file, target, centerOnPoint });
+    unregisterRetryCallback(notificationId);
+
+    const controller = new AbortController();
+    registerAbortCallback(notificationId, () => {
+      controller.abort();
+    });
+
+    const updateSessionProgress = (loaded: number, total: number, percent: number) => {
+      if (!sessionNotificationId) return;
+      const previous = uploadProgressThrottleRef.current.get(sessionNotificationId);
+      const now = Date.now();
+      const percentDelta = previous ? Math.abs(percent - previous.percent) : 100;
+      const elapsed = previous ? now - previous.updatedAt : Number.POSITIVE_INFINITY;
+      if (percent < 100 && percentDelta < 2 && elapsed < 500) return;
+
+      uploadProgressThrottleRef.current.set(sessionNotificationId, { percent, updatedAt: now });
+      yjsStore.updateSessionNotification(sessionNotificationId, {
+        status: 'uploading',
+        payload: {
+          uploadProgress: percent,
+          uploadedBytes: loaded,
+          totalBytes: total,
+        },
+      });
+    };
+
+    try {
+      if (sessionNotificationId) {
+        yjsStore.updateSessionNotification(sessionNotificationId, {
+          status: 'uploading',
+          payload: { uploadProgress: 0 },
+        });
+      }
+
+      const uploaded = await (getIsHost() ? uploadAssetFile : uploadAssetFileToHost)(file, {
+        signal: controller.signal,
+        onProgress: (progress) => {
+          updateNotificationProgress(notificationId, progress.percent);
+          updateSessionProgress(progress.loaded, progress.total, progress.percent);
+        },
+      });
+
+      const sourceUrl = getAssetUrl(uploaded.filename);
+      const img = await loadBrowserImage(sourceUrl);
+
+      updateNotification(notificationId, {
+        kind: 'success',
+        status: 'done',
+        title: t('canvas.notifications.imageUploaded'),
+        message: `${file.name} • ${formatNotificationFileSize(file.size)}`,
+        progress: 100,
+        actions: [],
+      });
+
+      unregisterAbortCallback(notificationId);
+      pendingCanvasImageUploadsRef.current.delete(notificationId);
+
+      if (sessionNotificationId) {
+        yjsStore.updateSessionNotification(sessionNotificationId, {
+          status: 'done',
+          message: `${file.name} • ${formatNotificationFileSize(file.size)}`,
+          payload: {
+            uploadProgress: 100,
+            uploadedAssetPath: uploaded.filename,
+          },
+        });
+        uploadProgressThrottleRef.current.delete(sessionNotificationId);
+      }
+
+      if (target.canvasId !== activeCanvasId) {
+        addNotification({
+          kind: 'warning',
+          scope: 'local',
+          status: 'done',
+          title: t('canvas.notifications.canvasChangedTitle'),
+          message: t('canvas.notifications.canvasChangedMessage', { name: file.name }),
+        });
+        return;
+      }
+
+      insertImageElement({
+        sourceUrl,
+        assetPath: uploaded.filename,
+        objectName: file.name,
+        canvasX: target.canvasX,
+        canvasY: target.canvasY,
+        naturalWidth: img.width,
+        naturalHeight: img.height,
+        centerOnPoint,
+      });
+    } catch (err) {
+      unregisterAbortCallback(notificationId);
+      const isAbort = (err as Error).name === 'AbortError';
+      const message = isAbort ? t('assetBrowser.notifications.cancelled') : ((err as Error).message || 'Unknown upload error');
+
+      console.warn('Canvas image upload/insert failed.', {
+        fileName: file.name,
+        fileSize: file.size,
+        canvasId: target.canvasId,
+        sessionNotificationId,
+        error: err,
+      });
+
+      if (isAbort) {
+        updateNotification(notificationId, {
+          kind: 'warning',
+          status: 'failed',
+          title: t('assetBrowser.notifications.cancelled'),
+          message: `${file.name}`,
+          actions: [{ id: 'retry-upload', label: t('common.retry'), tone: 'primary' }],
+        });
+      } else {
+        updateNotification(notificationId, {
+          kind: 'error',
+          status: 'failed',
+          title: t('canvas.notifications.uploadFailed'),
+          message: `${file.name}: ${message}`,
+          actions: [{ id: 'retry-upload', label: t('common.retry'), tone: 'primary' }],
+        });
+      }
+
+      registerRetryCallback(notificationId, () => {
+        void uploadAndInsertCanvasImageRef.current?.(file, target, centerOnPoint, sessionNotificationId, notificationId);
+      });
+
+      if (sessionNotificationId) {
+        yjsStore.updateSessionNotification(sessionNotificationId, {
+          status: 'failed',
+          message: `${file.name}: ${message}`,
+          payload: { uploadError: message },
+        });
+        uploadProgressThrottleRef.current.delete(sessionNotificationId);
+      }
+    }
+  }, [
+    activeCanvasId,
+    addNotification,
+    upsertNotification,
+    updateNotification,
+    updateNotificationProgress,
+    registerAbortCallback,
+    unregisterAbortCallback,
+    registerRetryCallback,
+    unregisterRetryCallback,
+    insertImageElement,
+    t,
+  ]);
+
+  useEffect(() => {
+    uploadAndInsertCanvasImageRef.current = uploadAndInsertCanvasImage;
+  }, [uploadAndInsertCanvasImage]);
+
+  const insertFileImageAtPoint = useCallback((file: File, target: CanvasImageTarget, centerOnPoint = false) => {
+    if (!getIsHost() && file.size > LARGE_ASSET_UPLOAD_APPROVAL_BYTES) {
+      const request = yjsStore.sendSessionNotification(createLargeUploadApprovalRequest({
+        fileName: file.name,
+        fileSize: file.size,
+        mime: file.type,
+        destination: `assets/canvas/${target.canvasId}`,
+        source: 'canvas-drop',
+      }));
+
+      pendingCanvasImageUploadsRef.current.set(request.id, { file, target, centerOnPoint });
+      addNotification({
+        kind: 'approval',
+        scope: 'player',
+        status: 'pending',
+        title: t('canvas.notifications.approvalSent'),
+        message: `${file.name} • ${formatNotificationFileSize(file.size)}`,
+        payload: {
+          canvasId: target.canvasId,
+          sessionNotificationId: request.id,
+        },
+      });
+      return;
+    }
+
+    void uploadAndInsertCanvasImage(file, target, centerOnPoint);
+  }, [addNotification, uploadAndInsertCanvasImage, t]);
+
+  useEffect(() => {
+    const handleSessionNotification = (notification: SessionNotificationEvent) => {
+      if (notification.type !== 'large-upload-approval') return;
+
+      const pending = pendingCanvasImageUploadsRef.current.get(notification.id);
+      if (!pending) return;
+
+      const isMine = Boolean(
+        (notification.actorId && notification.actorId === yjsStore.localPlayerId)
+        || (notification.actorName && notification.actorName === yjsStore.localPlayerName)
+      );
+      if (!isMine) return;
+
+      if (notification.status === 'approved') {
+        pendingCanvasImageUploadsRef.current.delete(notification.id);
+        void uploadAndInsertCanvasImage(pending.file, pending.target, pending.centerOnPoint, notification.id);
+        return;
+      }
+
+      if (notification.status === 'rejected') {
+        pendingCanvasImageUploadsRef.current.delete(notification.id);
+        uploadProgressThrottleRef.current.delete(notification.id);
+        addNotification({
+          kind: 'warning',
+          scope: 'player',
+          status: 'rejected',
+          title: t('canvas.notifications.uploadRejected'),
+          message: `${pending.file.name} • ${formatNotificationFileSize(pending.file.size)}`,
+          payload: {
+            canvasId: pending.target.canvasId,
+            sessionNotificationId: notification.id,
+          },
+        });
+      }
+    };
+
+    return yjsStore.observeSessionNotifications(handleSessionNotification);
+  }, [addNotification, uploadAndInsertCanvasImage, t]);
+
+  const insertAssetImageAtPoint = useCallback((asset: AssetRecord, target: CanvasImageTarget, centerOnPoint = false) => {
+    const sourceUrl = asset.url || getAssetUrl(asset.path);
+    void loadBrowserImage(sourceUrl)
+      .then((img) => {
+        insertImageElement({
+          sourceUrl,
+          assetPath: asset.path,
+          objectName: asset.name,
+          canvasX: target.canvasX,
+          canvasY: target.canvasY,
+          naturalWidth: img.width,
+          naturalHeight: img.height,
+          centerOnPoint,
+        });
+      })
+      .catch((err) => console.warn('Canvas asset image insert failed.', err));
+  }, [insertImageElement]);
 
   // Track drawing and middle-click pan state
   const isDrawingRef = useRef(false);
   const isMiddlePanRef = useRef(false);
+  const suppressMiddleAuxClickUntilRef = useRef(0);
   const middlePanStartRef = useRef({ x: 0, y: 0, stageX: 0, stageY: 0 });
+  const middlePanCurrentRef = useRef({ stageX: 0, stageY: 0 });
+  const middlePanStagePointerEventsRef = useRef<string | null>(null);
+  const cameraPerfCountersRef = useRef<VibeCameraPerfCounters>({
+    panPreviewMoves: 0,
+    panPreviewFrames: 0,
+    panStageCommits: 0,
+  });
   const dragElementSnapshotRef = useRef<DrawElement[] | null>(null);
   const lastDragDeltaRef = useRef({ dx: 0, dy: 0 });
-  const dragGenerationRef = useRef(0); // Increments on drag end to invalidate stale throttled saves
 
   // Lasso selection state
   const lassoPointsRef = useRef<number[]>([]);
@@ -1190,9 +2866,90 @@ export function InfiniteCanvas() {
 
   // Refs for direct Konva manipulation (avoid React re-renders during pan)
   const stageRef = useRef<Konva.Stage>(null);
+  const panPreviewFrameRef = useRef<number | null>(null);
+  const pendingPanPreviewRef = useRef<{
+    stage: Konva.Stage;
+    dx: number;
+    dy: number;
+    scale: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const snapLinesRef = useRef<{ x?: number; y?: number }[]>([]);
   const snapLinesGroupRef = useRef<Konva.Group | null>(null);
   const lastSnapKeyRef = useRef<string>('');
+
+  const cancelPendingPanPreview = useCallback(() => {
+    if (panPreviewFrameRef.current !== null) {
+      window.cancelAnimationFrame(panPreviewFrameRef.current);
+      panPreviewFrameRef.current = null;
+    }
+    pendingPanPreviewRef.current = null;
+  }, []);
+
+  const clearStagePanPreview = useCallback((stage: Konva.Stage) => {
+    cancelPendingPanPreview();
+    const container = stage.container();
+    container.style.transform = '';
+    container.style.willChange = '';
+  }, [cancelPendingPanPreview]);
+
+  const suspendStageInputDuringMiddlePan = useCallback((stage: Konva.Stage) => {
+    const container = stage.container();
+    if (middlePanStagePointerEventsRef.current === null) {
+      middlePanStagePointerEventsRef.current = container.style.pointerEvents;
+    }
+    container.style.pointerEvents = 'none';
+  }, []);
+
+  const restoreStageInputAfterMiddlePan = useCallback((stage: Konva.Stage) => {
+    const container = stage.container();
+    if (middlePanStagePointerEventsRef.current !== null) {
+      container.style.pointerEvents = middlePanStagePointerEventsRef.current;
+      middlePanStagePointerEventsRef.current = null;
+      return;
+    }
+    container.style.pointerEvents = '';
+  }, []);
+
+  const schedulePanPreview = useCallback((stage: Konva.Stage, dx: number, dy: number, scale: number, x: number, y: number) => {
+    cameraPerfCountersRef.current.panPreviewMoves += 1;
+
+    pendingPanPreviewRef.current = { stage, dx, dy, scale, x, y };
+    if (panPreviewFrameRef.current !== null) return;
+
+    panPreviewFrameRef.current = window.requestAnimationFrame(() => {
+      panPreviewFrameRef.current = null;
+      const pending = pendingPanPreviewRef.current;
+      pendingPanPreviewRef.current = null;
+      if (!pending) return;
+
+      const container = pending.stage.container();
+      container.style.willChange = 'transform';
+      container.style.transform = `translate3d(${pending.dx}px, ${pending.dy}px, 0)`;
+      window.__vibeSetPinnedLayerCamera?.(pending.scale, pending.x, pending.y);
+      cameraPerfCountersRef.current.panPreviewFrames += 1;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    window.__vibeCameraPerfCounters = cameraPerfCountersRef.current;
+    return () => {
+      delete window.__vibeCameraPerfCounters;
+    };
+  }, []);
+
+  useEffect(() => {
+    const stageAtMount = stageRef.current;
+    return () => {
+      cancelPendingPanPreview();
+      document.body.classList.remove('canvas-camera-panning');
+      if (stageAtMount) {
+        restoreStageInputAfterMiddlePan(stageAtMount);
+      }
+    };
+  }, [cancelPendingPanPreview, restoreStageInputAfterMiddlePan]);
 
   const updateSnapLines = useCallback(() => {
     const group = snapLinesGroupRef.current;
@@ -1230,6 +2987,45 @@ export function InfiniteCanvas() {
     layer.batchDraw();
   }, []);
 
+  const snapCanvasPoint = useCallback(
+    (point: { x: number; y: number }, disabled = false) =>
+      snapPointToConfiguredGrid(point, gridEnabled, gridType, gridSpacing, disabled),
+    [gridEnabled, gridType, gridSpacing]
+  );
+
+  const snapLinePoint = useCallback(
+    (point: { x: number; y: number }, options?: { disabled?: boolean; excludeIds?: string[] }) => {
+      const snappedGridPoint = snapCanvasPoint(point, options?.disabled);
+      if (options?.disabled) {
+        setObjectSnapPreview(null);
+        return { point: snappedGridPoint } satisfies LinePointSnapResult;
+      }
+
+      const scale = stageRef.current?.scaleX() || useCanvasStore.getState().scale || 1;
+      const radius = OBJECT_SNAP_SCREEN_RADIUS / Math.max(0.1, scale);
+      const anchorSnap = findNearestCanvasAnchor(snappedGridPoint, renderedDrawElements, {
+        radius,
+        excludeIds: options?.excludeIds,
+      });
+
+      if (!anchorSnap) {
+        setObjectSnapPreview(null);
+        return { point: snappedGridPoint } satisfies LinePointSnapResult;
+      }
+
+      setObjectSnapPreview({ ...anchorSnap.point, anchor: anchorSnap.anchor });
+      return {
+        point: anchorSnap.point,
+        binding: {
+          elementId: anchorSnap.anchor.elementId,
+          anchor: anchorSnap.anchor.id,
+          focus: anchorSnap.anchor.focus,
+        },
+      } satisfies LinePointSnapResult;
+    },
+    [renderedDrawElements, snapCanvasPoint]
+  );
+
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
@@ -1256,18 +3052,51 @@ export function InfiniteCanvas() {
       }
     };
     // Store on window for cross-component access (avoids prop drilling)
-    (window as any).__vibeSetStageCamera = handler;
-    return () => { delete (window as any).__vibeSetStageCamera; };
+    window.__vibeSetStageCamera = handler;
+    return () => { delete window.__vibeSetStageCamera; };
   }, []);
+
+  const deleteSelectedCanvasElements = useCallback(() => {
+    if (selectedElementIds.length === 0) return;
+
+    const elements = getDrawElements(activeCanvasId);
+    const selected = elements.filter((el) => selectedElementIds.includes(el.id));
+    if (selected.length === 0) {
+      clearSelection();
+      return;
+    }
+
+    const deleteSelection = () => {
+      pushHistory(elements);
+      saveDrawElements(
+        activeCanvasId,
+        elements.filter((el) => !selectedElementIds.includes(el.id))
+      );
+      clearSelection();
+    };
+
+    const entityPlacements = selected.filter((el) => el.type === 'entityToken');
+    if (entityPlacements.length === 0) {
+      deleteSelection();
+      return;
+    }
+
+    openConfirm({
+      title: t('canvas.deleteSelection.title'),
+      description:
+        entityPlacements.length === selected.length
+          ? t('canvas.deleteSelection.onlyEntities', { count: entityPlacements.length })
+          : t('canvas.deleteSelection.mixed', { count: entityPlacements.length }),
+      confirmText: t('common.delete'),
+      isDestructive: true,
+      onConfirm: deleteSelection,
+    });
+  }, [activeCanvasId, clearSelection, openConfirm, pushHistory, selectedElementIds, t]);
 
   // ─── Keyboard shortcuts ───
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      )
-        return;
+      if (isEditablePasteTarget(e.target) || isEditablePasteTarget(document.activeElement)) return;
 
       const key = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;
@@ -1355,13 +3184,22 @@ export function InfiniteCanvas() {
       if (ctrl && key === 'a') {
         e.preventDefault();
         const elements = getDrawElements(activeCanvasId);
-        selectElements(elements.map(el => el.id));
         if (useCanvasDrawStore.getState().activeTool !== 'select') setTool('select');
+        selectElements(elements.map(el => el.id));
         return;
       }
 
       // No-modifier tool shortcuts
       if (ctrl) return;
+
+      if (/^[1-9]$/.test(key) && canvasPasteActiveRef.current) {
+        const tool = NUMBER_TOOL_SHORTCUTS[Number(key) - 1];
+        if (tool && canEditCanvasEntityById(activeCanvasId)) {
+          e.preventDefault();
+          setTool(tool);
+        }
+        return;
+      }
 
       switch (key) {
         case 'v': setTool('select'); break;
@@ -1383,30 +3221,25 @@ export function InfiniteCanvas() {
         case 'delete':
         case 'backspace':
           if (selectedElementIds.length > 0) {
-            const elements = getDrawElements(activeCanvasId);
-            pushHistory(elements);
-            const filtered = elements.filter(
-              (el) => !selectedElementIds.includes(el.id)
-            );
-            saveDrawElements(activeCanvasId, filtered);
-            clearSelection();
+            e.preventDefault();
+            deleteSelectedCanvasElements();
           }
           break;
       }
     };
     window.addEventListener('keydown', onKeyDown);
-    
+
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isEditablePasteTarget(e.target) || isEditablePasteTarget(document.activeElement)) return;
       if (e.key.toLowerCase() === 'g') pingKeyRef.current = false;
     };
     window.addEventListener('keyup', onKeyUp);
-    
+
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [activeCanvasId, selectedElementIds, setTool, clearSelection, undo, redo, pushHistory, copyToClipboard, getClipboard, selectElements]);
+  }, [activeCanvasId, selectedElementIds, setTool, clearSelection, undo, redo, pushHistory, copyToClipboard, getClipboard, selectElements, deleteSelectedCanvasElements]);
 
   // ─── Wheel zoom ───
   // ─── Wheel zoom (throttled store sync for smooth pinned windows) ───
@@ -1414,6 +3247,111 @@ export function InfiniteCanvas() {
     () => throttle((s: number, x: number, y: number) => setTransform(s, x, y), 32),
     [setTransform]
   );
+  const throttledSetTransformDuringPan = useMemo(
+    () => throttle((s: number, x: number, y: number) => setTransform(s, x, y), 250),
+    [setTransform]
+  );
+
+  const syncPinnedCameraLayer = useCallback((scale: number, x: number, y: number) => {
+    window.__vibeSetPinnedLayerCamera?.(scale, x, y);
+  }, []);
+
+  const commitMiddlePanStage = useCallback((stage: Konva.Stage, x: number, y: number) => {
+    clearStagePanPreview(stage);
+    stage.position({ x, y });
+    syncPinnedCameraLayer(stage.scaleX(), x, y);
+    stage.batchDraw();
+    cameraPerfCountersRef.current.panStageCommits += 1;
+  }, [clearStagePanPreview, syncPinnedCameraLayer]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
+    window.__vibeRunCameraPerfTest = (options = {}) => {
+      const stage = stageRef.current;
+      if (!stage) {
+        return Promise.resolve({
+          ok: false,
+          reason: 'Konva Stage is not mounted',
+          frames: 0,
+          avgFps: 0,
+          maxFrameMs: 0,
+          droppedFrames: 0,
+          durationMs: 0,
+        });
+      }
+
+      const durationMs = Math.max(500, Math.min(options.durationMs ?? 3000, 15000));
+      const amplitude = Math.max(50, Math.min(options.amplitude ?? 420, 2000));
+      const restoreCamera = options.restoreCamera ?? true;
+      const startScale = stage.scaleX();
+      const startX = stage.x();
+      const startY = stage.y();
+
+      return new Promise<VibeCameraPerfTestResult>((resolve) => {
+        const startedAt = performance.now();
+        let committedX = startX;
+        let committedY = startY;
+        let lastFrameAt = startedAt;
+        let frames = 0;
+        let maxFrameMs = 0;
+        let droppedFrames = 0;
+
+        const step = (now: number) => {
+          const frameMs = now - lastFrameAt;
+          lastFrameAt = now;
+          frames += 1;
+          maxFrameMs = Math.max(maxFrameMs, frameMs);
+          if (frameMs > 34) droppedFrames += 1;
+
+          const elapsed = now - startedAt;
+          const progress = Math.min(1, elapsed / durationMs);
+          const wave = Math.sin(progress * Math.PI * 8);
+          const waveY = Math.cos(progress * Math.PI * 6);
+          const nextX = startX + wave * amplitude;
+          const nextY = startY + waveY * amplitude * 0.45;
+          const dx = nextX - committedX;
+          const dy = nextY - committedY;
+
+          schedulePanPreview(stage, dx, dy, startScale, nextX, nextY);
+
+          if (Math.abs(dx) > MIDDLE_PAN_COMMIT_THRESHOLD_X || Math.abs(dy) > MIDDLE_PAN_COMMIT_THRESHOLD_Y) {
+            commitMiddlePanStage(stage, nextX, nextY);
+            committedX = nextX;
+            committedY = nextY;
+          }
+
+          if (progress < 1) {
+            window.requestAnimationFrame(step);
+            return;
+          }
+
+          if (restoreCamera) {
+            commitMiddlePanStage(stage, startX, startY);
+            setTransform(startScale, startX, startY);
+          } else {
+            commitMiddlePanStage(stage, nextX, nextY);
+            setTransform(startScale, nextX, nextY);
+          }
+
+          resolve({
+            ok: true,
+            frames,
+            avgFps: frames * 1000 / Math.max(1, performance.now() - startedAt),
+            maxFrameMs,
+            droppedFrames,
+            durationMs,
+          });
+        };
+
+        window.requestAnimationFrame(step);
+      });
+    };
+
+    return () => {
+      delete window.__vibeRunCameraPerfTest;
+    };
+  }, [commitMiddlePanStage, schedulePanPreview, setTransform]);
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
@@ -1439,15 +3377,17 @@ export function InfiniteCanvas() {
       y: pointer.y - mousePointTo.y * newScale,
     };
     stage.position(newPos);
+    syncPinnedCameraLayer(newScale, newPos.x, newPos.y);
     // Use throttled store sync so pinned windows don't lag during rapid zoom
     throttledSetTransform(newScale, newPos.x, newPos.y);
   };
 
-  const handleDragMove = (_e: Konva.KonvaEventObject<DragEvent>) => {
+  const handleDragMove = () => {
     // Sync store during hand-tool pan so pinned windows follow camera
     const stage = stageRef.current;
     if (stage) {
-      throttledSetTransform(stage.scaleX(), stage.x(), stage.y());
+      syncPinnedCameraLayer(stage.scaleX(), stage.x(), stage.y());
+      throttledSetTransformDuringPan(stage.scaleX(), stage.x(), stage.y());
     }
   };
 
@@ -1477,58 +3417,230 @@ export function InfiniteCanvas() {
 
   // ─── Middle-click pan (works in ALL modes) ───
 
+  const clientToCanvasPoint = useCallback((clientX: number, clientY: number): { x: number; y: number } | null => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+
+    const stage = stageRef.current;
+    const scale = stage?.scaleX() || useCanvasStore.getState().scale || 1;
+    const offset = stage
+      ? { x: stage.x(), y: stage.y() }
+      : useCanvasStore.getState().offset;
+
+    return {
+      x: (clientX - rect.left - offset.x) / scale,
+      y: (clientY - rect.top - offset.y) / scale,
+    };
+  }, []);
+
+  const getPasteCanvasPoint = useCallback((): { x: number; y: number } | null => {
+    const lastPoint = lastCanvasPointerRef.current;
+    if (lastPoint) return snapCanvasPoint(lastPoint);
+
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    const centerPoint = clientToCanvasPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return centerPoint ? snapCanvasPoint(centerPoint) : null;
+  }, [clientToCanvasPoint, snapCanvasPoint]);
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const root = containerRef.current;
+      const target = event.target;
+      const isInsideCanvas = Boolean(root && target instanceof Node && root.contains(target));
+      canvasPasteActiveRef.current = isInsideCanvas && !isEditablePasteTarget(target);
+
+      if (!isInsideCanvas) return;
+      const point = clientToCanvasPoint(event.clientX, event.clientY);
+      if (point) lastCanvasPointerRef.current = point;
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown, true);
+    return () => window.removeEventListener('pointerdown', handlePointerDown, true);
+  }, [clientToCanvasPoint]);
+
+  useEffect(() => {
+    const handlePaste = (event: ClipboardEvent) => {
+      if (!canvasPasteActiveRef.current) return;
+      if (getClipboard().length > 0) return;
+      if (
+        isEditablePasteTarget(event.target) ||
+        isEditablePasteTarget(document.activeElement)
+      ) {
+        return;
+      }
+      if (!canEditCanvasEntityById(activeCanvasId)) return;
+
+      const data = event.clipboardData;
+      if (!data) return;
+
+      const pastePoint = getPasteCanvasPoint();
+      if (!pastePoint) return;
+
+      const rect = containerRef.current?.getBoundingClientRect();
+      const screenX = rect ? rect.left + rect.width / 2 : 0;
+      const screenY = rect ? rect.top + rect.height / 2 : 0;
+      const imageFiles = getClipboardImageFiles(data);
+
+      if (imageFiles.length > 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        imageFiles.forEach((file, index) => {
+          const offset = index * 24;
+          insertFileImageAtPoint(file, {
+            canvasId: activeCanvasId,
+            canvasX: pastePoint.x + offset,
+            canvasY: pastePoint.y + offset,
+            screenX,
+            screenY,
+          }, true);
+        });
+        return;
+      }
+
+      const text = data.getData('text/plain');
+      if (!text.trim()) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      insertTextRectangleAtPoint(text, pastePoint);
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [activeCanvasId, getClipboard, getPasteCanvasPoint, insertFileImageAtPoint, insertTextRectangleAtPoint]);
+
+  const setMiddlePanCursor = useCallback((cursor: string) => {
+    const stage = stageRef.current;
+    const container = stage?.container();
+    if (container) container.style.cursor = cursor;
+    document.documentElement.style.cursor = cursor;
+    document.body.style.cursor = cursor;
+  }, []);
+
+  const clearMiddlePanCursor = useCallback(() => {
+    const stage = stageRef.current;
+    const container = stage?.container();
+    if (container) container.style.cursor = '';
+    document.documentElement.style.cursor = '';
+    document.body.style.cursor = '';
+  }, []);
+
+  const applyMiddlePanMove = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!isMiddlePanRef.current) return;
+      const stage = stageRef.current;
+      if (!stage) return;
+
+      const dx = clientX - middlePanStartRef.current.x;
+      const dy = clientY - middlePanStartRef.current.y;
+      const newX = middlePanStartRef.current.stageX + dx;
+      const newY = middlePanStartRef.current.stageY + dy;
+
+      middlePanCurrentRef.current = { stageX: newX, stageY: newY };
+      schedulePanPreview(stage, dx, dy, stage.scaleX(), newX, newY);
+
+      if (Math.abs(dx) > MIDDLE_PAN_COMMIT_THRESHOLD_X || Math.abs(dy) > MIDDLE_PAN_COMMIT_THRESHOLD_Y) {
+        commitMiddlePanStage(stage, newX, newY);
+        middlePanStartRef.current = {
+          x: clientX,
+          y: clientY,
+          stageX: newX,
+          stageY: newY,
+        };
+        middlePanCurrentRef.current = { stageX: newX, stageY: newY };
+      }
+    },
+    [commitMiddlePanStage, schedulePanPreview]
+  );
+
+  const handleMiddlePanEnd = useCallback(() => {
+    if (!isMiddlePanRef.current) return;
+    isMiddlePanRef.current = false;
+    clearMiddlePanCursor();
+    document.body.classList.remove('canvas-camera-panning');
+
+    const stage = stageRef.current;
+    if (stage) {
+      const finalX = middlePanCurrentRef.current.stageX;
+      const finalY = middlePanCurrentRef.current.stageY;
+      commitMiddlePanStage(stage, finalX, finalY);
+      restoreStageInputAfterMiddlePan(stage);
+      setTransform(stage.scaleX(), finalX, finalY);
+    }
+  }, [clearMiddlePanCursor, commitMiddlePanStage, restoreStageInputAfterMiddlePan, setTransform]);
+
   const handleMiddlePanStart = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
       if (e.evt.button !== 1) return;
       e.evt.preventDefault();
+      e.evt.stopPropagation();
       const stage = e.target.getStage();
       if (!stage) return;
 
       isMiddlePanRef.current = true;
+      document.body.classList.add('canvas-camera-panning');
+      suppressMiddleAuxClickUntilRef.current = Date.now() + 1000;
       middlePanStartRef.current = {
         x: e.evt.clientX,
         y: e.evt.clientY,
         stageX: stage.x(),
         stageY: stage.y(),
       };
-      const container = stage.container();
-      if (container) container.style.cursor = 'grabbing';
+      middlePanCurrentRef.current = {
+        stageX: stage.x(),
+        stageY: stage.y(),
+      };
+      clearStagePanPreview(stage);
+      suspendStageInputDuringMiddlePan(stage);
+      setMiddlePanCursor('grabbing');
     },
-    []
+    [clearStagePanPreview, setMiddlePanCursor, suspendStageInputDuringMiddlePan]
   );
 
-  const handleMiddlePanMove = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent>) => {
+  useEffect(() => {
+    const handleGlobalMouseMove = (event: MouseEvent) => {
       if (!isMiddlePanRef.current) return;
-      const stage = e.target.getStage();
-      if (!stage) return;
 
-      const dx = e.evt.clientX - middlePanStartRef.current.x;
-      const dy = e.evt.clientY - middlePanStartRef.current.y;
-      const newX = middlePanStartRef.current.stageX + dx;
-      const newY = middlePanStartRef.current.stageY + dy;
-
-      stage.position({ x: newX, y: newY });
-      // Sync store so pinned windows follow in real-time
-      throttledSetTransform(stage.scaleX(), newX, newY);
-    },
-    [throttledSetTransform]
-  );
-
-  const handleMiddlePanEnd = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent>) => {
-      if (!isMiddlePanRef.current) return;
-      isMiddlePanRef.current = false;
-      const stage = e.target.getStage();
-      if (stage) {
-        const container = stage.container();
-        if (container) container.style.cursor = '';
-        // Sync Zustand state after pan ends
-        setTransform(stage.scaleX(), stage.x(), stage.y());
+      if ((event.buttons & 4) !== 4) {
+        handleMiddlePanEnd();
+        return;
       }
-    },
-    [setTransform]
-  );
+
+      event.preventDefault();
+      applyMiddlePanMove(event.clientX, event.clientY);
+    };
+
+    const handleGlobalMouseUp = (event: MouseEvent) => {
+      if (!isMiddlePanRef.current) return;
+      if (event.button !== 1 && (event.buttons & 4) === 4) return;
+
+      event.preventDefault();
+      handleMiddlePanEnd();
+    };
+
+    const handleGlobalAuxClick = (event: MouseEvent) => {
+      if (event.button !== 1) return;
+      if (isMiddlePanRef.current || Date.now() <= suppressMiddleAuxClickUntilRef.current) {
+        event.preventDefault();
+        event.stopPropagation();
+        handleMiddlePanEnd();
+      }
+    };
+
+    window.addEventListener('mousemove', handleGlobalMouseMove, true);
+    window.addEventListener('mouseup', handleGlobalMouseUp, true);
+    window.addEventListener('auxclick', handleGlobalAuxClick, true);
+    window.addEventListener('blur', handleMiddlePanEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove, true);
+      window.removeEventListener('mouseup', handleGlobalMouseUp, true);
+      window.removeEventListener('auxclick', handleGlobalAuxClick, true);
+      window.removeEventListener('blur', handleMiddlePanEnd);
+      handleMiddlePanEnd();
+    };
+  }, [applyMiddlePanMove, handleMiddlePanEnd]);
 
   // ─── Select mode: drag to move selected elements ───
 
@@ -1537,29 +3649,30 @@ export function InfiniteCanvas() {
       // Read from store directly (not closure) to get latest selection
       const currentSelectedIds = useCanvasDrawStore.getState().selectedElementIds;
       if (currentSelectedIds.length === 0) return;
-      
+
       // Reset drag delta so stale values from previous drag don't apply
       lastDragDeltaRef.current = { dx: 0, dy: 0 };
-      
+      clearCanvasDragPreview();
+
       // Record undo history before drag-move
       const elements = getDrawElements(activeCanvasId);
       pushHistory(elements);
-      
+
       // Build snapshot: selected elements + frame children
       const selectedSet = new Set(currentSelectedIds);
       const frameChildIds = new Set<string>();
       const frameRects: {x: number, y: number, w: number, h: number}[] = [];
-      
+
       elements.filter(el => selectedSet.has(el.id) && el.type === 'frame').forEach(frame => {
         const b = getElementBounds(frame);
         frameRects.push({ x: b.x, y: b.y, w: b.w, h: b.h });
         getChildrenOfFrame(frame, elements).forEach(childId => frameChildIds.add(childId));
       });
-      
+
       // Snapshot includes selected + frame children
       const toSnapshot = new Set([...selectedSet, ...frameChildIds]);
       dragElementSnapshotRef.current = elements.filter((el) => toSnapshot.has(el.id));
-      
+
       // Snapshot pinned windows inside frames
       const windows = useWindowStore.getState().windows;
       const movingWindows: Record<string, {x: number, y: number}> = {};
@@ -1574,11 +3687,11 @@ export function InfiniteCanvas() {
          }
       });
       dragWindowSnapshotRef.current = movingWindows;
-      
+
       startDragging(point);
       setDraggingGlobal(true);
     },
-    [startDragging, activeCanvasId, pushHistory, setDraggingGlobal]
+    [startDragging, activeCanvasId, pushHistory, setDraggingGlobal, clearCanvasDragPreview]
   );
 
   const handleSelectDragMove = useCallback(
@@ -1587,7 +3700,6 @@ export function InfiniteCanvas() {
 
       let dx = point.x - dragStartPoint.x;
       let dy = point.y - dragStartPoint.y;
-      lastDragDeltaRef.current = { dx, dy };
 
       if (shiftKey) {
         if (Math.abs(dx) > Math.abs(dy)) dy = 0;
@@ -1595,7 +3707,7 @@ export function InfiniteCanvas() {
       }
 
       const elements = getDrawElements(activeCanvasId);
-      let newSnapLines: { x?: number; y?: number }[] = [];
+      const newSnapLines: { x?: number; y?: number }[] = [];
       const currentScale = useCanvasStore.getState().scale;
 
       // ─── Snap-to-Grid (before element-to-element smart snap) ───
@@ -1604,7 +3716,7 @@ export function InfiniteCanvas() {
         if (snapEl) {
           const threshold = 8 / currentScale;
           const spacing = gridSpacing;
-          const b = getElementBounds({ ...snapEl, x: (snapEl.x || 0) + dx, y: (snapEl.y || 0) + dy });
+          const b = getElementBounds(translateElement(snapEl, dx, dy));
 
           if (gridType === 'square') {
             // Snap top-left corner to nearest grid intersection
@@ -1635,14 +3747,14 @@ export function InfiniteCanvas() {
       if (selectedElementIds.length === 1 && !shiftKey) {
         const threshold = 5 / currentScale;
         const elSnap = dragElementSnapshotRef.current!.find(s => s.id === selectedElementIds[0]);
-        
+
         if (elSnap) {
-          const eb = getElementBounds({ ...elSnap, x: (elSnap.x || 0) + dx, y: (elSnap.y || 0) + dy });
+          const eb = getElementBounds(translateElement(elSnap, dx, dy));
           const myX = [eb.x, eb.x + eb.w / 2, eb.x + eb.w];
           const myY = [eb.y, eb.y + eb.h / 2, eb.y + eb.h];
           const others = elements.filter(e => !selectedElementIds.includes(e.id));
           let snappedX = false, snappedY = false;
-          
+
           for (const other of others) {
             const ob = getElementBounds(other);
             const otherX = [ob.x, ob.x + ob.w / 2, ob.x + ob.w];
@@ -1685,14 +3797,16 @@ export function InfiniteCanvas() {
         updateSnapLines();
       }
 
-      // Update element positions via throttled Yjs save
+      // Update element positions locally while dragging. Persistent Yjs write happens on drag end.
+      lastDragDeltaRef.current = { dx, dy };
+      const movedElementIds = dragElementSnapshotRef.current.map((snapshot) => snapshot.id);
       const updated = elements.map((el) => {
         const snapshot = dragElementSnapshotRef.current!.find((s) => s.id === el.id);
         if (!snapshot) return el;
         return translateElement(snapshot, dx, dy);
       });
-      throttledSaveDrawElements(activeCanvasId, updated, dragGenerationRef.current);
-      
+      setCanvasDragPreview({ canvasId: activeCanvasId, elements: updateBoundLineEndpoints(updated, movedElementIds) });
+
       if (dragWindowSnapshotRef.current) {
          Object.entries(dragWindowSnapshotRef.current).forEach(([wId, snapXy]) => {
             useWindowStore.getState().updateWindow(wId, {
@@ -1702,34 +3816,32 @@ export function InfiniteCanvas() {
          });
       }
     },
-    [isDraggingElement, dragStartPoint, activeCanvasId, selectedElementIds, updateSnapLines, gridEnabled, gridType, gridSpacing]
+    [isDraggingElement, dragStartPoint, activeCanvasId, selectedElementIds, updateSnapLines, gridEnabled, gridType, gridSpacing, setCanvasDragPreview]
   );
 
   const handleSelectDragEnd = useCallback(() => {
-    // Invalidate any pending throttled saves from this drag
-    dragGenerationRef.current++;
-    _throttleGeneration = dragGenerationRef.current;
-    
     // Save FINAL position using last known delta (avoids race with throttled saves)
     if (dragElementSnapshotRef.current) {
       const { dx, dy } = lastDragDeltaRef.current;
       const elements = getDrawElements(activeCanvasId);
+      const movedElementIds = dragElementSnapshotRef.current.map((snapshot) => snapshot.id);
       const updatedElements = elements.map((el) => {
         const snapshot = dragElementSnapshotRef.current!.find((s) => s.id === el.id);
         if (!snapshot) return el;
         return translateElement(snapshot, dx, dy);
       });
-      saveDrawElements(activeCanvasId, updatedElements);
+      saveDrawElements(activeCanvasId, updateBoundLineEndpoints(updatedElements, movedElementIds));
     }
-    
+
     dragElementSnapshotRef.current = null;
     dragWindowSnapshotRef.current = null;
+    clearCanvasDragPreview();
     stopDragging();
     setDraggingGlobal(false);
     snapLinesRef.current = [];
     lastSnapKeyRef.current = '';
     updateSnapLines();
-  }, [stopDragging, setDraggingGlobal, activeCanvasId, updateSnapLines]);
+  }, [stopDragging, setDraggingGlobal, activeCanvasId, updateSnapLines, clearCanvasDragPreview]);
 
   // ─── Point editing handlers ───
 
@@ -1738,43 +3850,71 @@ export function InfiniteCanvas() {
       // Record undo history before point editing
       const elements = getDrawElements(activeCanvasId);
       pushHistory(elements);
+      clearCanvasDragPreview();
       setEditingPointIndex(idx);
     },
-    [setEditingPointIndex, activeCanvasId, pushHistory]
+    [setEditingPointIndex, activeCanvasId, pushHistory, clearCanvasDragPreview]
   );
 
   const handlePointDragMove = useCallback(
-    (idx: number, x: number, y: number) => {
+    (idx: number, x: number, y: number, shiftKey?: boolean) => {
       if (selectedElementIds.length !== 1) return;
       const id = selectedElementIds[0];
+      const snapped = snapLinePoint({ x, y }, { disabled: shiftKey, excludeIds: [id] });
       const elements = getDrawElements(activeCanvasId);
       const updated = elements.map((el) => {
         if (el.id !== id || !el.points) return el;
         const pts = [...el.points];
-        pts[idx * 2] = x;
-        pts[idx * 2 + 1] = y;
-        return { ...el, points: pts };
+        pts[idx * 2] = snapped.point.x;
+        pts[idx * 2 + 1] = snapped.point.y;
+        const next: DrawElement = { ...el, points: pts };
+        if (idx === 0) {
+          if (snapped.binding) next.startBinding = snapped.binding;
+          else delete next.startBinding;
+        }
+        if (idx === Math.floor(pts.length / 2) - 1) {
+          if (snapped.binding) next.endBinding = snapped.binding;
+          else delete next.endBinding;
+        }
+        return next;
       });
-      throttledSaveDrawElements(activeCanvasId, updated);
+      setCanvasDragPreview({ canvasId: activeCanvasId, elements: updated });
     },
-    [selectedElementIds, activeCanvasId]
+    [selectedElementIds, activeCanvasId, setCanvasDragPreview, snapLinePoint]
   );
 
   const handlePointDragEnd = useCallback(() => {
-    // Flush final state
-    if (selectedElementIds.length === 1) {
-      const elements = getDrawElements(activeCanvasId);
-      saveDrawElements(activeCanvasId, elements);
-    }
+    commitCanvasDragPreview();
+    setObjectSnapPreview(null);
     setEditingPointIndex(null);
-  }, [setEditingPointIndex, selectedElementIds, activeCanvasId]);
+  }, [setEditingPointIndex, commitCanvasDragPreview]);
+
+  const handlePointDoubleClick = useCallback(
+    (idx: number) => {
+      if (selectedElementIds.length !== 1) return;
+      const id = selectedElementIds[0];
+      const elements = getDrawElements(activeCanvasId);
+      const target = elements.find((el) => el.id === id);
+      if (!target || (target.type !== 'line' && target.type !== 'arrow') || !target.points) return;
+      const nextPoints = removeLinePointAtIndex(target.points, idx);
+      if (nextPoints === target.points) return;
+
+      pushHistory(elements);
+      saveDrawElements(
+        activeCanvasId,
+        elements.map((el) => el.id === id ? { ...el, points: nextPoints } : el)
+      );
+      setEditingPointIndex(null);
+    },
+    [activeCanvasId, pushHistory, selectedElementIds, setEditingPointIndex]
+  );
 
   // ─── Resize handles for shapes ───
 
   const resizeSnapshotRef = useRef<DrawElement | null>(null);
 
   const handleResizeDragMove = useCallback(
-    (corner: string, x: number, y: number) => {
+    (corner: string, x: number, y: number, shiftKey?: boolean) => {
       if (selectedElementIds.length !== 1) return;
       const id = selectedElementIds[0];
       const elements = getDrawElements(activeCanvasId);
@@ -1791,6 +3931,9 @@ export function InfiniteCanvas() {
       const sy = snap.y || 0;
       const sw = snap.width || 0;
       const sh = snap.height || 0;
+      const snappedPoint = snapCanvasPoint({ x, y }, shiftKey);
+      x = snappedPoint.x;
+      y = snappedPoint.y;
 
       let newX = sx, newY = sy, newW = sw, newH = sh;
 
@@ -1812,24 +3955,60 @@ export function InfiniteCanvas() {
           break;
       }
 
+      if (snap.type === 'entityToken' && (snap.entityTokenMode || 'token') === 'art') {
+        const aspect = Math.abs(sw / sh) || 1;
+        const minSide = 32;
+        const signW = newW < 0 ? -1 : 1;
+        const signH = newH < 0 ? -1 : 1;
+        let absW = Math.max(minSide, Math.abs(newW));
+        let absH = Math.max(minSide, Math.abs(newH));
+
+        if (absW / aspect >= absH) {
+          absH = absW / aspect;
+        } else {
+          absW = absH * aspect;
+        }
+
+        newW = absW * signW;
+        newH = absH * signH;
+
+        switch (corner) {
+          case 'tl':
+            newX = sx + sw - newW;
+            newY = sy + sh - newH;
+            break;
+          case 'tr':
+            newX = sx;
+            newY = sy + sh - newH;
+            break;
+          case 'bl':
+            newX = sx + sw - newW;
+            newY = sy;
+            break;
+          case 'br':
+            newX = sx;
+            newY = sy;
+            break;
+        }
+      }
+
       const updated = elements.map((e) =>
         e.id === id ? { ...e, x: newX, y: newY, width: newW, height: newH } : e
       );
-      throttledSaveDrawElements(activeCanvasId, updated);
+      setCanvasDragPreview({ canvasId: activeCanvasId, elements: updateBoundLineEndpoints(updated, [id]) });
     },
-    [selectedElementIds, activeCanvasId, pushHistory]
+    [selectedElementIds, activeCanvasId, pushHistory, setCanvasDragPreview, snapCanvasPoint]
   );
 
   const handleResizeDragEnd = useCallback(() => {
-    // Flush final state
-    if (selectedElementIds.length === 1) {
-      const elements = getDrawElements(activeCanvasId);
-      saveDrawElements(activeCanvasId, elements);
-    }
     resizeSnapshotRef.current = null;
-    if (selectedElementIds.length !== 1) return;
+    if (selectedElementIds.length !== 1) {
+      clearCanvasDragPreview();
+      return;
+    }
     const id = selectedElementIds[0];
-    const elements = getDrawElements(activeCanvasId);
+    const preview = dragPreviewRef.current;
+    const elements = preview?.canvasId === activeCanvasId ? preview.elements : getDrawElements(activeCanvasId);
     const updated = elements.map((el) => {
       if (el.id !== id) return el;
       let { x, y, width, height } = el;
@@ -1838,8 +4017,9 @@ export function InfiniteCanvas() {
       if (height < 0) { y += height; height = Math.abs(height); }
       return { ...el, x, y, width, height };
     });
-    saveDrawElements(activeCanvasId, updated);
-  }, [selectedElementIds, activeCanvasId]);
+    saveDrawElements(activeCanvasId, updateBoundLineEndpoints(updated, [id]));
+    clearCanvasDragPreview();
+  }, [selectedElementIds, activeCanvasId, clearCanvasDragPreview]);
 
   // ─── Rotation handle ───
 
@@ -1858,19 +4038,15 @@ export function InfiniteCanvas() {
       const updated = elements.map(el =>
         el.id === id ? { ...el, rotation: angle } : el
       );
-      throttledSaveDrawElements(activeCanvasId, updated);
+      setCanvasDragPreview({ canvasId: activeCanvasId, elements: updated });
     },
-    [selectedElementIds, activeCanvasId, pushHistory]
+    [selectedElementIds, activeCanvasId, pushHistory, setCanvasDragPreview]
   );
 
   const handleRotateDragEnd = useCallback(() => {
-    // Flush final state
-    if (selectedElementIds.length === 1) {
-      const elements = getDrawElements(activeCanvasId);
-      saveDrawElements(activeCanvasId, elements);
-    }
+    commitCanvasDragPreview();
     rotateHistoryPushedRef.current = false;
-  }, [selectedElementIds, activeCanvasId]);
+  }, [commitCanvasDragPreview]);
 
   // ─── Drawing handlers (LEFT CLICK ONLY) ───
 
@@ -1907,8 +4083,7 @@ export function InfiniteCanvas() {
           const id = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
           const reveal: FogReveal = { id, type: 'circle', x: pt.x, y: pt.y, width: 80, height: 80 };
           // Cover tools ADD fog patches, Reveal tools REMOVE fog patches
-          if (currentFogTool === 'coverBrush') useCanvasSyncStore.getState().addFogReveal(reveal);
-          else useCanvasSyncStore.getState().removeIntersectingReveals(reveal);
+          applyFogBrushOperation(currentFogTool, reveal);
           return;
         }
         if (currentFogTool === 'revealRect' || currentFogTool === 'coverRect') {
@@ -1919,11 +4094,21 @@ export function InfiniteCanvas() {
         return;
       }
 
-      // Only handle stage clicks for drawing
-      if (e.target !== e.target.getStage()) return;
-
       const point = getCanvasPoint(e);
       if (!point) return;
+      const drawPoint = snapCanvasPoint(point, e.evt.shiftKey);
+
+      // Lasso selection starts anywhere on the canvas, including over existing draw elements.
+      if (activeTool === 'lasso') {
+        clearSelection();
+        isDrawingRef.current = true;
+        lassoPointsRef.current = [point.x, point.y];
+        setLassoPoints([...lassoPointsRef.current]);
+        return;
+      }
+
+      // Only empty-stage clicks start normal drawing or marquee selection.
+      if (e.target !== e.target.getStage()) return;
 
       if (activeTool === 'select') {
         // Start marquee selection (rubber-band) on empty canvas
@@ -1935,19 +4120,25 @@ export function InfiniteCanvas() {
 
       if (activeTool === 'pen' || activeTool === 'line') {
         isDrawingRef.current = true;
+        const startSnap = activeTool === 'pen'
+          ? { point }
+          : snapLinePoint(point, { disabled: e.evt.shiftKey });
         const newElement: DrawElement = {
           id: generateDrawId(),
           type: 'line',
-          points: [point.x, point.y, point.x, point.y],
+          points: [startSnap.point.x, startSnap.point.y, startSnap.point.x, startSnap.point.y],
           stroke: currentStyle.stroke,
           strokeWidth: currentStyle.strokeWidth,
           strokeStyle: currentStyle.strokeStyle,
+          visualStyle: currentStyle.visualStyle,
+          lineMode: activeTool === 'pen' ? 'curved' : currentStyle.lineMode,
           opacity: currentStyle.opacity,
           strokeOpacity: currentStyle.strokeOpacity,
           startCap: currentStyle.startCap,
           endCap: currentStyle.endCap,
           zIndex: drawElements.length,
         };
+        if (startSnap.binding) newElement.startBinding = startSnap.binding;
         startDrawing(newElement);
         return;
       }
@@ -1957,13 +4148,14 @@ export function InfiniteCanvas() {
         const newElement: DrawElement = {
           id: generateDrawId(),
           type: activeTool === 'rect' ? 'rectangle' : activeTool === 'frame' ? 'frame' : 'ellipse',
-          x: point.x,
-          y: point.y,
+          x: drawPoint.x,
+          y: drawPoint.y,
           width: 0,
           height: 0,
           stroke: activeTool === 'frame' ? 'rgba(165,180,252,0.25)' : currentStyle.stroke,
           strokeWidth: activeTool === 'frame' ? 1 : currentStyle.strokeWidth,
           strokeStyle: activeTool === 'frame' ? 'dashed' as StrokeStyle : currentStyle.strokeStyle,
+          visualStyle: currentStyle.visualStyle,
           fill: activeTool === 'frame' ? 'rgba(99,102,241,0.04)' : (currentStyle.fill || undefined),
           opacity: currentStyle.opacity,
           fillOpacity: currentStyle.fillOpacity,
@@ -1982,66 +4174,15 @@ export function InfiniteCanvas() {
         return;
       }
 
-      // Lasso selection tool: free-form polygon drawing
-      if (activeTool === 'lasso') {
-        clearSelection();
-        isDrawingRef.current = true;
-        lassoPointsRef.current = [point.x, point.y];
-        return;
-      }
-
-      // Image tool: open file dialog
+      // Image tool: choose an existing asset or upload a new file
       if (activeTool === 'image') {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.style.display = 'none';
-        input.onchange = () => {
-          const file = input.files?.[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = () => {
-            const dataUrl = reader.result as string;
-            const img = new window.Image();
-            img.onload = () => {
-              // Scale image to fit reasonably: max 600px on either side
-              let w = img.width;
-              let h = img.height;
-              const maxDim = 600;
-              if (w > maxDim || h > maxDim) {
-                const ratio = Math.min(maxDim / w, maxDim / h);
-                w = Math.round(w * ratio);
-                h = Math.round(h * ratio);
-              }
-              const elements = getDrawElements(activeCanvasId);
-              pushHistory(elements);
-              const newEl: DrawElement = {
-                id: generateDrawId(),
-                type: 'image',
-                x: point.x,
-                y: point.y,
-                width: w,
-                height: h,
-                imageUrl: dataUrl,
-                stroke: 'transparent',
-                strokeWidth: 0,
-                strokeStyle: 'solid',
-                opacity: 1,
-                startCap: 'none',
-                endCap: 'none',
-                zIndex: elements.length,
-              };
-              saveDrawElements(activeCanvasId, [...elements, newEl]);
-              selectElement(newEl.id);
-              setTool('select');
-            };
-            img.src = dataUrl;
-          };
-          reader.readAsDataURL(file);
-        };
-        document.body.appendChild(input);
-        input.click();
-        input.remove();
+        setImagePickerTarget({
+          canvasId: activeCanvasId,
+          canvasX: drawPoint.x,
+          canvasY: drawPoint.y,
+          screenX: e.evt.clientX,
+          screenY: e.evt.clientY,
+        });
         return;
       }
 
@@ -2054,8 +4195,8 @@ export function InfiniteCanvas() {
         const scale = stage.scaleX();
 
         // Screen position of the click
-        const screenX = point.x * scale + stage.x() + rect.left;
-        const screenY = point.y * scale + stage.y() + rect.top;
+        const screenX = drawPoint.x * scale + stage.x() + rect.left;
+        const screenY = drawPoint.y * scale + stage.y() + rect.top;
 
         const textarea = document.createElement('textarea');
         textarea.style.position = 'fixed';
@@ -2075,7 +4216,7 @@ export function InfiniteCanvas() {
         textarea.style.resize = 'both';
         textarea.style.zIndex = '99999';
         textarea.style.overflow = 'hidden';
-        textarea.placeholder = 'Введите текст...';
+        textarea.placeholder = t('canvas.textPlaceholder');
 
         document.body.appendChild(textarea);
         setTimeout(() => {
@@ -2093,8 +4234,8 @@ export function InfiniteCanvas() {
           const newEl: DrawElement = {
             id: generateDrawId(),
             type: 'text',
-            x: point.x,
-            y: point.y,
+            x: drawPoint.x,
+            y: drawPoint.y,
             width: 200,
             text,
             fontSize: currentStyle.fontSize,
@@ -2103,6 +4244,7 @@ export function InfiniteCanvas() {
             stroke: currentStyle.stroke,
             strokeWidth: 0,
             strokeStyle: 'solid',
+            visualStyle: currentStyle.visualStyle,
             opacity: currentStyle.opacity,
             startCap: 'none',
             endCap: 'none',
@@ -2124,24 +4266,23 @@ export function InfiniteCanvas() {
         return;
       }
     },
-    [activeTool, currentStyle, drawElements.length, getCanvasPoint, startDrawing, clearSelection, handleMiddlePanStart, activeCanvasId, pushHistory, startMarquee, setTool, selectElement, sendPing]
+    [activeTool, currentStyle, drawElements.length, getCanvasPoint, startDrawing, clearSelection, handleMiddlePanStart, activeCanvasId, pushHistory, startMarquee, sendPing, isGM, applyFogBrushOperation, snapCanvasPoint, snapLinePoint, t]
   );
 
   const handleMouseMove = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
+      const hoverPoint = getCanvasPoint(e);
+      if (hoverPoint) lastCanvasPointerRef.current = hoverPoint;
+
       // ─── Awareness: update local cursor position (throttled to ~30fps) ───
       const now = Date.now();
       if (now - cursorThrottleRef.current >= 33) {
         cursorThrottleRef.current = now;
-        const pt = getCanvasPoint(e);
-        if (pt) setLocalCursor(pt.x, pt.y);
+        if (hoverPoint) setLocalCursor(hoverPoint.x, hoverPoint.y);
       }
 
-      // ─── Middle-click pan works in ALL modes, including fog edit ───
-      if (isMiddlePanRef.current) {
-        handleMiddlePanMove(e);
-        return;
-      }
+      // Middle-click pan is handled by global window listeners after it starts.
+      if (isMiddlePanRef.current) return;
 
       // ─── Fog edit mode: block all other handlers, only process fog ───
       if (isGM && useCanvasDrawStore.getState().fogEditMode) {
@@ -2157,8 +4298,7 @@ export function InfiniteCanvas() {
                 fogBrushTipRef.current = { x: fogPt.x, y: fogPt.y };
                 const id = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
                 const reveal: FogReveal = { id, type: 'circle', x: fogPt.x, y: fogPt.y, width: 80, height: 80 };
-                if (currentFogTool === 'coverBrush') useCanvasSyncStore.getState().addFogReveal(reveal);
-                else useCanvasSyncStore.getState().removeIntersectingReveals(reveal);
+                applyFogBrushOperation(currentFogTool, reveal);
               }
             }
           }
@@ -2179,8 +4319,7 @@ export function InfiniteCanvas() {
               fogBrushTipRef.current = { x: pt.x, y: pt.y };
               const id = `fog_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
               const reveal: FogReveal = { id, type: 'circle', x: pt.x, y: pt.y, width: 80, height: 80 };
-              if (currentFogTool === 'coverBrush') useCanvasSyncStore.getState().addFogReveal(reveal);
-              else useCanvasSyncStore.getState().removeIntersectingReveals(reveal);
+              applyFogBrushOperation(currentFogTool, reveal);
             }
           }
           return;
@@ -2223,8 +4362,16 @@ export function InfiniteCanvas() {
 
       if (!isDrawingRef.current || !drawingElement) return;
 
-      const point = getCanvasPoint(e);
-      if (!point) return;
+      const rawPoint = getCanvasPoint(e);
+      if (!rawPoint) return;
+      const snappedLinePoint = activeTool === 'line'
+        ? snapLinePoint(rawPoint, { disabled: e.evt.shiftKey, excludeIds: drawingElement.id ? [drawingElement.id] : undefined })
+        : null;
+      const point = activeTool === 'pen'
+        ? rawPoint
+        : activeTool === 'line'
+          ? snappedLinePoint!.point
+          : snapCanvasPoint(rawPoint, e.evt.shiftKey);
 
       if (drawingElement.type === 'line' || drawingElement.type === 'arrow') {
         const pts = drawingElement.points ? [...drawingElement.points] : [];
@@ -2242,7 +4389,12 @@ export function InfiniteCanvas() {
           pts[pts.length - 1] = point.y;
         }
 
-        updateDrawing({ ...drawingElement, points: pts });
+        const nextElement: DrawElement = { ...drawingElement, points: pts };
+        if (activeTool === 'line') {
+          if (snappedLinePoint?.binding) nextElement.endBinding = snappedLinePoint.binding;
+          else delete nextElement.endBinding;
+        }
+        updateDrawing(nextElement);
       }
 
       if (drawingElement.type === 'rectangle' || drawingElement.type === 'ellipse' || drawingElement.type === 'frame') {
@@ -2255,14 +4407,16 @@ export function InfiniteCanvas() {
         });
       }
     },
-    [activeTool, drawingElement, getCanvasPoint, updateDrawing, handleMiddlePanMove, isDraggingElement, handleSelectDragMove, updateMarquee, setLocalCursor]
+    [activeTool, drawingElement, getCanvasPoint, updateDrawing, isDraggingElement, handleSelectDragMove, updateMarquee, setLocalCursor, isGM, applyFogBrushOperation, snapCanvasPoint, snapLinePoint]
   );
 
   const handleMouseUp = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
+      setObjectSnapPreview(null);
+
       // End middle-click pan
       if (isMiddlePanRef.current) {
-        handleMiddlePanEnd(e);
+        handleMiddlePanEnd();
         return;
       }
 
@@ -2288,6 +4442,7 @@ export function InfiniteCanvas() {
         }
         if (currentFogTool === 'revealBrush' || currentFogTool === 'coverBrush') {
           fogDrawingRef.current = false;
+          commitCanvasFogPreview();
           return;
         }
       }
@@ -2365,8 +4520,8 @@ export function InfiniteCanvas() {
             return false;
           });
           if (selected.length > 0) {
-            selectElements(selected.map(el => el.id));
             setTool('select');
+            selectElements(selected.map(el => el.id));
           } else {
             clearSelection();
           }
@@ -2417,15 +4572,25 @@ export function InfiniteCanvas() {
 
       // If frame, select it and open inline label editing
       if (finished.type === 'frame') {
-        selectElement(finished.id);
         setTool('select');
+        selectElement(finished.id);
         // Delay to allow re-render, then start editing label inline
         setTimeout(() => {
           setEditingFrameLabelId(finished.id);
         }, 100);
       }
     },
-    [activeCanvasId, activeTool, finishDrawing, handleMiddlePanEnd, isDraggingElement, handleSelectDragEnd, finishMarquee, selectElements, pushHistory, selectElement, setTool, setEditingFrameLabelId, clearSelection]
+    [activeCanvasId, activeTool, finishDrawing, handleMiddlePanEnd, isDraggingElement, handleSelectDragEnd, finishMarquee, selectElements, pushHistory, selectElement, setTool, setEditingFrameLabelId, clearSelection, getCanvasPoint, commitCanvasFogPreview]
+  );
+
+  const handleMouseLeave = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      // During middle-button camera pan, the pointer may cross DOM windows,
+      // drawers or canvas HTML overlays. Only the real global release ends it.
+      if (isMiddlePanRef.current) return;
+      handleMouseUp(e);
+    },
+    [handleMouseUp]
   );
 
   // ─── Select mode: double click to edit text ───
@@ -2521,7 +4686,7 @@ export function InfiniteCanvas() {
 
       const textarea = document.createElement('textarea');
       textarea.value = shapeEl.description || '';
-      textarea.placeholder = 'Введите описание...';
+      textarea.placeholder = t('entityWindow.descriptionPlaceholder');
       textarea.style.position = 'fixed';
       textarea.style.left = `${sx + 6 * scale}px`;
       textarea.style.top = `${sy + 6 * scale}px`;
@@ -2563,7 +4728,7 @@ export function InfiniteCanvas() {
         ke.stopPropagation();
       });
     },
-    [activeTool, activeCanvasId, pushHistory]
+    [activeTool, activeCanvasId, pushHistory, t]
   );
 
   // ─── Select mode: double click on line to add intermediate point ───
@@ -2579,31 +4744,15 @@ export function InfiniteCanvas() {
       const pt = getCanvasPoint(e);
       if (!pt) return;
 
-      // Find closest segment to insert the new point
-      const pts = lineEl.points;
-      let closestDist = Infinity;
-      let insertIdx = 1; // Default: insert after first point
+      const stage = e.target.getStage();
+      const scale = stage?.scaleX() || 1;
+      const pointHitRadius = Math.max(POINT_HANDLE_RADIUS * 1.75, 10 / Math.max(0.1, scale));
+      const deletePointIndex = findEditableLinePointNear(lineEl.points, pt, pointHitRadius);
+      const newPts = deletePointIndex == null
+        ? insertLinePointAtClosestSegment(lineEl.points, pt)
+        : removeLinePointAtIndex(lineEl.points, deletePointIndex);
 
-      for (let i = 0; i < pts.length - 2; i += 2) {
-        const ax = pts[i], ay = pts[i + 1];
-        const bx = pts[i + 2], by = pts[i + 3];
-        
-        // Project point onto segment
-        const dx = bx - ax, dy = by - ay;
-        const lenSq = dx * dx + dy * dy;
-        const t = lenSq === 0 ? 0 : Math.max(0, Math.min(1, ((pt.x - ax) * dx + (pt.y - ay) * dy) / lenSq));
-        const projX = ax + t * dx, projY = ay + t * dy;
-        const dist = Math.sqrt((pt.x - projX) ** 2 + (pt.y - projY) ** 2);
-        
-        if (dist < closestDist) {
-          closestDist = dist;
-          insertIdx = i / 2 + 1;
-        }
-      }
-
-      // Insert new point at clicked position
-      const newPts = [...pts];
-      newPts.splice(insertIdx * 2, 0, pt.x, pt.y);
+      if (newPts === lineEl.points) return;
 
       pushHistory(elements);
       const updated = elements.map(el =>
@@ -2638,7 +4787,7 @@ export function InfiniteCanvas() {
       const input = document.createElement('input');
       input.type = 'text';
       input.value = el.objectName || '';
-      input.placeholder = 'Название объекта...';
+      input.placeholder = t('canvas.objectNamePlaceholder');
       input.style.position = 'fixed';
       input.style.left = `${screenX}px`;
       input.style.top = `${screenY}px`;
@@ -2681,7 +4830,7 @@ export function InfiniteCanvas() {
         ke.stopPropagation();
       });
     },
-    [activeTool, activeCanvasId, pushHistory]
+    [activeTool, activeCanvasId, pushHistory, t]
   );
 
   // ─── Select mode: click on element ───
@@ -2696,6 +4845,9 @@ export function InfiniteCanvas() {
             stroke: el.stroke,
             strokeWidth: el.strokeWidth,
             strokeStyle: el.strokeStyle,
+            visualStyle: el.visualStyle ?? 'clean',
+            lineMode: getLineMode(el.lineMode, (el.points?.length || 0) / 2),
+            entityTokenFrame: el.entityTokenFrame ?? 'ring',
             opacity: el.opacity,
             fillOpacity: el.fillOpacity ?? 1,
             strokeOpacity: el.strokeOpacity ?? 1,
@@ -2712,6 +4864,57 @@ export function InfiniteCanvas() {
       }
     },
     [activeTool, selectElement, drawElements]
+  );
+
+  const updateEntityTokenRepresentation = useCallback(
+    (elementId: string, patch: Partial<DrawElement>) => {
+      if (!canEditCanvasEntityById(activeCanvasId)) return;
+      const elements = getDrawElements(activeCanvasId);
+      const target = elements.find((element) => element.id === elementId);
+      if (!target || target.type !== 'entityToken') return;
+
+      pushHistory(elements);
+      saveDrawElements(activeCanvasId, elements.map((element) => (
+        element.id === elementId ? { ...element, ...patch } : element
+      )));
+    },
+    [activeCanvasId, pushHistory]
+  );
+
+  const switchEntityTokenMode = useCallback(
+    async (element: DrawElement, mode: EntityTokenMode) => {
+      if (!element.linkedEntityId) return;
+      const linkedEntity = yjsStore.entitiesMap.get(element.linkedEntityId);
+      if (!linkedEntity) return;
+      const defaults = getEntityCanvasTokenDefaults(linkedEntity, mode);
+      const size = await getEntityTokenCanvasSize(linkedEntity, mode, defaults);
+      const currentWidth = element.width || size.width;
+      const currentHeight = element.height || size.height;
+      updateEntityTokenRepresentation(element.id, {
+        entityTokenMode: mode,
+        x: (element.x || 0) + (currentWidth - size.width) / 2,
+        y: (element.y || 0) + (currentHeight - size.height) / 2,
+        width: size.width,
+        height: size.height,
+      });
+    },
+    [updateEntityTokenRepresentation]
+  );
+
+  const applyEntityTokenFramePreset = useCallback(
+    (sourceElementId: string, frame: EntityTokenFrame) => {
+      if (!canEditCanvasEntityById(activeCanvasId)) return;
+      const elements = getDrawElements(activeCanvasId);
+      const selection = selectedElementIds.includes(sourceElementId) ? selectedElementIds : [sourceElementId];
+      const targetIds = new Set(selection.filter((id) => elements.some((element) => element.id === id && element.type === 'entityToken')));
+      if (targetIds.size === 0) return;
+
+      pushHistory(elements);
+      saveDrawElements(activeCanvasId, elements.map((element) => (
+        targetIds.has(element.id) ? { ...element, entityTokenFrame: frame } : element
+      )));
+    },
+    [activeCanvasId, pushHistory, selectedElementIds]
   );
 
   // ─── Frame label double-click to rename ───
@@ -2758,6 +4961,9 @@ export function InfiniteCanvas() {
                 stroke: el_check.stroke,
                 strokeWidth: el_check.strokeWidth,
                 strokeStyle: el_check.strokeStyle,
+                visualStyle: el_check.visualStyle ?? 'clean',
+                lineMode: getLineMode(el_check.lineMode, (el_check.points?.length || 0) / 2),
+                entityTokenFrame: el_check.entityTokenFrame ?? 'ring',
                 opacity: el_check.opacity,
                 startCap: el_check.startCap,
                 endCap: el_check.endCap,
@@ -2782,6 +4988,9 @@ export function InfiniteCanvas() {
             stroke: el.stroke,
             strokeWidth: el.strokeWidth,
             strokeStyle: el.strokeStyle,
+            visualStyle: el.visualStyle ?? 'clean',
+            lineMode: getLineMode(el.lineMode, (el.points?.length || 0) / 2),
+            entityTokenFrame: el.entityTokenFrame ?? 'ring',
             opacity: el.opacity,
             startCap: el.startCap,
             endCap: el.endCap,
@@ -2834,71 +5043,111 @@ export function InfiniteCanvas() {
 
   const singleSelectedElement =
     selectedElementIds.length === 1
-      ? drawElements.find((el) => el.id === selectedElementIds[0]) || null
+      ? renderedDrawElements.find((el) => el.id === selectedElementIds[0]) || null
       : null;
 
   // ─── Drag-and-drop images onto canvas ───
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    if (isPointerOverNonCanvasUi(e.clientX, e.clientY, containerRef.current)) return;
+
     e.preventDefault();
     e.stopPropagation();
-    const file = e.dataTransfer.files?.[0];
-    if (!file || !file.type.startsWith('image/')) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const img = new window.Image();
-      img.onload = () => {
-        // Calculate canvas position from drop screen coordinates
-        const rect = containerRef.current?.getBoundingClientRect();
-        if (!rect) return;
-        const scale = useCanvasStore.getState().scale;
-        const offsetX = useCanvasStore.getState().offset.x;
-        const offsetY = useCanvasStore.getState().offset.y;
-        const canvasX = (e.clientX - rect.left - offsetX) / scale;
-        const canvasY = (e.clientY - rect.top - offsetY) / scale;
-
-        let w = img.width;
-        let h = img.height;
-        const maxDim = 600;
-        if (w > maxDim || h > maxDim) {
-          const ratio = Math.min(maxDim / w, maxDim / h);
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
-        }
-
-        const elements = getDrawElements(activeCanvasId);
-        pushHistory(elements);
-        const newEl: DrawElement = {
-          id: generateDrawId(),
-          type: 'image',
-          x: canvasX - w / 2,
-          y: canvasY - h / 2,
-          width: w,
-          height: h,
-          imageUrl: dataUrl,
-          stroke: 'transparent',
-          strokeWidth: 0,
-          strokeStyle: 'solid',
-          opacity: 1,
-          startCap: 'none',
-          endCap: 'none',
-          zIndex: elements.length,
-        };
-        saveDrawElements(activeCanvasId, [...elements, newEl]);
-        selectElement(newEl.id);
-        setTool('select');
-      };
-      img.src = dataUrl;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const scale = useCanvasStore.getState().scale;
+    const offsetX = useCanvasStore.getState().offset.x;
+    const offsetY = useCanvasStore.getState().offset.y;
+    const rawCanvasPoint = {
+      x: (e.clientX - rect.left - offsetX) / scale,
+      y: (e.clientY - rect.top - offsetY) / scale,
     };
-    reader.readAsDataURL(file);
-  }, [activeCanvasId, pushHistory, selectElement, setTool]);
+    const canvasPoint = snapCanvasPoint(rawCanvasPoint, e.shiftKey);
+
+    const draggedEntityId = e.dataTransfer.getData('application/entity-id');
+    if (draggedEntityId) {
+      const draggedEntity = yjsStore.entitiesMap.get(draggedEntityId);
+      if (
+        draggedEntity &&
+        draggedEntity.type !== 'canvas' &&
+        draggedEntity.type !== 'folder' &&
+        canViewCanvasEntity(draggedEntity) &&
+        canEditCanvasEntityById(activeCanvasId)
+      ) {
+        setEntityDropChoice({
+          entityId: draggedEntityId,
+          canvasPoint,
+          screenX: e.clientX,
+          screenY: e.clientY,
+        });
+      }
+      return;
+    }
+
+    const assetPayload = readAssetDragPayload(e.dataTransfer);
+    if (assetPayload?.type === 'image') {
+      const sourceUrl = assetPayload.url || getAssetUrl(assetPayload.path);
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        insertImageElement({
+          sourceUrl,
+          assetPath: assetPayload.path,
+          objectName: assetPayload.name,
+          canvasX: canvasPoint.x,
+          canvasY: canvasPoint.y,
+          naturalWidth: img.width,
+          naturalHeight: img.height,
+          centerOnPoint: true,
+        });
+      };
+      img.src = sourceUrl;
+      return;
+    }
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      addNotification({
+        kind: 'warning',
+        scope: 'local',
+        status: 'failed',
+        title: t('canvas.notifications.fileNotAdded'),
+        message: t('canvas.notifications.dragDropImagesOnly', { name: file.name }),
+      });
+      return;
+    }
+
+    insertFileImageAtPoint(file, {
+      canvasId: activeCanvasId,
+      canvasX: canvasPoint.x,
+      canvasY: canvasPoint.y,
+      screenX: e.clientX,
+      screenY: e.clientY,
+    }, true);
+  }, [activeCanvasId, addNotification, insertFileImageAtPoint, insertImageElement, snapCanvasPoint, t]);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    if (isPointerOverNonCanvasUi(e.clientX, e.clientY, containerRef.current)) return;
+
     e.preventDefault();
     e.stopPropagation();
   }, []);
+
+  const handleImagePickerSelectAsset = useCallback((asset: AssetRecord) => {
+    if (!imagePickerTarget) return;
+    const target = imagePickerTarget;
+    setImagePickerTarget(null);
+    insertAssetImageAtPoint(asset, target);
+  }, [imagePickerTarget, insertAssetImageAtPoint]);
+
+  const handleImagePickerUpload = useCallback((file: File) => {
+    if (!imagePickerTarget) return;
+    const target = imagePickerTarget;
+    setImagePickerTarget(null);
+    insertFileImageAtPoint(file, target);
+  }, [imagePickerTarget, insertFileImageAtPoint]);
 
   return (
     <div
@@ -2920,7 +5169,7 @@ export function InfiniteCanvas() {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
       >
         {/* Layer 0: Grid + Snap lines */}
         <Layer>
@@ -3017,7 +5266,7 @@ export function InfiniteCanvas() {
 
         {/* Layer 1: Draw elements (sorted by zIndex) */}
         <Layer>
-          {[...drawElements].sort((a, b) => a.zIndex - b.zIndex).map((element) => (
+          {[...renderedDrawElements].sort((a, b) => a.zIndex - b.zIndex).map((element) => (
             <Group
               key={element.id}
               onMouseDown={(e) => handleElementMouseDown(element.id, e)}
@@ -3045,6 +5294,13 @@ export function InfiniteCanvas() {
               }}
               onMouseEnter={handleElementMouseEnter}
               onMouseLeave={handleElementMouseLeave}
+              onContextMenu={(e) => {
+                if (element.type !== 'entityToken') return;
+                e.evt.preventDefault();
+                e.cancelBubble = true;
+                handleSelectDrawElement(element.id, false);
+                setEntityTokenMenu({ elementId: element.id, x: e.evt.clientX, y: e.evt.clientY });
+              }}
             >
               <DrawElementNode
                 element={element}
@@ -3052,6 +5308,22 @@ export function InfiniteCanvas() {
                 isEditingText={editingTextId === element.id}
                 onSelect={handleSelectDrawElement}
                 onDblClickText={handleTextDblClick}
+                onOpenLinkedEntity={(entityId, e) => openWindow(entityId, e.evt.clientX, e.evt.clientY)}
+                onShowLinkedEntityInfo={(elementId, e) => {
+                  const nativeEvent = e.evt;
+                  const touch = 'changedTouches' in nativeEvent ? nativeEvent.changedTouches[0] : null;
+                  if (entityTokenInfo?.elementId === elementId) {
+                    setEntityTokenInfo(null);
+                    return;
+                  }
+                  setEntityTokenInfoTab('stats');
+                  setEntityTokenInfo({
+                    elementId,
+                    x: 'clientX' in nativeEvent ? nativeEvent.clientX : touch?.clientX ?? window.innerWidth / 2,
+                    y: 'clientY' in nativeEvent ? nativeEvent.clientY : touch?.clientY ?? window.innerHeight / 2,
+                  });
+                }}
+                isEntityInfoOpen={entityTokenInfo?.elementId === element.id}
               />
             </Group>
           ))}
@@ -3062,8 +5334,55 @@ export function InfiniteCanvas() {
               element={drawingElement}
               isSelected={false}
               onSelect={() => {}}
+              isEntityInfoOpen={false}
             />
           )}
+
+          {objectSnapPreview && (() => {
+            const anchor = objectSnapPreview.anchor;
+            const target = anchor ? renderedDrawElements.find((el) => el.id === anchor.elementId) : null;
+            const side = anchor && ['top', 'right', 'bottom', 'left'].includes(anchor.id) ? anchor.id : null;
+            const bounds = target && side ? getElementBounds(target) : null;
+            const x1 = bounds ? Math.min(bounds.x, bounds.x + bounds.w) : 0;
+            const y1 = bounds ? Math.min(bounds.y, bounds.y + bounds.h) : 0;
+            const x2 = bounds ? Math.max(bounds.x, bounds.x + bounds.w) : 0;
+            const y2 = bounds ? Math.max(bounds.y, bounds.y + bounds.h) : 0;
+            const edgePoints = side === 'top'
+              ? [x1, y1, x2, y1]
+              : side === 'right'
+                ? [x2, y1, x2, y2]
+                : side === 'bottom'
+                  ? [x1, y2, x2, y2]
+                  : side === 'left'
+                    ? [x1, y1, x1, y2]
+                    : null;
+            return (
+              <Group listening={false}>
+                {edgePoints && (
+                  <Line
+                    points={edgePoints}
+                    stroke="rgba(34, 211, 238, 0.72)"
+                    strokeWidth={3 / Math.max(0.1, stageScale)}
+                    lineCap="round"
+                  />
+                )}
+                <Circle
+                  x={objectSnapPreview.x}
+                  y={objectSnapPreview.y}
+                  radius={9 / Math.max(0.1, stageScale)}
+                  fill="rgba(34, 211, 238, 0.14)"
+                  stroke="rgba(165, 243, 252, 0.85)"
+                  strokeWidth={1.5 / Math.max(0.1, stageScale)}
+                />
+                <Circle
+                  x={objectSnapPreview.x}
+                  y={objectSnapPreview.y}
+                  radius={2.5 / Math.max(0.1, stageScale)}
+                  fill="rgba(165, 243, 252, 0.95)"
+                />
+              </Group>
+            );
+          })()}
 
           {/* Editing handles for selected element */}
           {singleSelectedElement && activeTool === 'select' && (
@@ -3074,10 +5393,11 @@ export function InfiniteCanvas() {
                   onPointDragStart={handlePointDragStart}
                   onPointDragMove={handlePointDragMove}
                   onPointDragEnd={handlePointDragEnd}
+                  onPointDoubleClick={handlePointDoubleClick}
                 />
               )}
 
-              {(singleSelectedElement.type === 'rectangle' || singleSelectedElement.type === 'ellipse' || singleSelectedElement.type === 'text' || singleSelectedElement.type === 'image' || singleSelectedElement.type === 'frame') && (
+              {(singleSelectedElement.type === 'rectangle' || singleSelectedElement.type === 'ellipse' || singleSelectedElement.type === 'text' || singleSelectedElement.type === 'image' || singleSelectedElement.type === 'frame' || singleSelectedElement.type === 'entityToken') && (
                 <ResizeHandles
                   element={singleSelectedElement}
                   onResizeDragMove={handleResizeDragMove}
@@ -3098,7 +5418,7 @@ export function InfiniteCanvas() {
 
           {/* Group bounding box for multi-selection */}
           {selectedElementIds.length > 1 && activeTool === 'select' && (() => {
-            const selectedEls = drawElements.filter(el => selectedElementIds.includes(el.id));
+            const selectedEls = renderedDrawElements.filter(el => selectedElementIds.includes(el.id));
             if (selectedEls.length < 2) return null;
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
             for (const el of selectedEls) {
@@ -3158,7 +5478,7 @@ export function InfiniteCanvas() {
         {/* Layer 2.5: Remote player cursors + ping pulses (Awareness) */}
         <Layer listening={false}>
           {Object.entries(remoteCursors).map(([peerId, cursor]) => {
-            const pingActive = cursor.ping && (Date.now() - cursor.ping.timestamp < PING_DURATION_MS);
+            const pingActive = cursor.ping && (cursorNow - cursor.ping.timestamp < PING_DURATION_MS);
             return (
               <Group key={peerId}>
                 {/* Ping pulse at ping location */}
@@ -3211,7 +5531,7 @@ export function InfiniteCanvas() {
                         x={8}
                         y={-3}
                         width={20}
-                        text="ГМ"
+                        text={t('canvas.gm')}
                         fontSize={8}
                         fontStyle="bold"
                         fill="white"
@@ -3237,34 +5557,38 @@ export function InfiniteCanvas() {
 
           {/* Portals */}
           {portals.map((portal) => {
-            const targetName = portal.properties?.targetCanvasId
-              ? yjsStore.entitiesMap.get(portal.properties.targetCanvasId)?.name || ''
-              : '';
+            const canEditPortal = canEditEntity(portal);
+            const targetCanvasId = typeof portal.properties?.targetCanvasId === 'string' ? portal.properties.targetCanvasId : '';
+            const targetCanvas = targetCanvasId ? yjsStore.entitiesMap.get(targetCanvasId) : undefined;
+            const canViewTargetCanvas = canViewCanvasEntity(targetCanvas);
+            const targetName = canViewTargetCanvas ? targetCanvas.name : '';
             return (
               <Group
                 key={portal.id}
                 x={portal.properties.x || 0}
                 y={portal.properties.y || 0}
-                draggable
+                opacity={canViewTargetCanvas ? 1 : 0.5}
+                draggable={canEditPortal}
                 onDragEnd={(e) => {
+                  if (!canEditPortal) return;
                   yjsStore.updateEntity(portal.id, {
                     properties: { ...portal.properties, x: e.target.x(), y: e.target.y() },
                   });
                 }}
                 onDblClick={(e) => {
                   e.cancelBubble = true;
-                  if (portal.properties?.targetCanvasId) navigate(portal.properties.targetCanvasId);
+                  if (targetCanvasId && canViewTargetCanvas) navigate(targetCanvasId);
                 }}
                 onContextMenu={(e) => {
                   e.evt.preventDefault();
                   e.cancelBubble = true;
-                  if (portal.properties?.targetCanvasId) {
+                  if (targetCanvasId && canViewTargetCanvas) {
                     setPortalMenu({ x: e.evt.clientX, y: e.evt.clientY, portal });
                   }
                 }}
                 onMouseEnter={(e) => {
                   const c = e.target.getStage()?.container();
-                  if (c) c.style.cursor = 'pointer';
+                  if (c) c.style.cursor = canViewTargetCanvas ? 'pointer' : getCursor();
                 }}
                 onMouseLeave={(e) => {
                   const c = e.target.getStage()?.container();
@@ -3328,30 +5652,34 @@ export function InfiniteCanvas() {
           })}
 
           {/* Tokens */}
-          {tokens.map((token) => (
-            <Group
-              key={token.id}
-              x={token.properties.x || 0}
-              y={token.properties.y || 0}
-              draggable
-              onDragEnd={(e) => {
-                yjsStore.updateEntity(token.id, {
-                  properties: { ...token.properties, x: e.target.x(), y: e.target.y() },
-                });
-              }}
-              onDblClick={(e) => {
-                e.cancelBubble = true;
-                openWindow(token.id, e.evt.clientX, e.evt.clientY);
-              }}
-              onMouseEnter={(e) => {
-                const c = e.target.getStage()?.container();
-                if (c) c.style.cursor = 'pointer';
-              }}
-              onMouseLeave={(e) => {
-                const c = e.target.getStage()?.container();
-                if (c) c.style.cursor = getCursor();
-              }}
-            >
+          {tokens.map((token) => {
+            const canEditToken = canEditEntity(token);
+
+            return (
+              <Group
+                key={token.id}
+                x={token.properties.x || 0}
+                y={token.properties.y || 0}
+                draggable={canEditToken}
+                onDragEnd={(e) => {
+                  if (!canEditToken) return;
+                  yjsStore.updateEntity(token.id, {
+                    properties: { ...token.properties, x: e.target.x(), y: e.target.y() },
+                  });
+                }}
+                onDblClick={(e) => {
+                  e.cancelBubble = true;
+                  openWindow(token.id, e.evt.clientX, e.evt.clientY);
+                }}
+                onMouseEnter={(e) => {
+                  const c = e.target.getStage()?.container();
+                  if (c) c.style.cursor = 'pointer';
+                }}
+                onMouseLeave={(e) => {
+                  const c = e.target.getStage()?.container();
+                  if (c) c.style.cursor = getCursor();
+                }}
+              >
               <Circle
                 radius={30}
                 fill="#1f2937"
@@ -3381,13 +5709,14 @@ export function InfiniteCanvas() {
                 align="center"
                 width={120}
               />
-            </Group>
-          ))}
+              </Group>
+            );
+          })}
         </Layer>
 
         {/* Layer 3: Fog of War */}
         <FogOfWarLayer
-          fogReveals={fogReveals}
+          fogReveals={renderedFogReveals}
           isGM={isGM}
           stageWidth={dimensions.width}
           stageHeight={dimensions.height}
@@ -3397,6 +5726,345 @@ export function InfiniteCanvas() {
         />
       </Stage>
 
+      {/* Image tool asset picker */}
+      {imagePickerTarget && (
+        <CanvasImagePicker
+          x={imagePickerTarget.screenX}
+          y={imagePickerTarget.screenY}
+          onClose={() => setImagePickerTarget(null)}
+          onSelectAsset={handleImagePickerSelectAsset}
+          onUploadFile={handleImagePickerUpload}
+        />
+      )}
+
+      {entityDropChoice && (() => {
+        const linkedEntity = yjsStore.entitiesMap.get(entityDropChoice.entityId);
+        if (!linkedEntity || !canViewCanvasEntity(linkedEntity)) return null;
+        const menuWidth = 260;
+        const left = Math.min(entityDropChoice.screenX + 12, window.innerWidth - menuWidth - 12);
+        const top = Math.min(entityDropChoice.screenY + 12, window.innerHeight - 236);
+        const actions = getEntityDropActions(
+          {
+            id: linkedEntity.id,
+            type: linkedEntity.type,
+            database: linkedEntity.database,
+            parentId: linkedEntity.parentId,
+          },
+          { kind: 'canvas', canvasId: activeCanvasId || 'root' },
+          {
+            role: yjsStore.localRole,
+            canModifySource: canEditEntity(linkedEntity),
+            canModifyTarget: canEditCanvasEntityById(activeCanvasId),
+          }
+        );
+        const canPlaceToken = actions.some((action) => action.id === 'place-token');
+        const canPlaceCard = actions.some((action) => action.id === 'place-card');
+        const copyAction = actions.find((action) => action.id === 'copy-entity');
+        const moveAction = actions.find((action) => action.id === 'move-entity');
+        const insertRepresentation = (mode: EntityTokenMode) => {
+          const target = entityDropChoice;
+          setEntityDropChoice(null);
+          void insertEntityTokenElement(target.entityId, target.canvasPoint, mode);
+        };
+        const copyEntityToCanvas = () => {
+          if (!activeCanvasId) return;
+          const targetDb = getCanvasTargetDatabase(activeCanvasId, linkedEntity.database);
+          yjsStore.cloneEntity(linkedEntity.id, activeCanvasId, targetDb);
+          setEntityDropChoice(null);
+        };
+        const moveEntityToCanvas = () => {
+          if (!activeCanvasId) return;
+          const targetDb = getCanvasTargetDatabase(activeCanvasId, linkedEntity.database);
+          moveEntityTreeToParent(linkedEntity.id, activeCanvasId, targetDb);
+          setEntityDropChoice(null);
+        };
+
+        return (
+          <>
+            <div
+              className="fixed inset-0 z-[9998]"
+              onClick={() => setEntityDropChoice(null)}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                setEntityDropChoice(null);
+              }}
+            />
+            <div
+              className="fixed z-[9999] w-[260px] overflow-hidden rounded-xl border border-white/10 bg-[#101722]/95 p-2 shadow-[0_24px_60px_rgba(0,0,0,0.65)] backdrop-blur-2xl"
+              style={{ left, top }}
+            >
+              <div className="mb-2 flex items-center justify-between gap-2 px-1">
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-bold uppercase tracking-widest text-white/35">{t('canvas.entityDrop.title')}</div>
+                  <div className="truncate text-sm font-bold text-white/90">{linkedEntity.name}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEntityDropChoice(null)}
+                  className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5 text-white/45 transition-colors hover:border-white/25 hover:text-white"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {canPlaceToken && (
+                  <button
+                    type="button"
+                    onClick={() => insertRepresentation('token')}
+                    className="flex h-16 flex-col items-center justify-center gap-1 rounded-lg border border-cyan-200/20 bg-cyan-300/10 text-cyan-50 transition-colors hover:border-cyan-200/40 hover:bg-cyan-300/18"
+                  >
+                    <Box size={18} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">{t('canvas.entityDrop.token')}</span>
+                  </button>
+                )}
+                {canPlaceCard && (
+                  <button
+                    type="button"
+                    onClick={() => insertRepresentation('art')}
+                    className="flex h-16 flex-col items-center justify-center gap-1 rounded-lg border border-amber-200/20 bg-amber-300/10 text-amber-50 transition-colors hover:border-amber-200/40 hover:bg-amber-300/18"
+                  >
+                    <ImageIcon size={18} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">{t('canvas.entityDrop.card')}</span>
+                  </button>
+                )}
+              </div>
+              {(copyAction || moveAction) && (
+                <div className="mt-2 grid gap-2 border-t border-white/10 pt-2">
+                  {copyAction && (
+                    <button
+                      type="button"
+                      onClick={copyEntityToCanvas}
+                      className="flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 text-left text-xs font-bold uppercase tracking-wider text-white/70 transition-colors hover:border-white/25 hover:bg-white/10 hover:text-white"
+                    >
+                      <Copy size={15} />
+                      <span className="truncate">{copyAction.label}</span>
+                    </button>
+                  )}
+                  {moveAction && (
+                    <button
+                      type="button"
+                      onClick={moveEntityToCanvas}
+                      className="flex h-10 items-center gap-2 rounded-lg border border-amber-200/20 bg-amber-300/10 px-3 text-left text-xs font-bold uppercase tracking-wider text-amber-50 transition-colors hover:border-amber-200/40 hover:bg-amber-300/18"
+                    >
+                      <MoveRight size={15} />
+                      <span className="truncate">{moveAction.label}</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        );
+      })()}
+
+      {entityTokenInfo && (() => {
+        const element = renderedDrawElements.find((el) => el.id === entityTokenInfo.elementId);
+        const linkedEntity = element?.linkedEntityId ? yjsStore.entitiesMap.get(element.linkedEntityId) : undefined;
+        if (!element || !linkedEntity || !canViewCanvasEntity(linkedEntity)) return null;
+        if (linkedEntity.type === 'character' && !canEditEntity(linkedEntity)) return null;
+        const mode = element.entityTokenMode || 'token';
+        const rawImageSource = getEntityCanvasTokenImageSource(linkedEntity, mode);
+        const imageSource = resolveCanvasImageSource(rawImageSource);
+        const visibleTags = linkedEntity.tags.slice(0, 3);
+        const description = getPlainEntityDescription(linkedEntity);
+        const allEntitiesForCard = Array.from(yjsStore.entitiesMap.values());
+        const characterSummary = linkedEntity.type === 'character' && canEditEntity(linkedEntity)
+          ? buildCharacterCompactSummary(linkedEntity, allEntitiesForCard)
+          : null;
+        const cardWidth = characterSummary ? 340 : 280;
+        const cardMaxHeight = characterSummary ? 460 : 240;
+        const safeCardWidth = Math.max(240, Math.min(cardWidth, window.innerWidth - 24));
+        const left = Math.max(12, Math.min(entityTokenInfo.x + 12, window.innerWidth - safeCardWidth - 12));
+        const top = Math.max(12, Math.min(entityTokenInfo.y + 12, window.innerHeight - cardMaxHeight - 12));
+        return (
+          <>
+            <div className="fixed inset-0 z-[9998]" onClick={() => setEntityTokenInfo(null)} />
+            <div
+              className="fixed z-[9999] overflow-y-auto rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-window)] p-3 text-[var(--vibe-text-primary)] shadow-[var(--vibe-shadow-window)] backdrop-blur-[var(--vibe-backdrop-blur)] custom-scrollbar"
+              style={{ left, top, width: safeCardWidth, maxHeight: `min(${cardMaxHeight}px, calc(100vh - 24px))` }}
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="flex min-w-0 items-start gap-2">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)]">
+                    {imageSource ? (
+                      <img src={imageSource} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-base font-bold text-[var(--vibe-text-muted)]">{linkedEntity.name.trim().charAt(0).toUpperCase() || '?'}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-bold text-[var(--vibe-text-primary)]">{linkedEntity.name}</div>
+                    <div className="mt-0.5 text-[10px] uppercase tracking-widest text-[var(--vibe-text-faint)]">{linkedEntity.type}</div>
+                    {visibleTags.length > 0 && (
+                      <div className="mt-1 flex min-w-0 flex-wrap gap-1">
+                        {visibleTags.map((tag) => (
+                          <span key={tag} className="max-w-[72px] truncate rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEntityTokenInfo(null)}
+                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                >
+                  ×
+                </button>
+              </div>
+
+              {characterSummary ? (
+                <div className="mb-2 space-y-2">
+                  <div className="grid grid-cols-4 gap-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-1">
+                    {CHARACTER_COMPACT_TABS.map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setEntityTokenInfoTab(tab.id)}
+                        className={`h-7 rounded-[var(--vibe-radius-sm)] text-[10px] font-bold uppercase tracking-wider transition-colors ${entityTokenInfoTab === tab.id
+                          ? 'bg-[var(--vibe-accent-soft)] text-[var(--vibe-text-primary)] shadow-[inset_0_0_0_1px_var(--vibe-border-strong)]'
+                          : 'text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+                        }`}
+                      >
+                        {t(tab.labelKey)}
+                      </button>
+                    ))}
+                  </div>
+
+                  {entityTokenInfoTab === 'stats' && (
+                    <div className="space-y-2">
+                      {characterSummary.metrics.length > 0 ? (
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {characterSummary.metrics.map((metric) => (
+                            <div key={metric.id} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5 text-center">
+                              <div className="text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{metric.label}</div>
+                              <div className="font-mono text-sm font-bold text-[var(--vibe-text-primary)]">{metric.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-center text-[11px] text-[var(--vibe-text-faint)]">
+                          {t('canvas.compact.emptyStats')}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          [t('canvas.compact.counters.attacks'), characterSummary.attackCount],
+                          [t('canvas.compact.counters.abilities'), characterSummary.abilityCount],
+                          [t('canvas.compact.counters.items'), characterSummary.inventoryCount],
+                        ].map(([label, value]) => (
+                          <div key={label} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-accent-soft)] px-2 py-1.5 text-center">
+                            <div className="text-[8px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">{label}</div>
+                            <div className="font-mono text-sm font-bold text-[var(--vibe-accent)]">{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {entityTokenInfoTab === 'actions' && (
+                    <div className="max-h-56 space-y-1.5 overflow-y-auto pr-1 custom-scrollbar">
+                      {characterSummary.actions.length > 0 ? characterSummary.actions.map((action) => (
+                        <div key={action.id} className="flex items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5">
+                          <span className={`flex h-6 w-9 flex-shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border text-[9px] font-black uppercase tracking-wider ${action.kind === 'attack'
+                            ? 'border-[color-mix(in_srgb,var(--vibe-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_14%,transparent)] text-[var(--vibe-danger)]'
+                            : 'border-[color-mix(in_srgb,var(--vibe-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-accent)_14%,transparent)] text-[var(--vibe-accent)]'
+                          }`}>
+                            {action.kind === 'attack' ? t('canvas.compact.actionBadges.attack') : t('canvas.compact.actionBadges.ability')}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-xs font-bold text-[var(--vibe-text-primary)]">{action.name}</div>
+                            <div className="truncate text-[10px] text-[var(--vibe-text-faint)]">{action.parentName || (action.kind === 'attack' ? t('canvas.compact.characterAttack') : t('canvas.compact.ability'))}</div>
+                          </div>
+                          <div className="max-w-[108px] truncate rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] px-1.5 py-1 font-mono text-[10px] text-[var(--vibe-text-muted)]">
+                            {action.formula || t('canvas.compact.noFormula')}
+                          </div>
+                        </div>
+                      )) : (
+                        <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-center text-[11px] text-[var(--vibe-text-faint)]">
+                          {t('canvas.compact.emptyActions')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {entityTokenInfoTab === 'resources' && (
+                    <div className="max-h-56 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
+                      {characterSummary.resources.length > 0 && (
+                        <div className="grid gap-1.5">
+                          {characterSummary.resources.map((resource) => (
+                            <div key={resource.id} className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5">
+                              <div className="mb-1 flex items-center justify-between gap-2 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                <span className="truncate">{resource.label}</span>
+                                <span className="font-mono text-[var(--vibe-text-muted)]">{resource.current}/{resource.max || '∞'}</span>
+                              </div>
+                              <div className="h-1.5 overflow-hidden rounded-full border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)]">
+                                <div
+                                  className={`h-full rounded-full ${resource.id === 'wounds' ? 'bg-[var(--vibe-danger)]' : 'bg-[var(--vibe-accent)]'}`}
+                                  style={{ width: `${Math.max(4, resource.ratio * 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {characterSummary.inventory.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-[9px] font-black uppercase tracking-widest text-[var(--vibe-text-faint)]">{t('inventoryBlock.title')}</div>
+                          {characterSummary.inventory.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between gap-2 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5">
+                              <div className="min-w-0">
+                                <div className="truncate text-xs font-bold text-[var(--vibe-text-primary)]">{item.name}</div>
+                                <div className="truncate text-[10px] text-[var(--vibe-text-faint)]">{item.category}</div>
+                              </div>
+                              {item.equipped && (
+                                <span className="flex-shrink-0 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-success)_35%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_14%,transparent)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--vibe-success)]">
+                                  {t('markdownRenderer.inventory.equipped')}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {characterSummary.resources.length === 0 && characterSummary.inventory.length === 0 && (
+                        <div className="rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-center text-[11px] text-[var(--vibe-text-faint)]">
+                          {t('canvas.compact.emptyResources')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {entityTokenInfoTab === 'notes' && (
+                    <div className="max-h-40 overflow-y-auto rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 text-[11px] leading-relaxed text-[var(--vibe-text-muted)] custom-scrollbar">
+                      {description || t('abilitySheet.emptyDescription')}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="max-h-24 overflow-hidden rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-2 text-[11px] leading-relaxed text-[var(--vibe-text-muted)]">
+                  {description || t('abilitySheet.emptyDescription')}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  openWindow(linkedEntity.id, entityTokenInfo.x, entityTokenInfo.y);
+                  setEntityTokenInfo(null);
+                }}
+                className="mt-3 h-8 w-full rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-strong)] bg-[var(--vibe-accent-soft)] text-xs font-bold uppercase tracking-wider text-[var(--vibe-text-primary)] transition-colors hover:bg-[var(--vibe-surface-hover)]"
+              >
+                {t('canvas.openEntity')}
+              </button>
+            </div>
+          </>
+        );
+      })()}
+
       {/* Inline frame label editing overlay */}
       {editingFrameLabelId && (() => {
         const frameEl = drawElements.find(el => el.id === editingFrameLabelId);
@@ -3404,7 +6072,7 @@ export function InfiniteCanvas() {
         const fx = frameEl.x || 0;
         const fy = frameEl.y || 0;
         const fw = frameEl.width || 300;
-        // We assume the canvas covers the full viewport (left:0, top:0) 
+        // We assume the canvas covers the full viewport (left:0, top:0)
         // to avoid reading containerRef.current during render
         const rectLeft = 0;
         const rectTop = 0;
@@ -3459,8 +6127,119 @@ export function InfiniteCanvas() {
         );
       })()}
 
+      {/* Entity Token Context Menu Overlay */}
+      {entityTokenMenu && (() => {
+        const element = renderedDrawElements.find((drawElement) => drawElement.id === entityTokenMenu.elementId);
+        if (!element || element.type !== 'entityToken') return null;
+        const linkedEntity = element.linkedEntityId ? yjsStore.entitiesMap.get(element.linkedEntityId) : undefined;
+        const canOpenLinked = canViewCanvasEntity(linkedEntity);
+        const canEditRepresentation = canEditCanvasEntityById(activeCanvasId);
+        const nextMode: EntityTokenMode = element.entityTokenMode === 'art' ? 'token' : 'art';
+        const nextModeLabel = nextMode === 'art' ? t('canvas.context.showAsCard') : t('canvas.context.showAsToken');
+
+        return (
+          <>
+            <div
+              className="fixed inset-0 z-[99998]"
+              onClick={() => setEntityTokenMenu(null)}
+              onContextMenu={(e) => { e.preventDefault(); setEntityTokenMenu(null); }}
+            />
+            <div
+              className="fixed z-[99999] min-w-[220px] overflow-hidden rounded-xl border border-white/10 bg-[#151c2b]/70 py-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl animate-in fade-in zoom-in-95 duration-100"
+              style={{
+                left: entityTokenMenu.x + 220 > window.innerWidth ? entityTokenMenu.x - 220 : entityTokenMenu.x,
+                top: entityTokenMenu.y + 150 > window.innerHeight ? entityTokenMenu.y - 150 : entityTokenMenu.y,
+              }}
+            >
+              <div className="mb-1 select-none border-b border-white/5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-white/30 pointer-events-none">
+                Linked entity
+              </div>
+
+              {canOpenLinked && (
+                <button
+                  type="button"
+                  className="group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                  onClick={() => {
+                    openWindow(linkedEntity.id, entityTokenMenu.x, entityTokenMenu.y);
+                    setEntityTokenMenu(null);
+                  }}
+                >
+                  <ExternalLink size={14} className="text-white/40 transition-colors group-hover:text-white/80" />
+                  {t('canvas.openEntity')}
+                </button>
+              )}
+
+              {canEditRepresentation && (
+                <>
+                  <div className="mx-2 my-1 border-t border-white/5" />
+                  <button
+                    type="button"
+                    className="group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                    onClick={() => {
+                      void switchEntityTokenMode(element, nextMode);
+                      setEntityTokenMenu(null);
+                    }}
+                  >
+                    <ImageIcon size={14} className="text-white/40 transition-colors group-hover:text-white/80" />
+                    {nextModeLabel}
+                  </button>
+                  <button
+                    type="button"
+                    className="group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                    onClick={() => {
+                      updateEntityTokenRepresentation(element.id, { showName: element.showName === false });
+                      setEntityTokenMenu(null);
+                    }}
+                  >
+                    {element.showName === false ? (
+                      <Eye size={14} className="text-white/40 transition-colors group-hover:text-white/80" />
+                    ) : (
+                      <EyeOff size={14} className="text-white/40 transition-colors group-hover:text-white/80" />
+                    )}
+                    {element.showName === false ? t('canvas.context.showName') : t('canvas.context.hideName')}
+                  </button>
+                  <div className="mx-2 my-1 border-t border-white/5" />
+                  <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white/25">
+                    {t('canvas.context.frame')}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 px-2 pb-1">
+                    {ENTITY_TOKEN_FRAME_OPTIONS.map((frame) => {
+                      const selected = (element.entityTokenFrame ?? 'ring') === frame.id;
+                      return (
+                        <button
+                          key={frame.id}
+                          type="button"
+                          className={`rounded-lg border px-2 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                            selected
+                              ? 'border-amber-200/35 bg-amber-300/15 text-amber-50'
+                              : 'border-white/10 bg-white/[0.03] text-white/45 hover:border-white/20 hover:text-white/80'
+                          }`}
+                          title={frame.description}
+                          onClick={() => {
+                            applyEntityTokenFramePreset(element.id, frame.id);
+                            setEntityTokenMenu(null);
+                          }}
+                        >
+                          {frame.shortLabel}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        );
+      })()}
+
       {/* Portal Context Menu Overlay */}
-      {portalMenu && (
+      {portalMenu && (() => {
+        const canDeletePortal = canEditEntity(portalMenu.portal);
+        const targetCanvasId = typeof portalMenu.portal.properties?.targetCanvasId === 'string' ? portalMenu.portal.properties.targetCanvasId : '';
+        const targetCanvas = targetCanvasId ? yjsStore.entitiesMap.get(targetCanvasId) : undefined;
+        const canOpenTarget = canViewCanvasEntity(targetCanvas);
+
+        return (
         <>
           <div
             className="fixed inset-0 z-[99998]"
@@ -3475,21 +6254,50 @@ export function InfiniteCanvas() {
             }}
           >
             <div className="px-3 py-1.5 text-[9px] font-bold text-white/30 uppercase tracking-widest border-b border-white/5 mb-1 select-none pointer-events-none">
-              ПОРТАЛ
+              {t('canvas.portal.title')}
             </div>
-            <button
-              className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
-              onClick={() => {
-                openWindow(portalMenu.portal.properties.targetCanvasId, portalMenu.x, portalMenu.y);
-                setPortalMenu(null);
-              }}
-            >
-              <ExternalLink size={14} className="text-white/40 group-hover:text-white/80 transition-colors" />{' '}
-              Открыть окно области
-            </button>
+            {canOpenTarget && (
+              <button
+                className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2 group"
+                onClick={() => {
+                  openWindow(targetCanvasId, portalMenu.x, portalMenu.y);
+                  setPortalMenu(null);
+                }}
+              >
+                <ExternalLink size={14} className="text-white/40 group-hover:text-white/80 transition-colors" />{' '}
+                {t('canvas.portal.openTarget')}
+              </button>
+            )}
+            {canDeletePortal && (
+              <>
+                <div className="border-t border-white/5 my-1 mx-2" />
+                <button
+                  className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center gap-2 group"
+                  onClick={() => {
+                    const portalToDelete = portalMenu.portal;
+                    setPortalMenu(null);
+                    openConfirm({
+                      title: t('canvas.portal.deleteTitle'),
+                      description: t('canvas.portal.deleteDescription', { name: portalToDelete.name }),
+                      confirmText: t('common.delete'),
+                      isDestructive: true,
+                      onConfirm: () => {
+                        if (canEditEntity(portalToDelete)) {
+                          yjsStore.deleteEntity(portalToDelete.id);
+                        }
+                      }
+                    });
+                  }}
+                >
+                  <Trash2 size={14} className="text-red-500/50 group-hover:text-red-400 transition-colors" />{' '}
+                  {t('canvas.portal.deleteButton')}
+                </button>
+              </>
+            )}
           </div>
         </>
-      )}
+        );
+      })()}
 
       {/* Bottom-left hints: ping + pan + player fog toggle */}
       <div className="absolute bottom-4 left-4 z-30 flex items-center gap-2">
@@ -3497,14 +6305,14 @@ export function InfiniteCanvas() {
         <div className="pointer-events-none bg-black/30 backdrop-blur-md rounded-lg border border-white/5 px-3 py-1.5 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-white/50 animate-pulse shadow-[0_0_6px_rgba(255,255,255,0.3)]" />
           <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider select-none">
-            G + клик = пинг
+            {t('canvas.hints.ping')}
           </span>
         </div>
         {/* Middle-mouse pan hint */}
         <div className="pointer-events-none bg-black/30 backdrop-blur-md rounded-lg border border-white/5 px-3 py-1.5 flex items-center gap-2">
           <span className="text-[10px] text-white/20 select-none">🖱️</span>
           <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider select-none">
-            колесо = панорама
+            {t('canvas.hints.middlePan')}
           </span>
         </div>
         {/* Player fog toggle */}
@@ -3512,11 +6320,11 @@ export function InfiniteCanvas() {
           <button
             onClick={togglePlayerFog}
             className="pointer-events-auto bg-black/30 backdrop-blur-md rounded-lg border border-white/5 px-2.5 py-1.5 flex items-center gap-1.5 transition-all hover:bg-white/10 cursor-pointer"
-            title="Показать/скрыть туман войны"
+            title={t('canvas.hints.toggleFog')}
           >
             <span className={`w-2 h-2 rounded-full transition-colors ${playerFogVisible ? 'bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.5)]' : 'bg-white/20'}`} />
             <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider select-none">
-              Туман
+              {t('canvas.hints.fog')}
             </span>
           </button>
         )}

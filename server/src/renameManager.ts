@@ -133,7 +133,6 @@ export function renameEntity(
 
     // Step 2: Create new .md file with new name
     entity.name = sanitizedNew;
-    entity.id = sanitizedNew; // In General DB, id = name
 
     const newFilename = entityToFilename(sanitizedNew);
     const newFilePath = path.join(path.dirname(oldFilePath), newFilename);

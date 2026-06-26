@@ -1,8 +1,1158 @@
 {
     "login": {
-        "title": "VIBE OS / CONNECT",
+        "title": "ETERNITY TABLE / CONNECT",
         "directoryPlaceholder": "ROOM DIRECTORY",
-        "connectBtn": "INITIALIZE CONNECTION"
+        "connectBtn": "INITIALIZE CONNECTION",
+        "runtime": {
+            "desktop": "Electron desktop",
+            "browser": "Browser client"
+        },
+        "errors": {
+            "desktopServerOffline": "The local app server is not responding. Restart Electron dev or check that the embedded server started on port 3001.",
+            "fileServerOffline": "The local file server is not responding. Start start.bat or server/npm run dev, then try opening the world again.",
+            "createWorldPath": "Could not create a world at this path. Check that the folder is writable.",
+            "worldFolderMissing": "World folder not found. Check the path or choose a world folder with the button.",
+            "openWorldFailed": "Could not open the world. Check the folder path and the local server state.",
+            "joinServerNetwork": "Could not reach {{host}}:3001. Check the IP, Radmin/Hamachi, Windows Firewall, and that the GM has Eternity Table running with an open world.",
+            "joinServerFallback": "{{error}}. Check {{host}}:3001 and ask the GM to open the world.",
+            "connectionError": "Connection error",
+            "enterPlayerName": "Please enter your name before connecting",
+            "fileServerHttp": "File server returned HTTP {{status}}",
+            "serverOnlineNoWorld": "Server is online, but the GM has not opened a world yet. Ask the GM to open a world on the host.",
+            "previewWorldUnavailable": "The preview world is available only in the Electron build and was not found in app resources."
+        },
+        "status": {
+            "desktopServerPreparing": "Desktop runtime is preparing the local server.",
+            "serverProbeIdle": "Local server check has not run yet.",
+            "checkingLocalServer": "Checking http://localhost:3001...",
+            "serverOnlineWorld": "Server is running, world open: {{worldName}}.",
+            "serverOnlineNoWorld": "Server is running. Choose or create a world to open a room.",
+            "creatingWorld": "Creating world...",
+            "openingWorld": "Opening world...",
+            "worldOpenedPrefix": "World opened:",
+            "worldOpened": "World opened: {{name}}",
+            "checkingServer": "Checking server {{host}}...",
+            "connectingProfile": "Connecting profile to {{worldName}}..."
+        },
+        "gmName": "GM",
+        "hostWorldAsGm": "Host world as GM",
+        "joinAsPlayer": "Join as player",
+        "uiDemo": "UI style demo",
+        "previewWorld": {
+            "name": "Preview World",
+            "open": "Open preview world",
+            "description": "Bundled demonstration world. Each launch uses a fresh temporary copy; changes do not persist between preview sessions."
+        },
+        "worlds": "Worlds",
+        "localServer": "Local server",
+        "checkServer": "Check",
+        "openWorld": "Open world",
+        "createWorld": "Create world",
+        "worldNamePlaceholder": "World name",
+        "worldPathPlaceholder": "Path to world folder",
+        "createAndOpenWorld": "Create and open world",
+        "connection": "Connection",
+        "ipLabel": "IP",
+        "worldLabel": "World",
+        "localServerLabel": "Local",
+        "newConnection": "New connection",
+        "playerNameLabel": "Your name (visible in chat and to the GM)",
+        "playerNamePlaceholder": "Enter character name or nickname",
+        "serverLabelName": "Name (for saving)",
+        "serverLabelPlaceholder": "Example: Vlad's server",
+        "hostIpLabel": "Host IP address",
+        "hostIpPlaceholder": "Example: 26.54.12.3 (empty for Local)",
+        "savedServerFallback": "Server ({{host}})",
+        "saveAndConnect": "Save and connect",
+        "loadingEntities": "Loading entities: {{loaded}} / {{total}}",
+        "version": "v0.1.0 beta — local-first world files"
+    },
+    "common": {
+        "close": "Close",
+        "reset": "Reset",
+        "back": "↺ Back",
+        "delete": "Delete",
+        "select": "Select",
+        "cancel": "Cancel",
+        "retry": "Retry",
+        "system": "System",
+        "collapsePanel": "Collapse panel",
+        "loading": "Loading..."
+    },
+    "styleDemo": {
+        "title": "Window Layout Variants",
+        "sampleCharacter": "Arthur (Paladin)",
+        "variants": {
+            "compactLists": {
+                "short": "Compact lists"
+            },
+            "cardView": {
+                "short": "Card view"
+            },
+            "detailedRadial": {
+                "short": "Detailed / radial"
+            }
+        },
+        "tabs": {
+            "stats": "STATS",
+            "inventory": "INVENTORY",
+            "notes": "NOTES"
+        },
+        "context": {
+            "title": "Context menu",
+            "settings": "Configure",
+            "toInventory": "To inventory"
+        },
+        "sections": {
+            "woundsBar": "Wound buildup (bar)",
+            "woundsSegments": "Wound buildup (segments)",
+            "woundsScale": "Wound buildup (scale)",
+            "powerSystem": "POWER SYSTEM",
+            "powerCards": "POWER SYSTEM (cards)",
+            "powerStacked": "POWER SYSTEM (stacked scale)",
+            "attributesCompact": "Attributes (compact)",
+            "attributesGrid": "Attributes (grid)",
+            "attributesInline": "Attributes (inline tags)",
+            "inventoryList": "Equipment (list)",
+            "inventoryGrid": "Equipment (grid)",
+            "inventoryDetailed": "Equipment (detailed)",
+            "logNotes": "LOG AND NOTES"
+        },
+        "labels": {
+            "of": "of",
+            "heavilyWounded": "Heavily wounded",
+            "healthRemaining": "Health remaining:",
+            "active": "Active",
+            "activePower": "Active",
+            "baseColon": "Base: {{value}}",
+            "baseValue": "Base {{value}}",
+            "astral": "Astral",
+            "ether": "Ether",
+            "aura": "Aura",
+            "constitution": "Constitution",
+            "agility": "Agility",
+            "thinking": "Thinking",
+            "body": "Body",
+            "thought": "Mind",
+            "charisma": "Charisma",
+            "figure": "Figure",
+            "wounds": "WND",
+            "healthy": "Healthy",
+            "death": "Death"
+        },
+        "items": {
+            "longSword": "Long sword",
+            "meleeWeapon": "Melee weapon",
+            "damageValue": "Damage {{value}}",
+            "oldShield": "Old shield",
+            "armor": "Armor",
+            "armorValue": "Armor {{value}}",
+            "torch": "Torch",
+            "light": "Light",
+            "quantityValue": "Qty: {{value}}",
+            "weapon": "Weapon",
+            "item": "Item",
+            "strengthPotion": "Strength potion",
+            "twoHanded": "Two-handed",
+            "damage": "Damage",
+            "accuracy": "Accuracy",
+            "range": "Range",
+            "closeRange": "Close",
+            "durability": "Durability",
+            "defense": "Defense",
+            "penalty": "Penalty"
+        },
+        "actions": {
+            "woundMinus": "- Wound",
+            "woundPlus": "+ Wound",
+            "drink": "Drink"
+        },
+        "notes": {
+            "story": "Character story text lives here...",
+            "lore": "Character lore text or notes live here..."
+        }
+    },
+    "leftDrawer": {
+        "personalInventory": "Personal inventory",
+        "inventoryForPlayer": "Inventory: {{player}}",
+        "selectedPlayerItems": "Selected player's items",
+        "gmItems": "My items and player inventories",
+        "playerItems": "Items, notes, and characters",
+        "myItems": "My items",
+        "noOtherPlayers": "No other players"
+    },
+    "rightDrawer": {
+        "tabs": {
+            "database": {
+                "label": "Storage",
+                "title": "Entity database",
+                "subtitle": "Entities, spaces, and quick actions"
+            },
+            "assets": {
+                "label": "Files",
+                "title": "World files",
+                "subtitle": "Assets, images, and SFX preview"
+            },
+            "chat": {
+                "label": "Chat and rolls",
+                "title": "Session log",
+                "subtitle": "Chat, rolls, and system events"
+            }
+        }
+    },
+    "assetPicker": {
+        "title": "Image",
+        "subtitle": "Upload a file or choose an asset",
+        "newFile": "New file",
+        "searchPlaceholder": "Search...",
+        "hostOnlyHint": "Choosing from `assets/` is available on the Host. You can still insert a file by uploading it.",
+        "loadingAssets": "Loading assets...",
+        "noImages": "No images found"
+    },
+    "assetBrowser": {
+        "worldFiles": "World files",
+        "hostOnlyDescription": "The file browser is available on the Host/GM side because the source of truth lives on the host disk. Audio is handled by a separate module and is not managed from the files tab.",
+        "uploadOrRequest": "Upload / request",
+        "uploadHint": "Files up to 50 MB upload immediately. Larger files send a request to the GM, and transfer starts after approval.",
+        "headerSubtitle": "assets/ now, audio and 3D later",
+        "addFiles": "Add files",
+        "refreshList": "Refresh list",
+        "searchPlaceholder": "Search files...",
+        "sortLabel": "Sort",
+        "selectedCount": "Selected {{count}}",
+        "showInExplorer": "Show in Explorer",
+        "clearSelection": "Clear selection",
+        "loadingFiles": "Loading files...",
+        "filesNotFound": "No files found",
+        "dragToCanvas": "Drag to canvas",
+        "deleteFile": "Delete file",
+        "filters": {
+            "all": "All",
+            "image": "Images",
+            "audio": "Audio",
+            "model": "3D",
+            "video": "Video",
+            "pdf": "PDF",
+            "other": "Other"
+        },
+        "sort": {
+            "name": "Name",
+            "modified": "Newest",
+            "size": "Size",
+            "type": "Type"
+        },
+        "preview": {
+            "loading": "Loading",
+            "failed": "Could not load preview"
+        },
+        "upload": {
+            "fileUploaded": "File uploaded",
+            "cancelled": "Upload cancelled",
+            "failed": "Upload failed",
+            "fileTooLarge": "File too large",
+            "fileTooLargeMessage": "{{file}} • {{size}}. Quick upload is currently limited to 250 MB.",
+            "fileUpload": "File upload",
+            "largeFile": "Large file",
+            "fastTooLargeError": "File \"{{file}}\" is too large for quick upload. Copy large audio/models directly into assets/."
+        },
+        "inline": {
+            "title": "Old canvas images",
+            "summary": "{{count}} inline file(s), about {{kb}} KB",
+            "migrateTitle": "Move old canvas images into assets/",
+            "migrating": "Moving",
+            "toAssets": "To assets",
+            "migratedMessage": "Moved canvas images into assets/: {{count}}"
+        },
+        "delete": {
+            "title": "Delete file",
+            "description": "Delete “{{name}}” from assets/? If the file is already used on the canvas or in an entity, its link will break."
+        },
+        "deleteSelected": {
+            "title": "Bulk file delete",
+            "description": "Delete selected files ({{count}}) from assets/? {{names}}{{hidden}}. If they are already used on canvas or in entities, their links will break.",
+            "hiddenSuffix": " and {{count}} more",
+            "confirm": "Delete selected"
+        }
+    },
+    "canvasToolbar": {
+        "undo": "Undo (Ctrl+Z)",
+        "redo": "Redo (Ctrl+Shift+Z / Ctrl+Y)",
+        "moreTools": "More tools",
+        "recenter": "Recenter",
+        "tools": {
+            "select": "Select",
+            "pen": "Pen",
+            "line": "Line",
+            "rect": "Rectangle (2×click → text)",
+            "ellipse": "Ellipse",
+            "image": "Image",
+            "frame": "Frame",
+            "lasso": "Lasso"
+        },
+        "grid": {
+            "title": "Grid ({{type}}, {{spacing}}px)",
+            "squareShort": "squares",
+            "hexShort": "hexes",
+            "show": "Show grid",
+            "type": "Grid type",
+            "square": "Squares",
+            "hex": "Hexes",
+            "spacing": "Grid step (px)"
+        },
+        "elementTypes": {
+            "line": "Line",
+            "arrow": "Arrow",
+            "rectangle": "Rectangle",
+            "ellipse": "Ellipse",
+            "text": "Text",
+            "image": "Image",
+            "frame": "Frame"
+        },
+        "sections": {
+            "drawings": "Drawings",
+            "tokensEntities": "Tokens and Entities"
+        },
+        "fog": {
+            "title": "Fog of War",
+            "closeMode": "Close fog mode",
+            "revealBrush": "Reveal: Brush",
+            "revealRect": "Reveal: Area",
+            "coverBrush": "Hide: Brush",
+            "coverRect": "Hide: Area",
+            "coverAll": "Cover all with fog",
+            "clearTitle": "Clear fog from canvas",
+            "clearDescription": "This fully removes fog of war from the current canvas. All players will see the whole map. Continue?",
+            "clearConfirm": "Clear",
+            "hideGmFog": "Hide GM fog",
+            "showGmFog": "Show GM fog",
+            "chooseTool": "Choose a tool"
+        },
+        "strokeStyles": {
+            "solid": "Solid",
+            "dashed": "Dashed",
+            "dotted": "Dotted"
+        },
+        "lineCaps": {
+            "none": "None",
+            "arrow": "Arrow",
+            "circle": "Circle",
+            "diamond": "Diamond"
+        },
+        "align": {
+            "left": "Align left",
+            "center": "Center horizontally",
+            "right": "Align right",
+            "top": "Align top",
+            "middle": "Center vertically",
+            "bottom": "Align bottom"
+        },
+        "style": {
+            "stroke": "Stroke",
+            "fill": "Fill",
+            "strokeShort": "Str",
+            "fillShort": "Fill",
+            "textShort": "Txt",
+            "strokeOpacityTitle": "Stroke opacity, %",
+            "strokeOpacityAria": "Stroke opacity in percent",
+            "fillOpacityTitle": "Fill opacity, %",
+            "fillOpacityAria": "Fill opacity in percent",
+            "textOpacityTitle": "Text opacity, %",
+            "textOpacityAria": "Text opacity in percent",
+            "font": "Font",
+            "size": "Size",
+            "alignment": "Alignment",
+            "textColor": "Text color",
+            "width": "Width",
+            "strokeStyle": "Style",
+            "visual": "Look",
+            "line": "Line",
+            "start": "Start",
+            "end": "End",
+            "entity": "Entity"
+        },
+        "visualStyles": {
+            "clean": "Clean",
+            "soft": "Soft",
+            "sketch": "Sketch"
+        },
+        "visualStyleDescriptions": {
+            "clean": "Clean geometry for diagrams, maps, and precise UI blocks.",
+            "soft": "Light stroke glow so important links stay readable on dark maps.",
+            "sketch": "Stable handwritten stroke duplicate without random flicker."
+        },
+        "lineModes": {
+            "straight": "Straight",
+            "curved": "Curved",
+            "elbow": "Elbow"
+        },
+        "lineModeDescriptions": {
+            "straight": "Unsmooth polyline: precise diagrams, routes, boundaries.",
+            "curved": "Smoothed line for free connections and handwritten sketches.",
+            "elbow": "Orthogonal routing with right angles for graphs and diagrams."
+        },
+        "tokenFrames": {
+            "plain": "Plain",
+            "ring": "Ring",
+            "badge": "Badge",
+            "hex": "Hex"
+        },
+        "tokenFrameDescriptions": {
+            "plain": "Minimal frame without decorative layers.",
+            "ring": "Classic VTT token with an outer ring and soft glow.",
+            "badge": "Token on a compact backing with a readable label.",
+            "hex": "Angular frame for tactical scenes and tokens."
+        },
+        "entityToken": {
+            "tokenTitle": "Compact entity token",
+            "token": "Token",
+            "cardTitle": "Entity card that preserves image proportions",
+            "card": "Card",
+            "hideName": "Hide name",
+            "showName": "Show name",
+            "nameHint": "Alt+2×click → name"
+        },
+        "layers": {
+            "title": "Layers",
+            "toBack": "Send to back",
+            "backward": "Send backward",
+            "forward": "Bring forward",
+            "toFront": "Bring to front"
+        }
+    },
+    "dragDrop": {
+        "title": "Entity action",
+        "move": "Move",
+        "copy": "Copy",
+        "closeMenu": "Close menu"
+    },
+    "entityLink": {
+        "notFound": "Entity not found",
+        "notFoundNamed": "Entity '{{name}}' not found",
+        "noDescription": "No description"
+    },
+    "entityDatabase": {
+        "defaultHeader": "ENTITY DATABASE",
+        "createInGroup": "Create: {{group}}",
+        "searchFields": {
+            "name": "name",
+            "description": "description",
+            "property": "properties",
+            "tag": "tags",
+            "type": "type",
+            "database": "database"
+        },
+        "groups": {
+            "canvas": "Spaces",
+            "character": "Characters",
+            "object": "Items",
+            "competency": "Competencies",
+            "ability": "Abilities",
+            "note": "Notes",
+            "tag": "Tags",
+            "attack": "Attacks"
+        },
+        "quickCreate": {
+            "object": "Create item",
+            "competency": "Create competency",
+            "ability": "Create ability",
+            "attack": "Create attack"
+        },
+        "contextMenu": {
+            "title": "Context menu",
+            "rename": "Rename",
+            "duplicate": "Duplicate",
+            "openFocus": "Open / focus",
+            "pinToCanvas": "Pin to canvas",
+            "showParent": "Show parent",
+            "copyId": "Copy ID",
+            "copyWikiLink": "Copy [[link]]",
+            "showInExplorer": "Show in Explorer",
+            "exportMd": "Export .md",
+            "giveToPlayer": "Give to player"
+        },
+        "entitiesCount": "{{count}} entities",
+        "expandChildren": "Expand nested entities",
+        "collapseChildren": "Collapse nested entities",
+        "empty": "Empty",
+        "importMdTitle": "Import .md files",
+        "importMd": "Import .md",
+        "searchPlaceholder": "Search: athletics 3, type:character, prop:hp.current>=7",
+        "clearSearch": "Clear search",
+        "savedSearches": "Saved",
+        "removeSavedSearch": "Remove saved search",
+        "recentSearches": "Recent",
+        "clearSearchHistory": "Clear search history",
+        "searchMatches": "{{count}} matches",
+        "searchContextCount": "{{count}} with context",
+        "searchAlreadySaved": "Search already saved",
+        "saveCurrentSearch": "Save current search",
+        "saved": "Saved",
+        "save": "Save",
+        "all": "All",
+        "selected": "Selected {{count}}",
+        "deletableCount": "Available for deletion: {{count}}",
+        "clearSelection": "Clear selection",
+        "rootCanvasName": "Root space",
+        "noSearchResults": "Nothing found",
+        "createFolder": "Create folder",
+        "emptyCategory": "This category is empty",
+        "openInExplorerFailed": "Could not open entity file in Explorer: {{name}}",
+        "givenToPlayerMessage": "🎁 {{name}} given to player {{player}}",
+        "bulkDelete": {
+            "title": "Bulk deletion",
+            "description": "Delete selected entities ({{count}})? {{preview}}. Selected nested entities will be deleted with their parents.",
+            "hiddenMore": " and {{count}} more",
+            "confirm": "Delete selected",
+            "buttonTitle": "Delete selected entities"
+        },
+        "giveToPlayer": {
+            "title": "Give to player",
+            "subtitle": "Choose recipient",
+            "noPlayers": "No available players",
+            "playerInventory": "Player inventory"
+        }
+    },
+    "entityWindow": {
+        "hiddenEntity": "Hidden entity",
+        "removeFromCanvas": "Remove from canvas",
+        "noEntityFileAccess": "No access to this entity file",
+        "tabs": {
+            "description": "Description",
+            "settings": "Settings"
+        },
+        "quickCreate": {
+            "object": "Create item",
+            "competency": "Create competency",
+            "ability": "Create ability",
+            "attack": "Create attack"
+        },
+        "relations": {
+            "links": "Links",
+            "parent": "Parent",
+            "children": "Children",
+            "tags": "Tags",
+            "backlinks": "Backlinks"
+        },
+        "layout": {
+            "title": "Window layout",
+            "screenOnly": "Layout is available for screen windows",
+            "left": "Left half",
+            "right": "Right half",
+            "topLeft": "Top-left corner",
+            "topRight": "Top-right corner",
+            "bottomLeft": "Bottom-left corner",
+            "bottomRight": "Bottom-right corner",
+            "center": "Center",
+            "wideCenter": "Wide center",
+            "grid": "Arrange all windows in a grid",
+            "cascade": "Cascade",
+            "saveSnapshot": "Save layout",
+            "restoreSnapshot": "Restore layout"
+        },
+        "pinToCanvas": "Pin to canvas",
+        "unpinFromCanvas": "Unpin from canvas",
+        "noCanvasEditRight": "No permission to edit this canvas",
+        "noActiveCanvasEditRight": "No permission to edit active canvas",
+        "minimizeToIcon": "Minimize to icon",
+        "compactMode": "Normal mode",
+        "technicalMode": "Technical mode: properties, hidden tags, and System ID",
+        "closeWindow": "Close window",
+        "finishEditing": "Finish editing",
+        "editDescription": "Edit description",
+        "descriptionPlaceholder": "Type markdown description...",
+        "noDescriptionEditable": "No description provided. Double click to edit.",
+        "noDescription": "No description provided.",
+        "properties": "Properties",
+        "noPropertiesRecorded": "No properties recorded",
+        "hiddenTagsTitle": "TAGS (Hidden tags)",
+        "unknownTag": "Unknown tag",
+        "noTags": "No tags",
+        "add": "Add",
+        "attachHiddenTags": "Attach (Hidden tags)",
+        "removeTag": "Remove tag",
+        "contextMenu": {
+            "title": "Context menu",
+            "rename": "Rename",
+            "duplicate": "Duplicate",
+            "copyWikiLink": "Copy [[link]]",
+            "deleteEntity": "Delete entity"
+        },
+        "deleteConfirm": {
+            "title": "Entity deletion",
+            "description": "Are you sure you want to delete \"{{name}}\"?"
+        }
+    },
+    "characterSheet": {
+        "tabs": {
+            "stats": "Stats",
+            "skills": "Skills",
+            "competencies": "Competencies",
+            "abilities": "Abilities",
+            "resources": "Resources",
+            "inventory": "Inventory",
+            "notes": "Notes",
+            "settings": "Settings"
+        },
+        "editNotes": "Edit notes",
+        "notesPlaceholder": "Character backstory and notes...",
+        "noNotesEditable": "No notes provided. Double click to edit.",
+        "noNotes": "No notes provided.",
+        "expandForDetails": "Expand window to see more details."
+    },
+    "tagEditor": {
+        "title": "Effects and Modifiers",
+        "pathPlaceholder": "Path (e.g. attributes.hp.max)",
+        "pathTitle": "Stat path (dot-separated)",
+        "modifierTypes": {
+            "add": "Addition",
+            "multiply": "Multiplier",
+            "min": "Minimum",
+            "max": "Maximum"
+        },
+        "empty": "Tag has no mechanical effects",
+        "addModifier": "Add modifier"
+    },
+    "tagPicker": {
+        "defaultTitle": "Choose tag",
+        "searchOrCreate": "Search or create...",
+        "noMatchingTags": "No matching tags found",
+        "createTag": "Create \"{{name}}\""
+    },
+    "canvasTokenSettings": {
+        "title": "Canvas settings",
+        "mode": "Mode",
+        "modes": {
+            "token": "Token",
+            "art": "Card"
+        },
+        "frame": "Frame",
+        "nameOnCanvas": "Name on canvas",
+        "frameColor": "Frame color",
+        "tokenPhoto": "Token photo",
+        "cardPhoto": "Card photo",
+        "mainPhotoHint": "Empty = use the entity main photo",
+        "mainPhoto": "Main photo"
+    },
+    "canvas": {
+        "textPlaceholder": "Enter text...",
+        "objectNamePlaceholder": "Object name...",
+        "gm": "GM",
+        "notifications": {
+            "unsupportedFileTitle": "Unsupported canvas file",
+            "imageFileRequired": "{{name}}: an image file is required.",
+            "fileTooLargeTitle": "File too large",
+            "quickUploadLimit": "{{name}} • {{size}}. Quick canvas upload is currently limited to 250 MB.",
+            "largeImageUpload": "Large image upload",
+            "imageUpload": "Uploading image to canvas",
+            "imageUploaded": "Image uploaded",
+            "canvasChangedTitle": "File uploaded, but the canvas changed",
+            "canvasChangedMessage": "{{name}}: open the original canvas and drag the file from the file browser.",
+            "uploadFailed": "Canvas upload failed",
+            "approvalSent": "Request sent to the GM",
+            "uploadRejected": "Upload rejected",
+            "fileNotAdded": "File was not added to canvas",
+            "dragDropImagesOnly": "{{name}}: canvas drag/drop currently accepts images."
+        },
+        "deleteSelection": {
+            "title": "Deleting canvas entity",
+            "onlyEntities": "Delete {{count}} entity card(s) or token(s) from the canvas?",
+            "mixed": "The selection contains {{count}} entity card(s) or token(s). Delete the whole canvas selection?"
+        },
+        "entityDrop": {
+            "title": "Insert entity",
+            "token": "Token",
+            "card": "Card"
+        },
+        "compact": {
+            "tabs": {
+                "stats": "Stats",
+                "actions": "Actions",
+                "resources": "Resources",
+                "notes": "Notes"
+            },
+            "emptyStats": "Quick stats are not filled yet.",
+            "counters": {
+                "attacks": "Attacks",
+                "abilities": "Abilities",
+                "items": "Items"
+            },
+            "actionBadges": {
+                "attack": "ATK",
+                "ability": "ABL"
+            },
+            "characterAttack": "Character attack",
+            "ability": "Ability",
+            "noFormula": "no formula",
+            "emptyActions": "No attacks or abilities added yet.",
+            "emptyResources": "No resources or items filled yet."
+        },
+        "openEntity": "Open entity",
+        "context": {
+            "showAsCard": "Show as card",
+            "showAsToken": "Show as token",
+            "showName": "Show name",
+            "hideName": "Hide name",
+            "frame": "Frame"
+        },
+        "portal": {
+            "title": "PORTAL",
+            "openTarget": "Open area window",
+            "deleteTitle": "Portal deletion",
+            "deleteDescription": "Are you sure you want to delete portal \"{{name}}\"?",
+            "deleteButton": "Delete portal"
+        },
+        "hints": {
+            "ping": "G + click = ping",
+            "middlePan": "middle button = pan",
+            "toggleFog": "Show/hide fog of war",
+            "fog": "Fog"
+        }
+    },
+    "skillsBlock": {
+        "title": "Skills",
+        "rollError": "Roll error: {{error}}",
+        "rollTitle": "Roll {{dice}}",
+        "rankMustBePositive": "Rank must be > 0 to roll",
+        "skills": {
+            "agility": "Agility",
+            "attention": "Attention",
+            "intuition": "Intuition",
+            "logic": "Logic",
+            "creativity": "Creativity",
+            "empathy": "Empathy",
+            "charisma": "Charisma",
+            "selfcontrol": "Self-control"
+        }
+    },
+    "abilitiesBlock": {
+        "title": "Abilities ({{count}})",
+        "add": "Add",
+        "entitiesCount": "{{count}} entities",
+        "emptyEditable": "No abilities. Click Add to create the first one.",
+        "empty": "No abilities added yet.",
+        "rollTitle": "Roll {{formula}}",
+        "rollFormulaMissing": "Set a roll formula",
+        "openWindow": "Open window",
+        "cost": "Cost",
+        "formula": "Formula",
+        "range": "Range",
+        "rangePlaceholder": "melee",
+        "area": "Area",
+        "areaPlaceholder": "target",
+        "deleteConfirm": {
+            "title": "Ability deletion",
+            "description": "Are you sure you want to delete ability \"{{name}}\"?"
+        }
+    },
+    "abilitySheet": {
+        "tabs": {
+            "params": "Params",
+            "description": "Description",
+            "canvas": "Settings"
+        },
+        "rollError": "Roll error for {{name}}: {{error}}",
+        "finishEditing": "Finish editing",
+        "editDescription": "Edit description",
+        "paramsTitle": "Ability parameters",
+        "roll": "Roll",
+        "descriptionTitle": "Description",
+        "descriptionPlaceholder": "Ability description, usage conditions, effects...",
+        "emptyDescriptionEditable": "Description is empty. Double click to edit.",
+        "emptyDescription": "Description is empty."
+    },
+    "attackSheet": {
+        "tabs": {
+            "stats": "Stats",
+            "description": "Description",
+            "canvas": "Settings"
+        },
+        "noteNotFound": "Note \"{{name}}\" was not found",
+        "statsTitle": "Attack stats",
+        "stats": {
+            "damage": "Damage",
+            "scale": "Scale",
+            "hit": "Hit",
+            "distance": "Distance"
+        },
+        "distances": {
+            "melee": "melee",
+            "medium": "medium",
+            "long": "long",
+            "extreme": "extreme",
+            "beyond": "beyond"
+        },
+        "rollFormula": "Roll formula",
+        "propertiesTitle": "Properties",
+        "add": "Add",
+        "descriptionTitle": "Description",
+        "descriptionPlaceholder": "Attack description, effects, usage conditions..."
+    },
+    "inventoryBlock": {
+        "title": "Character inventory",
+        "availableAttacksTitle": "Available attacks (equipped weapons)",
+        "noAvailableAttacks": "No available attacks. Equip a weapon with attacks.",
+        "attackFrom": "(from: {{name}})",
+        "entitiesCount": "{{count}} entities",
+        "dropItemsHere": "Drop items here...",
+        "noItemsInCategory": "No items in this category.",
+        "equip": "Equip",
+        "deleteItem": "Delete item",
+        "totalWeight": "Total load:",
+        "categories": {
+            "weapon": "weapon",
+            "armor": "armor",
+            "consumable": "consumable",
+            "other": "other"
+        },
+        "columns": {
+            "item": "Item",
+            "equipped": "Equipped",
+            "equippedShort": "Eq.",
+            "quantity": "Quantity",
+            "quantityShort": "Qty",
+            "weightTitle": "Load (single item weight)",
+            "weight": "Weight",
+            "figure": "Figure",
+            "figureShort": "FIG",
+            "durability": "Durability",
+            "durabilityShort": "DUR",
+            "rarity": "Rarity",
+            "rarityShort": "RAR",
+            "priceTitle": "Price (c.u.)",
+            "price": "Price"
+        },
+        "deleteConfirm": {
+            "title": "Item deletion",
+            "description": "Are you sure you want to delete item \"{{name}}\"?"
+        }
+    },
+    "objectSheet": {
+        "tabs": {
+            "stats": "Stats",
+            "attacks": "Attacks",
+            "description": "Description",
+            "canvas": "Settings"
+        },
+        "statsTitle": "Item stats",
+        "category": "Category (type)",
+        "figureHint": "Size in units: 1,2,3,4...",
+        "loadWeight": "Load (weight)",
+        "rarityHint": "Rank from 0 to 5",
+        "embeddedAttacks": "Embedded attacks",
+        "emptyAttacksEditable": "Drop attacks here or create a new one",
+        "emptyAttacks": "No embedded attacks added yet",
+        "attackNoFormula": "This attack has no roll formula",
+        "descriptionTitle": "Description",
+        "descriptionPlaceholder": "Item description, rules, notes...",
+        "deleteAttack": {
+            "title": "Attack deletion",
+            "description": "Are you sure you want to delete attack \"{{name}}\"?",
+            "button": "Delete attack"
+        }
+    },
+    "attributeBlock": {
+        "editLabel": "Edit: {{label}}",
+        "adhocShort": "Ad hoc",
+        "wounds": {
+            "title": "Health state",
+            "limit": "Wound limit",
+            "limitPrefix": "Limit:",
+            "critical": "SHOCK / CRITICALLY WOUNDED",
+            "healthy": "HEALTHY / LIGHT WOUNDS",
+            "minus": "−{{count}} wounds",
+            "plus": "+{{count}} wounds",
+            "editKeys": "Enter — save, Esc — cancel",
+            "manualInput": "Click to enter manually",
+            "barTitle": "LMB: +1 wound | RMB: −1 wound",
+            "barHint": "LMB +1 / RMB −1",
+            "chatDelta": "{{emoji}} {{name}}: {{sign}}{{delta}} wounds (current: {{current}}/{{max}})"
+        },
+        "attributes": {
+            "title": "Attributes"
+        },
+        "power": {
+            "title": "Power",
+            "activeSources": "Active sources"
+        },
+        "defense": {
+            "title": "Defense"
+        },
+        "statuses": {
+            "title": "Statuses and conditions",
+            "add": "Add",
+            "addStatus": "Add status",
+            "empty": "No active statuses"
+        }
+    },
+    "competenciesBlock": {
+        "title": "Competencies ({{count}})",
+        "add": "Add",
+        "entitiesCount": "{{count}} entities",
+        "emptyEditable": "No competencies. Click Add to create the first one.",
+        "empty": "No competencies added yet.",
+        "rollError": "Roll error: {{error}}",
+        "rollTitle": "Roll {{dice}}",
+        "rankMustBePositive": "Rank must be > 0",
+        "openWindow": "Open window",
+        "deleteConfirm": {
+            "title": "Competency deletion",
+            "description": "Are you sure you want to delete competency \"{{name}}\"?"
+        }
+    },
+    "competencyRoll": {
+        "title": "Skill roll",
+        "skillRank": "{{skill}} (rank: {{rank}})",
+        "noCompetency": "No competency",
+        "rankDice": "Rank: +{{rank}} -> +{{dice}}",
+        "emptyLine1": "This character has no competencies.",
+        "emptyLine2": "Add them on the Competencies tab.",
+        "totalRoll": "Total roll:",
+        "roll": "Roll {{dice}}"
+    },
+    "resourcesBlock": {
+        "title": "Resources ({{count}})",
+        "newResource": "New resource",
+        "emptyEditable": "No resources. Add a reserve, charge, focus, or other counter.",
+        "empty": "No resources added yet.",
+        "name": "Name",
+        "current": "Current",
+        "max": "Max",
+        "deleteResource": "Delete resource"
+    },
+    "propertiesBlock": {
+        "title": "Item Properties",
+        "addProperty": "Add property",
+        "remove": "Remove",
+        "empty": "No properties added"
+    },
+    "sheetTabs": {
+        "scrollLeft": "Scroll tabs left",
+        "scrollRight": "Scroll tabs right"
+    },
+    "statTooltip": {
+        "title": "Modifier calculation",
+        "base": "Base",
+        "adhocModifier": "Ad hoc modifier",
+        "total": "Total"
+    },
+    "markdownRenderer": {
+        "rollError": "Roll error: {{error}}",
+        "rollTitle": "Roll {{expression}}",
+        "stats": {
+            "availableInEntityWindow": "The stats block is available inside an entity window.",
+            "title": "Stats: {{name}}",
+            "wounds": "Wounds",
+            "defaults": {
+                "constitution": "Constitution",
+                "cognition": "Cognition",
+                "physique": "Physique",
+                "mind": "Mind",
+                "speed": "Speed",
+                "hunger": "Hunger",
+                "evasion": "Evasion",
+                "armor": "Armor",
+                "astral": "Astral",
+                "ether": "Ether",
+                "aura": "Aura"
+            }
+        },
+        "inventory": {
+            "availableInEntityWindow": "The inventory block is available inside an entity window.",
+            "title": "Inventory: {{name}}",
+            "summary": "{{count}} / weight {{weight}}",
+            "empty": "Inventory is empty.",
+            "equipped": "equipped",
+            "categories": {
+                "weapon": "weapon",
+                "armor": "armor",
+                "consumable": "consumable",
+                "other": "other"
+            }
+        },
+        "gmOnly": {
+            "hidden": "Hidden GM block",
+            "title": "GM only"
+        }
+    },
+    "entityImage": {
+        "notifications": {
+            "largePhoto": "Large entity photo",
+            "photoUpload": "Entity photo upload",
+            "noEntityRights": "No entity permission",
+            "uploadedButNotLinked": "{{name}} uploaded, but not linked to the entity.",
+            "photoUploaded": "Entity photo uploaded",
+            "photoUploadFailed": "Photo upload failed"
+        },
+        "invalidImage": "Link is invalid or image was deleted",
+        "loadingPhoto": "Loading photo",
+        "noPhoto": "NO PHOTO",
+        "changePhoto": "Change photo",
+        "imageSettings": "Image settings",
+        "fileOrUrlPlaceholder": "File name or URL...",
+        "chooseExisting": "...or choose existing",
+        "saveLink": "Save link",
+        "unlinkPhotoTitle": "Remove photo link (file stays)",
+        "uploadNewPhoto": "Upload new photo"
+    },
+    "audio": {
+        "channels": {
+            "music": "Music",
+            "ambience": "Ambience",
+            "sfx": "SFX",
+            "voice": "Voice"
+        },
+        "cueModes": {
+            "track": "Track",
+            "loop": "Loop",
+            "oneshot": "One-shot"
+        },
+        "modes": {
+            "session": "Session",
+            "local": "Local"
+        },
+        "notifications": {
+            "largeAudioFile": "Large audio file",
+            "audioUpload": "Audio upload",
+            "audioUploaded": "Audio uploaded",
+            "audioUploadFailed": "Audio upload failed"
+        },
+        "errors": {
+            "fileTooLarge": "File \"{{name}}\" is larger than 250 MB. Files this large need a separate approval/upload flow.",
+            "fileNotFound": "File not found: {{name}}",
+            "playbackFailed": "Could not play: {{name}}",
+            "playbackError": "Playback error"
+        },
+        "allChannels": "All channels",
+        "sessionSound": "Session sound",
+        "localPlayerSettings": "Local player settings",
+        "receiveSound": "Receive sound",
+        "soundDesk": "Sound desk",
+        "moduleSubtitle": "Separate module: music, ambience, SFX",
+        "deskStats": "{{cues}} buttons / {{assets}} audio",
+        "refreshAssets": "Refresh audio assets",
+        "stopAllChannels": "Stop all channels",
+        "loopsCount": "{{count}} loops",
+        "toPlayers": "To players",
+        "fade": "Fade",
+        "fadeHint": "Fade in/out for starting and stopping sound",
+        "buttonsForChannel": "Buttons / {{channel}}",
+        "stop": "Stop",
+        "noCuesForChannel": "No buttons on this channel",
+        "loopFlag": "Loop",
+        "deleteCue": "Delete cue",
+        "audio": "Audio",
+        "drop": "Drop",
+        "searchAudio": "Search audio...",
+        "scanningAssets": "Scanning assets...",
+        "noAudioFound": "No audio found",
+        "addToChannel": "Add to {{channel}}",
+        "sound": "Sound",
+        "collapseDesk": "Collapse desk",
+        "openDesk": "Open sound desk",
+        "hideDesk": "Hide sound desk",
+        "pause": "Pause",
+        "resume": "Resume",
+        "stopMusic": "Stop music",
+        "trackPosition": "Track position",
+        "musicVolume": "Music volume",
+        "channelMixer": "Channel mixer",
+        "openMixer": "Open channel mixer",
+        "closeMixer": "Close mixer",
+        "sessionEnabled": "Session sound enabled",
+        "enableSessionAudio": "Enable session sound",
+        "sessionDisabled": "Session sound disabled",
+        "gmStartedSound": "GM started sound",
+        "turnOff": "Turn off",
+        "turnOn": "Turn on",
+        "soundOnShort": "Sound ON",
+        "soundOffShort": "Sound OFF",
+        "offShort": "Off",
+        "onShort": "On",
+        "compactToButton": "Compact to button",
+        "nothingPlaying": "Nothing playing"
+    },
+    "chat": {
+        "systemSender": "System",
+        "rollError": "Error: {{error}}",
+        "tabs": {
+            "chat": "Chat",
+            "rolls": "Rolls ({{count}})",
+            "events": "Events ({{count}})"
+        },
+        "emptyChat": "Chat is empty. Write a message or use /r 1d20 to roll dice.",
+        "inputPlaceholder": "Message or /r 1d20+5...",
+        "hint": "Hint: /r 2d6, /roll 1d20+3",
+        "emptyRollHistory": "Roll history is empty. Roll dice from chat, skills, or notes.",
+        "emptyEvents": "No events yet. Change wounds, status, or give an item to a player.",
+        "jumpToLatest": "Jump to latest messages"
+    },
+    "notifications": {
+        "title": "Notifications",
+        "records": "{{count}} records",
+        "clearCompleted": "Clear completed",
+        "empty": "Quiet for now",
+        "activeProcesses": "active processes running",
+        "hide": "Hide",
+        "done": "Done",
+        "uploading": "Uploading",
+        "actionNotAppliedTitle": "Action was not applied",
+        "actionNotAppliedMessage": "The request was already handled or the user has no permission."
+    },
+    "hotkeys": {
+        "title": "Hotkeys",
+        "subtitle": "All keyboard shortcuts and controls",
+        "sections": {
+            "canvasTools": "Canvas tools",
+            "editing": "Editing",
+            "navigation": "Navigation",
+            "multiplayer": "Multiplayer",
+            "chatDice": "Chat and dice",
+            "windows": "Windows"
+        },
+        "keys": {
+            "mouseWheel": "Mouse wheel",
+            "middleDrag": "Middle button + drag",
+            "gClick": "G + click",
+            "portalContext": "RMB on portal",
+            "fogPanel": "eye (panel)",
+            "doubleIcon": "Double-click (icon)",
+            "doubleDatabase": "Double-click (database)",
+            "pinButton": "pin (button)"
+        },
+        "items": {
+            "hand": "Hand (pan)",
+            "select": "Select",
+            "pen": "Pen",
+            "line": "Line",
+            "rectangle": "Rectangle",
+            "ellipse": "Ellipse",
+            "frame": "Frame",
+            "text": "Text",
+            "image": "Image",
+            "tools": "Tools 1-9",
+            "undo": "Undo",
+            "redo": "Redo",
+            "copy": "Copy",
+            "paste": "Paste",
+            "deleteConfirm": "Delete (with confirmation)",
+            "selectAll": "Select all",
+            "clearSelection": "Clear selection / exit Fog mode",
+            "zoom": "Zoom",
+            "pan": "Pan",
+            "axisMove": "Move on one axis",
+            "ping": "Canvas ping",
+            "portalContext": "Portal context menu",
+            "roll2d6": "Roll 2d6",
+            "rollModifier": "Roll with modifier",
+            "sendMessage": "Send message",
+            "fogEdit": "Fog of war edit mode",
+            "expandWindow": "Expand window",
+            "openWindow": "Open character in a window",
+            "pinWindow": "Pin window to canvas"
+        }
+    },
+    "app": {
+        "unsavedChangesConfirm": "There may be unsaved data. Are you sure?"
     },
     "hud": {
         "activeElements": "Active Elements",
@@ -18,9 +1168,350 @@
         "rootCanvas": "Root Canvas",
         "noSubtables": "No subtables yet",
         "database": "DATABASE",
+        "databaseHub": "Database and Hub",
         "globalDatabase": "GLOBAL DATABASE",
         "allEntities": "All entities in the server",
         "newEntity": "+ NEW ENTITY",
         "emptyDirectory": "Empty Directory"
+    },
+    "workspace": {
+        "mode": {
+            "canvas": "Canvas",
+            "notes": "Notes"
+        },
+        "notes": {
+            "title": "Notes",
+            "vault": "Vault",
+            "editor": "Editor",
+            "context": "Context",
+            "modules": {
+                "editor": "Editor",
+                "vault": "Vault",
+                "context": "Context",
+                "notifications": "Notifications",
+                "search": "Search",
+                "graph": "Graph",
+                "audio": "Audio"
+            },
+            "personalInventory": "Personal inventory",
+            "settings": "Settings",
+            "entity": "Entity",
+            "noActiveEntity": "Select an entity",
+            "noActiveEntityHint": "Open a note or entity from the vault on the left.",
+            "searchPlaceholder": "Search vault",
+            "searchHint": "Type a name, tag, property, database, type, or ID.",
+            "searchSummary": "Found: {{count}}",
+            "storageScope": "Storage",
+            "noSearchResults": "No results.",
+            "expandBranch": "Expand branch",
+            "collapseBranch": "Collapse branch",
+            "groupLabel": "G{{index}}",
+            "resizeSplit": "Resize panes",
+            "resizeModule": "Resize module",
+            "resetTabs": "Reset tabs",
+            "emptyGroup": "No tabs",
+            "emptyGroupHint": "Open an entity from the vault on the left.",
+            "createRootEntity": "Create in general storage",
+            "createRootEntityUnavailable": "No permission to create in general storage",
+            "closeTab": "Close tab",
+            "closePane": "Close pane",
+            "dragPane": "Drag active pane tab",
+            "dragModule": "Drag module",
+            "dropModuleHere": "Drop module here",
+            "missingEntity": "Entity unavailable",
+            "readOnly": "read only",
+            "openParent": "Open parent",
+            "copyWikiLink": "Copy wiki link",
+            "copyEntityId": "Copy ID",
+            "pinToCanvas": "Pin to active canvas",
+            "pinToCanvasUnavailable": "No permission to edit active canvas",
+            "sourcePlaceholder": "Write Markdown. Wiki links work through [[...]].",
+            "wikiLinkAutocomplete": "Wiki link",
+            "noWikiLinkSuggestions": "No matching entities",
+            "emptyMarkdown": "Description is empty.",
+            "outline": "Outline",
+            "noOutline": "No headings in the description.",
+            "noBacklinks": "No backlinks.",
+            "noOutgoingLinks": "No outgoing links.",
+            "noGraphLinks": "No graph links yet.",
+            "outgoingLinks": "Outgoing links",
+            "incomingLinks": "Incoming links",
+            "outgoingShort": "outgoing",
+            "incomingShort": "incoming",
+            "attachedEntities": "Attached entities",
+            "noAttachedEntities": "No attached entities.",
+            "properties": "Properties",
+            "noProperties": "No public properties.",
+            "tags": "Tags",
+            "richToolbar": {
+                "bold": "Bold",
+                "italic": "Italic",
+                "heading": "Heading",
+                "list": "List",
+                "quote": "Quote",
+                "code": "Code",
+                "link": "Wiki link",
+                "markdown": "Markdown"
+            },
+            "searchFields": {
+                "name": "name",
+                "description": "description",
+                "property": "properties",
+                "tag": "tags",
+                "type": "type",
+                "id": "ID",
+                "database": "database"
+            },
+            "storageScopes": {
+                "all": "All storages",
+                "general": "General database",
+                "user": "All personal",
+                "personal": "Personal inventory",
+                "player": "Inventory: {{player}}",
+                "gm": "GM database"
+            },
+            "views": {
+                "source": "Editor",
+                "preview": "Preview",
+                "split": "Split",
+                "ui": "UI",
+                "entity": "Data",
+                "graph": "Graph",
+                "backlinks": "Links",
+                "outline": "Outline"
+            },
+            "databases": {
+                "general": "general",
+                "user": "personal",
+                "gm": "GM"
+            },
+            "entityTypes": {
+                "character": "character",
+                "object": "object",
+                "ability": "ability",
+                "competency": "competency",
+                "tag": "tag",
+                "canvas": "canvas",
+                "note": "note",
+                "portal": "portal",
+                "folder": "folder",
+                "attack": "attack"
+            }
+        }
+    },
+    "settings": {
+        "title": "Settings",
+        "tabs": {
+            "interface": "Interface",
+            "audio": "Audio",
+            "canvas": "Canvas",
+            "world": "World",
+            "roles": "Roles"
+        },
+        "reset": {
+            "title": "Local UI reset",
+            "allTitle": "Reset local interface settings without changing world files",
+            "allButton": "All local",
+            "themeDensityTitle": "Theme and density",
+            "themeDensityDescription": "Preset, custom palette, and density",
+            "screenWindowsTitle": "Screen windows",
+            "screenWindowsDescription": "Closes only unpinned windows",
+            "notesLayoutTitle": "Notes layout",
+            "notesLayoutDescription": "Resets tabs and split panes",
+            "notesShellTitle": "Shell modules",
+            "audioTitle": "Audio defaults",
+            "audioDescription": "Module on, channels 100%, session sound off",
+            "devPerfDescription": "Shown only in dev builds",
+            "messages": {
+                "themeDensity": "Theme, palette, and density were reset locally.",
+                "screenWindows": "Open screen windows were reset. Pinned canvas objects were not touched.",
+                "notesLayout": "Notes workspace tab layout was reset.",
+                "notesShell": "Notes workspace modules were reset to defaults.",
+                "audio": "Local audio settings were reset.",
+                "all": "Local interface was reset. World data was not changed."
+            }
+        },
+        "interface": {
+            "localInterface": "Local interface",
+            "visualTheme": "Visual theme",
+            "visualThemeDescription": "Changes the whole desk character, not just colors.",
+            "balancedDefault": "balanced default",
+            "customPalette": "Custom palette",
+            "customPaletteDescription": "Temporary editor for base colors; full world themes are a separate slice.",
+            "density": "Interface density",
+            "densityDescription": "Changes spacing, control height, and panel rhythm without switching visual theme.",
+            "pdfViewer": {
+                "title": "PDF preview",
+                "description": "Built-in optional module for previewing PDFs in the file browser. PDF files stay in storage when this is disabled."
+            },
+            "themeCardTitle": "Theme",
+            "themeCardDescription": "Visual preset + semantic tokens",
+            "accessCardTitle": "Access",
+            "accessGm": "Full GM control",
+            "accessPlayer": "Player-local settings",
+            "themePresets": {
+                "universalGlass": {
+                    "label": "Universal Glass",
+                    "tone": "Glass workspace",
+                    "description": "Primary direction: soft universal glass, readable panels, and calm pastel accents."
+                },
+                "woodenTable": {
+                    "label": "Wooden Tabletop",
+                    "tone": "Tabletop desk",
+                    "description": "Warm game table: wood, bronze, and parchment accents without turning into a light theme."
+                },
+                "arcaneControl": {
+                    "label": "Arcane Control",
+                    "tone": "Arcane console",
+                    "description": "Restrained magitech console: dark cockpit, amber lines, and cyan signals."
+                },
+                "rgbGameDesk": {
+                    "label": "RGB Game Desk",
+                    "tone": "Game desk",
+                    "description": "Neon-edged gaming desk with RGB accents, kept readable instead of eye-burning."
+                },
+                "lowLoad": {
+                    "label": "Low Load",
+                    "tone": "Performance",
+                    "description": "Calm theme for weaker machines: less blur, fewer shadows, less visual noise."
+                }
+            },
+            "densityPresets": {
+                "compact": {
+                    "label": "Compact",
+                    "tone": "More data",
+                    "description": "Dense panels for long lists and data-heavy screens."
+                },
+                "balanced": {
+                    "label": "Balanced",
+                    "tone": "Default",
+                    "description": "Readable density for regular play and world preparation."
+                },
+                "spacious": {
+                    "label": "Spacious",
+                    "tone": "More air",
+                    "description": "Larger clicks and calmer reading when one window matters more than density."
+                }
+            },
+            "language": {
+                "title": "Language and Translations",
+                "localeRu": "Primary language for the interface and worldbuilding.",
+                "localeEn": "English fallback for future mods and external packs.",
+                "openFolder": "Open translation folder",
+                "openFolderTitle": "Open app/src/locales in the system file manager",
+                "openFolderUnavailable": "Available only in the Electron desktop app.",
+                "openFolderSuccess": "Translation folder opened.",
+                "appBundlesTitle": "Built-in translations",
+                "appBundlesDescription": "The client currently loads ru/en from the app and stores the selected language locally.",
+                "worldLocalesTitle": "World translations",
+                "worldLocalesDescription": "World translation files can now be inspected in read-only mode; writing and editing will land in a separate safe slice.",
+                "readyBadge": "ready",
+                "plannedBadge": "planned"
+            },
+            "notesModules": {
+                "title": "Notes mode modules",
+                "reset": "Reset",
+                "resetTitle": "Reset notes mode modules",
+                "resizable": "resize",
+                "areas": {
+                    "left": "Left panel",
+                    "center": "Center workspace",
+                    "right": "Right panel",
+                    "bottom": "Bottom dock"
+                }
+            }
+        },
+        "audio": {
+            "moduleTitle": "Audio module",
+            "moduleDescription": "Bottom player, sound desk, and session audio command receiver.",
+            "sessionSoundTitle": "Session sound",
+            "sessionSoundDescription": "Playback of Host/GM commands on this client.",
+            "mixerTitle": "Channel mixer",
+            "channels": {
+                "music": "Music",
+                "ambience": "Ambience",
+                "sfx": "SFX",
+                "voice": "Voice"
+            }
+        },
+        "canvas": {
+            "gridSnapTitle": "Grid and snap",
+            "gridEnabled": "Grid enabled",
+            "gridDisabled": "Grid disabled",
+            "squareGrid": "Squares",
+            "hexGrid": "Hexes",
+            "gridStep": "Grid step"
+        },
+        "world": {
+            "title": "World",
+            "room": "Room",
+            "storage": "Storage",
+            "storageDescription": "World files on the Host disk",
+            "localesTitle": "World translations",
+            "localesDescription": "Locale override files from <world>/locales. Host can edit JSON and key table; players receive runtime overrides through Yjs.",
+            "localesReadOnlyBadge": "host edit",
+            "localesLoading": "Scanning world translations...",
+            "localesEmpty": "This world has no locale override files yet.",
+            "localesPreviewTitle": "Preview merge",
+            "localesBaseLocale": "Base",
+            "localesOverrideKeys": "Override keys",
+            "localesMergedKeys": "Merged keys",
+            "localesDiagnosticsTitle": "Diagnostics",
+            "localesNoDiagnostics": "No errors found.",
+            "localesSampleTitle": "First override keys",
+            "localesNoOverrides": "This file has no string override keys.",
+            "localesPreviewLoading": "Reading and validating file...",
+            "localesEditorTitle": "Override key editor",
+            "localesEditorDescription": "Edits only this world's UI translations. Entity content is not translated here.",
+            "localesEditorObjectError": "Translation file must be a JSON object.",
+            "localesTableTitle": "Key table",
+            "localesTableDescription": "An empty value resets the override and returns the built-in text.",
+            "localesTableSearch": "Search key or text...",
+            "localesFilterAll": "All",
+            "localesFilterChanged": "Changed",
+            "localesFilterMissing": "No override",
+            "localesFilterUnknown": "Unknown",
+            "localesTableKey": "Key",
+            "localesTableBuiltIn": "Built-in text",
+            "localesTableOverride": "Override",
+            "localesTableReset": "Reset",
+            "localesTableEmpty": "No keys found.",
+            "localesTableLimited": "Showing {{shown}} of {{total}}. Narrow the search to find the rest.",
+            "localesJsonFallback": "JSON fallback",
+            "localesSaveButton": "Save",
+            "localesSaveConfirmTitle": "Save world translation",
+            "localesSaveConfirmDescription": "{{locale}}.json will be overwritten. If the file already existed, the server will create a .bak backup.",
+            "localesSaveUnavailable": "File API is unavailable for saving.",
+            "localesSaved": "Translation file saved.",
+            "localesSavedWithBackup": "Translation file saved and backup created.",
+            "localesRollbackButton": "Rollback",
+            "localesRollbackConfirmTitle": "Rollback world translation",
+            "localesRollbackConfirmDescription": "{{locale}}.json will be replaced with {{locale}}.json.bak.",
+            "localesRollbackSuccess": "Translation file restored from backup.",
+            "localesImportButton": "Import",
+            "localesExportButton": "Export",
+            "localesImported": "JSON imported into the draft. Click Save to write it.",
+            "localesExported": "JSON exported from the current draft."
+        },
+        "roles": {
+            "title": "Roles",
+            "baseBadge": "Base",
+            "players": "Players",
+            "legacyHint": "The profile will appear after a player logs in with this name.",
+            "noProfiles": "No profiles yet. They are created when players connect to an open world.",
+            "descriptions": {
+                "basePlayer": "Permanent role that limits all regular roles.",
+                "gm": "Full host/workbench control.",
+                "effective": "Effective permissions after Base Player restrictions."
+            },
+            "permissions": {
+                "viewGeneral": "View general",
+                "editGeneral": "Edit general",
+                "viewOwnUser": "View own",
+                "editOwnUser": "Edit own",
+                "viewGm": "View GM",
+                "broadcastAudio": "Audio"
+            }
+        }
     }
 }

@@ -1,11 +1,11 @@
 /**
  * fileSyncService.ts — Bridges the File Server ↔ Yjs Store
- * 
+ *
  * This service handles:
  * 1. Loading world from files into Yjs (on startup, host only)
  * 2. Debounced writeback: Yjs changes → .md files (host only)
  * 3. External file changes → Yjs updates (via WebSocket, host only)
- * 
+ *
  * KEY RULE: Only the HOST runs this service.
  * Players receive all data passively through Yjs/WebRTC sync.
  */
@@ -14,6 +14,7 @@ import type { Entity } from '../types';
 import {
     listEntities,
     saveEntity,
+    renameEntityFileToTitle,
     deleteEntity as deleteEntityFile,
     openWorld,
     createWorld,
@@ -21,15 +22,19 @@ import {
     connectFileWatcher,
     disconnectFileWatcher,
     getIsHost,
+    listPlayers,
     type DatabaseType,
     type WorldMeta
 } from './fileApi';
 import { yjsStore } from '../store/yjsStore';
+import { sanitizeCanvasEntityForSharedSync } from '../utils/canvasPersistence';
 
 // ─── Debounced writeback ───
 
 /** Entities that have been changed in Yjs but not yet written to disk */
 const dirtyEntities = new Map<string, { entity: Entity; db: DatabaseType }>();
+const savedEntitySignatures = new Map<string, string>();
+const lastRenamedTitleBySaveKey = new Map<string, string>();
 
 /** Timer for debounced flush */
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -45,6 +50,52 @@ let _isActive = false;
 
 /** Current player name (for user DB folder) */
 let _playerName: string = 'host';
+
+function getUserEntityPlayer(entity?: Entity): string | undefined {
+    const owner = entity?.properties?._playerOwner;
+    if (typeof owner === 'string' && owner.trim()) {
+        return owner.trim();
+    }
+
+    return _playerName;
+}
+
+function getEntitySaveKey(db: DatabaseType, entityId: string, player?: string): string {
+    return `${db}:${player || ''}:${entityId}`;
+}
+
+function stableStringify(value: unknown): string {
+    if (Array.isArray(value)) {
+        return `[${value.map(stableStringify).join(',')}]`;
+    }
+    if (value && typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+        return `{${Object.keys(record)
+            .sort()
+            .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+            .join(',')}}`;
+    }
+    return JSON.stringify(value);
+}
+
+function getEntitySignature(db: DatabaseType, entity: Entity, player?: string): string {
+    return stableStringify({
+        db,
+        player: player || null,
+        entity: sanitizeCanvasEntityForSharedSync(entity),
+    });
+}
+
+function rememberSavedEntity(db: DatabaseType, entity: Entity, player?: string): void {
+    const id = entity.id || entity.name;
+    if (!id) return;
+
+    const saveKey = getEntitySaveKey(db, id, player);
+    savedEntitySignatures.set(saveKey, getEntitySignature(db, entity, player));
+    if (entity.name) {
+        lastRenamedTitleBySaveKey.set(saveKey, entity.name);
+    }
+}
 
 // ─── Callbacks ───
 
@@ -101,9 +152,34 @@ export async function loadWorld(
         const generalEntities = await listEntities('general');
         console.log(`📂 Loaded ${generalEntities.length} entities from general DB`);
 
-        // Load user (personal inventory) entities
-        const userEntities = await listEntities('user', _playerName);
-        console.log(`📂 Loaded ${userEntities.length} entities from user DB (${_playerName})`);
+        // Load user (personal inventory) entities for the host
+        const hostUserEntities = await listEntities('user', _playerName);
+        console.log(`📂 Loaded ${hostUserEntities.length} entities from user DB (${_playerName})`);
+
+        // Load ALL player user entities (for GM visibility)
+        const allPlayers = await listPlayers();
+        const allUserEntities: Entity[] = [];
+        for (const playerName of allPlayers) {
+            if (playerName === _playerName) continue; // Already loaded above
+            try {
+                const playerEntities = await listEntities('user', playerName);
+                // Tag each entity with the owning player
+                const tagged = playerEntities.map(e => ({
+                    ...e,
+                    properties: { ...e.properties, _playerOwner: playerName },
+                }));
+                allUserEntities.push(...tagged);
+                console.log(`📂 Loaded ${playerEntities.length} entities from user DB (${playerName})`);
+            } catch (err) {
+                console.warn(`⚠️ Could not load user entities for ${playerName}:`, err);
+            }
+        }
+
+        // Combine all user entities (host first, then other players)
+        const userEntities = [
+            ...hostUserEntities.map(e => ({ ...e, properties: { ...e.properties, _playerOwner: _playerName } })),
+            ...allUserEntities,
+        ];
 
         // Load GM entities
         const gmEntities = await listEntities('gm');
@@ -116,11 +192,13 @@ export async function loadWorld(
                 ...generalEntities.map(e => ({ ...e, database: 'general' as const })),
                 ...userEntities.map(e => ({ ...e, database: 'user' as const })),
                 ...gmEntities.map(e => ({ ...e, database: 'gm' as const })),
-            ];
+            ].map(sanitizeCanvasEntityForSharedSync);
             const total = allEntities.length;
 
             for (const entity of allEntities) {
                 const id = entity.id || entity.name;
+                const db = entity.database || 'general';
+                const player = db === 'user' ? getUserEntityPlayer(entity) : undefined;
                 const existingEntity = yjsStore.entitiesMap.get(id);
 
                 // Only update if entity doesn't exist or has changed
@@ -130,6 +208,8 @@ export async function loadWorld(
                         id, // Ensure ID is consistent
                     });
                 }
+
+                rememberSavedEntity(db, entity, player);
 
                 loaded++;
                 _onProgress?.(loaded, total);
@@ -182,7 +262,7 @@ function setupYjsObserver(): void {
                         const oldEntity = change.oldValue as Entity;
                         const oldDb = oldEntity.database || 'general';
                         if (oldDb !== db) {
-                            const player = oldDb === 'user' ? _playerName : undefined;
+                            const player = oldDb === 'user' ? getUserEntityPlayer(oldEntity) : undefined;
                             deleteEntityFile(oldDb, key, player).catch((err) => {
                                 console.warn(`⚠️ Failed to delete old file after moving DB for ${key}:`, err);
                             });
@@ -195,9 +275,10 @@ function setupYjsObserver(): void {
                 // Entity was deleted from Yjs → delete the file
                 // We need to check dirty map for the db, or default to general
                 const prevDirty = dirtyEntities.get(key);
-                const db = prevDirty?.db || 'general';
+                const oldEntity = change.oldValue as Entity | undefined;
+                const db = (oldEntity?.database || prevDirty?.db || 'general') as DatabaseType;
                 dirtyEntities.delete(key);
-                const player = db === 'user' ? _playerName : undefined;
+                const player = db === 'user' ? getUserEntityPlayer(oldEntity || prevDirty?.entity) : undefined;
                 deleteEntityFile(db, key, player).catch((err) => {
                     console.warn(`⚠️ Failed to delete file for ${key}:`, err);
                 });
@@ -239,8 +320,33 @@ async function flushDirtyEntities(): Promise<void> {
     let errors = 0;
     for (const { entity, db } of batch.values()) {
         try {
-            const player = db === 'user' ? _playerName : undefined;
-            await saveEntity(db, entity, player);
+            const player = db === 'user' ? getUserEntityPlayer(entity) : undefined;
+            const normalizedEntity = sanitizeCanvasEntityForSharedSync(entity);
+            const id = normalizedEntity.id || normalizedEntity.name;
+            const saveKey = getEntitySaveKey(db, id, player);
+            const nextSignature = getEntitySignature(db, normalizedEntity, player);
+            const titleChanged = Boolean(
+                normalizedEntity.id &&
+                normalizedEntity.name &&
+                lastRenamedTitleBySaveKey.get(saveKey) !== normalizedEntity.name
+            );
+
+            if (savedEntitySignatures.get(saveKey) === nextSignature && !titleChanged) {
+                continue;
+            }
+
+            await saveEntity(db, normalizedEntity, player);
+            savedEntitySignatures.set(saveKey, nextSignature);
+            if (normalizedEntity.id && normalizedEntity.name) {
+                try {
+                    if (titleChanged) {
+                        await renameEntityFileToTitle(db, normalizedEntity.id, normalizedEntity.name, player, { dryRun: false });
+                        lastRenamedTitleBySaveKey.set(saveKey, normalizedEntity.name);
+                    }
+                } catch (renameErr) {
+                    console.warn(`Failed to rename file path for ${normalizedEntity.name}:`, renameErr);
+                }
+            }
         } catch (err) {
             errors++;
             console.warn(`⚠️ Failed to save ${entity.name}:`, err);
@@ -274,13 +380,18 @@ function setupFileChangeHandler(): void {
                 }
             } else if (event.entity) {
                 // File was added or changed externally
-                const entity = event.entity;
+                const entity = sanitizeCanvasEntityForSharedSync(event.entity);
                 const id = entity.id || entity.name;
                 console.log(`📝 External ${event.type}: ${entity.name}`);
                 yjsStore.entitiesMap.set(id, { ...entity, id });
+                rememberSavedEntity(
+                    event.database,
+                    { ...entity, id },
+                    event.database === 'user' ? getUserEntityPlayer(entity) : undefined
+                );
             }
         } finally {
-            // Re-enable writeback after a short delay 
+            // Re-enable writeback after a short delay
             // (to let Yjs observer settle)
             setTimeout(() => {
                 _isLoading = false;

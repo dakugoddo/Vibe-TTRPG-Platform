@@ -2,10 +2,13 @@ import { useMemo } from 'react';
 import { useEntity, useEntitiesByIds } from '../hooks/useEntities';
 import { getEntitySnapshot } from '../store/entityStore';
 
+type StatModifierType = 'add' | 'multiply' | 'min' | 'max';
+type StatRecord = Record<string, unknown>;
+
 export interface StatBreakdown {
     source: string;
     value: number;
-    type?: 'add' | 'multiply' | 'min' | 'max';
+    type?: StatModifierType;
 }
 
 export interface CalculatedStat {
@@ -14,49 +17,60 @@ export interface CalculatedStat {
     breakdown: StatBreakdown[];
 }
 
-// Helper to safely get nested object properties by string array path
-const getNestedValue = (obj: any, path: string[]) => {
-    return path.reduce((xs, x) => (xs && xs[x] !== undefined) ? xs[x] : null, obj);
-};
+function isRecord(value: unknown): value is StatRecord {
+    return typeof value === 'object' && value !== null;
+}
+
+function toNumber(value: unknown): number {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return parseFloat(value) || 0;
+    return 0;
+}
+
+function getNestedValue(obj: unknown, path: string[]): unknown {
+    return path.reduce<unknown>((current, segment) => {
+        if (!isRecord(current)) return null;
+        return current[segment] !== undefined ? current[segment] : null;
+    }, obj);
+}
+
+function normalizeModifierType(value: unknown): StatModifierType {
+    if (value === 'add' || value === 'multiply' || value === 'min' || value === 'max') return value;
+    return 'add';
+}
 
 export function useCalculatedStat(entityId: string, statPath: string[]): CalculatedStat {
-    // Only subscribe to the specific entity
     const targetEntity = useEntity(entityId);
-    // Subscribe to tag entities by their IDs (granular)
     const tagIds = targetEntity?.tags || [];
     const tagEntities = useEntitiesByIds(tagIds);
 
     return useMemo(() => {
         if (!targetEntity) return { total: 0, base: 0, breakdown: [] };
 
-        // 1. Get base value
         let baseValue = getNestedValue(targetEntity.properties, statPath);
-
-        // Handle case where properties like `hp` is an object `{base: 10}` instead of just a number.
         let parsedBase = 0;
         let adhocModifier = 0;
 
-        if (typeof baseValue === 'object' && baseValue !== null) {
-            parsedBase = typeof baseValue.base === 'number' ? baseValue.base : (parseFloat(baseValue.base) || 0);
-            adhocModifier = typeof baseValue.adhoc === 'number' ? baseValue.adhoc : (parseFloat(baseValue.adhoc) || 0);
+        if (isRecord(baseValue)) {
+            parsedBase = toNumber(baseValue.base);
+            adhocModifier = toNumber(baseValue.adhoc);
             baseValue = parsedBase;
         } else {
-            parsedBase = typeof baseValue === 'number' ? baseValue : (parseFloat(baseValue) || 0);
+            parsedBase = toNumber(baseValue);
 
-            // If statPath was pointing specifically to the scalar, check if an adhoc exists on the parent
             if (statPath.length > 0) {
                 const parentPath = statPath.slice(0, -1);
                 const parentObj = getNestedValue(targetEntity.properties, parentPath);
                 const leafKey = statPath[statPath.length - 1];
 
-                if (leafKey === 'base' && typeof parentObj === 'object' && parentObj !== null) {
-                    adhocModifier = typeof parentObj.adhoc === 'number' ? parentObj.adhoc : (parseFloat(parentObj.adhoc) || 0);
+                if (leafKey === 'base' && isRecord(parentObj)) {
+                    adhocModifier = toNumber(parentObj.adhoc);
                 }
             }
         }
 
         const breakdown: StatBreakdown[] = [
-            { source: 'Базовое значение', value: parsedBase, type: 'add' }
+            { source: 'Базовое значение', value: parsedBase, type: 'add' },
         ];
 
         let total = parsedBase;
@@ -66,40 +80,32 @@ export function useCalculatedStat(entityId: string, statPath: string[]): Calcula
             breakdown.push({ source: 'Доп. модификатор', value: adhocModifier, type: 'add' });
         }
 
-        // 2. Apply tag modifiers — using only the tag entities we subscribed to
         const statPathString = statPath.join('.');
-
-        const activeModifiers: { source: string, value: number, type: 'add' | 'multiply' | 'min' | 'max' }[] = [];
+        const activeModifiers: { source: string; value: number; type: StatModifierType }[] = [];
 
         for (const tag of tagEntities) {
-            if (tag.type !== 'tag') continue;
-            if (tag.properties?.modifiers) {
-                for (const mod of tag.properties.modifiers || []) {
-                    const modPathStr = Array.isArray(mod.path) ? mod.path.join('.') : mod.path;
+            if (tag.type !== 'tag' || !Array.isArray(tag.properties?.modifiers)) continue;
 
-                    if (modPathStr === statPathString) {
-                        const modValue = typeof mod.value === 'number' ? mod.value : (parseFloat(mod.value) || 0);
-                        const modType = mod.type || 'add';
+            for (const mod of tag.properties.modifiers) {
+                if (!isRecord(mod)) continue;
 
-                        activeModifiers.push({
-                            source: `Свойство: ${tag.name}`,
-                            value: modValue,
-                            type: modType as 'add' | 'multiply' | 'min' | 'max'
-                        });
-                    }
-                }
+                const modPathStr = Array.isArray(mod.path) ? mod.path.join('.') : mod.path;
+                if (modPathStr !== statPathString) continue;
+
+                activeModifiers.push({
+                    source: `Свойство: ${tag.name}`,
+                    value: toNumber(mod.value),
+                    type: normalizeModifierType(mod.type),
+                });
             }
         }
 
-        // Context bubbling: if stat not found locally, walk up parentId chain
         if (parsedBase === 0 && adhocModifier === 0 && activeModifiers.length === 0 && targetEntity.parentId) {
             let current = getEntitySnapshot(targetEntity.parentId);
             while (current) {
                 const parentValue = getNestedValue(current.properties, statPath);
                 if (parentValue !== null && parentValue !== undefined) {
-                    const parentBase = typeof parentValue === 'object' && parentValue !== null
-                        ? (typeof parentValue.base === 'number' ? parentValue.base : (parseFloat(parentValue.base) || 0))
-                        : (typeof parentValue === 'number' ? parentValue : (parseFloat(parentValue) || 0));
+                    const parentBase = isRecord(parentValue) ? toNumber(parentValue.base) : toNumber(parentValue);
                     if (parentBase !== 0) {
                         total = parentBase;
                         breakdown[0] = { source: `Наследовано: ${current.name}`, value: parentBase, type: 'add' };
@@ -110,21 +116,17 @@ export function useCalculatedStat(entityId: string, statPath: string[]): Calcula
             }
         }
 
-        // Order of operations: additions → multiplications → limits
-        const additions = activeModifiers.filter(m => m.type === 'add');
-        for (const mod of additions) {
+        for (const mod of activeModifiers.filter(m => m.type === 'add')) {
             total += mod.value;
             breakdown.push(mod);
         }
 
-        const multiplications = activeModifiers.filter(m => m.type === 'multiply');
-        for (const mod of multiplications) {
+        for (const mod of activeModifiers.filter(m => m.type === 'multiply')) {
             total *= mod.value;
             breakdown.push(mod);
         }
 
-        const mins = activeModifiers.filter(m => m.type === 'min');
-        for (const mod of mins) {
+        for (const mod of activeModifiers.filter(m => m.type === 'min')) {
             if (total < mod.value) {
                 total = mod.value;
                 breakdown.push({ ...mod, source: `${mod.source} (Минимум)` });
@@ -133,8 +135,7 @@ export function useCalculatedStat(entityId: string, statPath: string[]): Calcula
             }
         }
 
-        const maxs = activeModifiers.filter(m => m.type === 'max');
-        for (const mod of maxs) {
+        for (const mod of activeModifiers.filter(m => m.type === 'max')) {
             if (total > mod.value) {
                 total = mod.value;
                 breakdown.push({ ...mod, source: `${mod.source} (Максимум)` });
@@ -143,12 +144,10 @@ export function useCalculatedStat(entityId: string, statPath: string[]): Calcula
             }
         }
 
-        total = Math.floor(total);
-
         return {
-            total,
+            total: Math.floor(total),
             base: parsedBase,
-            breakdown
+            breakdown,
         };
     }, [targetEntity, tagEntities, statPath]);
 }

@@ -1,5 +1,13 @@
 import { create } from 'zustand';
-import { useCanvasStore } from './canvasStore';
+import {
+    getScreenWindowLayoutBounds,
+    getWindowCascadeLayoutRects,
+    getWindowGridLayoutRects,
+    getWindowLayoutRect,
+    type WindowLayoutPreset,
+} from '../utils/windowLayout';
+
+export type { WindowLayoutPreset } from '../utils/windowLayout';
 
 export type WindowMode = 'full' | 'compact' | 'icon';
 
@@ -16,6 +24,15 @@ export interface WindowState {
     canvasId?: string;
 }
 
+export interface NamedWindowLayoutSnapshot {
+    id: string;
+    name: string;
+    savedAt: string;
+    windowCount: number;
+    windows: Record<string, WindowState>;
+    highestZIndex: number;
+}
+
 interface WindowStoreState {
     windows: Record<string, WindowState>;
     focusedWindowId: string | null;
@@ -26,7 +43,37 @@ interface WindowStoreState {
     focusWindow: (id: string) => void;
     setMode: (id: string, mode: WindowMode) => void;
     togglePin: (id: string, canvasId?: string) => void;
+    tileWindow: (id: string, preset: WindowLayoutPreset) => void;
+    arrangeVisibleWindowsGrid: () => void;
+    cascadeVisibleWindows: () => void;
     hydrateWindow: (windowState: WindowState) => void;
+}
+
+function getCurrentLayoutBounds() {
+    return getScreenWindowLayoutBounds(globalThis.innerWidth ?? 1200, globalThis.innerHeight ?? 800);
+}
+
+function getLayoutTargets(windows: Record<string, WindowState>): WindowState[] {
+    return Object.values(windows)
+        .filter((win) => !win.isPinned)
+        .sort((a, b) => a.zIndex - b.zIndex);
+}
+
+function ensureLayoutMode(win: WindowState): WindowMode {
+    return win.mode === 'icon' ? 'compact' : win.mode;
+}
+
+function findScreenWindowForEntity(windows: Record<string, WindowState>, entityId: string): WindowState | undefined {
+    return Object.values(windows)
+        .filter((win) => !win.isPinned && win.entityId === entityId)
+        .sort((a, b) => b.zIndex - a.zIndex)[0];
+}
+
+function getScreenWindowId(entityId: string, windows: Record<string, WindowState>): string {
+    const existingByEntityId = windows[entityId];
+    if (!existingByEntityId || !existingByEntityId.isPinned) return entityId;
+
+    return `${entityId}_screen`;
 }
 
 export const useWindowStore = create<WindowStoreState>((set, get) => ({
@@ -36,76 +83,20 @@ export const useWindowStore = create<WindowStoreState>((set, get) => ({
 
     openWindow: (entityId, x = 100, y = 100) => {
         const { windows, highestZIndex, focusWindow } = get();
-        const existing = windows[entityId];
+        const existingScreenWindow = findScreenWindowForEntity(windows, entityId);
 
-        if (existing) {
-            if (existing.isPinned) {
-                const canvasState = useCanvasStore.getState();
-                if (existing.canvasId === canvasState.activeCanvasId) {
-                    // SAME canvas: ALWAYS pan camera to the pinned window, then focus it
-                    const scale = canvasState.scale;
-                    const vw = globalThis.innerWidth;
-                    const vh = globalThis.innerHeight;
-                    canvasState.setTransform(
-                        scale,
-                        vw / 2 - existing.x * scale,
-                        vh / 2 - existing.y * scale
-                    );
-                    // Also update Konva Stage directly (no render delay)
-                    (window as any).__vibeSetStageCamera?.(scale, vw / 2 - existing.x * scale, vh / 2 - existing.y * scale);
-                    // Focus even if already focused (force zIndex bump for visual feedback)
-                    const newZIndex = highestZIndex + 1;
-                    set({
-                        windows: {
-                            ...windows,
-                            [entityId]: { ...existing, zIndex: newZIndex },
-                        },
-                        focusedWindowId: entityId,
-                        highestZIndex: newZIndex,
-                    });
-                    return;
-                } else {
-                    // DIFFERENT canvas: open a new unpinned window on the screen
-                    // Use a unique ID so it doesn't conflict with the pinned one
-                    const tempId = `${entityId}_screen`;
-                    if (windows[tempId]) {
-                        focusWindow(tempId);
-                        return;
-                    }
-                    const newZIndex = highestZIndex + 1;
-                    set({
-                        windows: {
-                            ...windows,
-                            [tempId]: {
-                                id: tempId,
-                                entityId,
-                                mode: 'compact',
-                                x,
-                                y,
-                                width: 400,
-                                height: 300,
-                                zIndex: newZIndex,
-                                isPinned: false,
-                            },
-                        },
-                        focusedWindowId: tempId,
-                        highestZIndex: newZIndex,
-                    });
-                    return;
-                }
-            } else {
-                // Not pinned, just focus
-                focusWindow(entityId);
-                return;
-            }
+        if (existingScreenWindow) {
+            focusWindow(existingScreenWindow.id);
+            return;
         }
 
         const newZIndex = highestZIndex + 1;
+        const screenWindowId = getScreenWindowId(entityId, windows);
         set({
             windows: {
                 ...windows,
-                [entityId]: {
-                    id: entityId,
+                [screenWindowId]: {
+                    id: screenWindowId,
                     entityId,
                     mode: 'compact',
                     x,
@@ -116,7 +107,7 @@ export const useWindowStore = create<WindowStoreState>((set, get) => ({
                     isPinned: false,
                 },
             },
-            focusedWindowId: entityId,
+            focusedWindowId: screenWindowId,
             highestZIndex: newZIndex,
         });
     },
@@ -184,6 +175,47 @@ export const useWindowStore = create<WindowStoreState>((set, get) => ({
                 [id]: { ...win, isPinned, canvasId: isPinned ? canvasId : undefined },
             },
         });
+    },
+
+    tileWindow: (id, preset) => {
+        const { windows } = get();
+        const win = windows[id];
+        if (!win || win.isPinned) return;
+
+        const rect = getWindowLayoutRect(preset, getCurrentLayoutBounds());
+        set({
+            windows: {
+                ...windows,
+                [id]: { ...win, ...rect, mode: ensureLayoutMode(win) },
+            },
+            focusedWindowId: id,
+        });
+    },
+
+    arrangeVisibleWindowsGrid: () => {
+        const { windows } = get();
+        const targets = getLayoutTargets(windows);
+        if (targets.length === 0) return;
+
+        const rects = getWindowGridLayoutRects(targets.length, getCurrentLayoutBounds());
+        const nextWindows = { ...windows };
+        targets.forEach((win, index) => {
+            nextWindows[win.id] = { ...win, ...rects[index], mode: ensureLayoutMode(win) };
+        });
+        set({ windows: nextWindows });
+    },
+
+    cascadeVisibleWindows: () => {
+        const { windows } = get();
+        const targets = getLayoutTargets(windows);
+        if (targets.length === 0) return;
+
+        const rects = getWindowCascadeLayoutRects(targets.length, getCurrentLayoutBounds());
+        const nextWindows = { ...windows };
+        targets.forEach((win, index) => {
+            nextWindows[win.id] = { ...win, ...rects[index], mode: ensureLayoutMode(win) };
+        });
+        set({ windows: nextWindows });
     },
 
     hydrateWindow: (windowState) => {
@@ -265,4 +297,175 @@ export function clearWindowLayout(): void {
         clearTimeout(_saveTimer);
         _saveTimer = null;
     }
+}
+
+export function resetCurrentWindowLayout(): void {
+    if (_saveTimer) {
+        clearTimeout(_saveTimer);
+        _saveTimer = null;
+    }
+
+    const { windows } = useWindowStore.getState();
+    const pinnedWindows = Object.fromEntries(
+        Object.entries(windows).filter(([, win]) => win.isPinned)
+    );
+    const highestPinnedZIndex = Object.values(pinnedWindows).reduce(
+        (highest, win) => Math.max(highest, win.zIndex || 10),
+        10,
+    );
+
+    useWindowStore.setState({
+        windows: pinnedWindows,
+        focusedWindowId: null,
+        highestZIndex: highestPinnedZIndex,
+    });
+
+    if (_currentRoom) {
+        try {
+            localStorage.removeItem(WINDOW_STORAGE_PREFIX + _currentRoom);
+        } catch {
+            // Local UI reset must not fail when storage is unavailable.
+        }
+    }
+}
+
+function getWindowSnapshotStorageKey(): string {
+    return `${WINDOW_STORAGE_PREFIX}${_currentRoom ?? 'local'}-screen-snapshot`;
+}
+
+function getNamedWindowSnapshotsStorageKey(): string {
+    return `${WINDOW_STORAGE_PREFIX}${_currentRoom ?? 'local'}-named-screen-snapshots`;
+}
+
+function getScreenWindowsSnapshot(): Record<string, WindowState> {
+    return Object.fromEntries(
+        Object.entries(useWindowStore.getState().windows).filter(([, win]) => !win.isPinned)
+    );
+}
+
+function normalizeSnapshotName(name: string, savedAt: string): string {
+    const trimmed = name.trim();
+    if (trimmed) return trimmed.slice(0, 80);
+    return `Workspace ${new Date(savedAt).toLocaleString('ru-RU')}`;
+}
+
+function readNamedWindowLayoutSnapshots(): NamedWindowLayoutSnapshot[] {
+    try {
+        const data = localStorage.getItem(getNamedWindowSnapshotsStorageKey());
+        if (!data) return [];
+        const parsed = JSON.parse(data);
+        if (!Array.isArray(parsed)) return [];
+
+        return parsed.filter((item): item is NamedWindowLayoutSnapshot =>
+            Boolean(
+                item
+                && typeof item.id === 'string'
+                && typeof item.name === 'string'
+                && typeof item.savedAt === 'string'
+                && typeof item.windows === 'object'
+            )
+        );
+    } catch {
+        return [];
+    }
+}
+
+function writeNamedWindowLayoutSnapshots(snapshots: NamedWindowLayoutSnapshot[]): boolean {
+    try {
+        localStorage.setItem(getNamedWindowSnapshotsStorageKey(), JSON.stringify(snapshots));
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+export function saveCurrentWindowLayoutSnapshot(): boolean {
+    const { highestZIndex } = useWindowStore.getState();
+    const screenWindows = getScreenWindowsSnapshot();
+
+    try {
+        localStorage.setItem(getWindowSnapshotStorageKey(), JSON.stringify({
+            windows: screenWindows,
+            highestZIndex,
+            savedAt: new Date().toISOString(),
+        }));
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+export function restoreWindowLayoutSnapshot(): boolean {
+    try {
+        const data = localStorage.getItem(getWindowSnapshotStorageKey());
+        if (!data) return false;
+        const parsed = JSON.parse(data);
+        if (!parsed?.windows || typeof parsed.windows !== 'object') return false;
+
+        const current = useWindowStore.getState();
+        const pinnedWindows = Object.fromEntries(
+            Object.entries(current.windows).filter(([, win]) => win.isPinned)
+        );
+        useWindowStore.setState({
+            windows: {
+                ...pinnedWindows,
+                ...parsed.windows,
+            },
+            highestZIndex: Math.max(current.highestZIndex, parsed.highestZIndex || 10),
+        });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+export function listNamedWindowLayoutSnapshots(): NamedWindowLayoutSnapshot[] {
+    return readNamedWindowLayoutSnapshots()
+        .sort((left, right) => right.savedAt.localeCompare(left.savedAt));
+}
+
+export function saveNamedWindowLayoutSnapshot(name: string): NamedWindowLayoutSnapshot | null {
+    const { highestZIndex } = useWindowStore.getState();
+    const screenWindows = getScreenWindowsSnapshot();
+    const savedAt = new Date().toISOString();
+    const snapshot: NamedWindowLayoutSnapshot = {
+        id: `workspace-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+        name: normalizeSnapshotName(name, savedAt),
+        savedAt,
+        windowCount: Object.keys(screenWindows).length,
+        windows: screenWindows,
+        highestZIndex,
+    };
+
+    const nextSnapshots = [
+        snapshot,
+        ...readNamedWindowLayoutSnapshots().filter((item) => item.id !== snapshot.id),
+    ].slice(0, 12);
+
+    return writeNamedWindowLayoutSnapshots(nextSnapshots) ? snapshot : null;
+}
+
+export function restoreNamedWindowLayoutSnapshot(id: string): boolean {
+    const snapshot = readNamedWindowLayoutSnapshots().find((item) => item.id === id);
+    if (!snapshot) return false;
+
+    const current = useWindowStore.getState();
+    const pinnedWindows = Object.fromEntries(
+        Object.entries(current.windows).filter(([, win]) => win.isPinned)
+    );
+    useWindowStore.setState({
+        windows: {
+            ...pinnedWindows,
+            ...snapshot.windows,
+        },
+        highestZIndex: Math.max(current.highestZIndex, snapshot.highestZIndex || 10),
+    });
+    return true;
+}
+
+export function deleteNamedWindowLayoutSnapshot(id: string): boolean {
+    const snapshots = readNamedWindowLayoutSnapshots();
+    const nextSnapshots = snapshots.filter((item) => item.id !== id);
+    if (nextSnapshots.length === snapshots.length) return false;
+    return writeNamedWindowLayoutSnapshots(nextSnapshots);
 }

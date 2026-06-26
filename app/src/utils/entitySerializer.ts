@@ -1,9 +1,9 @@
 /**
  * entitySerializer.ts
- * 
+ *
  * Converts Entity objects → Markdown files (with YAML frontmatter).
  * The output is a fully portable .md file that can be opened in Obsidian, VS Code, etc.
- * 
+ *
  * Format:
  * ---
  * type: character
@@ -11,18 +11,33 @@
  * properties:
  *   strength: { base: 18 }
  * ---
- * 
+ *
  * # Entity Name
- * 
+ *
  * Description content here...
  */
 
 import type { Entity, EntityType } from '../types';
+import { normalizeEntitySchemaVersion } from './entitySchema';
 
 // ─── YAML Serialization (minimal, no dependencies) ───
 
 function indent(str: string, level: number): string {
     return '  '.repeat(level) + str;
+}
+
+function leadingSpaces(str: string): number {
+    return str.match(/^\s*/)?.[0].length ?? 0;
+}
+
+function deindentSerializedBlock(serialized: string): string[] {
+    const raw = serialized.startsWith('\n') ? serialized.slice(1) : serialized;
+    const lines = raw.split('\n');
+    const contentLines = lines.filter(line => line.trim().length > 0);
+    const baseIndent = contentLines.length > 0
+        ? Math.min(...contentLines.map(leadingSpaces))
+        : 0;
+    return lines.map(line => line.slice(Math.min(leadingSpaces(line), baseIndent)));
 }
 
 /** Serialize a JS value to YAML string */
@@ -60,7 +75,7 @@ function toYaml(value: unknown, level = 0): string {
             const serialized = toYaml(v, level + 1);
             if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
                 // Object in array
-                const lines = serialized.trim().split('\n');
+                const lines = deindentSerializedBlock(serialized);
                 return indent('- ' + lines[0], level) +
                     (lines.length > 1 ? '\n' + lines.slice(1).map(l => indent('  ' + l, level)).join('\n') : '');
             }
@@ -116,6 +131,8 @@ export function serializeEntity(entity: Entity, options: SerializeOptions = {}):
 
     // Type (always first)
     frontmatter.type = entity.type;
+    frontmatter.schemaVersion = normalizeEntitySchemaVersion(entity.schemaVersion);
+    frontmatter.id = entity.id;
 
     // UID (for user/GM databases)
     if (options.includeUid) {
@@ -198,6 +215,7 @@ export function serializeEntity(entity: Entity, options: SerializeOptions = {}):
         delete props.x;
         delete props.y;
         delete props.targetCanvasId; // Portal runtime data
+        delete props.windowState; // Legacy UI/runtime data; shared pinned windows live on canvasWindowInstances
 
         if (Object.keys(props).length > 0) {
             frontmatter.properties = props;
@@ -264,6 +282,7 @@ export function entityTypeToFolder(type: EntityType): string {
         case 'note': return 'notes';
         case 'canvas': return 'canvases';
         case 'portal': return 'portals';
+        case 'competency': return 'competencies';
         case 'folder': return 'folders';
         default: return 'misc';
     }

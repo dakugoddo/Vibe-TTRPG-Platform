@@ -1,68 +1,104 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useEntity, useEntitiesByParent } from '../../hooks/useEntities';
+import type { Entity } from '../../types';
 import { yjsStore } from '../../store/yjsStore';
 import { AttributeBlock } from './blocks/AttributeBlock';
 import { InventoryBlock } from './blocks/InventoryBlock';
+import { SkillsBlock } from './blocks/SkillsBlock';
+import { CompetenciesBlock } from './blocks/CompetenciesBlock';
+import { AbilitiesBlock } from './blocks/AbilitiesBlock';
+import { ResourcesBlock } from './blocks/ResourcesBlock';
+import { EntityCanvasTokenSettings } from './blocks/EntityCanvasTokenSettings';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
-import { Edit2, Check } from 'lucide-react';
+import { SheetTabs, type SheetTab } from '../ui/SheetTabs';
+import { WikiLinkTextarea } from '../ui/WikiLinkTextarea';
+import { Activity, Backpack, BookOpen, Box, Brain, Check, Dices, Edit2, Gauge, Sparkles } from 'lucide-react';
+import { glass } from '../../utils/theme';
 
 interface CharacterSheetProps {
     entityId: string;
     isFullMode: boolean;
 }
 
+type CharacterTab = 'stats' | 'skills' | 'competencies' | 'abilities' | 'resources' | 'inventory' | 'notes' | 'canvas';
+
+function getEntityOwnerId(entity: Entity): string | undefined {
+    const owner = entity.properties?._playerOwner;
+    return typeof owner === 'string' ? owner : undefined;
+}
+
 export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
 
+    const { t } = useTranslation();
     const entity = useEntity(entityId);
     const children = useEntitiesByParent(entityId);
-    const [activeTab, setActiveTab] = useState<'stats' | 'inventory' | 'notes'>('stats');
+    const [activeTab, setActiveTab] = useState<CharacterTab>('stats');
     const [isEditingNotes, setIsEditingNotes] = useState(false);
 
     if (!entity) return null;
+    const canEditCharacter = yjsStore.canModify(entity.database, getEntityOwnerId(entity));
 
-    const handleUpdateDescription = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        yjsStore.updateEntity(entity.id, { description: e.target.value });
+    const handleUpdateDescription = (value: string) => {
+        if (!canEditCharacter) return;
+        yjsStore.updateEntity(entity.id, { description: value });
     };
 
     const inventoryCount = children.filter(e => e.type === 'object').length;
+    const competenciesCount = children.filter(e => e.type === 'competency').length;
+    const abilitiesCount = children.filter(e => e.type === 'ability').length;
+    const resourcesCount = entity.properties?.resources && typeof entity.properties.resources === 'object'
+        ? Object.keys(entity.properties.resources).length
+        : 0;
+    const tabs: SheetTab<CharacterTab>[] = [
+        { id: 'stats', label: t('characterSheet.tabs.stats'), icon: Activity },
+        { id: 'skills', label: t('characterSheet.tabs.skills'), icon: Dices },
+        { id: 'competencies', label: t('characterSheet.tabs.competencies'), badge: competenciesCount, icon: Brain },
+        { id: 'abilities', label: t('characterSheet.tabs.abilities'), badge: abilitiesCount, icon: Sparkles },
+        { id: 'resources', label: t('characterSheet.tabs.resources'), badge: resourcesCount, icon: Gauge },
+        { id: 'inventory', label: t('characterSheet.tabs.inventory'), badge: inventoryCount, icon: Backpack },
+        { id: 'notes', label: t('characterSheet.tabs.notes'), icon: BookOpen },
+        { id: 'canvas', label: t('characterSheet.tabs.settings'), icon: Box },
+    ];
 
     return (
         <div className="flex flex-col h-full animate-in fade-in duration-200">
-            {/* Tabs */}
-            <div className="flex border-b border-white/10 mb-4 select-none overflow-x-auto no-scrollbar pt-2 pl-2">
-                <button
-                    onClick={() => setActiveTab('stats')}
-                    className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${activeTab === 'stats' ? 'text-white border-white bg-white/10' : 'text-white/40 border-transparent hover:text-white/80 hover:bg-white/5'}`}
-                >
-                    Stats
-                </button>
-                <button
-                    onClick={() => setActiveTab('inventory')}
-                    className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 whitespace-nowrap ${activeTab === 'inventory' ? 'text-white border-white bg-white/10' : 'text-white/40 border-transparent hover:text-white/80 hover:bg-white/5'}`}
-                >
-                    Inventory ({inventoryCount})
-                </button>
-                <button
-                    onClick={() => setActiveTab('notes')}
-                    className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap ${activeTab === 'notes' ? 'text-white border-white bg-white/10' : 'text-white/40 border-transparent hover:text-white/80 hover:bg-white/5'}`}
-                >
-                    Notes
-                    {activeTab === 'notes' && (
-                        <button
-                            onClick={(e) => { e.stopPropagation(); setIsEditingNotes(!isEditingNotes); }}
-                            className={`p-1 rounded transition-colors ${isEditingNotes ? 'bg-white/60 text-white' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
-                        >
-                            {isEditingNotes ? <Check size={12} /> : <Edit2 size={12} />}
-                        </button>
-                    )}
-                </button>
-            </div>
+            <SheetTabs
+                tabs={tabs}
+                activeTab={activeTab}
+                onChange={setActiveTab}
+                endSlot={activeTab === 'notes' && canEditCharacter ? (
+                    <button
+                        onClick={() => setIsEditingNotes(!isEditingNotes)}
+                        className={`grid h-[var(--vibe-tab-height)] w-[var(--vibe-tab-height)] place-items-center rounded-[var(--vibe-radius-sm)] border transition-colors ${isEditingNotes ? glass.tabActive : glass.tabIdle}`}
+                        title={isEditingNotes ? t('entityWindow.finishEditing') : t('characterSheet.editNotes')}
+                    >
+                        {isEditingNotes ? <Check size={14} /> : <Edit2 size={14} />}
+                    </button>
+                ) : null}
+            />
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
                 {activeTab === 'stats' && (
                     <AttributeBlock entity={entity} />
+                )}
+
+                {activeTab === 'skills' && (
+                    <SkillsBlock entity={entity} />
+                )}
+
+                {activeTab === 'competencies' && (
+                    <CompetenciesBlock entity={entity} />
+                )}
+
+                {activeTab === 'abilities' && (
+                    <AbilitiesBlock entity={entity} />
+                )}
+
+                {activeTab === 'resources' && (
+                    <ResourcesBlock entity={entity} />
                 )}
 
                 {activeTab === 'inventory' && (
@@ -71,31 +107,37 @@ export function CharacterSheet({ entityId, isFullMode }: CharacterSheetProps) {
 
                 {activeTab === 'notes' && (
                     <div className="h-full flex flex-col min-h-[150px]">
-                        {isEditingNotes ? (
-                            <textarea
+                        {isEditingNotes && canEditCharacter ? (
+                            <WikiLinkTextarea
                                 value={entity.description || ''}
-                                onChange={handleUpdateDescription}
-                                placeholder="Character backstory and notes..."
-                                className="flex-1 w-full bg-black/30 border border-white/10 rounded-lg p-3 text-sm text-white/90 resize-none outline-none focus:ring-1 focus:ring-white/60 custom-scrollbar font-sans backdrop-blur-md"
+                                onValueChange={handleUpdateDescription}
+                                excludeEntityId={entity.id}
+                                placeholder={t('characterSheet.notesPlaceholder')}
+                                className={`${glass.input} flex-1 w-full resize-none p-[var(--vibe-space-block)] text-sm custom-scrollbar font-sans`}
                                 autoFocus
                             />
                         ) : (
-                            <div className="flex-1 bg-black/20 rounded-lg border border-transparent p-3 backdrop-blur-md text-white/80" onDoubleClick={() => setIsEditingNotes(true)}>
-                                {entity.description ? <MarkdownRenderer content={entity.description} /> : <span className="text-white/30 italic cursor-pointer">No notes provided. Double click to text.</span>}
+                            <div className={`${glass.blockBg} flex-1 text-[var(--vibe-text-muted)]`} onDoubleClick={() => { if (canEditCharacter) setIsEditingNotes(true); }}>
+                                {entity.description
+                                    ? <MarkdownRenderer content={entity.description} entityId={entity.id} />
+                                    : <span className="cursor-pointer italic text-[var(--vibe-text-faint)]">{canEditCharacter ? t('characterSheet.noNotesEditable') : t('characterSheet.noNotes')}</span>}
                             </div>
                         )}
                     </div>
                 )}
+
+                {activeTab === 'canvas' && (
+                    <EntityCanvasTokenSettings entity={entity} canEdit={canEditCharacter} />
+                )}
             </div>
 
             {
-                !isFullMode && activeTab !== 'notes' && (
-                    <div className="mt-4 pt-3 border-t border-white/10 text-[10px] text-white/40 text-center italic">
-                        Expand window to see more details.
+                !isFullMode && activeTab !== 'notes' && activeTab !== 'skills' && activeTab !== 'competencies' && activeTab !== 'abilities' && activeTab !== 'resources' && activeTab !== 'canvas' && (
+                    <div className="mt-4 border-t border-[var(--vibe-border-subtle)] pt-3 text-center text-[10px] italic text-[var(--vibe-text-faint)]">
+                        {t('characterSheet.expandForDetails')}
                     </div>
                 )
             }
         </div >
     );
 }
-

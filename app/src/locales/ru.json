@@ -1,8 +1,1158 @@
 {
   "login": {
-    "title": "VIBE OS / ПОДКЛЮЧЕНИЕ",
+    "title": "ETERNITY TABLE / ПОДКЛЮЧЕНИЕ",
     "directoryPlaceholder": "ИДЕНТИФИКАТОР КОМНАТЫ",
-    "connectBtn": "ИНИЦИАЛИЗИРОВАТЬ ПОДКЛЮЧЕНИЕ"
+    "connectBtn": "ИНИЦИАЛИЗИРОВАТЬ ПОДКЛЮЧЕНИЕ",
+    "runtime": {
+      "desktop": "Electron desktop",
+      "browser": "Браузерный клиент"
+    },
+    "errors": {
+      "desktopServerOffline": "Локальный сервер приложения не отвечает. Перезапусти Electron dev или проверь, что embedded server запустился на порту 3001.",
+      "fileServerOffline": "Локальный файловый сервер не отвечает. Запусти start.bat или server/npm run dev, затем повтори открытие мира.",
+      "createWorldPath": "Не удалось создать мир по этому пути. Проверь, что папка доступна для записи.",
+      "worldFolderMissing": "Папка мира не найдена. Проверь путь или выбери папку мира через кнопку.",
+      "openWorldFailed": "Не удалось открыть мир. Проверь путь к папке и состояние локального сервера.",
+      "joinServerNetwork": "Не удалось связаться с {{host}}:3001. Проверь IP, Radmin/Hamachi, Firewall Windows и что у ГМа запущен Eternity Table с открытым миром.",
+      "joinServerFallback": "{{error}}. Проверь адрес {{host}}:3001 и попроси ГМа открыть мир.",
+      "connectionError": "Ошибка подключения",
+      "enterPlayerName": "Пожалуйста, введите ваше имя перед подключением",
+      "fileServerHttp": "Файловый сервер ответил HTTP {{status}}",
+      "serverOnlineNoWorld": "Сервер онлайн, но ГМ ещё не открыл мир. Попроси ГМа открыть мир на хосте.",
+      "previewWorldUnavailable": "Preview-мир доступен только в Electron-сборке и не найден в ресурсах приложения."
+    },
+    "status": {
+      "desktopServerPreparing": "Desktop runtime готовит локальный сервер.",
+      "serverProbeIdle": "Проверка локального сервера ещё не запускалась.",
+      "checkingLocalServer": "Проверяю http://localhost:3001...",
+      "serverOnlineWorld": "Сервер работает, открыт мир: {{worldName}}.",
+      "serverOnlineNoWorld": "Сервер работает. Выбери или создай мир, чтобы открыть комнату.",
+      "creatingWorld": "Создаю мир...",
+      "openingWorld": "Открываю мир...",
+      "worldOpenedPrefix": "Мир открыт:",
+      "worldOpened": "Мир открыт: {{name}}",
+      "checkingServer": "Проверяю сервер {{host}}...",
+      "connectingProfile": "Подключаю профиль к миру {{worldName}}..."
+    },
+    "gmName": "ГМ",
+    "hostWorldAsGm": "Вести мир как ГМ",
+    "joinAsPlayer": "Подключиться как игрок",
+    "uiDemo": "Демонстрация стилей UI",
+    "previewWorld": {
+      "name": "Preview World",
+      "open": "Открыть preview-мир",
+      "description": "Демонстрационный мир из комплекта приложения. При каждом открытии создаётся временная копия; изменения не сохраняются между запусками preview."
+    },
+    "worlds": "Миры",
+    "localServer": "Локальный сервер",
+    "checkServer": "Проверить",
+    "openWorld": "Открыть мир",
+    "createWorld": "Создать мир",
+    "worldNamePlaceholder": "Название мира",
+    "worldPathPlaceholder": "Путь к папке мира",
+    "createAndOpenWorld": "Создать и открыть мир",
+    "connection": "Подключение",
+    "ipLabel": "IP",
+    "worldLabel": "Мир",
+    "localServerLabel": "Локальный",
+    "newConnection": "Новое подключение",
+    "playerNameLabel": "Ваше имя (будет видно в чате и ГМу)",
+    "playerNamePlaceholder": "Введите имя персонажа или ник",
+    "serverLabelName": "Название (для сохранения)",
+    "serverLabelPlaceholder": "Например: Сервер Влада",
+    "hostIpLabel": "IP-адрес хоста",
+    "hostIpPlaceholder": "Например: 26.54.12.3 (пусто для Local)",
+    "savedServerFallback": "Сервер ({{host}})",
+    "saveAndConnect": "Сохранить и подключиться",
+    "loadingEntities": "Загрузка сущностей: {{loaded}} / {{total}}",
+    "version": "v0.1.0 beta — local-first world files"
+  },
+  "common": {
+    "close": "Закрыть",
+    "reset": "Сброс",
+    "back": "↺ Назад",
+    "delete": "Удалить",
+    "select": "Выбрать",
+    "cancel": "Отмена",
+    "retry": "Повторить",
+    "system": "Система",
+    "collapsePanel": "Свернуть панель",
+    "loading": "Загрузка..."
+  },
+  "styleDemo": {
+    "title": "Варианты раскладки окна",
+    "sampleCharacter": "Артур (Паладин)",
+    "variants": {
+      "compactLists": {
+        "short": "Компактные списки"
+      },
+      "cardView": {
+        "short": "Карточный вид"
+      },
+      "detailedRadial": {
+        "short": "Подробный / радиальный"
+      }
+    },
+    "tabs": {
+      "stats": "ХАРАКТЕРИСТИКИ",
+      "inventory": "ИНВЕНТАРЬ",
+      "notes": "ЗАМЕТКИ"
+    },
+    "context": {
+      "title": "Контекстное меню",
+      "settings": "Настроить",
+      "toInventory": "В инвентарь"
+    },
+    "sections": {
+      "woundsBar": "Накопление РАН (полоса)",
+      "woundsSegments": "Накопление РАН (сегменты)",
+      "woundsScale": "Накопление РАН (шкала)",
+      "powerSystem": "СИСТЕМА: МОЩЬ",
+      "powerCards": "СИСТЕМА: МОЩЬ (карточки)",
+      "powerStacked": "СИСТЕМА: МОЩЬ (стековая шкала)",
+      "attributesCompact": "Атрибуты (компактно)",
+      "attributesGrid": "Атрибуты (сетка)",
+      "attributesInline": "Атрибуты (инлайн-теги)",
+      "inventoryList": "Экипировка (список)",
+      "inventoryGrid": "Экипировка (сетка)",
+      "inventoryDetailed": "Экипировка (детально)",
+      "logNotes": "ЛОГ И ЗАМЕТКИ"
+    },
+    "labels": {
+      "of": "из",
+      "heavilyWounded": "Тяжело ранен",
+      "healthRemaining": "Остаток здоровья:",
+      "active": "Актив",
+      "activePower": "Активно",
+      "baseColon": "База: {{value}}",
+      "baseValue": "База {{value}}",
+      "astral": "Астрал",
+      "ether": "Эфир",
+      "aura": "Аура",
+      "constitution": "Телосложение",
+      "agility": "Ловкость",
+      "thinking": "Мышление",
+      "body": "Тело",
+      "thought": "Мысль",
+      "charisma": "Харизма",
+      "figure": "Фигура",
+      "wounds": "РАН",
+      "healthy": "Здоров",
+      "death": "Смерть"
+    },
+    "items": {
+      "longSword": "Длинный меч",
+      "meleeWeapon": "Оружие ближнего боя",
+      "damageValue": "Урон {{value}}",
+      "oldShield": "Старый щит",
+      "armor": "Броня",
+      "armorValue": "Броня {{value}}",
+      "torch": "Факел",
+      "light": "Освещение",
+      "quantityValue": "Кол-во: {{value}}",
+      "weapon": "Оружие",
+      "item": "Предмет",
+      "strengthPotion": "Зелье сил",
+      "twoHanded": "Двуручное",
+      "damage": "Урон",
+      "accuracy": "Точность",
+      "range": "Дистанция",
+      "closeRange": "Близкая",
+      "durability": "Прочность",
+      "defense": "Защита",
+      "penalty": "Штраф"
+    },
+    "actions": {
+      "woundMinus": "- Рана",
+      "woundPlus": "+ Рана",
+      "drink": "Выпить"
+    },
+    "notes": {
+      "story": "Здесь находится текст истории персонажа...",
+      "lore": "Здесь находится текст лора персонажа или заметки..."
+    }
+  },
+  "leftDrawer": {
+    "personalInventory": "Личный инвентарь",
+    "inventoryForPlayer": "Инвентарь: {{player}}",
+    "selectedPlayerItems": "Предметы выбранного игрока",
+    "gmItems": "Мои предметы и инвентари игроков",
+    "playerItems": "Предметы, заметки и персонажи",
+    "myItems": "Мои предметы",
+    "noOtherPlayers": "Нет других игроков"
+  },
+  "rightDrawer": {
+    "tabs": {
+      "database": {
+        "label": "Хранилище",
+        "title": "База сущностей",
+        "subtitle": "Сущности, пространства и быстрые действия"
+      },
+      "assets": {
+        "label": "Файлы",
+        "title": "Файлы мира",
+        "subtitle": "Ассеты, изображения и SFX preview"
+      },
+      "chat": {
+        "label": "Чат и броски",
+        "title": "Журнал сессии",
+        "subtitle": "Чат, броски и системные события"
+      }
+    }
+  },
+  "assetPicker": {
+    "title": "Изображение",
+    "subtitle": "Загрузить файл или выбрать asset",
+    "newFile": "Новый файл",
+    "searchPlaceholder": "Поиск...",
+    "hostOnlyHint": "Выбор из `assets/` доступен на Host. Файл всё ещё можно вставить через загрузку.",
+    "loadingAssets": "Загружаю assets...",
+    "noImages": "Изображения не найдены"
+  },
+  "assetBrowser": {
+    "worldFiles": "Файлы мира",
+    "hostOnlyDescription": "Браузер файлов доступен на стороне Host/ГМа, потому что source of truth лежит на диске хоста. Звук вынесен в отдельный модуль и не управляется из вкладки файлов.",
+    "uploadOrRequest": "Загрузить / запросить",
+    "uploadHint": "До 50 MB файл загружается сразу. Больше 50 MB отправляется заявка ГМу, а передача начинается после одобрения.",
+    "headerSubtitle": "assets/ сейчас, аудио и 3D позже",
+    "addFiles": "Добавить файлы",
+    "refreshList": "Обновить список",
+    "searchPlaceholder": "Поиск файлов...",
+    "sortLabel": "Сорт",
+    "selectedCount": "Выбрано {{count}}",
+    "showInExplorer": "Показать в проводнике",
+    "clearSelection": "Сбросить выделение",
+    "loadingFiles": "Загружаю файлы...",
+    "filesNotFound": "Файлы не найдены",
+    "dragToCanvas": "Перетащить на канвас",
+    "deleteFile": "Удалить файл",
+    "filters": {
+      "all": "Все",
+      "image": "Фото",
+      "audio": "Аудио",
+      "model": "3D",
+      "video": "Видео",
+      "pdf": "PDF",
+      "other": "Прочее"
+    },
+    "sort": {
+      "name": "Имя",
+      "modified": "Новые",
+      "size": "Размер",
+      "type": "Тип"
+    },
+    "preview": {
+      "loading": "Загрузка",
+      "failed": "Не удалось загрузить превью"
+    },
+    "upload": {
+      "fileUploaded": "Файл загружен",
+      "cancelled": "Загрузка отменена",
+      "failed": "Загрузка не удалась",
+      "fileTooLarge": "Файл слишком большой",
+      "fileTooLargeMessage": "{{file}} • {{size}}. Быстрая загрузка сейчас ограничена 250 MB.",
+      "fileUpload": "Загрузка файла",
+      "largeFile": "Крупный файл",
+      "fastTooLargeError": "Файл \"{{file}}\" слишком большой для быстрой загрузки. Скопируй крупные аудио/модели прямо в папку assets/."
+    },
+    "inline": {
+      "title": "Старые canvas-изображения",
+      "summary": "{{count}} inline-файл(ов), примерно {{kb}} KB",
+      "migrateTitle": "Перенести старые картинки из canvas в assets/",
+      "migrating": "Переношу",
+      "toAssets": "В assets",
+      "migratedMessage": "Перенесено canvas-изображений в assets/: {{count}}"
+    },
+    "delete": {
+      "title": "Удаление файла",
+      "description": "Удалить «{{name}}» из assets/? Если файл уже используется на канвасе или в сущности, ссылка на него станет битой."
+    },
+    "deleteSelected": {
+      "title": "Массовое удаление файлов",
+      "description": "Удалить выбранные файлы ({{count}}) из assets/? {{names}}{{hidden}}. Если они уже используются на canvas или в сущностях, ссылки станут битыми.",
+      "hiddenSuffix": " и ещё {{count}}",
+      "confirm": "Удалить выбранные"
+    }
+  },
+  "canvasToolbar": {
+    "undo": "Отменить (Ctrl+Z)",
+    "redo": "Повторить (Ctrl+Shift+Z / Ctrl+Y)",
+    "moreTools": "Ещё инструменты",
+    "recenter": "Рецентр",
+    "tools": {
+      "select": "Выбор",
+      "pen": "Перо",
+      "line": "Линия",
+      "rect": "Прямоугольник (2×клик → текст)",
+      "ellipse": "Эллипс",
+      "image": "Изображение",
+      "frame": "Фрейм",
+      "lasso": "Лассо"
+    },
+    "grid": {
+      "title": "Сетка ({{type}}, {{spacing}}px)",
+      "squareShort": "квадраты",
+      "hexShort": "гексы",
+      "show": "Показать сетку",
+      "type": "Тип сетки",
+      "square": "Квадраты",
+      "hex": "Гексы",
+      "spacing": "Шаг сетки (px)"
+    },
+    "elementTypes": {
+      "line": "Линия",
+      "arrow": "Стрелка",
+      "rectangle": "Прямоугольник",
+      "ellipse": "Эллипс",
+      "text": "Текст",
+      "image": "Изображение",
+      "frame": "Фрейм"
+    },
+    "sections": {
+      "drawings": "Рисунки",
+      "tokensEntities": "Токены и Сущности"
+    },
+    "fog": {
+      "title": "Туман войны",
+      "closeMode": "Закрыть режим тумана",
+      "revealBrush": "Просвет: Кисть",
+      "revealRect": "Просвет: Область",
+      "coverBrush": "Скрыть: Кисть",
+      "coverRect": "Скрыть: Область",
+      "coverAll": "Покрыть всё туманом",
+      "clearTitle": "Очистить туман с канваса",
+      "clearDescription": "Это полностью уберёт туман войны с текущего канваса. Все игроки увидят карту целиком. Продолжить?",
+      "clearConfirm": "Очистить",
+      "hideGmFog": "Скрыть туман ГМа",
+      "showGmFog": "Показать туман ГМа",
+      "chooseTool": "Выберите инструмент"
+    },
+    "strokeStyles": {
+      "solid": "Сплошная",
+      "dashed": "Пунктир",
+      "dotted": "Точки"
+    },
+    "lineCaps": {
+      "none": "Нет",
+      "arrow": "Стрелка",
+      "circle": "Круг",
+      "diamond": "Ромб"
+    },
+    "align": {
+      "left": "По левому краю",
+      "center": "По горизонтали",
+      "right": "По правому краю",
+      "top": "По верхнему краю",
+      "middle": "По вертикали",
+      "bottom": "По нижнему краю"
+    },
+    "style": {
+      "stroke": "Обводка",
+      "fill": "Заливка",
+      "strokeShort": "Обв",
+      "fillShort": "Зал",
+      "textShort": "Ткст",
+      "strokeOpacityTitle": "Прозрачность обводки, %",
+      "strokeOpacityAria": "Прозрачность обводки в процентах",
+      "fillOpacityTitle": "Прозрачность заливки, %",
+      "fillOpacityAria": "Прозрачность заливки в процентах",
+      "textOpacityTitle": "Прозрачность текста, %",
+      "textOpacityAria": "Прозрачность текста в процентах",
+      "font": "Шрифт",
+      "size": "Размер",
+      "alignment": "Выравнивание",
+      "textColor": "Цвет текста",
+      "width": "Толщина",
+      "strokeStyle": "Стиль",
+      "visual": "Вид",
+      "line": "Линия",
+      "start": "Начало",
+      "end": "Конец",
+      "entity": "Сущность"
+    },
+    "visualStyles": {
+      "clean": "Ровно",
+      "soft": "Мягко",
+      "sketch": "Скетч"
+    },
+    "visualStyleDescriptions": {
+      "clean": "Чистая геометрия для схем, карт и аккуратных UI-блоков.",
+      "soft": "Легкий подсвет обводки, чтобы важные связи читались на темной карте.",
+      "sketch": "Стабильный рукописный дубль обводки без случайного мерцания."
+    },
+    "lineModes": {
+      "straight": "Прямая",
+      "curved": "Кривая",
+      "elbow": "Угол"
+    },
+    "lineModeDescriptions": {
+      "straight": "Ломаная без сглаживания: точная схема, маршруты, границы.",
+      "curved": "Сглаженная линия для свободных связей и рукописных набросков.",
+      "elbow": "Ортогональная трассировка с прямыми углами для графов и схем."
+    },
+    "tokenFrames": {
+      "plain": "Просто",
+      "ring": "Кольцо",
+      "badge": "Плашка",
+      "hex": "Гекс"
+    },
+    "tokenFrameDescriptions": {
+      "plain": "Минимальная рамка без декоративных слоев.",
+      "ring": "Классическая VTT-фишка с внешним кольцом и мягким свечением.",
+      "badge": "Фишка на компактной подложке с читабельной подписью.",
+      "hex": "Угловатая рамка для тактических сцен и жетонов."
+    },
+    "entityToken": {
+      "tokenTitle": "Компактная фишка сущности",
+      "token": "Фишка",
+      "cardTitle": "Карточка сущности с сохранением пропорций изображения",
+      "card": "Карточка",
+      "hideName": "Скрыть название",
+      "showName": "Показать название",
+      "nameHint": "Alt+2×клик → название"
+    },
+    "layers": {
+      "title": "Слои",
+      "toBack": "На задний план",
+      "backward": "Назад",
+      "forward": "Вперёд",
+      "toFront": "На передний план"
+    }
+  },
+  "dragDrop": {
+    "title": "Действие с сущностью",
+    "move": "Переместить",
+    "copy": "Копировать",
+    "closeMenu": "Закрыть меню"
+  },
+  "entityLink": {
+    "notFound": "Сущность не найдена",
+    "notFoundNamed": "Сущность '{{name}}' не найдена",
+    "noDescription": "Нет описания"
+  },
+  "entityDatabase": {
+    "defaultHeader": "БАЗА СУЩНОСТЕЙ",
+    "createInGroup": "Создать: {{group}}",
+    "searchFields": {
+      "name": "имя",
+      "description": "описание",
+      "property": "свойства",
+      "tag": "теги",
+      "type": "тип",
+      "database": "база"
+    },
+    "groups": {
+      "canvas": "Пространства",
+      "character": "Персонажи",
+      "object": "Предметы",
+      "competency": "Компетенции",
+      "ability": "Способности",
+      "note": "Заметки",
+      "tag": "Теги",
+      "attack": "Атаки"
+    },
+    "quickCreate": {
+      "object": "Создать предмет",
+      "competency": "Создать компетенцию",
+      "ability": "Создать способность",
+      "attack": "Создать атаку"
+    },
+    "contextMenu": {
+      "title": "Контекстное меню",
+      "rename": "Переименовать",
+      "duplicate": "Дублировать",
+      "openFocus": "Открыть / сфокусировать",
+      "pinToCanvas": "Закрепить на канвасе",
+      "showParent": "Показать родителя",
+      "copyId": "Копировать ID",
+      "copyWikiLink": "Копировать [[ссылку]]",
+      "showInExplorer": "Показать в проводнике",
+      "exportMd": "Экспорт .md",
+      "giveToPlayer": "Выдать игроку"
+    },
+    "entitiesCount": "{{count}} сущностей",
+    "expandChildren": "Развернуть вложенные сущности",
+    "collapseChildren": "Свернуть вложенные сущности",
+    "empty": "Пусто",
+    "importMdTitle": "Импорт .md файлов",
+    "importMd": "Импорт .md",
+    "searchPlaceholder": "Поиск: атлетика 3, type:character, prop:hp.current>=7",
+    "clearSearch": "Очистить поиск",
+    "savedSearches": "Сохранённые",
+    "removeSavedSearch": "Убрать сохранённый поиск",
+    "recentSearches": "Недавние",
+    "clearSearchHistory": "Очистить историю поиска",
+    "searchMatches": "{{count}} совпадений",
+    "searchContextCount": "{{count}} с контекстом",
+    "searchAlreadySaved": "Поиск уже сохранён",
+    "saveCurrentSearch": "Сохранить текущий поиск",
+    "saved": "Сохранено",
+    "save": "Сохранить",
+    "all": "Все",
+    "selected": "Выбрано {{count}}",
+    "deletableCount": "Доступно для удаления: {{count}}",
+    "clearSelection": "Сбросить выделение",
+    "rootCanvasName": "Корневое пространство",
+    "noSearchResults": "Ничего не найдено",
+    "createFolder": "Создать папку",
+    "emptyCategory": "В этой категории пусто",
+    "openInExplorerFailed": "Не удалось открыть файл сущности в проводнике: {{name}}",
+    "givenToPlayerMessage": "🎁 {{name}} выдан игроку {{player}}",
+    "bulkDelete": {
+      "title": "Массовое удаление",
+      "description": "Удалить выбранные сущности ({{count}})? {{preview}}. Вложенные выбранные сущности будут удалены вместе с родителями.",
+      "hiddenMore": " и ещё {{count}}",
+      "confirm": "Удалить выбранные",
+      "buttonTitle": "Удалить выбранные сущности"
+    },
+    "giveToPlayer": {
+      "title": "Выдать игроку",
+      "subtitle": "Выберите получателя",
+      "noPlayers": "Нет доступных игроков",
+      "playerInventory": "Инвентарь игрока"
+    }
+  },
+  "entityWindow": {
+    "hiddenEntity": "Скрытая сущность",
+    "removeFromCanvas": "Убрать с канваса",
+    "noEntityFileAccess": "Нет доступа к файлу этой сущности",
+    "tabs": {
+      "description": "Описание",
+      "settings": "Настройки"
+    },
+    "quickCreate": {
+      "object": "Создать предмет",
+      "competency": "Создать компетенцию",
+      "ability": "Создать способность",
+      "attack": "Создать атаку"
+    },
+    "relations": {
+      "links": "Связи",
+      "parent": "Родитель",
+      "children": "Вложенные",
+      "tags": "Теги",
+      "backlinks": "Обратные ссылки"
+    },
+    "layout": {
+      "title": "Раскладка окна",
+      "screenOnly": "Раскладка доступна для экранных окон",
+      "left": "Левая половина",
+      "right": "Правая половина",
+      "topLeft": "Верхний левый угол",
+      "topRight": "Верхний правый угол",
+      "bottomLeft": "Нижний левый угол",
+      "bottomRight": "Нижний правый угол",
+      "center": "Центр",
+      "wideCenter": "Широкий центр",
+      "grid": "Разложить все окна сеткой",
+      "cascade": "Каскадом",
+      "saveSnapshot": "Сохранить раскладку",
+      "restoreSnapshot": "Восстановить раскладку"
+    },
+    "pinToCanvas": "Закрепить на канвасе",
+    "unpinFromCanvas": "Открепить от канваса",
+    "noCanvasEditRight": "Нет права менять этот canvas",
+    "noActiveCanvasEditRight": "Нет права менять активный canvas",
+    "minimizeToIcon": "Свернуть в иконку",
+    "compactMode": "Обычный режим",
+    "technicalMode": "Технический режим: свойства, скрытые теги и System ID",
+    "closeWindow": "Закрыть окно",
+    "finishEditing": "Завершить редактирование",
+    "editDescription": "Редактировать описание",
+    "descriptionPlaceholder": "Введите markdown-описание...",
+    "noDescriptionEditable": "Описание не заполнено. Дважды кликните, чтобы редактировать.",
+    "noDescription": "Описание не заполнено.",
+    "properties": "Свойства",
+    "noPropertiesRecorded": "Свойства не записаны",
+    "hiddenTagsTitle": "TAGS (Скрытые теги)",
+    "unknownTag": "Неизвестный тег",
+    "noTags": "Нет тегов",
+    "add": "Добавить",
+    "attachHiddenTags": "Прикрепить (Скрытые теги)",
+    "removeTag": "Удалить тег",
+    "contextMenu": {
+      "title": "Контекстное меню",
+      "rename": "Переименовать",
+      "duplicate": "Дублировать",
+      "copyWikiLink": "Копировать [[ссылку]]",
+      "deleteEntity": "Удалить сущность"
+    },
+    "deleteConfirm": {
+      "title": "Удаление сущности",
+      "description": "Вы уверены, что хотите удалить \"{{name}}\"?"
+    }
+  },
+  "characterSheet": {
+    "tabs": {
+      "stats": "Статы",
+      "skills": "Навыки",
+      "competencies": "Компетенции",
+      "abilities": "Способности",
+      "resources": "Ресурсы",
+      "inventory": "Инвентарь",
+      "notes": "Заметки",
+      "settings": "Настройки"
+    },
+    "editNotes": "Редактировать заметки",
+    "notesPlaceholder": "История персонажа и заметки...",
+    "noNotesEditable": "Заметки не заполнены. Дважды кликните, чтобы редактировать.",
+    "noNotes": "Заметки не заполнены.",
+    "expandForDetails": "Разверните окно, чтобы увидеть больше деталей."
+  },
+  "tagEditor": {
+    "title": "Эффекты и Модификаторы",
+    "pathPlaceholder": "Путь (напр. attributes.hp.max)",
+    "pathTitle": "Путь к характеристике (через точку)",
+    "modifierTypes": {
+      "add": "Сложение",
+      "multiply": "Множитель",
+      "min": "Минимум",
+      "max": "Максимум"
+    },
+    "empty": "Тег не имеет механических эффектов",
+    "addModifier": "Добавить модификатор"
+  },
+  "tagPicker": {
+    "defaultTitle": "Выберите тег",
+    "searchOrCreate": "Поиск или создание...",
+    "noMatchingTags": "Не найдено подходящих тегов",
+    "createTag": "Создать \"{{name}}\""
+  },
+  "canvasTokenSettings": {
+    "title": "Настройки на канвасе",
+    "mode": "Режим",
+    "modes": {
+      "token": "Фишка",
+      "art": "Карточка"
+    },
+    "frame": "Рамка",
+    "nameOnCanvas": "Имя на канвасе",
+    "frameColor": "Цвет рамки",
+    "tokenPhoto": "Фото фишки",
+    "cardPhoto": "Фото карточки",
+    "mainPhotoHint": "Пусто = использовать основное фото сущности",
+    "mainPhoto": "Основное фото"
+  },
+  "canvas": {
+    "textPlaceholder": "Введите текст...",
+    "objectNamePlaceholder": "Название объекта...",
+    "gm": "ГМ",
+    "notifications": {
+      "unsupportedFileTitle": "Неподдерживаемый файл canvas",
+      "imageFileRequired": "{{name}}: нужен image-файл.",
+      "fileTooLargeTitle": "Файл слишком большой",
+      "quickUploadLimit": "{{name}} • {{size}}. Быстрый canvas upload сейчас ограничен 250 MB.",
+      "largeImageUpload": "Загрузка крупного изображения",
+      "imageUpload": "Загрузка изображения на canvas",
+      "imageUploaded": "Изображение загружено",
+      "canvasChangedTitle": "Файл загружен, но canvas сменился",
+      "canvasChangedMessage": "{{name}}: открой исходный canvas и перетащи файл из браузера файлов.",
+      "uploadFailed": "Canvas upload не удался",
+      "approvalSent": "Запрос отправлен ГМу",
+      "uploadRejected": "Загрузка отклонена",
+      "fileNotAdded": "Файл не добавлен на canvas",
+      "dragDropImagesOnly": "{{name}}: canvas drag/drop сейчас принимает изображения."
+    },
+    "deleteSelection": {
+      "title": "Удаление сущности с канваса",
+      "onlyEntities": "Удалить {{count}} карточк(у/и) или фишк(у/и) сущности с канваса?",
+      "mixed": "В выделении есть {{count}} карточк(а/и) или фишк(а/и) сущности. Удалить всё выделение с канваса?"
+    },
+    "entityDrop": {
+      "title": "Вставить сущность",
+      "token": "Фишка",
+      "card": "Карточка"
+    },
+    "compact": {
+      "tabs": {
+        "stats": "Статы",
+        "actions": "Действия",
+        "resources": "Ресурсы",
+        "notes": "Заметки"
+      },
+      "emptyStats": "Быстрые статы пока не заполнены.",
+      "counters": {
+        "attacks": "Атаки",
+        "abilities": "Способ.",
+        "items": "Вещи"
+      },
+      "actionBadges": {
+        "attack": "АТК",
+        "ability": "СП"
+      },
+      "characterAttack": "Атака персонажа",
+      "ability": "Способность",
+      "noFormula": "без формулы",
+      "emptyActions": "Атаки и способности пока не добавлены.",
+      "emptyResources": "Ресурсы и вещи пока не заполнены."
+    },
+    "openEntity": "Открыть сущность",
+    "context": {
+      "showAsCard": "Показать как карточку",
+      "showAsToken": "Показать как фишку",
+      "showName": "Показать имя",
+      "hideName": "Скрыть имя",
+      "frame": "Рамка"
+    },
+    "portal": {
+      "title": "ПОРТАЛ",
+      "openTarget": "Открыть окно области",
+      "deleteTitle": "Удаление портала",
+      "deleteDescription": "Вы уверены, что хотите удалить портал «{{name}}»?",
+      "deleteButton": "Удалить портал"
+    },
+    "hints": {
+      "ping": "G + клик = пинг",
+      "middlePan": "средняя кнопка = панорама",
+      "toggleFog": "Показать/скрыть туман войны",
+      "fog": "Туман"
+    }
+  },
+  "skillsBlock": {
+    "title": "Навыки",
+    "rollError": "Ошибка броска: {{error}}",
+    "rollTitle": "Бросить {{dice}}",
+    "rankMustBePositive": "Ранг должен быть > 0 для броска",
+    "skills": {
+      "agility": "Ловкость",
+      "attention": "Внимательность",
+      "intuition": "Интуиция",
+      "logic": "Логика",
+      "creativity": "Креативность",
+      "empathy": "Эмпатия",
+      "charisma": "Харизма",
+      "selfcontrol": "Самообладание"
+    }
+  },
+  "abilitiesBlock": {
+    "title": "Способности ({{count}})",
+    "add": "Добавить",
+    "entitiesCount": "{{count}} сущностей",
+    "emptyEditable": "Нет способностей. Нажмите «Добавить», чтобы создать первую.",
+    "empty": "Способности пока не добавлены.",
+    "rollTitle": "Бросить {{formula}}",
+    "rollFormulaMissing": "Укажите формулу броска",
+    "openWindow": "Открыть окно",
+    "cost": "Стоимость",
+    "formula": "Формула",
+    "range": "Дистанция",
+    "rangePlaceholder": "ближняя",
+    "area": "Область",
+    "areaPlaceholder": "цель",
+    "deleteConfirm": {
+      "title": "Удаление способности",
+      "description": "Вы уверены, что хотите удалить способность «{{name}}»?"
+    }
+  },
+  "abilitySheet": {
+    "tabs": {
+      "params": "Параметры",
+      "description": "Описание",
+      "canvas": "Настройки"
+    },
+    "rollError": "Ошибка броска {{name}}: {{error}}",
+    "finishEditing": "Завершить редактирование",
+    "editDescription": "Редактировать описание",
+    "paramsTitle": "Параметры способности",
+    "roll": "Бросок",
+    "descriptionTitle": "Описание",
+    "descriptionPlaceholder": "Описание способности, условия применения, эффекты...",
+    "emptyDescriptionEditable": "Описание пустое. Дважды кликните для редактирования.",
+    "emptyDescription": "Описание пустое."
+  },
+  "attackSheet": {
+    "tabs": {
+      "stats": "Параметры",
+      "description": "Описание",
+      "canvas": "Настройки"
+    },
+    "noteNotFound": "Заметка «{{name}}» не найдена",
+    "statsTitle": "Характеристики атаки",
+    "stats": {
+      "damage": "Урон",
+      "scale": "Масштаб",
+      "hit": "Попадание",
+      "distance": "Дистанция"
+    },
+    "distances": {
+      "melee": "ближняя",
+      "medium": "средняя",
+      "long": "дальняя",
+      "extreme": "экстремальная",
+      "beyond": "запредельная"
+    },
+    "rollFormula": "Формула броска",
+    "propertiesTitle": "Свойства",
+    "add": "Добавить",
+    "descriptionTitle": "Описание",
+    "descriptionPlaceholder": "Описание атаки, эффекты, условия применения..."
+  },
+  "inventoryBlock": {
+    "title": "Инвентарь персонажа",
+    "availableAttacksTitle": "Доступные атаки (экипированное оружие)",
+    "noAvailableAttacks": "Нет доступных атак. Экипируйте оружие с атаками.",
+    "attackFrom": "(от: {{name}})",
+    "entitiesCount": "{{count}} сущностей",
+    "dropItemsHere": "Перетащите сюда предметы...",
+    "noItemsInCategory": "Нет предметов в категории.",
+    "equip": "Экипировать",
+    "deleteItem": "Удалить предмет",
+    "totalWeight": "Общая нагрузка:",
+    "categories": {
+      "weapon": "оружие",
+      "armor": "броня",
+      "consumable": "расходуемое",
+      "other": "другое"
+    },
+    "columns": {
+      "item": "Предмет",
+      "equipped": "Экипировано",
+      "equippedShort": "Эк.",
+      "quantity": "Количество",
+      "quantityShort": "Кол-во",
+      "weightTitle": "Нагрузка (вес одного)",
+      "weight": "Вес",
+      "figure": "Фигура",
+      "figureShort": "ФИГ",
+      "durability": "Прочность",
+      "durabilityShort": "ПРОЧ",
+      "rarity": "Редкость",
+      "rarityShort": "РЕД",
+      "priceTitle": "Цена (У.Е.)",
+      "price": "Цена"
+    },
+    "deleteConfirm": {
+      "title": "Удаление предмета",
+      "description": "Вы уверены, что хотите удалить предмет «{{name}}»?"
+    }
+  },
+  "objectSheet": {
+    "tabs": {
+      "stats": "Параметры",
+      "attacks": "Атаки",
+      "description": "Описание",
+      "canvas": "Настройки"
+    },
+    "statsTitle": "Характеристики предмета",
+    "category": "Категория (тип)",
+    "figureHint": "Размер в единицах: 1,2,3,4...",
+    "loadWeight": "Нагрузка (вес)",
+    "rarityHint": "Ранг от 0 до 5",
+    "embeddedAttacks": "Встроенные атаки",
+    "emptyAttacksEditable": "Перетащите атаки сюда или создайте новую",
+    "emptyAttacks": "Встроенные атаки пока не добавлены",
+    "attackNoFormula": "У атаки нет формулы броска",
+    "descriptionTitle": "Описание",
+    "descriptionPlaceholder": "Описание предмета, правила, заметки...",
+    "deleteAttack": {
+      "title": "Удаление атаки",
+      "description": "Вы уверены, что хотите удалить атаку «{{name}}»?",
+      "button": "Удалить атаку"
+    }
+  },
+  "attributeBlock": {
+    "editLabel": "Редак.: {{label}}",
+    "adhocShort": "Доп.",
+    "wounds": {
+      "title": "Состояние здоровья",
+      "limit": "Предел ран",
+      "limitPrefix": "Предел:",
+      "critical": "ШОК / КРИТИЧЕСКИ РАНЕН",
+      "healthy": "ЗДОРОВ / ЛЕГКИЕ РАНЫ",
+      "minus": "−{{count}} ран",
+      "plus": "+{{count}} ран",
+      "editKeys": "Enter — сохранить, Esc — отменить",
+      "manualInput": "Нажать — ввести вручную",
+      "barTitle": "ЛКМ: +1 рана | ПКМ: −1 рана",
+      "barHint": "ЛКМ +1 / ПКМ −1",
+      "chatDelta": "{{emoji}} {{name}}: {{sign}}{{delta}} ран (текущие: {{current}}/{{max}})"
+    },
+    "attributes": {
+      "title": "Атрибуты"
+    },
+    "power": {
+      "title": "Мощь",
+      "activeSources": "Активированные источники"
+    },
+    "defense": {
+      "title": "Защита"
+    },
+    "statuses": {
+      "title": "Статусы и состояния",
+      "add": "Добавить",
+      "addStatus": "Добавить статус",
+      "empty": "Нет активных статусов"
+    }
+  },
+  "competenciesBlock": {
+    "title": "Компетенции ({{count}})",
+    "add": "Добавить",
+    "entitiesCount": "{{count}} сущностей",
+    "emptyEditable": "Нет компетенций. Нажмите «Добавить», чтобы создать первую.",
+    "empty": "Компетенции пока не добавлены.",
+    "rollError": "Ошибка броска: {{error}}",
+    "rollTitle": "Бросить {{dice}}",
+    "rankMustBePositive": "Ранг должен быть > 0",
+    "openWindow": "Открыть окно",
+    "deleteConfirm": {
+      "title": "Удаление компетенции",
+      "description": "Вы уверены, что хотите удалить компетенцию «{{name}}»?"
+    }
+  },
+  "competencyRoll": {
+    "title": "Бросок навыка",
+    "skillRank": "{{skill}} (ранг: {{rank}})",
+    "noCompetency": "Без компетенции",
+    "rankDice": "Ранг: +{{rank}} -> +{{dice}}",
+    "emptyLine1": "У персонажа нет компетенций.",
+    "emptyLine2": "Добавьте их во вкладке «Компетенции».",
+    "totalRoll": "Суммарный бросок:",
+    "roll": "Бросить {{dice}}"
+  },
+  "resourcesBlock": {
+    "title": "Ресурсы ({{count}})",
+    "newResource": "Новый ресурс",
+    "emptyEditable": "Нет ресурсов. Добавьте запас, заряд, фокус или другой счетчик.",
+    "empty": "Ресурсы пока не добавлены.",
+    "name": "Название",
+    "current": "Текущее",
+    "max": "Макс.",
+    "deleteResource": "Удалить ресурс"
+  },
+  "propertiesBlock": {
+    "title": "Свойства Предмета",
+    "addProperty": "Добавить свойство",
+    "remove": "Убрать",
+    "empty": "Нет добавленных свойств"
+  },
+  "sheetTabs": {
+    "scrollLeft": "Прокрутить вкладки влево",
+    "scrollRight": "Прокрутить вкладки вправо"
+  },
+  "statTooltip": {
+    "title": "Расчёт модификаторов",
+    "base": "База",
+    "adhocModifier": "Доп. модификатор",
+    "total": "Итого"
+  },
+  "markdownRenderer": {
+    "rollError": "Ошибка броска: {{error}}",
+    "rollTitle": "Бросить {{expression}}",
+    "stats": {
+      "availableInEntityWindow": "Блок stats доступен внутри окна сущности.",
+      "title": "Статы: {{name}}",
+      "wounds": "Раны",
+      "defaults": {
+        "constitution": "Телосложение",
+        "cognition": "Когниция",
+        "physique": "Фигура",
+        "mind": "Мышление",
+        "speed": "Скорость",
+        "hunger": "Голод",
+        "evasion": "Уклонение",
+        "armor": "Броня",
+        "astral": "Астрал",
+        "ether": "Эфир",
+        "aura": "Аура"
+      }
+    },
+    "inventory": {
+      "availableInEntityWindow": "Блок inventory доступен внутри окна сущности.",
+      "title": "Инвентарь: {{name}}",
+      "summary": "{{count}} / вес {{weight}}",
+      "empty": "Инвентарь пуст.",
+      "equipped": "экип.",
+      "categories": {
+        "weapon": "оружие",
+        "armor": "броня",
+        "consumable": "расходуемое",
+        "other": "другое"
+      }
+    },
+    "gmOnly": {
+      "hidden": "Скрытый блок ГМа",
+      "title": "Только для ГМа"
+    }
+  },
+  "entityImage": {
+    "notifications": {
+      "largePhoto": "Крупное фото сущности",
+      "photoUpload": "Загрузка фото сущности",
+      "noEntityRights": "Нет прав на сущность",
+      "uploadedButNotLinked": "{{name}} загружен, но не привязан к сущности.",
+      "photoUploaded": "Фото сущности загружено",
+      "photoUploadFailed": "Фото не загрузилось"
+    },
+    "invalidImage": "Ссылка недействительна или изображение удалено",
+    "loadingPhoto": "Загружаю фото",
+    "noPhoto": "НЕТ ФОТО",
+    "changePhoto": "Изменить фото",
+    "imageSettings": "Настройки изображения",
+    "fileOrUrlPlaceholder": "Имя файла или URL...",
+    "chooseExisting": "...или выберите существующее",
+    "saveLink": "Сохранить ссылку",
+    "unlinkPhotoTitle": "Удалить привязку к фото (файл останется)",
+    "uploadNewPhoto": "Загрузить новое фото"
+  },
+  "audio": {
+    "channels": {
+      "music": "Музыка",
+      "ambience": "Атмосфера",
+      "sfx": "SFX",
+      "voice": "Голос"
+    },
+    "cueModes": {
+      "track": "Трек",
+      "loop": "Петля",
+      "oneshot": "Разово"
+    },
+    "modes": {
+      "session": "Сессия",
+      "local": "Локально"
+    },
+    "notifications": {
+      "largeAudioFile": "Крупный аудиофайл",
+      "audioUpload": "Загрузка аудио",
+      "audioUploaded": "Аудио загружено",
+      "audioUploadFailed": "Загрузка аудио не удалась"
+    },
+    "errors": {
+      "fileTooLarge": "Файл \"{{name}}\" больше 250 MB. Для таких файлов нужен отдельный approval/upload flow.",
+      "fileNotFound": "Файл не найден: {{name}}",
+      "playbackFailed": "Не удалось воспроизвести: {{name}}",
+      "playbackError": "Ошибка воспроизведения"
+    },
+    "allChannels": "Все каналы",
+    "sessionSound": "Звук сессии",
+    "localPlayerSettings": "Локальные настройки игрока",
+    "receiveSound": "Принимать звук",
+    "soundDesk": "Пульт звука",
+    "moduleSubtitle": "Отдельный модуль: музыка, атмосфера, SFX",
+    "deskStats": "{{cues}} кнопок / {{assets}} аудио",
+    "refreshAssets": "Обновить аудио ассеты",
+    "stopAllChannels": "Остановить все каналы",
+    "loopsCount": "{{count}} петель",
+    "toPlayers": "Игрокам",
+    "fade": "Fade",
+    "fadeHint": "Fade in/out для запуска и остановки звука",
+    "buttonsForChannel": "Кнопки / {{channel}}",
+    "stop": "Стоп",
+    "noCuesForChannel": "Нет кнопок на этом канале",
+    "loopFlag": "Петля",
+    "deleteCue": "Удалить cue",
+    "audio": "Аудио",
+    "drop": "Drop",
+    "searchAudio": "Поиск аудио...",
+    "scanningAssets": "Сканирую файлы...",
+    "noAudioFound": "Аудио не найдено",
+    "addToChannel": "Добавить в {{channel}}",
+    "sound": "Звук",
+    "collapseDesk": "Свернуть пульт",
+    "openDesk": "Открыть пульт звука",
+    "hideDesk": "Скрыть пульт звука",
+    "pause": "Пауза",
+    "resume": "Продолжить",
+    "stopMusic": "Остановить музыку",
+    "trackPosition": "Позиция трека",
+    "musicVolume": "Громкость музыки",
+    "channelMixer": "Микшер каналов",
+    "openMixer": "Открыть микшер каналов",
+    "closeMixer": "Закрыть микшер",
+    "sessionEnabled": "Звук сессии включён",
+    "enableSessionAudio": "Включить звук сессии",
+    "sessionDisabled": "Звук сессии выключен",
+    "gmStartedSound": "ГМ запустил звук",
+    "turnOff": "Выключить",
+    "turnOn": "Включить",
+    "soundOnShort": "Звук ВКЛ",
+    "soundOffShort": "Звук ВЫКЛ",
+    "offShort": "Выкл",
+    "onShort": "Вкл",
+    "compactToButton": "Сжать до кнопки",
+    "nothingPlaying": "Ничего не играет"
+  },
+  "chat": {
+    "systemSender": "Система",
+    "rollError": "Ошибка: {{error}}",
+    "tabs": {
+      "chat": "Чат",
+      "rolls": "Броски ({{count}})",
+      "events": "События ({{count}})"
+    },
+    "emptyChat": "Чат пуст. Напишите сообщение или используйте /r 1d20 для броска кубиков.",
+    "inputPlaceholder": "Сообщение или /r 1d20+5...",
+    "hint": "Подсказка: /r 2d6, /roll 1d20+3",
+    "emptyRollHistory": "История бросков пуста. Бросьте кубики через чат, навыки или заметки.",
+    "emptyEvents": "Событий пока нет. Измените раны, статус или выдайте предмет игроку.",
+    "jumpToLatest": "К последним сообщениям"
+  },
+  "notifications": {
+    "title": "Уведомления",
+    "records": "{{count}} записей",
+    "clearCompleted": "Очистить завершённые",
+    "empty": "Пока тихо",
+    "activeProcesses": "есть активные процессы",
+    "hide": "Скрыть",
+    "done": "Готово",
+    "uploading": "Загрузка",
+    "actionNotAppliedTitle": "Действие не применилось",
+    "actionNotAppliedMessage": "Заявка уже обработана или у пользователя нет прав."
+  },
+  "hotkeys": {
+    "title": "Горячие клавиши",
+    "subtitle": "Все сочетания клавиш и управления",
+    "sections": {
+      "canvasTools": "Инструменты канваса",
+      "editing": "Редактирование",
+      "navigation": "Навигация",
+      "multiplayer": "Мультиплеер",
+      "chatDice": "Чат и кубы",
+      "windows": "Окна"
+    },
+    "keys": {
+      "mouseWheel": "Колёсико мыши",
+      "middleDrag": "Средняя кнопка + drag",
+      "gClick": "G + клик",
+      "portalContext": "ПКМ на портале",
+      "fogPanel": "глаз (панель)",
+      "doubleIcon": "Двойной клик (иконка)",
+      "doubleDatabase": "Двойной клик (база)",
+      "pinButton": "pin (кнопка)"
+    },
+    "items": {
+      "hand": "Hand (панорама)",
+      "select": "Select (выделение)",
+      "pen": "Pen (карандаш)",
+      "line": "Line (линия)",
+      "rectangle": "Rectangle",
+      "ellipse": "Ellipse (овал)",
+      "frame": "Frame (фрейм)",
+      "text": "Text (текст)",
+      "image": "Image (изображение)",
+      "tools": "Инструменты 1-9",
+      "undo": "Отменить",
+      "redo": "Повторить",
+      "copy": "Копировать",
+      "paste": "Вставить",
+      "deleteConfirm": "Удалить (с подтверждением)",
+      "selectAll": "Выделить всё",
+      "clearSelection": "Снять выделение / выйти из Fog режима",
+      "zoom": "Zoom",
+      "pan": "Панорама",
+      "axisMove": "Движение по одной оси",
+      "ping": "Пинг на канвасе",
+      "portalContext": "Контекстное меню портала",
+      "roll2d6": "Бросок 2d6",
+      "rollModifier": "Бросок с модификатором",
+      "sendMessage": "Отправить сообщение",
+      "fogEdit": "Режим редактирования тумана войны",
+      "expandWindow": "Развернуть окно",
+      "openWindow": "Открыть персонажа в окне",
+      "pinWindow": "Закрепить окно на канвасе"
+    }
+  },
+  "app": {
+    "unsavedChangesConfirm": "Есть несохранённые данные. Уверены?"
   },
   "hud": {
     "activeElements": "Объекты на канвасе",
@@ -18,9 +1168,350 @@
     "rootCanvas": "Корневое пространство",
     "noSubtables": "Нет вложенных пространств",
     "database": "БАЗА ДАННЫХ",
+    "databaseHub": "База и Хаб",
     "globalDatabase": "ГЛОБАЛЬНАЯ БАЗА",
     "allEntities": "Все сущности на сервере",
     "newEntity": "+ НОВАЯ СУЩНОСТЬ",
     "emptyDirectory": "Пустая база"
+  },
+  "workspace": {
+    "mode": {
+      "canvas": "Канвас",
+      "notes": "Заметки"
+    },
+    "notes": {
+      "title": "Заметки",
+      "vault": "Хранилище",
+      "editor": "Редактор",
+      "context": "Контекст",
+      "modules": {
+        "editor": "Редактор",
+        "vault": "Хранилище",
+        "context": "Контекст",
+        "notifications": "Уведомления",
+        "search": "Поиск",
+        "graph": "Граф",
+        "audio": "Аудио"
+      },
+      "personalInventory": "Личный инвентарь",
+      "settings": "Настройки",
+      "entity": "Сущность",
+      "noActiveEntity": "Выберите сущность",
+      "noActiveEntityHint": "Откройте заметку или сущность из дерева слева.",
+      "searchPlaceholder": "Поиск по хранилищу",
+      "searchHint": "Введите название, тег, свойство, базу, тип или ID.",
+      "searchSummary": "Найдено: {{count}}",
+      "storageScope": "Хранилище",
+      "noSearchResults": "Ничего не найдено.",
+      "expandBranch": "Раскрыть ветку",
+      "collapseBranch": "Свернуть ветку",
+      "groupLabel": "G{{index}}",
+      "resizeSplit": "Изменить размер панелей",
+      "resizeModule": "Изменить размер модуля",
+      "resetTabs": "Сбросить вкладки",
+      "emptyGroup": "Нет вкладок",
+      "emptyGroupHint": "Откройте сущность из хранилища слева.",
+      "createRootEntity": "Создать в общем хранилище",
+      "createRootEntityUnavailable": "Нет права создавать в общем хранилище",
+      "closeTab": "Закрыть вкладку",
+      "closePane": "Закрыть панель",
+      "dragPane": "Перетащить активную вкладку панели",
+      "dragModule": "Перетащить модуль",
+      "dropModuleHere": "Переместить модуль сюда",
+      "missingEntity": "Сущность недоступна",
+      "readOnly": "только чтение",
+      "openParent": "Показать родителя",
+      "copyWikiLink": "Копировать wiki-ссылку",
+      "copyEntityId": "Копировать ID",
+      "pinToCanvas": "Закрепить на активном канвасе",
+      "pinToCanvasUnavailable": "Нет права менять активный канвас",
+      "sourcePlaceholder": "Пишите Markdown. Wiki-ссылки работают через [[...]].",
+      "wikiLinkAutocomplete": "Wiki-ссылка",
+      "noWikiLinkSuggestions": "Нет подходящих сущностей",
+      "emptyMarkdown": "Описание пустое.",
+      "outline": "Оглавление",
+      "noOutline": "Заголовков в описании нет.",
+      "noBacklinks": "Обратных ссылок нет.",
+      "noOutgoingLinks": "Исходящих ссылок нет.",
+      "noGraphLinks": "Связей для графа пока нет.",
+      "outgoingLinks": "Исходящие ссылки",
+      "incomingLinks": "Входящие ссылки",
+      "outgoingShort": "исходящие",
+      "incomingShort": "входящие",
+      "attachedEntities": "Вложенные сущности",
+      "noAttachedEntities": "Вложенных сущностей нет.",
+      "properties": "Свойства",
+      "noProperties": "Публичных свойств нет.",
+      "tags": "Теги",
+      "richToolbar": {
+        "bold": "Жирный",
+        "italic": "Курсив",
+        "heading": "Заголовок",
+        "list": "Список",
+        "quote": "Цитата",
+        "code": "Код",
+        "link": "Wiki-ссылка",
+        "markdown": "Markdown"
+      },
+      "searchFields": {
+        "name": "название",
+        "description": "описание",
+        "property": "свойства",
+        "tag": "теги",
+        "type": "тип",
+        "id": "ID",
+        "database": "база"
+      },
+      "storageScopes": {
+        "all": "Все хранилища",
+        "general": "Общая база",
+        "user": "Все личные",
+        "personal": "Личный инвентарь",
+        "player": "Инвентарь: {{player}}",
+        "gm": "База GM"
+      },
+      "views": {
+        "source": "Редактор",
+        "preview": "Просмотр",
+        "split": "Два вида",
+        "ui": "UI",
+        "entity": "Данные",
+        "graph": "Граф",
+        "backlinks": "Связи",
+        "outline": "Оглавление"
+      },
+      "databases": {
+        "general": "общая",
+        "user": "личная",
+        "gm": "GM"
+      },
+      "entityTypes": {
+        "character": "персонаж",
+        "object": "предмет",
+        "ability": "способность",
+        "competency": "компетенция",
+        "tag": "тег",
+        "canvas": "канвас",
+        "note": "заметка",
+        "portal": "портал",
+        "folder": "папка",
+        "attack": "атака"
+      }
+    }
+  },
+  "settings": {
+    "title": "Настройки",
+    "tabs": {
+      "interface": "Интерфейс",
+      "audio": "Аудио",
+      "canvas": "Канвас",
+      "world": "Мир",
+      "roles": "Роли"
+    },
+    "reset": {
+      "title": "Сброс локального UI",
+      "allTitle": "Сбросить локальные настройки интерфейса без изменения файлов мира",
+      "allButton": "Все локальное",
+      "themeDensityTitle": "Тема и плотность",
+      "themeDensityDescription": "Preset, custom palette и density",
+      "screenWindowsTitle": "Экранные окна",
+      "screenWindowsDescription": "Закрывает только незакрепленные окна",
+      "notesLayoutTitle": "Layout заметок",
+      "notesLayoutDescription": "Сбрасывает вкладки и split-панели",
+      "notesShellTitle": "Shell-модули",
+      "audioTitle": "Аудио defaults",
+      "audioDescription": "Модуль включен, каналы 100%, session sound off",
+      "devPerfDescription": "Показывается только в dev build",
+      "messages": {
+        "themeDensity": "Тема, палитра и плотность сброшены локально.",
+        "screenWindows": "Открытые экранные окна сброшены. Закрепленные объекты canvas не тронуты.",
+        "notesLayout": "Раскладка вкладок режима заметок сброшена.",
+        "notesShell": "Модули режима заметок сброшены к значениям по умолчанию.",
+        "audio": "Локальные настройки аудио сброшены.",
+        "all": "Локальный интерфейс сброшен. Данные мира не изменялись."
+      }
+    },
+    "interface": {
+      "localInterface": "Локальный интерфейс",
+      "visualTheme": "Визуальная тема",
+      "visualThemeDescription": "Меняет не только цвет, а характер рабочего стола.",
+      "balancedDefault": "balanced default",
+      "customPalette": "Custom palette",
+      "customPaletteDescription": "Временный редактор базовых цветов; полноценные темы мира будут отдельным срезом.",
+      "density": "Плотность интерфейса",
+      "densityDescription": "Меняет отступы, высоту контролов и общий ритм панелей без смены визуальной темы.",
+      "pdfViewer": {
+        "title": "PDF-превью",
+        "description": "Встроенный optional module для просмотра PDF в браузере файлов. Сами PDF остаются в хранилище даже при выключении."
+      },
+      "themeCardTitle": "Тема",
+      "themeCardDescription": "Визуальный preset + semantic tokens",
+      "accessCardTitle": "Доступ",
+      "accessGm": "Полный GM-контроль",
+      "accessPlayer": "Личные настройки игрока",
+      "themePresets": {
+        "universalGlass": {
+          "label": "Universal Glass",
+          "tone": "Glass workspace",
+          "description": "Главный ориентир: мягкое универсальное стекло, читаемые панели и спокойные пастельные акценты."
+        },
+        "woodenTable": {
+          "label": "Wooden Tabletop",
+          "tone": "Tabletop desk",
+          "description": "Теплый игровой стол: дерево, бронза, пергаментные акценты без ухода в светлый режим."
+        },
+        "arcaneControl": {
+          "label": "Arcane Control",
+          "tone": "Arcane console",
+          "description": "Сдержанный маготехнический пульт: темный cockpit, янтарные линии, бирюзовые сигналы."
+        },
+        "rgbGameDesk": {
+          "label": "RGB Game Desk",
+          "tone": "Game desk",
+          "description": "Игровой стол с неоновыми ребрами и RGB-акцентами, но без вырвиглазной кислотности."
+        },
+        "lowLoad": {
+          "label": "Low Load",
+          "tone": "Performance",
+          "description": "Спокойная тема для слабых машин: меньше blur, теней и визуального шума."
+        }
+      },
+      "densityPresets": {
+        "compact": {
+          "label": "Compact",
+          "tone": "Больше данных",
+          "description": "Плотные панели для больших списков и экранов с большим количеством чисел."
+        },
+        "balanced": {
+          "label": "Balanced",
+          "tone": "По умолчанию",
+          "description": "Баланс читаемости и плотности для обычной партии и подготовки мира."
+        },
+        "spacious": {
+          "label": "Spacious",
+          "tone": "Больше воздуха",
+          "description": "Крупнее клики и спокойнее чтение, когда важнее обзор одного окна."
+        }
+      },
+      "language": {
+        "title": "Язык и переводы",
+        "localeRu": "Основной язык интерфейса и разработки мира.",
+        "localeEn": "Английский fallback для будущих модов и внешних пакетов.",
+        "openFolder": "Открыть папку переводов",
+        "openFolderTitle": "Открыть app/src/locales в проводнике",
+        "openFolderUnavailable": "Доступно только в Electron desktop-приложении.",
+        "openFolderSuccess": "Папка переводов открыта.",
+        "appBundlesTitle": "Встроенные переводы",
+        "appBundlesDescription": "Сейчас клиент загружает ru/en из приложения и хранит выбранный язык локально.",
+        "worldLocalesTitle": "Переводы мира",
+        "worldLocalesDescription": "Файлы переводов мира уже можно просмотреть в read-only режиме; запись и редактор пойдут отдельным безопасным срезом.",
+        "readyBadge": "готово",
+        "plannedBadge": "план"
+      },
+      "notesModules": {
+        "title": "Модули режима заметок",
+        "reset": "Сброс",
+        "resetTitle": "Сбросить модули режима заметок",
+        "resizable": "размер",
+        "areas": {
+          "left": "Левая панель",
+          "center": "Центральная область",
+          "right": "Правая панель",
+          "bottom": "Нижний dock"
+        }
+      }
+    },
+    "audio": {
+      "moduleTitle": "Аудио-модуль",
+      "moduleDescription": "Нижний плеер, пульт звука и прием сессионных audio-команд",
+      "sessionSoundTitle": "Звук сессии",
+      "sessionSoundDescription": "Воспроизведение команд Host/GM на этом клиенте",
+      "mixerTitle": "Микшер каналов",
+      "channels": {
+        "music": "Музыка",
+        "ambience": "Атмосфера",
+        "sfx": "SFX",
+        "voice": "Голос"
+      }
+    },
+    "canvas": {
+      "gridSnapTitle": "Сетка и snap",
+      "gridEnabled": "Сетка включена",
+      "gridDisabled": "Сетка выключена",
+      "squareGrid": "Квадраты",
+      "hexGrid": "Гексы",
+      "gridStep": "Шаг сетки"
+    },
+    "world": {
+      "title": "Мир",
+      "room": "Комната",
+      "storage": "Хранилище",
+      "storageDescription": "Файлы мира на Host-диске",
+      "localesTitle": "Переводы мира",
+      "localesDescription": "Файлы переопределения переводов из <world>/locales. Host может редактировать JSON и таблицу ключей; игроки получают изменения через Yjs.",
+      "localesReadOnlyBadge": "только host",
+      "localesLoading": "Сканирую переводы мира...",
+      "localesEmpty": "В этом мире пока нет locale override файлов.",
+      "localesPreviewTitle": "Предпросмотр объединения",
+      "localesBaseLocale": "База",
+      "localesOverrideKeys": "Переопределённые ключи",
+      "localesMergedKeys": "Итоговые ключи",
+      "localesDiagnosticsTitle": "Диагностика",
+      "localesNoDiagnostics": "Ошибок не найдено.",
+      "localesSampleTitle": "Первые переопределения",
+      "localesNoOverrides": "В файле нет строковых переопределений.",
+      "localesPreviewLoading": "Читаю и проверяю файл...",
+      "localesEditorTitle": "Редактор ключей",
+      "localesEditorDescription": "Редактирует только UI-переводы этого мира. Контент сущностей не переводится.",
+      "localesEditorObjectError": "Файл перевода должен быть JSON-объектом.",
+      "localesTableTitle": "Таблица ключей",
+      "localesTableDescription": "Пустое значение сбрасывает override и возвращает встроенный текст.",
+      "localesTableSearch": "Поиск ключа или текста...",
+      "localesFilterAll": "Все",
+      "localesFilterChanged": "Изменённые",
+      "localesFilterMissing": "Без переопределения",
+      "localesFilterUnknown": "Неизвестные",
+      "localesTableKey": "Ключ",
+      "localesTableBuiltIn": "Встроенный текст",
+      "localesTableOverride": "Переопределение",
+      "localesTableReset": "Сброс",
+      "localesTableEmpty": "Ключи не найдены.",
+      "localesTableLimited": "Показано {{shown}} из {{total}}. Уточните поиск, чтобы найти остальные.",
+      "localesJsonFallback": "JSON вручную",
+      "localesSaveButton": "Сохранить",
+      "localesSaveConfirmTitle": "Сохранить перевод мира",
+      "localesSaveConfirmDescription": "Файл {{locale}}.json будет перезаписан. Если файл уже существовал, сервер создаст .bak backup.",
+      "localesSaveUnavailable": "File API недоступен для сохранения.",
+      "localesSaved": "Файл перевода сохранён.",
+      "localesSavedWithBackup": "Файл перевода сохранён, backup создан.",
+      "localesRollbackButton": "Откатить",
+      "localesRollbackConfirmTitle": "Откатить перевод мира",
+      "localesRollbackConfirmDescription": "Файл {{locale}}.json будет заменён содержимым {{locale}}.json.bak.",
+      "localesRollbackSuccess": "Файл перевода восстановлен из backup.",
+      "localesImportButton": "Импорт",
+      "localesExportButton": "Экспорт",
+      "localesImported": "JSON импортирован в черновик. Для записи нажмите Сохранить.",
+      "localesExported": "JSON экспортирован из текущего черновика."
+    },
+    "roles": {
+      "title": "Роли",
+      "baseBadge": "База",
+      "players": "Игроки",
+      "legacyHint": "Профиль появится после входа игрока с этим именем.",
+      "noProfiles": "Профилей пока нет. Они создаются при подключении игрока к открытому миру.",
+      "descriptions": {
+        "basePlayer": "Неснимаемая роль, которая ограничивает все обычные роли.",
+        "gm": "Полный host/workbench контроль.",
+        "effective": "Эффективные права после ограничений Base Player."
+      },
+      "permissions": {
+        "viewGeneral": "Видит общую",
+        "editGeneral": "Правит общую",
+        "viewOwnUser": "Видит свое",
+        "editOwnUser": "Правит свое",
+        "viewGm": "Видит GM",
+        "broadcastAudio": "Звук"
+      }
+    }
   }
 }

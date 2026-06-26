@@ -1,7 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, X, Plus } from 'lucide-react';
-import { useEntitiesByType } from '../../../hooks/useEntities';
+import { getEntitiesSnapshot, useEntitiesByType } from '../../../hooks/useEntities';
 import { yjsStore } from '../../../store/yjsStore';
+import { generateEntityId } from '../../../utils/entityId';
+import { glass } from '../../../utils/theme';
 
 interface TagPickerPopupProps {
     isOpen: boolean;
@@ -12,10 +15,12 @@ interface TagPickerPopupProps {
     title?: string;
 }
 
-export function TagPickerPopup({ isOpen, onClose, onSelect, excludeTags = [], allowedFolders = [], title = "Выберите тег" }: TagPickerPopupProps) {
+export function TagPickerPopup({ isOpen, onClose, onSelect, excludeTags = [], allowedFolders = [], title }: TagPickerPopupProps) {
+    const { t } = useTranslation();
     const allTags = useEntitiesByType('tag');
     const [searchQuery, setSearchQuery] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
+    const popupTitle = title ?? t('tagPicker.defaultTitle');
 
     useEffect(() => {
         if (isOpen && inputRef.current) {
@@ -41,7 +46,7 @@ export function TagPickerPopup({ isOpen, onClose, onSelect, excludeTags = [], al
         if (!searchQuery.trim()) return;
         const parentId = allowedFolders.length > 0 ? allowedFolders[0] : null;
 
-        const newTagId = Date.now().toString() + Math.floor(Math.random() * 1000).toString();
+        const newTagId = generateEntityId(Object.keys(getEntitiesSnapshot()));
         yjsStore.addEntity({
             id: newTagId,
             parentId: parentId,
@@ -59,23 +64,23 @@ export function TagPickerPopup({ isOpen, onClose, onSelect, excludeTags = [], al
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
-            <div className="bg-[#151c2b]/70 backdrop-blur-3xl border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] w-full max-w-sm overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-                <div className="p-3 border-b border-white/10 flex justify-between items-center bg-white/5">
-                    <h3 className="text-sm font-bold text-white/50 uppercase tracking-wider">{title}</h3>
-                    <button onClick={onClose} className="p-1 text-white/30 hover:text-white rounded transition-colors"><X size={16} /></button>
+        <div className="fixed inset-0 z-[9999] flex animate-in items-center justify-center bg-[color-mix(in_srgb,var(--vibe-body-bg)_62%,transparent)] p-4 backdrop-blur-sm duration-200 fade-in" onClick={onClose}>
+            <div className={`flex w-full max-w-sm flex-col overflow-hidden rounded-[var(--vibe-radius-lg)] ${glass.popover}`} onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)] p-3">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">{popupTitle}</h3>
+                    <button onClick={onClose} className={`${glass.iconButton} p-1`}><X size={16} /></button>
                 </div>
 
-                <div className="p-3 border-b border-white/10 bg-[#151620]/60">
+                <div className="border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-block)] p-3">
                     <div className="relative">
-                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--vibe-text-faint)]" />
                         <input
                             ref={inputRef}
                             type="text"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Поиск или создание..."
-                            className="w-full bg-[#1a1c29] border border-[#1a1c29] shadow-inner rounded-lg pl-9 pr-3 py-2 text-sm text-white/90 focus:border-white/30 focus:bg-[#2e3145] outline-none transition-all"
+                            placeholder={t('tagPicker.searchOrCreate')}
+                            className={`${glass.input} w-full py-2 pl-9 pr-3 text-sm`}
                         />
                     </div>
                 </div>
@@ -83,13 +88,13 @@ export function TagPickerPopup({ isOpen, onClose, onSelect, excludeTags = [], al
                 <div className="flex-1 overflow-y-auto max-h-[300px] p-2 custom-scrollbar space-y-1">
                     {availableTags.length === 0 ? (
                         <div className="p-4 text-center">
-                            <p className="text-white/40 text-xs mb-2">Не найдено подходящих тегов</p>
+                            <p className="mb-2 text-xs text-[var(--vibe-text-faint)]">{t('tagPicker.noMatchingTags')}</p>
                             {searchQuery.trim() && (
                                 <button
                                     onClick={handleCreateNewTag}
-                                    className="flex items-center gap-2 justify-center w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-200 border border-emerald-500/20 rounded-lg transition-all text-xs font-bold"
+                                    className="flex w-full items-center justify-center gap-2 rounded-[var(--vibe-radius-sm)] border border-[color-mix(in_srgb,var(--vibe-success)_32%,transparent)] bg-[color-mix(in_srgb,var(--vibe-success)_12%,transparent)] py-2 text-xs font-bold text-[var(--vibe-success)] transition-all hover:bg-[color-mix(in_srgb,var(--vibe-success)_22%,transparent)]"
                                 >
-                                    <Plus size={14} /> Создать "{searchQuery.trim()}"
+                                    <Plus size={14} /> {t('tagPicker.createTag', { name: searchQuery.trim() })}
                                 </button>
                             )}
                         </div>
@@ -98,10 +103,10 @@ export function TagPickerPopup({ isOpen, onClose, onSelect, excludeTags = [], al
                             <button
                                 key={tag.id}
                                 onClick={() => { onSelect(tag.id); onClose(); }}
-                                className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 text-white/70 hover:text-white transition-colors flex items-center gap-2 group"
+                                className="group flex w-full items-center gap-2 rounded-[var(--vibe-radius-sm)] px-3 py-2 text-left text-[var(--vibe-text-muted)] transition-colors hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
                             >
-                                <span className="font-medium text-sm group-hover:text-emerald-300 transition-colors">#{tag.name}</span>
-                                {tag.description && <span className="text-white/30 text-xs truncate max-w-[50%] ml-auto">{tag.description}</span>}
+                                <span className="text-sm font-medium transition-colors group-hover:text-[var(--vibe-success)]">#{tag.name}</span>
+                                {tag.description && <span className="ml-auto max-w-[50%] truncate text-xs text-[var(--vibe-text-faint)]">{tag.description}</span>}
                             </button>
                         ))
                     )}

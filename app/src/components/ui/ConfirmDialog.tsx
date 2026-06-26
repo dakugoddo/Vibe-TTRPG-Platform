@@ -1,8 +1,10 @@
 import { useUIStore } from '../../store/uiStore';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 import { glass } from '../../utils/theme';
 
 export function ConfirmDialog() {
+    const { t } = useTranslation();
     const { confirmDialog, closeConfirm } = useUIStore();
 
     if (!confirmDialog) return null;
@@ -44,13 +46,13 @@ export function ConfirmDialog() {
                         onClick={handleCancel}
                         className="px-4 py-2 text-sm font-bold text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors outline-none"
                     >
-                        {confirmDialog.cancelText || 'Отмена'}
+                        {confirmDialog.cancelText || t('common.cancel')}
                     </button>
                     <button
                         onClick={handleConfirm}
                         className={`px-4 py-2 text-sm font-bold text-white rounded-lg transition-all outline-none border ${confirmDialog.isDestructive ? 'bg-red-500/80 hover:bg-red-500 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'bg-white/20 hover:bg-white/60 border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'}`}
                     >
-                        {confirmDialog.confirmText || 'Удалить'}
+                        {confirmDialog.confirmText || t('common.delete')}
                     </button>
                 </div>
             </div>

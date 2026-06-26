@@ -6,13 +6,16 @@
  */
 
 import { create } from 'zustand';
-import type { CanvasTool, DrawElement, StrokeStyle, LineCap, TextFontFamily, TextAlign } from '../types/canvasTypes';
+import type { CanvasTool, DrawElement, StrokeStyle, DrawVisualStyle, DrawLineMode, EntityTokenFrame, LineCap, TextFontFamily, TextAlign } from '../types/canvasTypes';
 import { DEFAULT_DRAW_STYLE } from '../types/canvasTypes';
 
 export interface DrawStyleState {
   stroke: string;
   strokeWidth: number;
   strokeStyle: StrokeStyle;
+  visualStyle: DrawVisualStyle;
+  lineMode: DrawLineMode;
+  entityTokenFrame: EntityTokenFrame;
   fill: string;
   opacity: number;
   fillOpacity: number;
@@ -114,7 +117,7 @@ interface CanvasDrawState {
   // Frame label editing
   setEditingFrameLabelId: (id: string | null) => void;
 
-  // Global drag flag  
+  // Global drag flag
   setDraggingGlobal: (v: boolean) => void;
 
   // Dirty flag
