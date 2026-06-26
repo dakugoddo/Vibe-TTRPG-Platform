@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+app/node_modules/
+server/node_modules/
+
+# Build outputs
+app/dist/
+app/dist-server/
+electron-release/
+release/
+dist/
+build/
+
+# Local app/runtime state
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+.cache/
+.DS_Store
+Thumbs.db
+
+# Local worlds and user data (not part of repository)
+test-world/
+world.yaml
+general/
+users/
+gm/
+players/
+assets/
+.index.json
+
+# Agent/workflow/private planning files (keep local or on dev-only branches)
+.pi/
+.agents/
+.opencode/
+.codex/
+.hermes.md
+AGENTS.md
+skills/
+skills-lock.json
+graphify-out/
+opencode.jsonc
+opencode.example.jsonc
+scripts/graphify-*.sh
+scripts/validate-agent-config.py

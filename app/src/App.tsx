@@ -1,31 +1,72 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Settings as SettingsIcon } from 'lucide-react';
 import { yjsStore } from './store/yjsStore';
 import { initEntityStoreObserver, getEntitiesSnapshot } from './store/entityStore';
 import { useCanvasStore } from './store/canvasStore';
 import { useCanvasDrawStore } from './store/canvasDrawStore';
+import { useNotesWorkspaceStore } from './store/notesWorkspaceStore';
+import { useWorkspaceModeStore } from './store/workspaceModeStore';
 import { stopSync, forceFlush, setPlayerName } from './services/fileSyncService';
+import { importMarkdown, getIsHost as checkHost, readWorldLocaleFile } from './services/fileApi';
 import { loadWindowLayout, clearWindowLayout } from './store/windowStore';
-import { WindowManager } from './components/windows/WindowManager';
-import { InfiniteCanvas } from './components/canvas/InfiniteCanvas';
-import { CanvasToolbar } from './components/canvas/CanvasToolbar';
 import { DragDropPopover, type DragDropPromptData } from './components/ui/DragDropPopover';
+import { useAppModuleEnabled } from './hooks/useAppModuleEnablement';
+import { useInterfaceDensity } from './hooks/useInterfaceDensity';
+import { useThemePreset } from './hooks/useThemePreset';
 
 import { LoginScreen } from './components/ui/LoginScreen';
 import { HudBar } from './components/ui/HudBar';
-import { LeftDrawer } from './components/ui/LeftDrawer';
-import { RightDrawer } from './components/ui/RightDrawer';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
+import { HotkeyHelp } from './components/ui/HotkeyHelp';
+import { AudioSessionBridge } from './components/ui/AudioSessionBridge';
+import { NotificationCenter } from './components/ui/NotificationCenter';
+import { SessionNotificationBridge } from './components/ui/SessionNotificationBridge';
+import { DevPerformanceOverlay } from './components/ui/DevPerformanceOverlay';
+import { generateEntityId } from './utils/entityId';
+import { NOTES_AUDIO_DOCK_HOST_ID } from './utils/notesWorkspaceConstants';
 import { glass } from './utils/theme';
+import { SUPPORTED_LOCALES, normalizeLocale, type LocaleMessageTree } from './utils/localization';
+import { applyWorldLocaleOverrides, resetWorldLocaleOverrides } from './utils/worldLocaleRuntime';
+import type { UserRole, WorldLocaleSnapshot } from './types';
+
+const InfiniteCanvas = lazy(() => import('./components/canvas/InfiniteCanvas').then((module) => ({ default: module.InfiniteCanvas })));
+const CanvasToolbar = lazy(() => import('./components/canvas/CanvasToolbar').then((module) => ({ default: module.CanvasToolbar })));
+const NotesWorkspace = lazy(() => import('./components/workspace/NotesWorkspace').then((module) => ({ default: module.NotesWorkspace })));
+const WindowManager = lazy(() => import('./components/windows/WindowManager').then((module) => ({ default: module.WindowManager })));
+const LeftDrawer = lazy(() => import('./components/ui/LeftDrawer').then((module) => ({ default: module.LeftDrawer })));
+const RightDrawer = lazy(() => import('./components/ui/RightDrawer').then((module) => ({ default: module.RightDrawer })));
+const AudioControlDock = lazy(() => import('./components/ui/AudioControlDock').then((module) => ({ default: module.AudioControlDock })));
+const SettingsWindow = lazy(() => import('./components/ui/SettingsWindow').then((module) => ({ default: module.SettingsWindow })));
+
+function WorkspaceLoadingFallback() {
+  return (
+    <div className="flex min-h-screen flex-1 items-center justify-center">
+      <div className="h-9 w-9 animate-spin rounded-full border-2 border-[var(--vibe-border-subtle)] border-t-[var(--vibe-accent)]" />
+    </div>
+  );
+}
 
 function App() {
+  const { t, i18n } = useTranslation();
+  useThemePreset();
+  useInterfaceDensity();
   const [roomName, setRoomName] = useState('');
   const [inRoom, setInRoom] = useState(false);
   const [dbOpen, setDbOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [canvasDropPrompt, setCanvasDropPrompt] = useState<DragDropPromptData | null>(null);
+  const [audioModuleEnabled] = useAppModuleEnabled('audio');
 
   const { activeCanvasId } = useCanvasStore();
+  const workspaceMode = useWorkspaceModeStore((state) => state.mode);
+  const setWorkspaceMode = useWorkspaceModeStore((state) => state.setMode);
+  const notesShellModules = useNotesWorkspaceStore((state) => state.shell.modules);
   const isDraggingGlobal = useCanvasDrawStore((s) => s.isDraggingGlobal);
+  const notesAudioEmbeddedTargetId = workspaceMode === 'notes' && audioModuleEnabled && notesShellModules.audio
+    ? NOTES_AUDIO_DOCK_HOST_ID
+    : null;
 
   // Style to disable pointer events on UI elements during canvas drag
   useEffect(() => {
@@ -36,11 +77,69 @@ function App() {
     }
   }, [isDraggingGlobal]);
 
-  const handleJoin = (room: string, playerName?: string) => {
+  useEffect(() => {
+    const locale = normalizeLocale(i18n.language);
+
+    const applySnapshot = (snapshot: WorldLocaleSnapshot | null) => {
+      if (snapshot && snapshot.diagnostics.length === 0) {
+        if (applyWorldLocaleOverrides(i18n, snapshot.locale, snapshot.overrides as LocaleMessageTree)) return;
+      }
+      resetWorldLocaleOverrides(i18n, locale);
+    };
+
+    if (!inRoom) {
+      resetWorldLocaleOverrides(i18n, locale);
+      return;
+    }
+
+    if (!checkHost()) {
+      applySnapshot(yjsStore.getWorldLocaleSnapshot(locale));
+      return yjsStore.observeWorldLocaleSnapshots((snapshot) => {
+        if (snapshot.locale === locale) applySnapshot(snapshot);
+      });
+    }
+
+    let cancelled = false;
+
+    const publishWorldLocaleOverrides = async () => {
+      for (const supportedLocale of SUPPORTED_LOCALES) {
+        try {
+          const result = await readWorldLocaleFile(supportedLocale.id);
+          if (cancelled) return;
+
+          yjsStore.publishWorldLocaleSnapshot({
+            locale: supportedLocale.id,
+            exists: Boolean(result?.exists),
+            overrides: result?.overrides ?? {},
+            diagnostics: result?.diagnostics ?? [],
+          });
+
+          if (supportedLocale.id === locale) applySnapshot(yjsStore.getWorldLocaleSnapshot(locale));
+        } catch {
+          if (cancelled) return;
+          yjsStore.publishWorldLocaleSnapshot({
+            locale: supportedLocale.id,
+            exists: false,
+            overrides: {},
+            diagnostics: [{ level: 'warning', message: 'World locale file is unavailable.' }],
+          });
+
+          if (supportedLocale.id === locale) resetWorldLocaleOverrides(i18n, locale);
+        }
+      }
+    };
+
+    void publishWorldLocaleOverrides();
+    return () => {
+      cancelled = true;
+    };
+  }, [i18n, i18n.language, inRoom]);
+
+  const handleJoin = (room: string, playerName?: string, playerId?: string, role?: UserRole) => {
     setRoomName(room);
     if (playerName) {
       setPlayerName(playerName);
-      yjsStore.setLocalPlayerName(playerName);
+      yjsStore.setLocalPlayerName(playerName, { playerId, role });
     }
     yjsStore.joinRoom(room);
     initEntityStoreObserver();
@@ -63,12 +162,12 @@ function App() {
       if (inRoom) {
         forceFlush(); // best-effort sync flush
         e.preventDefault();
-        e.returnValue = 'Есть несохранённые данные. Уверены?';
+        e.returnValue = t('app.unsavedChangesConfirm');
       }
     };
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [inRoom]);
+  }, [inRoom, t]);
 
   if (!inRoom) {
     return <LoginScreen onJoin={handleJoin} />;
@@ -76,7 +175,7 @@ function App() {
 
   return (
     <div
-      className={`min-h-screen text-white w-full relative overflow-hidden flex ${glass.bg}`}
+      className="vibe-app-bg min-h-screen w-full relative overflow-hidden flex"
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "copy";
@@ -88,7 +187,6 @@ function App() {
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
           const mdFiles = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.md'));
           if (mdFiles.length > 0) {
-            const { importMarkdown, getIsHost: checkHost } = await import('./services/fileApi');
             if (checkHost()) {
               for (const file of mdFiles) {
                 try {
@@ -107,6 +205,7 @@ function App() {
         }
 
         const draggedId = e.dataTransfer.getData("application/entity-id");
+        if (workspaceMode !== 'canvas') return;
         if (draggedId) {
           const allEnts = getEntitiesSnapshot();
           const original = allEnts[draggedId];
@@ -115,7 +214,7 @@ function App() {
 
           if (draggedId === 'root') {
             isCanvas = true;
-            entityName = 'Корневое пространство';
+            entityName = t('hud.rootCanvas');
           }
 
           if (original || draggedId === 'root') {
@@ -125,7 +224,7 @@ function App() {
             const stageY = (e.clientY - offset.y) / scale;
 
             if (isCanvas) {
-              const portalId = `portal_${Date.now()}`;
+              const portalId = generateEntityId(Object.keys(getEntitiesSnapshot()));
               yjsStore.addEntity({
                 id: portalId,
                 parentId: activeCanvasId,
@@ -183,41 +282,91 @@ function App() {
         }
       }}
     >
-      <InfiniteCanvas />
+      <Suspense fallback={<WorkspaceLoadingFallback />}>
+        {workspaceMode === 'canvas' ? (
+          <InfiniteCanvas />
+        ) : (
+          <NotesWorkspace
+            roomName={roomName}
+            onLeave={handleLeave}
+            onOpenInventory={() => setInventoryOpen(true)}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onWorkspaceModeChange={setWorkspaceMode}
+          />
+        )}
+      </Suspense>
       <div className="ui-layer">
-        <WindowManager />
+        <Suspense fallback={null}>
+          <WindowManager showPinned={workspaceMode === 'canvas'} />
+        </Suspense>
       </div>
-      <div className="ui-layer">
-        <CanvasToolbar />
-      </div>
+      {workspaceMode === 'canvas' && <div className="ui-layer">
+        <Suspense fallback={null}>
+          <CanvasToolbar />
+        </Suspense>
+      </div>}
 
-      <div className="ui-layer">
-        <HudBar
-          roomName={roomName}
-          onLeave={handleLeave}
-          onOpenDatabase={() => setDbOpen(!dbOpen)}
-          dbOpen={dbOpen}
-        />
-      </div>
+      {workspaceMode === 'canvas' && (
+        <div className="ui-layer">
+          <HudBar
+            roomName={roomName}
+            onLeave={handleLeave}
+            onOpenDatabase={() => setDbOpen(!dbOpen)}
+            dbOpen={dbOpen}
+            workspaceMode={workspaceMode}
+            onWorkspaceModeChange={setWorkspaceMode}
+          />
+        </div>
+      )}
 
       {/* Left side static modules (Personal Inventory) */}
+      {workspaceMode === 'canvas' && (
       <div className="ui-layer absolute top-6 left-6 w-[60px] z-30 max-h-[calc(100vh-48px)] flex flex-col pointer-events-none gap-4">
         <button
           onClick={() => setInventoryOpen(!inventoryOpen)}
-          className="pointer-events-auto w-14 h-14 bg-white/5 backdrop-blur-xl rounded-2xl shadow-xl border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors text-white/50 hover:text-white"
-          title="Личный Инвентарь"
+          className={`pointer-events-auto flex h-14 w-14 items-center justify-center rounded-[var(--vibe-radius-lg)] ${glass.iconButton}`}
+          title={t('workspace.notes.personalInventory')}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
         </button>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className={`pointer-events-auto flex h-14 w-14 items-center justify-center rounded-[var(--vibe-radius-lg)] ${glass.iconButton}`}
+          title={t('workspace.notes.settings')}
+        >
+          <SettingsIcon size={22} />
+        </button>
       </div>
+      )}
 
-      <div className="ui-layer">
-        <LeftDrawer isOpen={inventoryOpen} onClose={() => setInventoryOpen(false)} />
-        <RightDrawer isOpen={dbOpen} onClose={() => setDbOpen(false)} />
-      </div>
+      {(workspaceMode === 'canvas' || inventoryOpen) && <div className="ui-layer">
+        <Suspense fallback={null}>
+          <LeftDrawer isOpen={inventoryOpen} onClose={() => setInventoryOpen(false)} />
+          {workspaceMode === 'canvas' && <RightDrawer isOpen={dbOpen} onClose={() => setDbOpen(false)} />}
+        </Suspense>
+      </div>}
 
       <DragDropPopover data={canvasDropPrompt} />
       <ConfirmDialog />
+      {workspaceMode === 'canvas' && <HotkeyHelp />}
+      <SessionNotificationBridge />
+      {workspaceMode === 'canvas' && <NotificationCenter />}
+      {audioModuleEnabled && (
+        <>
+          <AudioSessionBridge />
+          <Suspense fallback={null}>
+            <AudioControlDock
+              floatingEnabled={workspaceMode === 'canvas'}
+              embeddedTargetId={notesAudioEmbeddedTargetId}
+              embeddedChrome={workspaceMode === 'notes' ? 'compact' : 'full'}
+            />
+          </Suspense>
+        </>
+      )}
+      <Suspense fallback={null}>
+        <SettingsWindow isOpen={settingsOpen} roomName={roomName} onClose={() => setSettingsOpen(false)} />
+      </Suspense>
+      <DevPerformanceOverlay />
     </div >
   );
 }

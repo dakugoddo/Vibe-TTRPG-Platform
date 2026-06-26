@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
     useFloating,
     autoUpdate,
@@ -49,16 +49,18 @@ export function Tooltip({ children, content, placement = 'top', className = '', 
         dismiss,
         role
     ]);
+    const setReference = useCallback((node: HTMLDivElement | null) => refs.setReference(node), [refs]);
+    const setFloating = useCallback((node: HTMLDivElement | null) => refs.setFloating(node), [refs]);
 
     return (
         <>
-            <div ref={refs.setReference} {...getReferenceProps()} className={`inline-flex ${className}`}>
+            <div ref={setReference} {...getReferenceProps()} className={`inline-flex ${className}`}>
                 {children}
             </div>
             <FloatingPortal>
                 {isOpen && (
                     <div
-                        ref={refs.setFloating}
+                        ref={setFloating}
                         style={floatingStyles}
                         {...getFloatingProps()}
                         className="z-[9999]" // Ensure super high z-index overlay
@@ -97,16 +99,18 @@ export function Popover({ children, content, placement = 'bottom', className = '
         dismiss,
         role
     ]);
+    const setReference = useCallback((node: HTMLDivElement | null) => refs.setReference(node), [refs]);
+    const setFloating = useCallback((node: HTMLDivElement | null) => refs.setFloating(node), [refs]);
 
     return (
         <>
-            <div ref={refs.setReference} {...getReferenceProps()} className={`inline-flex ${className}`}>
+            <div ref={setReference} {...getReferenceProps()} className={`inline-flex ${className}`}>
                 {children}
             </div>
             <FloatingPortal>
                 {isOpen && (
                     <div
-                        ref={refs.setFloating}
+                        ref={setFloating}
                         style={{ ...floatingStyles, pointerEvents: 'auto' }}
                         {...getFloatingProps()}
                         className="z-[9999]"

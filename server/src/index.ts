@@ -1,9 +1,9 @@
 /**
  * index.ts — Main entry point for the Vibe TTRPG File Server.
- * 
+ *
  * Express REST API + WebSocket for real-time file change notifications.
  * Runs on port 3001 alongside the Vite dev server (port 5173).
- * 
+ *
  * This server is ONLY started by the host (GM).
  * Players connect via Yjs/WebRTC and never touch this server directly.
  */
@@ -13,12 +13,18 @@ import cors from 'cors';
 import path from 'node:path';
 import fs from 'node:fs';
 import { createServer } from 'node:http';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { setupWSConnection } = require('y-websocket/bin/utils');
 
-import { createWorld, openWorld, getCurrentWorldPath, getCurrentWorldName, getAssetsPath, saveWorldIndex, getDbPath } from './worldManager.js';
+import { createWorld, openWorld, getCurrentWorldPath, getCurrentWorldName, getAssetsPath, saveWorldIndex, getDbPath, loadAudioDeck, saveAudioDeck } from './worldManager.js';
+import { listAssetRecords, resolveAssetPath } from './assetManager.js';
+import { buildExplorerRevealArgs } from './explorer.js';
+import { claimPlayerProfile, listPlayerProfiles, updatePlayerProfileRole } from './playerProfiles.js';
+import { listWorldLocaleFiles, readWorldLocaleFile, rollbackWorldLocaleFile, writeWorldLocaleFile } from './worldLocaleManager.js';
 import {
     listEntities,
     readEntity,
@@ -26,14 +32,18 @@ import {
     deleteEntity,
     importRawMarkdown,
     serializeEntity,
+    migrateEntityIds,
+    getEntityFilePath,
 } from './fileManager.js';
 import { startWatching, stopWatching, addWsClient, getClientCount } from './fileWatcher.js';
 import { renameEntity } from './renameManager.js';
-import type { Entity, DatabaseType } from './shared/types.js';
+import type { Entity, DatabaseType, UserRole } from './shared/types.js';
 
 const PORT = 3001;
 const app = express();
 const server = createServer(app);
+let isServerStarted = false;
+let isServerStopping = false;
 
 // ─── Middleware ───
 
@@ -86,6 +96,218 @@ app.post('/api/world/open', (req, res) => {
         res.json(meta);
     } catch (err) {
         res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.get('/api/world/audio-deck', (_req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        const data = loadAudioDeck();
+        res.json(data || {});
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.post('/api/world/audio-deck', (req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        saveAudioDeck(req.body);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.get('/api/world/locales', (_req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        res.json({ locales: listWorldLocaleFiles(worldPath) });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.get('/api/world/locales/:locale', (req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        res.json(readWorldLocaleFile(worldPath, req.params.locale));
+    } catch (err) {
+        res.status((err as Error).message.startsWith('Invalid locale id') ? 400 : 500).json({ error: (err as Error).message });
+    }
+});
+
+app.put('/api/world/locales/:locale', (req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        if (!Object.prototype.hasOwnProperty.call(req.body ?? {}, 'overrides')) {
+            res.status(400).json({ error: 'overrides is required' });
+            return;
+        }
+
+        res.json(writeWorldLocaleFile(worldPath, req.params.locale, req.body.overrides));
+    } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+});
+
+app.post('/api/world/locales/:locale/rollback', (req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+
+        res.json(rollbackWorldLocaleFile(worldPath, req.params.locale));
+    } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+});
+
+app.post('/api/world/migrate/entity-ids', (req, res) => {
+    try {
+        const dryRun = req.body.dryRun !== false; // По умолчанию dryRun = true для безопасности
+        const database = req.body.database || 'general';
+        const player = req.body.player;
+
+        if (database === 'all') {
+            const results = [];
+
+            // 1. General DB
+            results.push(migrateEntityIds('general', undefined, { dryRun }));
+
+            // 2. GM DB
+            results.push(migrateEntityIds('gm', undefined, { dryRun }));
+
+            // 3. Все базы игроков (users/*)
+            const worldPath = getCurrentWorldPath();
+            if (worldPath) {
+                const usersDir = path.join(worldPath, 'users');
+                if (fs.existsSync(usersDir)) {
+                    const players = fs.readdirSync(usersDir).filter(f => {
+                        return fs.statSync(path.join(usersDir, f)).isDirectory() && !f.startsWith('.');
+                    });
+                    for (const p of players) {
+                        results.push(migrateEntityIds('user', p, { dryRun }));
+                    }
+                }
+            }
+
+            res.json({
+                success: true,
+                dryRun,
+                results
+            });
+            return;
+        }
+
+        const result = migrateEntityIds(database as DatabaseType, player, { dryRun });
+        res.json({
+            success: true,
+            dryRun,
+            result
+        });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+// ─── Players List ───
+
+app.get('/api/players', (_req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        const usersPath = path.join(worldPath, 'users');
+        if (!fs.existsSync(usersPath)) {
+            res.json([]);
+            return;
+        }
+        const players = fs.readdirSync(usersPath, { withFileTypes: true })
+            .filter(d => d.isDirectory())
+            .map(d => d.name);
+        res.json(players);
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.get('/api/player-profiles', (_req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        res.json(listPlayerProfiles(worldPath));
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.post('/api/player-profiles/claim', (req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+
+        const displayName = typeof req.body.displayName === 'string' ? req.body.displayName : '';
+        if (!displayName.trim()) {
+            res.status(400).json({ error: 'displayName is required' });
+            return;
+        }
+
+        const requestedPlayerId = typeof req.body.requestedPlayerId === 'string' ? req.body.requestedPlayerId : undefined;
+        res.json(claimPlayerProfile(worldPath, displayName, { requestedPlayerId }));
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.patch('/api/player-profiles/:playerId', (req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+
+        const assignedRole = req.body.assignedRole as UserRole | undefined;
+        if (!assignedRole) {
+            res.status(400).json({ error: 'assignedRole is required' });
+            return;
+        }
+
+        res.json(updatePlayerProfileRole(worldPath, req.params.playerId, assignedRole));
+    } catch (err) {
+        const message = (err as Error).message;
+        res.status(message.includes('not found') ? 404 : 400).json({ error: message });
     }
 });
 
@@ -170,6 +392,30 @@ app.delete('/api/entities/:id', (req, res) => {
     }
 });
 
+app.post('/api/entities/:id/show-in-explorer', (req, res) => {
+    try {
+        const db = (req.query.db as DatabaseType) || 'general';
+        const player = req.query.player as string | undefined;
+        const filePath = getEntityFilePath(db, req.params.id, player);
+        if (!filePath) {
+            res.status(404).json({ error: `Entity not found: ${req.params.id}` });
+            return;
+        }
+        if (process.platform !== 'win32') {
+            res.status(400).json({ error: 'Show in Explorer is available only on Windows hosts' });
+            return;
+        }
+
+        spawn('explorer.exe', buildExplorerRevealArgs(filePath), {
+            detached: true,
+            stdio: 'ignore',
+        }).unref();
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
 // ─── Import: raw .md → Entity ───
 // NOTE: This route MUST be before /api/entities/:id to avoid Express matching 'import' as :id
 
@@ -234,6 +480,15 @@ app.get('/api/assets', (req, res) => {
     }
 });
 
+app.get('/api/assets/index', (_req, res) => {
+    try {
+        const assetsDir = getAssetsPath();
+        res.json(listAssetRecords(assetsDir));
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
 app.post('/api/assets/upload', (req, res) => {
     try {
         const { filename, base64 } = req.body;
@@ -245,7 +500,7 @@ app.post('/api/assets/upload', (req, res) => {
         if (!fs.existsSync(assetsDir)) {
             fs.mkdirSync(assetsDir, { recursive: true });
         }
-        
+
         // ensure unique filename
         let finalFilename = filename;
         let counter = 1;
@@ -261,6 +516,321 @@ app.post('/api/assets/upload', (req, res) => {
         fs.writeFileSync(filePath, buffer);
 
         res.json({ success: true, filename: finalFilename, url: `/api/assets/${finalFilename}` });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.get('/api/assets/file', (req, res) => {
+    try {
+        const assetsDir = getAssetsPath();
+        const requestedPath = req.query.path as string;
+        if (!requestedPath) {
+            res.status(400).json({ error: 'path query parameter is required' });
+            return;
+        }
+        const filePath = resolveAssetPath(assetsDir, requestedPath);
+        if (!filePath) {
+            res.status(403).json({ error: 'Access denied or invalid path' });
+            return;
+        }
+        if (!fs.existsSync(filePath)) {
+            res.status(404).json({ error: 'File not found' });
+            return;
+        }
+        res.sendFile(filePath);
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.delete('/api/assets/file', (req, res) => {
+    try {
+        const assetsDir = getAssetsPath();
+        const requestedPath = req.query.path as string;
+        if (!requestedPath) {
+            res.status(400).json({ error: 'path query parameter is required' });
+            return;
+        }
+        const filePath = resolveAssetPath(assetsDir, requestedPath);
+        if (!filePath) {
+            res.status(403).json({ error: 'Access denied or invalid path' });
+            return;
+        }
+        if (!fs.existsSync(filePath)) {
+            res.status(404).json({ error: 'File not found' });
+            return;
+        }
+        if (!fs.statSync(filePath).isFile()) {
+            res.status(400).json({ error: 'Only files can be deleted through this endpoint' });
+            return;
+        }
+
+        fs.rmSync(filePath, { force: true });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+app.post('/api/assets/show-in-explorer', (req, res) => {
+    try {
+        const assetsDir = getAssetsPath();
+        const requestedPath = typeof req.body.path === 'string' ? req.body.path : '';
+        if (!requestedPath) {
+            res.status(400).json({ error: 'path is required' });
+            return;
+        }
+        const filePath = resolveAssetPath(assetsDir, requestedPath);
+        if (!filePath) {
+            res.status(403).json({ error: 'Access denied or invalid path' });
+            return;
+        }
+        if (!fs.existsSync(filePath)) {
+            res.status(404).json({ error: 'File not found' });
+            return;
+        }
+        if (process.platform !== 'win32') {
+            res.status(400).json({ error: 'Show in Explorer is available only on Windows hosts' });
+            return;
+        }
+
+        spawn('explorer.exe', buildExplorerRevealArgs(filePath), {
+            detached: true,
+            stdio: 'ignore',
+        }).unref();
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+// Middleware для бинарных потоков
+const rawOctetMiddleware = express.raw({ type: 'application/octet-stream', limit: '300mb' });
+
+app.post('/api/assets/upload-binary', rawOctetMiddleware, (req, res) => {
+    try {
+        const filename = req.query.filename as string;
+        if (!filename) {
+            res.status(400).json({ error: 'filename query parameter is required' });
+            return;
+        }
+        const assetsDir = getAssetsPath();
+        if (!fs.existsSync(assetsDir)) {
+            fs.mkdirSync(assetsDir, { recursive: true });
+        }
+
+        // Обеспечим уникальное имя в папке назначения
+        const folder = req.query.folder as string || '';
+        let targetDir = assetsDir;
+        if (folder) {
+            // Поддержка папок
+            const resolvedFolder = resolveAssetPath(assetsDir, folder);
+            if (resolvedFolder) {
+                targetDir = resolvedFolder;
+                if (!fs.existsSync(targetDir)) {
+                    fs.mkdirSync(targetDir, { recursive: true });
+                }
+            }
+        }
+
+        let finalFilename = filename;
+        let counter = 1;
+        while (fs.existsSync(path.join(targetDir, finalFilename))) {
+            const ext = path.extname(filename);
+            const base = path.basename(filename, ext);
+            finalFilename = `${base}_${counter}${ext}`;
+            counter++;
+        }
+
+        const buffer = req.body as Buffer;
+        if (!buffer || buffer.length === 0) {
+            res.status(400).json({ error: 'Empty file body' });
+            return;
+        }
+
+        const targetPath = path.join(targetDir, finalFilename);
+        fs.writeFileSync(targetPath, buffer);
+
+        // Формируем относительный путь ассета (для сохранения на канвас или сущности)
+        const relativeAssetPath = path.relative(assetsDir, targetPath).replace(/\\/g, '/');
+
+        res.json({
+            success: true,
+            filename: finalFilename,
+            path: relativeAssetPath,
+            url: `/api/assets/file?path=${encodeURIComponent(relativeAssetPath)}`
+        });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+// Временный каталог для чанков
+function getChunksTempDir(uploadId: string): string {
+    const assetsDir = getAssetsPath();
+    return path.join(assetsDir, '.chunks', uploadId);
+}
+
+// 1. Инициализация сессии загрузки чанков
+app.post('/api/assets/upload-chunk/start', (req, res) => {
+    try {
+        const { filename, fileSize } = req.body;
+        if (!filename) {
+            res.status(400).json({ error: 'filename is required in body' });
+            return;
+        }
+
+        // Генерируем уникальный uploadId
+        const uploadId = `upload_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        const tempDir = getChunksTempDir(uploadId);
+        fs.mkdirSync(tempDir, { recursive: true });
+
+        // Записываем метаданные во временный файл
+        fs.writeFileSync(path.join(tempDir, 'metadata.json'), JSON.stringify({
+            filename,
+            fileSize,
+            createdAt: Date.now()
+        }));
+
+        res.json({ uploadId, success: true });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+// 2. Загрузка чанка
+app.post('/api/assets/upload-chunk', rawOctetMiddleware, (req, res) => {
+    try {
+        const uploadId = req.query.uploadId as string;
+        const chunkIndexStr = req.query.chunkIndex as string;
+
+        if (!uploadId || !chunkIndexStr) {
+            res.status(400).json({ error: 'uploadId and chunkIndex parameters are required' });
+            return;
+        }
+
+        const chunkIndex = parseInt(chunkIndexStr, 10);
+        const tempDir = getChunksTempDir(uploadId);
+
+        if (!fs.existsSync(tempDir)) {
+            res.status(404).json({ error: 'Upload session not found or expired' });
+            return;
+        }
+
+        const buffer = req.body as Buffer;
+        if (!buffer || buffer.length === 0) {
+            res.status(400).json({ error: 'Chunk buffer is empty' });
+            return;
+        }
+
+        const chunkPath = path.join(tempDir, `chunk_${chunkIndex}`);
+        fs.writeFileSync(chunkPath, buffer);
+
+        res.json({ success: true, chunkIndex });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+// 3. Сборка файла из чанков
+app.post('/api/assets/upload-chunk/assemble', (req, res) => {
+    try {
+        const { uploadId } = req.body;
+        if (!uploadId) {
+            res.status(400).json({ error: 'uploadId is required in body' });
+            return;
+        }
+
+        const tempDir = getChunksTempDir(uploadId);
+        if (!fs.existsSync(tempDir)) {
+            res.status(404).json({ error: 'Upload session not found' });
+            return;
+        }
+
+        // Читаем метаданные
+        const metadataPath = path.join(tempDir, 'metadata.json');
+        if (!fs.existsSync(metadataPath)) {
+            res.status(400).json({ error: 'Metadata file is missing in upload session' });
+            return;
+        }
+        const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+        const filename = metadata.filename;
+
+        const assetsDir = getAssetsPath();
+        if (!fs.existsSync(assetsDir)) {
+            fs.mkdirSync(assetsDir, { recursive: true });
+        }
+
+        // Ищем чанки в папке
+        const files = fs.readdirSync(tempDir);
+        const chunkFiles = files
+            .filter(f => f.startsWith('chunk_'))
+            .sort((a, b) => {
+                const idxA = parseInt(a.split('_')[1], 10);
+                const idxB = parseInt(b.split('_')[1], 10);
+                return idxA - idxB;
+            });
+
+        if (chunkFiles.length === 0) {
+            res.status(400).json({ error: 'No chunks found to assemble' });
+            return;
+        }
+
+        // Обеспечим уникальное имя
+        let finalFilename = filename;
+        let counter = 1;
+        while (fs.existsSync(path.join(assetsDir, finalFilename))) {
+            const ext = path.extname(filename);
+            const base = path.basename(filename, ext);
+            finalFilename = `${base}_${counter}${ext}`;
+            counter++;
+        }
+
+        const targetPath = path.join(assetsDir, finalFilename);
+        const writeStream = fs.createWriteStream(targetPath);
+
+        // Последовательно склеиваем чанки
+        for (const chunkFile of chunkFiles) {
+            const chunkPath = path.join(tempDir, chunkFile);
+            const chunkBuffer = fs.readFileSync(chunkPath);
+            writeStream.write(chunkBuffer);
+        }
+        writeStream.end();
+
+        // Удаляем временную папку
+        fs.rmSync(tempDir, { recursive: true, force: true });
+
+        // Если итоговая директория .chunks осталась пустой — вычистим её
+        const chunksParent = path.join(assetsDir, '.chunks');
+        if (fs.existsSync(chunksParent) && fs.readdirSync(chunksParent).length === 0) {
+            fs.rmdirSync(chunksParent);
+        }
+
+        res.json({
+            success: true,
+            filename: finalFilename,
+            path: finalFilename,
+            url: `/api/assets/file?path=${encodeURIComponent(finalFilename)}`
+        });
+    } catch (err) {
+        res.status(500).json({ error: (err as Error).message });
+    }
+});
+
+// 4. Отмена сессии и удаление временных файлов
+app.post('/api/assets/upload-chunk/cancel', (req, res) => {
+    try {
+        const { uploadId } = req.body;
+        if (!uploadId) {
+            res.status(400).json({ error: 'uploadId is required' });
+            return;
+        }
+        const tempDir = getChunksTempDir(uploadId);
+        if (fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        }
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: (err as Error).message });
     }
@@ -330,36 +900,69 @@ server.on('upgrade', (request, socket, head) => {
 
 // ─── Graceful shutdown (Problem #4.4) ───
 
-function shutdown() {
+export function stopVibeFileServer(options: { exitProcess?: boolean } = {}): Promise<void> {
+    if (isServerStopping) return Promise.resolve();
+    isServerStopping = true;
+
     console.log('\n🛑 Shutting down...');
     stopWatching();
     watchWss.close();
     yjsWss.close();
-    server.close(() => {
-        console.log('✅ Server stopped');
-        process.exit(0);
+
+    return new Promise((resolve) => {
+        server.close(() => {
+            isServerStarted = false;
+            isServerStopping = false;
+            console.log('✅ Server stopped');
+            if (options.exitProcess) process.exit(0);
+            resolve();
+        });
     });
 }
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+function shutdown() {
+    void stopVibeFileServer({ exitProcess: true });
+}
 
 // ─── Start ───
 
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`
+export function startVibeFileServer(options: { registerProcessHandlers?: boolean } = {}): Promise<void> {
+    if (isServerStarted) return Promise.resolve();
+    isServerStarted = true;
+
+    if (options.registerProcessHandlers !== false) {
+        process.once('SIGINT', shutdown);
+        process.once('SIGTERM', shutdown);
+    }
+
+    return new Promise((resolve, reject) => {
+        server.once('error', (error) => {
+            isServerStarted = false;
+            reject(error);
+        });
+
+        server.listen(PORT, '0.0.0.0', () => {
+            console.log(`
 ╔══════════════════════════════════════════╗
 ║   🎲 Vibe TTRPG File Server             ║
 ║   Port: ${PORT}                            ║
 ║   Status: Running                        ║
 ╚══════════════════════════════════════════╝
     `);
-    console.log('Endpoints:');
-    console.log('  POST /api/world/create   — Create new world');
-    console.log('  POST /api/world/open     — Open existing world');
-    console.log('  GET  /api/entities       — List entities');
-    console.log('  WS   /ws/watch           — File change notifications');
-    console.log('  WS   /ws/world           — Global Yjs sync');
-    console.log('  WS   /ws/canvas/<id>     — Canvas Yjs sync');
-    console.log('');
-});
+            console.log('Endpoints:');
+            console.log('  POST /api/world/create   — Create new world');
+            console.log('  POST /api/world/open     — Open existing world');
+            console.log('  GET  /api/entities       — List entities');
+            console.log('  WS   /ws/watch           — File change notifications');
+            console.log('  WS   /ws/world           — Global Yjs sync');
+            console.log('  WS   /ws/canvas/<id>     — Canvas Yjs sync');
+            console.log('');
+            resolve();
+        });
+    });
+}
+
+const entryPath = process.argv[1] ? fileURLToPath(import.meta.url) : null;
+if (entryPath && path.resolve(process.argv[1]) === path.resolve(entryPath)) {
+    void startVibeFileServer();
+}
