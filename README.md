@@ -1,14 +1,38 @@
 # Eternity Table
 
+**English** | [Русский](README.ru.md)
+
 Local-first virtual tabletop and campaign knowledge base for tabletop RPGs.
 
 Eternity Table combines an infinite canvas, an Obsidian-style Markdown knowledge base, entity sheets, assets, audio tools, dice rolls, and multiplayer sync around one rule: the host's world folder is the source of truth.
 
 ## Status
 
-Version: `0.1.0 beta`
+Version: `0.1.0 alpha`
 
-This beta is usable for local testing and early campaign preparation, but it is not a polished public release yet. The core architecture is in place; UI, permissions, packaging, and multiplayer QA are still being hardened.
+The first public alpha is available as a Windows x64 prerelease. It is intended for early testing, local campaign preparation, and feedback, not for production-critical campaigns yet. The core architecture is in place; UI, permissions, packaging, and multiplayer QA are still being hardened.
+
+Release page:
+
+- [v0.1.0-alpha](https://github.com/dakugoddo/Vibe-TTRPG-Platform/releases/tag/v0.1.0-alpha)
+
+<details>
+<summary>Changelog</summary>
+
+### v0.1.0-alpha
+
+- Published the first public Windows x64 alpha prerelease.
+- Cleaned the public `main` branch so it contains only application code, release scripts, README files, and bundled release data.
+- Added a bundled preview world under `app/preview-world/` for demo and onboarding purposes.
+- Added a desktop **Open preview world** flow that opens a temporary copy of the bundled preview world, so preview edits are discarded when the preview session is recreated.
+- Added Windows portable and installer artifacts through Electron Builder.
+- Added SHA256 checksums for release artifacts.
+- Removed local-only content from the public branch scope: personal test worlds, `.pi/`, agent instructions, Graphify output, private prototypes, and accidentally tracked dependencies.
+- Made the development performance overlay opt-in instead of visible by default.
+- Refreshed dependency lockfiles for the alpha audit pass.
+- Added bilingual public documentation: English `README.md` and Russian `README.ru.md`.
+
+</details>
 
 ## Core Idea
 
@@ -26,7 +50,7 @@ The project is a hybrid of:
 - Obsidian style Markdown knowledge base
 - FoundryVTT style RPG entities, sheets, assets, and session tools
 
-## Features In 0.1 Beta
+## Features In 0.1 Alpha
 
 ### Infinite Canvas
 
@@ -114,11 +138,25 @@ Entities can contain other entities. A character can contain inventory objects, 
 - Portable and installer build configuration through electron-builder.
 - Custom desktop icon assets wired into Electron and Windows packaging.
 - Lazy-loaded app surfaces to keep the production app shell below the Vite chunk warning threshold.
-- Dev performance overlay foundation.
+- Development performance overlay that is opt-in.
 
 ## Quick Start
 
-### Requirements
+### Download Alpha Build
+
+Download the Windows x64 portable build or installer from:
+
+- [GitHub Releases: v0.1.0-alpha](https://github.com/dakugoddo/Vibe-TTRPG-Platform/releases/tag/v0.1.0-alpha)
+
+Available artifacts:
+
+- `Eternity-Table-0.1.0-portable-x64.exe`
+- `Eternity-Table-0.1.0-setup-x64.exe`
+- `SHA256SUMS.txt`
+
+Windows builds are currently unsigned, so SmartScreen warnings are expected.
+
+### Requirements For Development
 
 - Windows is the primary tested environment.
 - Node.js 24+ is currently used in development.
@@ -249,7 +287,7 @@ server/
     playerProfiles.ts
 ```
 
-The public/release branch intentionally contains only application code, build scripts, and the bundled preview world. Personal test worlds, agent instructions, prototypes, Graphify output, and private planning files are local-only or development-branch-only data.
+The public/release branch intentionally contains only application code, build scripts, README files, and the bundled preview world. Personal test worlds, agent instructions, prototypes, Graphify output, and private planning files are local-only or development-branch-only data.
 
 ## Bundled Preview World
 
@@ -320,7 +358,7 @@ app/src/utils/theme.ts
 
 Themes are intended to become full visual workspaces, not only light/dark color palettes.
 
-## Beta Limitations
+## Alpha Limitations
 
 - Some UI surfaces are still being polished.
 - Full native multi-window and multi-monitor workflows are planned after the Electron foundation is stable.
