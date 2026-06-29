@@ -42,3 +42,15 @@ export function buildNotesWorkspaceEmbeddedEntityTree(
 
   return build(root.id, 0, new Set([root.id]));
 }
+
+export function filterNotesWorkspaceEmbeddedEntityTree(
+  nodes: readonly NotesWorkspaceEmbeddedEntityNode[],
+  collapsedEntityIds: ReadonlySet<string>
+): NotesWorkspaceEmbeddedEntityNode[] {
+  return nodes.map((node) => ({
+    ...node,
+    children: collapsedEntityIds.has(node.entity.id)
+      ? []
+      : filterNotesWorkspaceEmbeddedEntityTree(node.children, collapsedEntityIds),
+  }));
+}

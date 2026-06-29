@@ -61,7 +61,11 @@ import {
     type NotesWorkspaceLinkedViewSection,
     type NotesWorkspaceLinkedViews,
 } from '../../utils/notesWorkspaceLinks';
-import { buildNotesWorkspaceEmbeddedEntityTree, type NotesWorkspaceEmbeddedEntityNode } from '../../utils/notesWorkspaceBlocks';
+import {
+    buildNotesWorkspaceEmbeddedEntityTree,
+    filterNotesWorkspaceEmbeddedEntityTree,
+    type NotesWorkspaceEmbeddedEntityNode,
+} from '../../utils/notesWorkspaceBlocks';
 import { listNotesWorkspaceGroups, type NotesWorkspaceNode, type NotesWorkspaceSplitPlacement, type NotesWorkspaceTab, type NotesWorkspaceView } from '../../utils/notesWorkspaceLayout';
 import {
     listImplementedNotesShellModules,
@@ -573,6 +577,16 @@ function EntityListButton({ entity, onOpenEntity, t }: EntityListButtonProps) {
     );
 }
 
+function countEmbeddedBlockChildren(nodes: readonly NotesWorkspaceEmbeddedEntityNode[]): Map<string, number> {
+    const counts = new Map<string, number>();
+    const visit = (node: NotesWorkspaceEmbeddedEntityNode) => {
+        counts.set(node.entity.id, node.children.length);
+        node.children.forEach(visit);
+    };
+    nodes.forEach(visit);
+    return counts;
+}
+
 interface EmbeddedEntityBlocksPanelProps {
     nodes: NotesWorkspaceEmbeddedEntityNode[];
     onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
@@ -580,11 +594,30 @@ interface EmbeddedEntityBlocksPanelProps {
 }
 
 function EmbeddedEntityBlocksPanel({ nodes, onOpenEntity, t }: EmbeddedEntityBlocksPanelProps) {
+    const [collapsedEntityIds, setCollapsedEntityIds] = useState<Set<string>>(() => new Set());
+    const childCountsById = useMemo(() => countEmbeddedBlockChildren(nodes), [nodes]);
+    const visibleNodes = useMemo(
+        () => filterNotesWorkspaceEmbeddedEntityTree(nodes, collapsedEntityIds),
+        [nodes, collapsedEntityIds]
+    );
+
     if (nodes.length === 0) return null;
+
+    const toggleCollapsed = (entityId: string) => {
+        setCollapsedEntityIds((current) => {
+            const next = new Set(current);
+            if (next.has(entityId)) next.delete(entityId);
+            else next.add(entityId);
+            return next;
+        });
+    };
 
     const renderNode = (node: NotesWorkspaceEmbeddedEntityNode): ReactNode => {
         const Icon = ENTITY_TYPE_ICONS[node.entity.type] ?? FileText;
         const description = node.entity.description?.trim();
+        const originalChildCount = childCountsById.get(node.entity.id) ?? 0;
+        const hasChildren = originalChildCount > 0;
+        const isCollapsed = collapsedEntityIds.has(node.entity.id);
 
         return (
             <article
@@ -592,26 +625,53 @@ function EmbeddedEntityBlocksPanel({ nodes, onOpenEntity, t }: EmbeddedEntityBlo
                 className="rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-surface-block)_88%,transparent)] p-3 shadow-[var(--vibe-shadow-block)]"
                 style={{ marginLeft: `${Math.min(node.depth, 4) * 14}px` }}
             >
-                <button
-                    type="button"
-                    onClick={() => onOpenEntity(node.entity.id, 'preview')}
-                    className="group flex w-full min-w-0 items-start gap-2 text-left"
-                    title={node.entity.name}
-                >
-                    <Icon size={15} className={`mt-0.5 shrink-0 ${getDatabaseTone(node.entity.database)}`} />
-                    <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-black text-[var(--vibe-text-primary)] group-hover:text-[var(--vibe-accent)]">
-                            {node.entity.name}
+                <div className="flex min-w-0 items-start gap-2">
+                    {hasChildren ? (
+                        <button
+                            type="button"
+                            onClick={() => toggleCollapsed(node.entity.id)}
+                            className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--vibe-radius-xs)] border border-[var(--vibe-border-subtle)] text-[var(--vibe-text-muted)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                            aria-label={t(isCollapsed ? 'workspace.notes.expandEmbeddedBlock' : 'workspace.notes.collapseEmbeddedBlock')}
+                            title={t(isCollapsed ? 'workspace.notes.expandEmbeddedBlock' : 'workspace.notes.collapseEmbeddedBlock')}
+                        >
+                            <ChevronRight size={14} className={`transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+                        </button>
+                    ) : (
+                        <span className="mt-0.5 h-6 w-6 shrink-0" aria-hidden="true" />
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => onOpenEntity(node.entity.id, 'preview')}
+                        className="group flex min-w-0 flex-1 items-start gap-2 text-left"
+                        title={node.entity.name}
+                    >
+                        <Icon size={15} className={`mt-0.5 shrink-0 ${getDatabaseTone(node.entity.database)}`} />
+                        <span className="min-w-0 flex-1">
+                            <span className="flex min-w-0 items-center gap-2">
+                                <span className="min-w-0 flex-1 truncate text-sm font-black text-[var(--vibe-text-primary)] group-hover:text-[var(--vibe-accent)]">
+                                    {node.entity.name}
+                                </span>
+                                {hasChildren && (
+                                    <span className="shrink-0 font-mono text-[10px] text-[var(--vibe-text-faint)]">
+                                        {originalChildCount}
+                                    </span>
+                                )}
+                            </span>
+                            <span className="mt-0.5 block truncate text-[10px] uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                                {t(`workspace.notes.entityTypes.${node.entity.type}`)} / {t(`workspace.notes.databases.${node.entity.database ?? 'general'}`)}
+                            </span>
                         </span>
-                        <span className="mt-0.5 block truncate text-[10px] uppercase tracking-wider text-[var(--vibe-text-faint)]">
-                            {t(`workspace.notes.entityTypes.${node.entity.type}`)} / {t(`workspace.notes.databases.${node.entity.database ?? 'general'}`)}
-                        </span>
-                    </span>
-                </button>
+                    </button>
+                </div>
                 {description && (
                     <div className="mt-3 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-sm">
                         <MarkdownRenderer content={description} entityId={node.entity.id} allowCustomBlocks={false} />
                     </div>
+                )}
+                {hasChildren && isCollapsed && (
+                    <p className="mt-3 rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] px-3 py-2 text-xs text-[var(--vibe-text-faint)]">
+                        {t('workspace.notes.collapsedEmbeddedChildren', { count: originalChildCount })}
+                    </p>
                 )}
                 {node.children.length > 0 && (
                     <div className="mt-3 space-y-2 border-l border-[var(--vibe-border-subtle)] pl-2">
@@ -631,7 +691,7 @@ function EmbeddedEntityBlocksPanel({ nodes, onOpenEntity, t }: EmbeddedEntityBlo
                 <span className="font-mono text-[10px] text-[var(--vibe-text-faint)]">{nodes.length}</span>
             </div>
             <div className="space-y-2">
-                {nodes.map(renderNode)}
+                {visibleNodes.map(renderNode)}
             </div>
         </section>
     );

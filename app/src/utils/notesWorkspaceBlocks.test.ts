@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { buildNotesWorkspaceEmbeddedEntityTree } from './notesWorkspaceBlocks';
+import {
+  buildNotesWorkspaceEmbeddedEntityTree,
+  filterNotesWorkspaceEmbeddedEntityTree,
+} from './notesWorkspaceBlocks';
 import type { Entity } from '../types';
 
 function entity(id: string, parentId: string | null, name: string): Entity {
@@ -36,6 +39,24 @@ assert.deepEqual(
 assert.equal(tree[0].children[0].depth, 1);
 assert.equal(tree[0].children[0].children[0].entity.id, 'great-grandchild');
 assert.equal(tree[0].children[0].children[0].depth, 2);
+
+const collapsedAtChild = filterNotesWorkspaceEmbeddedEntityTree(tree, new Set(['child-a']));
+assert.deepEqual(
+  collapsedAtChild.map((node) => ({ id: node.entity.id, childIds: node.children.map((child) => child.entity.id) })),
+  [
+    { id: 'child-a', childIds: [] },
+    { id: 'child-b', childIds: [] },
+  ],
+  'Collapsed embedded block should stay visible while hiding descendants'
+);
+assert.deepEqual(
+  filterNotesWorkspaceEmbeddedEntityTree(tree, new Set(['grandchild']))[0].children.map((node) => ({
+    id: node.entity.id,
+    childIds: node.children.map((child) => child.entity.id),
+  })),
+  [{ id: 'grandchild', childIds: [] }],
+  'Collapsing a nested embedded block should only hide its own descendants'
+);
 
 const cyclicTree = buildNotesWorkspaceEmbeddedEntityTree(cycleA, [cycleA, cycleB]);
 assert.deepEqual(
