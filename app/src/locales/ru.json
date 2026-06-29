@@ -1239,6 +1239,7 @@
       "outgoingShort": "исходящие",
       "incomingShort": "входящие",
       "attachedEntities": "Вложенные сущности",
+      "embeddedBlocks": "Вложенные блоки",
       "noAttachedEntities": "Вложенных сущностей нет.",
       "properties": "Свойства",
       "noProperties": "Публичных свойств нет.",

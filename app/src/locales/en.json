@@ -1239,6 +1239,7 @@
             "outgoingShort": "outgoing",
             "incomingShort": "incoming",
             "attachedEntities": "Attached entities",
+            "embeddedBlocks": "Embedded blocks",
             "noAttachedEntities": "No attached entities.",
             "properties": "Properties",
             "noProperties": "No public properties.",

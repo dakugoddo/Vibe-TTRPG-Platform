@@ -61,6 +61,7 @@ import {
     type NotesWorkspaceLinkedViewSection,
     type NotesWorkspaceLinkedViews,
 } from '../../utils/notesWorkspaceLinks';
+import { buildNotesWorkspaceEmbeddedEntityTree, type NotesWorkspaceEmbeddedEntityNode } from '../../utils/notesWorkspaceBlocks';
 import { listNotesWorkspaceGroups, type NotesWorkspaceNode, type NotesWorkspaceSplitPlacement, type NotesWorkspaceTab, type NotesWorkspaceView } from '../../utils/notesWorkspaceLayout';
 import {
     listImplementedNotesShellModules,
@@ -572,6 +573,70 @@ function EntityListButton({ entity, onOpenEntity, t }: EntityListButtonProps) {
     );
 }
 
+interface EmbeddedEntityBlocksPanelProps {
+    nodes: NotesWorkspaceEmbeddedEntityNode[];
+    onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
+    t: Translate;
+}
+
+function EmbeddedEntityBlocksPanel({ nodes, onOpenEntity, t }: EmbeddedEntityBlocksPanelProps) {
+    if (nodes.length === 0) return null;
+
+    const renderNode = (node: NotesWorkspaceEmbeddedEntityNode): ReactNode => {
+        const Icon = ENTITY_TYPE_ICONS[node.entity.type] ?? FileText;
+        const description = node.entity.description?.trim();
+
+        return (
+            <article
+                key={node.entity.id}
+                className="rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-surface-block)_88%,transparent)] p-3 shadow-[var(--vibe-shadow-block)]"
+                style={{ marginLeft: `${Math.min(node.depth, 4) * 14}px` }}
+            >
+                <button
+                    type="button"
+                    onClick={() => onOpenEntity(node.entity.id, 'preview')}
+                    className="group flex w-full min-w-0 items-start gap-2 text-left"
+                    title={node.entity.name}
+                >
+                    <Icon size={15} className={`mt-0.5 shrink-0 ${getDatabaseTone(node.entity.database)}`} />
+                    <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-black text-[var(--vibe-text-primary)] group-hover:text-[var(--vibe-accent)]">
+                            {node.entity.name}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[10px] uppercase tracking-wider text-[var(--vibe-text-faint)]">
+                            {t(`workspace.notes.entityTypes.${node.entity.type}`)} / {t(`workspace.notes.databases.${node.entity.database ?? 'general'}`)}
+                        </span>
+                    </span>
+                </button>
+                {description && (
+                    <div className="mt-3 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-sm">
+                        <MarkdownRenderer content={description} entityId={node.entity.id} allowCustomBlocks={false} />
+                    </div>
+                )}
+                {node.children.length > 0 && (
+                    <div className="mt-3 space-y-2 border-l border-[var(--vibe-border-subtle)] pl-2">
+                        {node.children.map(renderNode)}
+                    </div>
+                )}
+            </article>
+        );
+    };
+
+    return (
+        <section className="mt-4 border-t border-[var(--vibe-border-subtle)] pt-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
+                    {t('workspace.notes.embeddedBlocks')}
+                </span>
+                <span className="font-mono text-[10px] text-[var(--vibe-text-faint)]">{nodes.length}</span>
+            </div>
+            <div className="space-y-2">
+                {nodes.map(renderNode)}
+            </div>
+        </section>
+    );
+}
+
 interface EntitySearchResultButtonProps {
     entity: Entity;
     result: EntitySearchResult;
@@ -999,8 +1064,10 @@ function EntityDataPanel({ entity, children, linkedViews, entitiesById, onOpenEn
 
 interface NoteEditorPanelProps {
     entity: Entity;
+    embeddedNodes: NotesWorkspaceEmbeddedEntityNode[];
     canEdit: boolean;
     view: NotesWorkspaceView;
+    onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
     t: Translate;
 }
 
@@ -1120,11 +1187,13 @@ function MarkdownRichEditor({
 
 interface EntityUiPreviewPanelProps {
     entity: Entity;
+    embeddedNodes: NotesWorkspaceEmbeddedEntityNode[];
     canEdit: boolean;
+    onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
     t: Translate;
 }
 
-function EntityUiPreviewPanel({ entity, canEdit, t }: EntityUiPreviewPanelProps) {
+function EntityUiPreviewPanel({ entity, embeddedNodes, canEdit, onOpenEntity, t }: EntityUiPreviewPanelProps) {
     return (
         <div className="h-full min-h-0 overflow-y-auto p-4 custom-scrollbar">
             <div className={`mx-auto flex min-h-[420px] w-full max-w-[980px] flex-col overflow-hidden ${glass.window}`}>
@@ -1166,6 +1235,7 @@ function EntityUiPreviewPanel({ entity, canEdit, t }: EntityUiPreviewPanelProps)
                                 {entity.type === 'attack' && <AttackSheet entity={entity} />}
                                 {entity.type === 'ability' && <AbilitySheet entity={entity} />}
                                 {entity.type === 'tag' && canEdit && <TagEditor entity={entity} />}
+                                <EmbeddedEntityBlocksPanel nodes={embeddedNodes} onOpenEntity={onOpenEntity} t={t} />
                             </>
                         )}
                     </div>
@@ -1175,7 +1245,7 @@ function EntityUiPreviewPanel({ entity, canEdit, t }: EntityUiPreviewPanelProps)
     );
 }
 
-function NoteEditorPanel({ entity, canEdit, view, t }: NoteEditorPanelProps) {
+function NoteEditorPanel({ entity, embeddedNodes, canEdit, view, onOpenEntity, t }: NoteEditorPanelProps) {
     const sourceEditor = (
         <MarkdownRichEditor
             value={entity.description ?? ''}
@@ -1196,6 +1266,7 @@ function NoteEditorPanel({ entity, canEdit, view, t }: NoteEditorPanelProps) {
             ) : (
                 <p className="text-sm text-[var(--vibe-text-faint)]">{t('workspace.notes.emptyMarkdown')}</p>
             )}
+            <EmbeddedEntityBlocksPanel nodes={embeddedNodes} onOpenEntity={onOpenEntity} t={t} />
         </div>
     );
 
@@ -1444,6 +1515,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
     const activeTab = getActiveTab(node.tabs, node.activeTabId);
     const activeEntity = activeTab ? entitiesById.get(activeTab.entityId) : null;
     const linkedViews = activeEntity ? buildNotesWorkspaceLinkedViews(activeEntity, visibleEntities) : null;
+    const embeddedEntityNodes = activeEntity ? buildNotesWorkspaceEmbeddedEntityTree(activeEntity, visibleEntities) : [];
     const childEntities = activeEntity ? childrenByParent.get(activeEntity.id) ?? [] : [];
     const canEditActiveEntity = activeEntity ? canEditEntityInWorkspace(activeEntity) : false;
     const activeParentEntity = activeEntity?.parentId ? entitiesById.get(activeEntity.parentId) ?? null : null;
@@ -1788,10 +1860,23 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
 
                     <div className="min-h-0 flex-1 overflow-hidden">
                         {(activeTab.view === 'source' || activeTab.view === 'preview' || activeTab.view === 'split') && (
-                            <NoteEditorPanel entity={activeEntity} canEdit={canEditActiveEntity} view={activeTab.view} t={t} />
+                            <NoteEditorPanel
+                                entity={activeEntity}
+                                embeddedNodes={embeddedEntityNodes}
+                                canEdit={canEditActiveEntity}
+                                view={activeTab.view}
+                                onOpenEntity={onOpenEntity}
+                                t={t}
+                            />
                         )}
                         {activeTab.view === 'ui' && (
-                            <EntityUiPreviewPanel entity={activeEntity} canEdit={canEditActiveEntity} t={t} />
+                            <EntityUiPreviewPanel
+                                entity={activeEntity}
+                                embeddedNodes={embeddedEntityNodes}
+                                canEdit={canEditActiveEntity}
+                                onOpenEntity={onOpenEntity}
+                                t={t}
+                            />
                         )}
                         {activeTab.view === 'entity' && (
                             <EntityDataPanel entity={activeEntity} children={childEntities} linkedViews={linkedViews} entitiesById={entitiesById} onOpenEntity={onOpenEntity} t={t} />
