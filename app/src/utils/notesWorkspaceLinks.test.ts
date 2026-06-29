@@ -3,6 +3,7 @@ import {
     buildNotesWorkspaceLinkedViews,
     extractNotesWorkspaceOutline,
     extractNotesWorkspaceWikiLinks,
+    getNotesWorkspaceLinkedViewSections,
     hasNotesWorkspaceWikiLinkToEntity,
 } from './notesWorkspaceLinks';
 import type { Entity } from '../types';
@@ -58,5 +59,21 @@ const linkedViews = buildNotesWorkspaceLinkedViews(target, [target, source]);
 assert.equal(linkedViews.backlinks.length, 1);
 assert.equal(linkedViews.backlinks[0].id, 'note-source');
 assert.equal(linkedViews.outline.length, 1);
+
+assert.deepEqual(
+    getNotesWorkspaceLinkedViewSections('outline'),
+    ['outline'],
+    'Outline mode should render only the outline section instead of the whole linked context panel'
+);
+assert.deepEqual(
+    getNotesWorkspaceLinkedViewSections('backlinks'),
+    ['backlinks'],
+    'Backlinks mode should render only incoming links instead of duplicating outline/outgoing sections'
+);
+assert.deepEqual(
+    getNotesWorkspaceLinkedViewSections('source'),
+    ['outline', 'outgoingLinks', 'backlinks'],
+    'The default context panel keeps the full linked-view summary'
+);
 
 console.log('notes workspace links tests passed');

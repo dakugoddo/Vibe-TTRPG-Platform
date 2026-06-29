@@ -55,7 +55,12 @@ import { AttackSheet } from '../windows/blocks/AttackSheet';
 import { AbilitySheet } from '../windows/blocks/AbilitySheet';
 import { EntityImageBlock } from '../windows/blocks/EntityImageBlock';
 import { TagEditor } from '../windows/blocks/TagEditor';
-import { buildNotesWorkspaceLinkedViews, type NotesWorkspaceLinkedViews } from '../../utils/notesWorkspaceLinks';
+import {
+    buildNotesWorkspaceLinkedViews,
+    getNotesWorkspaceLinkedViewSections,
+    type NotesWorkspaceLinkedViewSection,
+    type NotesWorkspaceLinkedViews,
+} from '../../utils/notesWorkspaceLinks';
 import { listNotesWorkspaceGroups, type NotesWorkspaceNode, type NotesWorkspaceSplitPlacement, type NotesWorkspaceTab, type NotesWorkspaceView } from '../../utils/notesWorkspaceLayout';
 import {
     listImplementedNotesShellModules,
@@ -613,12 +618,22 @@ interface LinkedViewsPanelProps {
     linkedViews: NotesWorkspaceLinkedViews | null;
     entitiesById: Map<string, Entity>;
     onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
+    sections?: NotesWorkspaceLinkedViewSection[];
     t: Translate;
 }
 
-function LinkedViewsPanel({ linkedViews, entitiesById, onOpenEntity, t }: LinkedViewsPanelProps) {
+function LinkedViewsPanel({
+    linkedViews,
+    entitiesById,
+    onOpenEntity,
+    sections = ['outline', 'outgoingLinks', 'backlinks'],
+    t,
+}: LinkedViewsPanelProps) {
+    const visibleSections = new Set(sections);
+
     return (
         <div className="space-y-4">
+            {visibleSections.has('outline') && (
             <section>
                 <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
@@ -645,7 +660,9 @@ function LinkedViewsPanel({ linkedViews, entitiesById, onOpenEntity, t }: Linked
                     <p className="text-xs text-[var(--vibe-text-faint)]">{t('workspace.notes.noOutline')}</p>
                 )}
             </section>
+            )}
 
+            {visibleSections.has('outgoingLinks') && (
             <section>
                 <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
@@ -686,7 +703,9 @@ function LinkedViewsPanel({ linkedViews, entitiesById, onOpenEntity, t }: Linked
                     <p className="text-xs text-[var(--vibe-text-faint)]">{t('workspace.notes.noOutgoingLinks')}</p>
                 )}
             </section>
+            )}
 
+            {visibleSections.has('backlinks') && (
             <section>
                 <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
@@ -706,6 +725,7 @@ function LinkedViewsPanel({ linkedViews, entitiesById, onOpenEntity, t }: Linked
                     <p className="text-xs text-[var(--vibe-text-faint)]">{t('workspace.notes.noBacklinks')}</p>
                 )}
             </section>
+            )}
         </div>
     );
 }
@@ -1778,12 +1798,24 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                         )}
                         {activeTab.view === 'outline' && (
                             <div className="h-full overflow-y-auto p-4">
-                                <LinkedViewsPanel linkedViews={linkedViews} entitiesById={entitiesById} onOpenEntity={onOpenEntity} t={t} />
+                                <LinkedViewsPanel
+                                    linkedViews={linkedViews}
+                                    entitiesById={entitiesById}
+                                    onOpenEntity={onOpenEntity}
+                                    sections={getNotesWorkspaceLinkedViewSections(activeTab.view)}
+                                    t={t}
+                                />
                             </div>
                         )}
                         {activeTab.view === 'backlinks' && (
                             <div className="h-full overflow-y-auto p-4">
-                                <LinkedViewsPanel linkedViews={linkedViews} entitiesById={entitiesById} onOpenEntity={onOpenEntity} t={t} />
+                                <LinkedViewsPanel
+                                    linkedViews={linkedViews}
+                                    entitiesById={entitiesById}
+                                    onOpenEntity={onOpenEntity}
+                                    sections={getNotesWorkspaceLinkedViewSections(activeTab.view)}
+                                    t={t}
+                                />
                             </div>
                         )}
                         {activeTab.view === 'graph' && (
