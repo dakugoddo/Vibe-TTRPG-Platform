@@ -1,6 +1,6 @@
 # Eternity Table: текущий план разработки
 
-> Обновлено: 2026-06-22
+> Обновлено: 2026-06-26
 > Назначение: короткий рабочий план. Этот файл не является журналом всех закрытых срезов.
 
 ## Правила вектора
@@ -18,24 +18,24 @@
 - Compact character card foundation реализован по уточнённому контракту: карточка на canvas информационная, без roll/edit/add/delete controls, detailed info показывается только при edit access к entity.
 - Workspace foundation реализован локально: screen-window singleton, canvas pinned window instances, local window layouts, Obsidian-like Notes workspace с vault tree, tab/split editor, source/preview/split modes, entity data, linked context и unified movable Notes shell modules, включая обязательный `Editor`. Первый leaf-open срез для Notes panes реализован: новая сущность открывается отдельным editor leaf рядом с активным, повторное открытие фокусирует существующий leaf. Native multi-window отложен до desktop gate.
 - Electron desktop foundation реализован: shell, preload IPC, native folder dialog, native asset reveal, embedded server path, build artifact metadata, custom app icon, lazy-loaded app shell chunks, player delivery baseline, `desktop:dev`, `desktop:pack`, `desktop:dist`, dev performance overlay.
-- Beta 0.1 preparation started: product name `Eternity Table`, GitHub README and release checklist created.
+- Alpha 0.1 опубликована: чистый `main`, Windows portable/setup artifacts, release checksums, bundled preview world, двуязычные README (`README.md`/`README.ru.md`) и collapsible changelog в публичной документации.
 - Canvas middle-button pan стабилизирован: compositor-first preview, small commit threshold, global listeners. Stage overscan отменён из-за FPS regression; Konva Stage должен оставаться размером viewport.
 - Module/mod gate зафиксирован: новые крупные функции сначала классифицируются как core platform, built-in optional module или future mod/data pack; пустые module toggles без реального mount point не добавлять.
 
 ## Ближайший безопасный срез
 
-1. Pre-release usability pack:
+1. Post-alpha public main hygiene:
+   - при любом обновлении `main` обновлять обе публичные README-версии (`README.md` и `README.ru.md`), общий статус/описание и collapsible changelog (`<details><summary>...</summary>`);
+   - процедурное правило сохранено как локальный Hermes skill `vibe-main-branch-release-rules`;
+   - публичный `main` должен оставаться app-only: без `test-world/`, `.pi/`, agent files, Graphify output, прототипов, секретов и generated artifacts.
+2. Pre-release usability pack:
    - идти по `.pi/docs/pre-release-usability-pack.md`;
    - completed slices: `Asset loading/error/retry foundation`, `Entity quick actions`, `Notes discoverability polish`, `Audio dock states`, `Canvas card readability`, `Startup clarity`, `Settings reset controls`;
    - automated release QA passed 2026-06-20;
-   - текущий пункт: manual QA по pack перед beta;
-   - далее: beta release checklist.
-2. Electron desktop polish:
+   - следующий пункт: manual QA после опубликованной alpha, с фиксацией найденных blocker/high bugs.
+3. Electron desktop polish:
    - Windows signing decision;
-   - `desktop:pack` passed 2026-06-20; manual launch smoke packaged app remains.
-3. Beta 0.1 release QA:
-   - пройти `.pi/docs/release-0.1-beta-checklist.md`;
-   - решить, какие `test-world/*` изменения являются demo-data, а какие runtime-мусор.
+   - clean/public alpha artifacts опубликованы и скачанный portable smoke прошёл; следующий шаг — clean-machine manual QA.
 4. UI polish по фактическим шероховатостям после Electron QA:
    - manual English smoke по основным экранам;
    - оставшиеся hardcoded surfaces только если это реальные UI-подписи, а не данные мира/шаблоны;
@@ -56,7 +56,7 @@
 ## Активные проверки
 
 - Owner QA: Electron middle-button pan на тестовом мире должен оставаться визуально плавным, без возврата Stage overscan.
-- Owner QA: packaged Electron build должен запускать embedded server и освобождать порт после закрытия.
+- Owner QA: packaged/downloaded Electron portable уже поднимает embedded server и освобождает порт после закрытия; следующий уровень — clean-machine manual QA и проверка installer flow.
 - Manual QA: asset previews/audio/video через `/api/assets/file?path=...` на host и player origin.
 - Manual QA: Canvas clipboard paste должен работать только после фокуса/последнего клика по canvas: plain text создаёт прямоугольник с текущими стилями rect tool, PNG/JPG/GIF из clipboard загружаются как assets и вставляются на canvas; paste в input/textarea/contenteditable/окне сущности не должен создавать canvas-объекты.
 - Manual QA: pre-release usability pack должен проверяться по `.pi/docs/pre-release-usability-pack.md` после каждого completed slice.
