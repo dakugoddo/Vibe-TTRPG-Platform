@@ -8,6 +8,7 @@ import { yjsStore } from '../../store/yjsStore';
 import { glass } from '../../utils/theme';
 import type { AudioChannel, AudioSessionCommand } from '../../types';
 import { AudioDesk, type MusicPlaybackStatus, type MusicSeekRequest } from './AudioDesk';
+import { observeAudioDockEmbeddedTarget, type AudioDockEmbeddedRect } from '../../utils/audioDockEmbedding';
 
 const IDLE_MUSIC_STATUS: MusicPlaybackStatus = {
     isPlaying: false,
@@ -25,13 +26,6 @@ interface AudioControlDockProps {
     floatingEnabled?: boolean;
     embeddedTargetId?: string | null;
     embeddedChrome?: 'full' | 'compact';
-}
-
-interface AudioDockRect {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
 }
 
 function formatPlayerTime(seconds: number | null | undefined): string {
@@ -91,55 +85,12 @@ export function AudioControlDock({
         return yjsStore.observeAudioCommands(updateRemoteAudioCue);
     }, [isHost]);
 
-    const [embeddedRect, setEmbeddedRect] = useState<AudioDockRect | null>(null);
+    const [embeddedRect, setEmbeddedRect] = useState<AudioDockEmbeddedRect | null>(null);
 
     useLayoutEffect(() => {
-        let frameId: number | null = null;
-        const publishRect = (rect: AudioDockRect | null) => {
-            if (frameId !== null) window.cancelAnimationFrame(frameId);
-            frameId = window.requestAnimationFrame(() => {
-                setEmbeddedRect(rect);
-                frameId = null;
-            });
-        };
+        if (floatingEnabled || !embeddedTargetId) return;
 
-        if (floatingEnabled || !embeddedTargetId) {
-            publishRect(null);
-            return () => {
-                if (frameId !== null) window.cancelAnimationFrame(frameId);
-            };
-        }
-
-        const target = document.getElementById(embeddedTargetId);
-        if (!target) {
-            publishRect(null);
-            return () => {
-                if (frameId !== null) window.cancelAnimationFrame(frameId);
-            };
-        }
-
-        const updateRect = () => {
-            const rect = target.getBoundingClientRect();
-            publishRect({
-                left: rect.left,
-                top: rect.top,
-                width: rect.width,
-                height: rect.height,
-            });
-        };
-
-        updateRect();
-        const resizeObserver = new ResizeObserver(updateRect);
-        resizeObserver.observe(target);
-        window.addEventListener('resize', updateRect);
-        window.addEventListener('scroll', updateRect, true);
-
-        return () => {
-            if (frameId !== null) window.cancelAnimationFrame(frameId);
-            resizeObserver.disconnect();
-            window.removeEventListener('resize', updateRect);
-            window.removeEventListener('scroll', updateRect, true);
-        };
+        return observeAudioDockEmbeddedTarget(embeddedTargetId, setEmbeddedRect);
     }, [embeddedTargetId, floatingEnabled]);
 
     const showEnablePulse = !isHost && !sessionAudioEnabled && hasRemoteAudioCue;
@@ -157,7 +108,7 @@ export function AudioControlDock({
         ? (musicStatus.error ?? t('audio.errors.playbackError'))
         : `${getDockChannelLabel(musicStatus.channel, t)} / ${getDockModeLabel(musicStatus.sessionMode, t)}`;
 
-    const isEmbedded = !floatingEnabled && Boolean(embeddedRect);
+    const isEmbedded = !floatingEnabled && Boolean(embeddedTargetId) && Boolean(embeddedRect);
     const useCompactEmbeddedChrome = isEmbedded && embeddedChrome === 'compact';
     const rootClassName = isEmbedded
         ? 'pointer-events-none fixed z-[45]'
