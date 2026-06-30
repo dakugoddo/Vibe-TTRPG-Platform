@@ -1692,9 +1692,9 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
     return (
         <div
             data-notes-group-id={node.id}
-            className={`relative flex h-full min-h-[220px] min-w-0 flex-col overflow-hidden rounded-[var(--vibe-radius-md)] border bg-[var(--vibe-surface-block)] transition-colors ${
+            className={`relative flex h-full min-h-[220px] min-w-0 flex-col overflow-hidden rounded-[var(--vibe-radius-md)] border bg-[var(--vibe-surface-block)] shadow-[var(--vibe-shadow-block)] transition-colors ${
                 isActiveGroup
-                    ? 'border-[var(--vibe-accent)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--vibe-accent)_35%,transparent)]'
+                    ? 'border-[var(--vibe-accent)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--vibe-accent)_35%,transparent),var(--vibe-shadow-block)]'
                     : 'border-[var(--vibe-border-subtle)]'
             }`}
             onMouseDown={() => onSetActiveGroup(node.id)}
@@ -1705,6 +1705,28 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                     className={editorDropIndicatorClass}
                 />
             )}
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-surface-header)_86%,transparent)] px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-accent)]">
+                        <Boxes size={14} />
+                    </span>
+                    <span className="min-w-0">
+                        <span className="block truncate text-[10px] font-black uppercase tracking-widest text-[var(--vibe-text-muted)]">
+                            {t('workspace.notes.tabBlock')}
+                        </span>
+                        <span className="block truncate text-[10px] text-[var(--vibe-text-faint)]">
+                            {isActiveGroup ? t('workspace.notes.activeTabBlock') : t('workspace.notes.inactiveTabBlock')}
+                        </span>
+                    </span>
+                </div>
+                <span className={`shrink-0 rounded-full border px-2 py-1 font-mono text-[10px] ${
+                    isActiveGroup
+                        ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] text-[var(--vibe-accent)]'
+                        : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)]'
+                }`}>
+                    {t('workspace.notes.tabBlockTabCount', { count: node.tabs.length })}
+                </span>
+            </div>
             <div
                 onMouseDown={(event) => {
                     onSetActiveGroup(node.id);

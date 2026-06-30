@@ -176,40 +176,9 @@ export function openNotesWorkspaceTabInNewLeaf(
     direction: NotesWorkspaceSplitNode['direction'] = 'row',
     placement: NotesWorkspaceSplitPlacement = 'after'
 ): NotesWorkspaceLayout {
-    const view = input.view ?? 'source';
-    const existingLayout = focusExistingTab(layout, input, view);
-    if (existingLayout) return existingLayout;
-
-    const activeGroup = findTabsNode(layout.root, layout.activeGroupId) ?? findFirstTabsNode(layout.root);
-    if (activeGroup.tabs.length === 0) {
-        return openNotesWorkspaceTab(layout, input, { reuseExisting: false });
-    }
-
-    const tab = createTab(input);
-    const newGroup: NotesWorkspaceTabsNode = {
-        type: 'tabs',
-        id: createLayoutId('group'),
-        activeTabId: tab.id,
-        tabs: [tab],
-    };
-
-    return {
-        ...layout,
-        activeGroupId: newGroup.id,
-        root: mapNode(layout.root, (node) => {
-            if (node.type !== 'tabs' || node.id !== activeGroup.id) return node;
-
-            return {
-                type: 'split',
-                id: createLayoutId('split'),
-                direction,
-                ratio: 0.5,
-                children: placement === 'before'
-                    ? [newGroup, node]
-                    : [node, newGroup],
-            };
-        }),
-    };
+    void direction;
+    void placement;
+    return openNotesWorkspaceTab(layout, input);
 }
 
 function findFirstTabsNode(node: NotesWorkspaceNode): NotesWorkspaceTabsNode {

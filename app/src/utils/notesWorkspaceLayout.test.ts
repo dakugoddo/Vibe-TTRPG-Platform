@@ -59,17 +59,26 @@ assert.deepEqual(groups[0].tabs.map((tab) => tab.entityId), ['leaf-note-1']);
 
 leafOpenLayout = openNotesWorkspaceTabInNewLeaf(leafOpenLayout, { entityId: 'leaf-note-2', view: 'preview' });
 groups = listNotesWorkspaceGroups(leafOpenLayout.root);
-assert.equal(groups.length, 2, 'Opening another entity creates a sibling editor leaf');
-assert.equal(leafOpenLayout.root.type, 'split');
-assert.equal(leafOpenLayout.root.direction, 'row');
-assert.equal(leafOpenLayout.activeGroupId, groups[1].id);
-assert.deepEqual(groups.map((group) => group.tabs.map((tab) => tab.entityId)), [['leaf-note-1'], ['leaf-note-2']]);
+assert.equal(groups.length, 1, 'Opening another entity reuses the active tab block instead of creating a sibling block');
+assert.deepEqual(groups[0].tabs.map((tab) => tab.entityId), ['leaf-note-1', 'leaf-note-2']);
+assert.equal(leafOpenLayout.activeGroupId, groups[0].id);
+assert.equal(groups[0].tabs[1].view, 'preview');
+assert.equal(groups[0].activeTabId, groups[0].tabs[1].id);
 
 leafOpenLayout = openNotesWorkspaceTabInNewLeaf(leafOpenLayout, { entityId: 'leaf-note-1', view: 'ui' });
 groups = listNotesWorkspaceGroups(leafOpenLayout.root);
-assert.equal(groups.length, 2, 'Reopening an existing entity focuses it without creating another leaf');
+assert.equal(groups.length, 1, 'Reopening an existing entity focuses it without creating another tab block');
 assert.equal(leafOpenLayout.activeGroupId, groups[0].id);
 assert.equal(groups[0].tabs[0].view, 'ui');
+
+let activeBlockLayout = splitActiveNotesWorkspaceGroup(leafOpenLayout, 'row');
+groups = listNotesWorkspaceGroups(activeBlockLayout.root);
+assert.equal(groups.length, 2, 'Manual split still creates a second tab block');
+assert.equal(activeBlockLayout.activeGroupId, groups[1].id, 'The last interacted split block becomes active');
+activeBlockLayout = openNotesWorkspaceTabInNewLeaf(activeBlockLayout, { entityId: 'leaf-note-3', view: 'source' });
+groups = listNotesWorkspaceGroups(activeBlockLayout.root);
+assert.deepEqual(groups.map((group) => group.tabs.map((tab) => tab.entityId)), [['leaf-note-1', 'leaf-note-2'], ['leaf-note-3']], 'New entities open in the active tab block when multiple tab blocks exist');
+assert.equal(activeBlockLayout.activeGroupId, groups[1].id);
 
 layout = splitActiveNotesWorkspaceGroup(layout, 'row');
 groups = listNotesWorkspaceGroups(layout.root);
