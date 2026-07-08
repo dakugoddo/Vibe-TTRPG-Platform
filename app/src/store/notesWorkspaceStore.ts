@@ -36,6 +36,13 @@ import {
     type NotesWorkspaceShellModuleOrder,
     type NotesWorkspaceShellVisibility,
 } from '../utils/notesWorkspaceModules';
+import {
+    createEmptyNotesWorkspaceNavigationHistory,
+    getNotesWorkspaceNavigationDirection,
+    recordNotesWorkspaceNavigation,
+    type NotesWorkspaceNavigationEntry,
+    type NotesWorkspaceNavigationHistory,
+} from '../utils/notesWorkspaceNavigationHistory';
 
 export const NOTES_WORKSPACE_LAYOUT_STORAGE_KEY = 'vibe-ttrpg-notes-workspace-layout-v1';
 export const NOTES_WORKSPACE_SHELL_STORAGE_KEY = 'vibe-ttrpg-notes-workspace-shell-v1';
@@ -54,6 +61,7 @@ export interface NotesWorkspaceShellState {
 interface NotesWorkspaceStoreState {
     layout: NotesWorkspaceLayout;
     shell: NotesWorkspaceShellState;
+    navigationHistory: NotesWorkspaceNavigationHistory;
     openTab: (entityId: string, view?: NotesWorkspaceView) => void;
     openTabInNewLeaf: (entityId: string, view?: NotesWorkspaceView) => void;
     closeTab: (groupId: string, tabId: string) => void;
@@ -70,6 +78,8 @@ interface NotesWorkspaceStoreState {
     setActiveGroup: (groupId: string) => void;
     setActiveTab: (groupId: string, tabId: string) => void;
     setTabView: (groupId: string, tabId: string, view: NotesWorkspaceView) => void;
+    navigateBack: () => void;
+    navigateForward: () => void;
     splitActiveGroup: (direction: NotesWorkspaceSplitNode['direction']) => void;
     setShellModuleVisible: (moduleId: NotesWorkspaceShellModuleId, isVisible: boolean) => void;
     toggleShellModule: (moduleId: NotesWorkspaceShellModuleId) => void;
@@ -277,17 +287,52 @@ function writeStoredNotesWorkspaceShell(shell: NotesWorkspaceShellState): void {
     }
 }
 
+function getActiveNotesWorkspaceNavigationEntry(layout: NotesWorkspaceLayout): NotesWorkspaceNavigationEntry | null {
+    const group = listNotesWorkspaceGroups(layout.root).find((candidate) => candidate.id === layout.activeGroupId)
+        ?? listNotesWorkspaceGroups(layout.root)[0];
+    const activeTab = group?.tabs.find((tab) => tab.id === group.activeTabId) ?? group?.tabs[0];
+    if (!group || !activeTab) return null;
+    return {
+        groupId: group.id,
+        tabId: activeTab.id,
+        entityId: activeTab.entityId,
+        view: activeTab.view,
+    };
+}
+
+function focusNotesWorkspaceNavigationEntry(
+    layout: NotesWorkspaceLayout,
+    entry: NotesWorkspaceNavigationEntry
+): NotesWorkspaceLayout {
+    const group = listNotesWorkspaceGroups(layout.root).find((candidate) => candidate.id === entry.groupId);
+    const tab = group?.tabs.find((candidate) => candidate.id === entry.tabId);
+    if (!group || !tab) return openNotesWorkspaceTab(layout, { entityId: entry.entityId, view: entry.view });
+
+    const activeLayout = setActiveNotesWorkspaceTab(layout, group.id, tab.id);
+    return setNotesWorkspaceTabView(activeLayout, group.id, tab.id, entry.view);
+}
+
+function recordLayoutNavigation(
+    history: NotesWorkspaceNavigationHistory,
+    layout: NotesWorkspaceLayout
+): NotesWorkspaceNavigationHistory {
+    return recordNotesWorkspaceNavigation(history, getActiveNotesWorkspaceNavigationEntry(layout));
+}
+
 export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => ({
     layout: readStoredNotesWorkspaceLayout() ?? createEmptyNotesWorkspaceLayout(),
     shell: readStoredNotesWorkspaceShell(),
+    navigationHistory: createEmptyNotesWorkspaceNavigationHistory(),
 
-    openTab: (entityId, view = 'source') => set((state) => ({
-        layout: openNotesWorkspaceTab(state.layout, { entityId, view }),
-    })),
+    openTab: (entityId, view = 'source') => set((state) => {
+        const layout = openNotesWorkspaceTab(state.layout, { entityId, view });
+        return { layout, navigationHistory: recordLayoutNavigation(state.navigationHistory, layout) };
+    }),
 
-    openTabInNewLeaf: (entityId, view = 'source') => set((state) => ({
-        layout: openNotesWorkspaceTabInNewLeaf(state.layout, { entityId, view }),
-    })),
+    openTabInNewLeaf: (entityId, view = 'source') => set((state) => {
+        const layout = openNotesWorkspaceTabInNewLeaf(state.layout, { entityId, view });
+        return { layout, navigationHistory: recordLayoutNavigation(state.navigationHistory, layout) };
+    }),
 
     closeTab: (groupId, tabId) => set((state) => ({
         layout: closeNotesWorkspaceTab(state.layout, groupId, tabId),
@@ -309,17 +354,38 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
         layout: setNotesWorkspaceSplitRatio(state.layout, splitId, ratio),
     })),
 
-    setActiveGroup: (groupId) => set((state) => ({
-        layout: setActiveNotesWorkspaceGroup(state.layout, groupId),
-    })),
+    setActiveGroup: (groupId) => set((state) => {
+        const layout = setActiveNotesWorkspaceGroup(state.layout, groupId);
+        return { layout, navigationHistory: recordLayoutNavigation(state.navigationHistory, layout) };
+    }),
 
-    setActiveTab: (groupId, tabId) => set((state) => ({
-        layout: setActiveNotesWorkspaceTab(state.layout, groupId, tabId),
-    })),
+    setActiveTab: (groupId, tabId) => set((state) => {
+        const layout = setActiveNotesWorkspaceTab(state.layout, groupId, tabId);
+        return { layout, navigationHistory: recordLayoutNavigation(state.navigationHistory, layout) };
+    }),
 
-    setTabView: (groupId, tabId, view) => set((state) => ({
-        layout: setNotesWorkspaceTabView(state.layout, groupId, tabId, view),
-    })),
+    setTabView: (groupId, tabId, view) => set((state) => {
+        const layout = setNotesWorkspaceTabView(state.layout, groupId, tabId, view);
+        return { layout, navigationHistory: recordLayoutNavigation(state.navigationHistory, layout) };
+    }),
+
+    navigateBack: () => set((state) => {
+        const result = getNotesWorkspaceNavigationDirection(state.navigationHistory, 'back');
+        if (!result) return state;
+        return {
+            layout: focusNotesWorkspaceNavigationEntry(state.layout, result.entry),
+            navigationHistory: result.history,
+        };
+    }),
+
+    navigateForward: () => set((state) => {
+        const result = getNotesWorkspaceNavigationDirection(state.navigationHistory, 'forward');
+        if (!result) return state;
+        return {
+            layout: focusNotesWorkspaceNavigationEntry(state.layout, result.entry),
+            navigationHistory: result.history,
+        };
+    }),
 
     splitActiveGroup: (direction) => set((state) => ({
         layout: splitActiveNotesWorkspaceGroup(state.layout, direction),

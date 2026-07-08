@@ -1244,6 +1244,8 @@
       "activeTabBlock": "Активная область — новые сущности откроются здесь",
       "inactiveTabBlock": "Нажмите, чтобы сделать активной областью",
       "tabBlockTabCount": "{{count}} вкладок",
+      "navigateBack": "Назад по вкладкам и ссылкам",
+      "navigateForward": "Вперёд по вкладкам и ссылкам",
       "openBlock": "Открыть",
       "openBlockSplit": "Открыть рядом",
       "copyWikiLink": "Wiki-ссылка",

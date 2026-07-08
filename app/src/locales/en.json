@@ -1244,6 +1244,8 @@
             "activeTabBlock": "Active area — new entities open here",
             "inactiveTabBlock": "Click to make this the active area",
             "tabBlockTabCount": "{{count}} tabs",
+            "navigateBack": "Back through tabs and links",
+            "navigateForward": "Forward through tabs and links",
             "openBlock": "Open",
             "openBlockSplit": "Open split",
             "copyWikiLink": "Wiki link",

@@ -49,6 +49,18 @@ assert.equal(groups.length, 1, 'Store entity-open reuses an existing entity tab'
 assert.equal(layout.activeGroupId, groups[0].id);
 assert.equal(groups[0].tabs[0].view, 'ui');
 
+useNotesWorkspaceStore.getState().navigateBack();
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
+assert.equal(groups[0].tabs.find((tab) => tab.id === groups[0].activeTabId)?.entityId, 'leaf-note-2', 'Back returns to the previously active tab');
+assert.equal(groups[0].tabs.find((tab) => tab.id === groups[0].activeTabId)?.view, 'preview');
+
+useNotesWorkspaceStore.getState().navigateForward();
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
+assert.equal(groups[0].tabs.find((tab) => tab.id === groups[0].activeTabId)?.entityId, 'leaf-note-1', 'Forward returns to the tab/link visited after Back');
+assert.equal(groups[0].tabs.find((tab) => tab.id === groups[0].activeTabId)?.view, 'ui');
+
 useNotesWorkspaceStore.getState().splitActiveGroup('row');
 layout = useNotesWorkspaceStore.getState().layout;
 groups = listNotesWorkspaceGroups(layout.root);

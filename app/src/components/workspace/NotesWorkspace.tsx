@@ -8,6 +8,7 @@ import {
     Box,
     Bold,
     Bell,
+    ChevronLeft,
     ChevronRight,
     Code2,
     Columns2,
@@ -1481,6 +1482,10 @@ interface NotesWorkspaceNodeViewProps {
     onMoveTab: (sourceGroupId: string, tabId: string, targetGroupId: string, beforeTabId?: string | null) => void;
     onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
     onCreateChildBlock: (parentEntityId: string) => void;
+    onNavigateBack: () => void;
+    onNavigateForward: () => void;
+    canNavigateBack: boolean;
+    canNavigateForward: boolean;
     onCopyEntityWikiLink: (entityId: string) => void;
     onCopyEntityId: (entityId: string) => void;
     onPinEntityToCanvas: (entityId: string) => void;
@@ -1669,6 +1674,10 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
         onMoveTab,
         onOpenEntity,
         onCreateChildBlock,
+        onNavigateBack,
+        onNavigateForward,
+        canNavigateBack,
+        canNavigateForward,
         onCopyEntityWikiLink,
         onCopyEntityId,
         onPinEntityToCanvas,
@@ -1819,21 +1828,57 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                     className={editorDropIndicatorClass}
                 />
             )}
-            <button
-                type="button"
-                onMouseDown={(event) => {
-                    onSetActiveGroup(node.id);
-                    event.stopPropagation();
-                }}
-                onPointerDown={(event) => {
-                    const target = event.target as HTMLElement | null;
-                    if (target?.closest('[data-no-pane-drag]')) return;
-                    if (activeTab) startTabPointerDrag(event, activeTab.id);
-                }}
-                className="flex shrink-0 cursor-grab items-center justify-between gap-3 border-b border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-surface-header)_86%,transparent)] px-3 py-2 text-left transition-colors hover:bg-[var(--vibe-surface-hover)] active:cursor-grabbing"
-                title={isActiveGroup ? t('workspace.notes.activeTabBlock') : t('workspace.notes.inactiveTabBlock')}
-            >
-                <span className="flex min-w-0 items-center gap-2">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-surface-header)_86%,transparent)] px-3 py-2">
+                <div className="flex shrink-0 items-center gap-1" data-no-pane-drag>
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onNavigateBack();
+                        }}
+                        disabled={!canNavigateBack}
+                        className={`flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] border transition-colors ${
+                            canNavigateBack
+                                ? 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+                                : 'cursor-not-allowed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] opacity-45'
+                        }`}
+                        title={t('workspace.notes.navigateBack')}
+                        aria-label={t('workspace.notes.navigateBack')}
+                    >
+                        <ChevronLeft size={14} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onNavigateForward();
+                        }}
+                        disabled={!canNavigateForward}
+                        className={`flex h-7 w-7 items-center justify-center rounded-[var(--vibe-radius-sm)] border transition-colors ${
+                            canNavigateForward
+                                ? 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+                                : 'cursor-not-allowed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] opacity-45'
+                        }`}
+                        title={t('workspace.notes.navigateForward')}
+                        aria-label={t('workspace.notes.navigateForward')}
+                    >
+                        <ChevronRight size={14} />
+                    </button>
+                </div>
+                <button
+                    type="button"
+                    onMouseDown={(event) => {
+                        onSetActiveGroup(node.id);
+                        event.stopPropagation();
+                    }}
+                    onPointerDown={(event) => {
+                        const target = event.target as HTMLElement | null;
+                        if (target?.closest('[data-no-pane-drag]')) return;
+                        if (activeTab) startTabPointerDrag(event, activeTab.id);
+                    }}
+                    className="flex min-w-0 flex-1 cursor-grab items-center gap-2 rounded-[var(--vibe-radius-sm)] text-left transition-colors hover:bg-[var(--vibe-surface-hover)] active:cursor-grabbing"
+                    title={isActiveGroup ? t('workspace.notes.activeTabBlock') : t('workspace.notes.inactiveTabBlock')}
+                >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-accent)]">
                         <Boxes size={14} />
                     </span>
@@ -1845,7 +1890,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                             {isActiveGroup ? t('workspace.notes.activeTabBlock') : t('workspace.notes.inactiveTabBlock')}
                         </span>
                     </span>
-                </span>
+                </button>
                 <span className={`shrink-0 rounded-full border px-2 py-1 font-mono text-[10px] ${
                     isActiveGroup
                         ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] text-[var(--vibe-accent)]'
@@ -1853,7 +1898,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                 }`}>
                     {t('workspace.notes.tabBlockTabCount', { count: node.tabs.length })}
                 </span>
-            </button>
+            </div>
             <div
                 onMouseDown={(event) => {
                     onSetActiveGroup(node.id);
@@ -2160,6 +2205,9 @@ export function NotesWorkspace({
     const setActiveWorkspaceGroup = useNotesWorkspaceStore((state) => state.setActiveGroup);
     const setActiveWorkspaceTab = useNotesWorkspaceStore((state) => state.setActiveTab);
     const setWorkspaceTabView = useNotesWorkspaceStore((state) => state.setTabView);
+    const navigateNotesBack = useNotesWorkspaceStore((state) => state.navigateBack);
+    const navigateNotesForward = useNotesWorkspaceStore((state) => state.navigateForward);
+    const notesNavigationHistory = useNotesWorkspaceStore((state) => state.navigationHistory);
     const toggleShellModule = useNotesWorkspaceStore((state) => state.toggleShellModule);
     const moveShellModule = useNotesWorkspaceStore((state) => state.moveShellModule);
     const setShellModuleWidth = useNotesWorkspaceStore((state) => state.setShellModuleWidth);
@@ -2771,6 +2819,10 @@ export function NotesWorkspace({
             onMoveTab={moveWorkspaceTab}
             onOpenEntity={handleOpenEntity}
             onCreateChildBlock={handleCreateChildBlock}
+            onNavigateBack={navigateNotesBack}
+            onNavigateForward={navigateNotesForward}
+            canNavigateBack={notesNavigationHistory.backStack.length > 0}
+            canNavigateForward={notesNavigationHistory.forwardStack.length > 0}
             onCopyEntityWikiLink={handleCopyEntityWikiLink}
             onCopyEntityId={handleCopyEntityId}
             onPinEntityToCanvas={handlePinEntityToCanvas}
