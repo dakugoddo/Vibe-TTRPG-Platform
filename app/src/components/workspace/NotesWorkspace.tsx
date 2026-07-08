@@ -30,6 +30,7 @@ import {
     Network,
     Pin,
     PencilLine,
+    Plus,
     Quote,
     RotateCcw,
     Search,
@@ -89,6 +90,7 @@ import {
     upsertCanvasWindowInstance,
 } from '../../utils/canvasPersistence';
 import { NOTES_AUDIO_DOCK_HOST_ID } from '../../utils/notesWorkspaceConstants';
+import { replaceTextareaSelectionPreservingUndo } from '../../utils/textareaEditing';
 import { glass } from '../../utils/theme';
 import type { WorkspaceMode } from '../../utils/workspaceMode';
 import type { DatabaseType, Entity, EntityType } from '../../types';
@@ -590,10 +592,22 @@ function countEmbeddedBlockChildren(nodes: readonly NotesWorkspaceEmbeddedEntity
 interface EmbeddedEntityBlocksPanelProps {
     nodes: NotesWorkspaceEmbeddedEntityNode[];
     onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
+    onCreateChildBlock: (parentEntityId: string) => void;
+    onCopyEntityWikiLink: (entityId: string) => void;
+    onPinEntityToCanvas: (entityId: string) => void;
+    canPinToCanvas: boolean;
     t: Translate;
 }
 
-function EmbeddedEntityBlocksPanel({ nodes, onOpenEntity, t }: EmbeddedEntityBlocksPanelProps) {
+function EmbeddedEntityBlocksPanel({
+    nodes,
+    onOpenEntity,
+    onCreateChildBlock,
+    onCopyEntityWikiLink,
+    onPinEntityToCanvas,
+    canPinToCanvas,
+    t,
+}: EmbeddedEntityBlocksPanelProps) {
     const [collapsedEntityIds, setCollapsedEntityIds] = useState<Set<string>>(() => new Set());
     const childCountsById = useMemo(() => countEmbeddedBlockChildren(nodes), [nodes]);
     const visibleNodes = useMemo(
@@ -618,6 +632,7 @@ function EmbeddedEntityBlocksPanel({ nodes, onOpenEntity, t }: EmbeddedEntityBlo
         const originalChildCount = childCountsById.get(node.entity.id) ?? 0;
         const hasChildren = originalChildCount > 0;
         const isCollapsed = collapsedEntityIds.has(node.entity.id);
+        const canCreateChildBlock = canEditEntityInWorkspace(node.entity);
 
         return (
             <article
@@ -662,6 +677,51 @@ function EmbeddedEntityBlocksPanel({ nodes, onOpenEntity, t }: EmbeddedEntityBlo
                             </span>
                         </span>
                     </button>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-[var(--vibe-border-subtle)] pt-2">
+                    <button
+                        type="button"
+                        onClick={() => onOpenEntity(node.entity.id, 'source')}
+                        className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                    >
+                        {t('workspace.notes.openBlock')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onOpenEntity(node.entity.id, 'split')}
+                        className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                    >
+                        {t('workspace.notes.openBlockSplit')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onCopyEntityWikiLink(node.entity.id)}
+                        className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                    >
+                        {t('workspace.notes.copyWikiLink')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onCreateChildBlock(node.entity.id)}
+                        disabled={!canCreateChildBlock}
+                        className={`inline-flex items-center gap-1 rounded-[var(--vibe-radius-sm)] border px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                            canCreateChildBlock
+                                ? 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-muted)] hover:border-[var(--vibe-accent)] hover:bg-[color-mix(in_srgb,var(--vibe-accent)_10%,transparent)] hover:text-[var(--vibe-accent)]'
+                                : 'cursor-not-allowed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)] opacity-50'
+                        }`}
+                    >
+                        <Plus size={11} />
+                        {t('workspace.notes.createNestedBlock')}
+                    </button>
+                    {canPinToCanvas && (
+                        <button
+                            type="button"
+                            onClick={() => onPinEntityToCanvas(node.entity.id)}
+                            className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)] transition-colors hover:border-[var(--vibe-border-strong)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]"
+                        >
+                            {t('workspace.notes.pinBlockToCanvas')}
+                        </button>
+                    )}
                 </div>
                 {description && (
                     <div className="mt-3 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] p-3 text-sm">
@@ -1128,6 +1188,10 @@ interface NoteEditorPanelProps {
     canEdit: boolean;
     view: NotesWorkspaceView;
     onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
+    onCreateChildBlock: (parentEntityId: string) => void;
+    onCopyEntityWikiLink: (entityId: string) => void;
+    onPinEntityToCanvas: (entityId: string) => void;
+    canPinToCanvas: boolean;
     t: Translate;
 }
 
@@ -1197,11 +1261,18 @@ function MarkdownRichEditor({
         const selectionEnd = textarea?.selectionEnd ?? value.length;
         const selection = value.slice(selectionStart, selectionEnd);
         const insertion = action.apply(selection);
-        const nextValue = `${value.slice(0, selectionStart)}${insertion.text}${value.slice(selectionEnd)}`;
         const nextSelectionStart = selectionStart + insertion.selectStart;
         const nextSelectionEnd = selectionStart + insertion.selectEnd;
 
-        onValueChange(nextValue);
+        if (!textarea) {
+            const nextValue = `${value.slice(0, selectionStart)}${insertion.text}${value.slice(selectionEnd)}`;
+            onValueChange(nextValue);
+            return;
+        }
+
+        const insertedWithNativeUndo = replaceTextareaSelectionPreservingUndo(textarea, insertion.text);
+        if (!insertedWithNativeUndo) onValueChange(textarea.value);
+
         window.requestAnimationFrame(() => {
             textareaRef.current?.focus();
             textareaRef.current?.setSelectionRange(nextSelectionStart, nextSelectionEnd);
@@ -1250,10 +1321,24 @@ interface EntityUiPreviewPanelProps {
     embeddedNodes: NotesWorkspaceEmbeddedEntityNode[];
     canEdit: boolean;
     onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
+    onCreateChildBlock: (parentEntityId: string) => void;
+    onCopyEntityWikiLink: (entityId: string) => void;
+    onPinEntityToCanvas: (entityId: string) => void;
+    canPinToCanvas: boolean;
     t: Translate;
 }
 
-function EntityUiPreviewPanel({ entity, embeddedNodes, canEdit, onOpenEntity, t }: EntityUiPreviewPanelProps) {
+function EntityUiPreviewPanel({
+    entity,
+    embeddedNodes,
+    canEdit,
+    onOpenEntity,
+    onCreateChildBlock,
+    onCopyEntityWikiLink,
+    onPinEntityToCanvas,
+    canPinToCanvas,
+    t,
+}: EntityUiPreviewPanelProps) {
     return (
         <div className="h-full min-h-0 overflow-y-auto p-4 custom-scrollbar">
             <div className={`mx-auto flex min-h-[420px] w-full max-w-[980px] flex-col overflow-hidden ${glass.window}`}>
@@ -1295,7 +1380,15 @@ function EntityUiPreviewPanel({ entity, embeddedNodes, canEdit, onOpenEntity, t 
                                 {entity.type === 'attack' && <AttackSheet entity={entity} />}
                                 {entity.type === 'ability' && <AbilitySheet entity={entity} />}
                                 {entity.type === 'tag' && canEdit && <TagEditor entity={entity} />}
-                                <EmbeddedEntityBlocksPanel nodes={embeddedNodes} onOpenEntity={onOpenEntity} t={t} />
+                                <EmbeddedEntityBlocksPanel
+                                    nodes={embeddedNodes}
+                                    onOpenEntity={onOpenEntity}
+                                    onCreateChildBlock={onCreateChildBlock}
+                                    onCopyEntityWikiLink={onCopyEntityWikiLink}
+                                    onPinEntityToCanvas={onPinEntityToCanvas}
+                                    canPinToCanvas={canPinToCanvas}
+                                    t={t}
+                                />
                             </>
                         )}
                     </div>
@@ -1305,7 +1398,18 @@ function EntityUiPreviewPanel({ entity, embeddedNodes, canEdit, onOpenEntity, t 
     );
 }
 
-function NoteEditorPanel({ entity, embeddedNodes, canEdit, view, onOpenEntity, t }: NoteEditorPanelProps) {
+function NoteEditorPanel({
+    entity,
+    embeddedNodes,
+    canEdit,
+    view,
+    onOpenEntity,
+    onCreateChildBlock,
+    onCopyEntityWikiLink,
+    onPinEntityToCanvas,
+    canPinToCanvas,
+    t,
+}: NoteEditorPanelProps) {
     const sourceEditor = (
         <MarkdownRichEditor
             value={entity.description ?? ''}
@@ -1326,7 +1430,15 @@ function NoteEditorPanel({ entity, embeddedNodes, canEdit, view, onOpenEntity, t
             ) : (
                 <p className="text-sm text-[var(--vibe-text-faint)]">{t('workspace.notes.emptyMarkdown')}</p>
             )}
-            <EmbeddedEntityBlocksPanel nodes={embeddedNodes} onOpenEntity={onOpenEntity} t={t} />
+            <EmbeddedEntityBlocksPanel
+                nodes={embeddedNodes}
+                onOpenEntity={onOpenEntity}
+                onCreateChildBlock={onCreateChildBlock}
+                onCopyEntityWikiLink={onCopyEntityWikiLink}
+                onPinEntityToCanvas={onPinEntityToCanvas}
+                canPinToCanvas={canPinToCanvas}
+                t={t}
+            />
         </div>
     );
 
@@ -1368,6 +1480,7 @@ interface NotesWorkspaceNodeViewProps {
     onResizeSplit: (splitId: string, ratio: number) => void;
     onMoveTab: (sourceGroupId: string, tabId: string, targetGroupId: string, beforeTabId?: string | null) => void;
     onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
+    onCreateChildBlock: (parentEntityId: string) => void;
     onCopyEntityWikiLink: (entityId: string) => void;
     onCopyEntityId: (entityId: string) => void;
     onPinEntityToCanvas: (entityId: string) => void;
@@ -1555,6 +1668,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
         onCloseTab,
         onMoveTab,
         onOpenEntity,
+        onCreateChildBlock,
         onCopyEntityWikiLink,
         onCopyEntityId,
         onPinEntityToCanvas,
@@ -1705,8 +1819,21 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                     className={editorDropIndicatorClass}
                 />
             )}
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-surface-header)_86%,transparent)] px-3 py-2">
-                <div className="flex min-w-0 items-center gap-2">
+            <button
+                type="button"
+                onMouseDown={(event) => {
+                    onSetActiveGroup(node.id);
+                    event.stopPropagation();
+                }}
+                onPointerDown={(event) => {
+                    const target = event.target as HTMLElement | null;
+                    if (target?.closest('[data-no-pane-drag]')) return;
+                    if (activeTab) startTabPointerDrag(event, activeTab.id);
+                }}
+                className="flex shrink-0 cursor-grab items-center justify-between gap-3 border-b border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-surface-header)_86%,transparent)] px-3 py-2 text-left transition-colors hover:bg-[var(--vibe-surface-hover)] active:cursor-grabbing"
+                title={isActiveGroup ? t('workspace.notes.activeTabBlock') : t('workspace.notes.inactiveTabBlock')}
+            >
+                <span className="flex min-w-0 items-center gap-2">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-accent)]">
                         <Boxes size={14} />
                     </span>
@@ -1718,7 +1845,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                             {isActiveGroup ? t('workspace.notes.activeTabBlock') : t('workspace.notes.inactiveTabBlock')}
                         </span>
                     </span>
-                </div>
+                </span>
                 <span className={`shrink-0 rounded-full border px-2 py-1 font-mono text-[10px] ${
                     isActiveGroup
                         ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] text-[var(--vibe-accent)]'
@@ -1726,7 +1853,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                 }`}>
                     {t('workspace.notes.tabBlockTabCount', { count: node.tabs.length })}
                 </span>
-            </div>
+            </button>
             <div
                 onMouseDown={(event) => {
                     onSetActiveGroup(node.id);
@@ -1948,6 +2075,10 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                                 canEdit={canEditActiveEntity}
                                 view={activeTab.view}
                                 onOpenEntity={onOpenEntity}
+                                onCreateChildBlock={onCreateChildBlock}
+                                onCopyEntityWikiLink={onCopyEntityWikiLink}
+                                onPinEntityToCanvas={onPinEntityToCanvas}
+                                canPinToCanvas={canPinToCanvas}
                                 t={t}
                             />
                         )}
@@ -1957,6 +2088,10 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                                 embeddedNodes={embeddedEntityNodes}
                                 canEdit={canEditActiveEntity}
                                 onOpenEntity={onOpenEntity}
+                                onCreateChildBlock={onCreateChildBlock}
+                                onCopyEntityWikiLink={onCopyEntityWikiLink}
+                                onPinEntityToCanvas={onPinEntityToCanvas}
+                                canPinToCanvas={canPinToCanvas}
                                 t={t}
                             />
                         )}
@@ -2259,6 +2394,24 @@ export function NotesWorkspace({
         openWorkspaceLeaf(id, 'source');
         expandEntityAncestors(id);
     }, [entities, expandEntityAncestors, openWorkspaceLeaf]);
+
+    const handleCreateChildBlock = useCallback((parentEntityId: string) => {
+        const parent = entitiesById.get(parentEntityId);
+        if (!parent || !canEditEntityInWorkspace(parent)) return;
+
+        const id = generateEntityId(entities.map((entity) => entity.id));
+        const draft: Entity = {
+            ...createRootEntityDraft('note', id),
+            parentId: parent.id,
+            database: parent.database ?? 'general',
+            name: t('workspace.notes.newNestedBlockName'),
+            description: t('workspace.notes.newNestedBlockDescription', { parent: parent.name }),
+        };
+
+        if (!yjsStore.addEntity(draft)) return;
+        expandEntityAncestors(id);
+        openWorkspaceLeaf(id, 'source');
+    }, [entities, entitiesById, expandEntityAncestors, openWorkspaceLeaf, t]);
 
     const handleShellResizeStart = (target: NotesShellResizeTarget, event: ReactPointerEvent<HTMLDivElement>) => {
         event.preventDefault();
@@ -2617,6 +2770,7 @@ export function NotesWorkspace({
             onResizeSplit={resizeWorkspaceSplit}
             onMoveTab={moveWorkspaceTab}
             onOpenEntity={handleOpenEntity}
+            onCreateChildBlock={handleCreateChildBlock}
             onCopyEntityWikiLink={handleCopyEntityWikiLink}
             onCopyEntityId={handleCopyEntityId}
             onPinEntityToCanvas={handlePinEntityToCanvas}
