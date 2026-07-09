@@ -13,6 +13,7 @@ import {
     Code2,
     Columns2,
     Copy,
+    CornerDownRight,
     Database,
     Eye,
     FileText,
@@ -773,23 +774,33 @@ function EmbeddedEntityBlocksPanel({
                         <Plus size={11} />
                         {t('workspace.notes.createNestedBlock')}
                     </button>
-                    {moveParentCandidates.length > 0 && (
-                        <div className="inline-flex flex-wrap items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">
-                            <span>{t('workspace.notes.moveBlockInto')}</span>
-                            {moveParentCandidates.slice(0, 3).map((candidate) => (
-                                <button
-                                    key={candidate.id}
-                                    type="button"
-                                    onClick={() => onMoveBlockToParent(node.entity.id, candidate.id)}
-                                    className="max-w-32 truncate rounded-[var(--vibe-radius-xs)] border border-[var(--vibe-border-subtle)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--vibe-text-primary)] transition-colors hover:border-[var(--vibe-accent)] hover:text-[var(--vibe-accent)]"
-                                    title={t('workspace.notes.moveBlockIntoNamed', { name: candidate.name })}
-                                    aria-label={t('workspace.notes.moveBlockIntoNamed', { name: candidate.name })}
-                                >
-                                    {candidate.name}
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                    {moveParentCandidates.slice(0, 3).map((candidate) => {
+                        const moveLabel = t('workspace.notes.moveBlockIntoNamed', { name: candidate.name });
+                        return (
+                            <button
+                                key={candidate.id}
+                                type="button"
+                                draggable={false}
+                                onPointerDown={(event) => event.stopPropagation()}
+                                onMouseDown={(event) => event.stopPropagation()}
+                                onDragStart={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                }}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    onMoveBlockToParent(node.entity.id, candidate.id);
+                                }}
+                                className="inline-flex max-w-full items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)] transition-colors hover:border-[var(--vibe-accent)] hover:bg-[color-mix(in_srgb,var(--vibe-accent)_10%,transparent)] hover:text-[var(--vibe-accent)]"
+                                title={moveLabel}
+                                aria-label={moveLabel}
+                            >
+                                <CornerDownRight size={11} />
+                                <span className="truncate">{moveLabel}</span>
+                            </button>
+                        );
+                    })}
                     {canPinToCanvas && (
                         <button
                             type="button"
