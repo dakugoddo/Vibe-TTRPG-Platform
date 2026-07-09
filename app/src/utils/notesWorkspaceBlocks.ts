@@ -54,3 +54,26 @@ export function filterNotesWorkspaceEmbeddedEntityTree(
       : filterNotesWorkspaceEmbeddedEntityTree(node.children, collapsedEntityIds),
   }));
 }
+
+export function canMoveNotesWorkspaceEmbeddedEntity(
+  entities: readonly Entity[],
+  sourceEntityId: string,
+  targetParentId: string | null
+): boolean {
+  const byId = new Map(entities.map((entity) => [entity.id, entity]));
+  const source = byId.get(sourceEntityId);
+  if (!source) return false;
+  if (targetParentId === null) return true;
+  if (sourceEntityId === targetParentId) return false;
+
+  let current = byId.get(targetParentId);
+  const visited = new Set<string>();
+  while (current) {
+    if (current.id === sourceEntityId) return false;
+    if (visited.has(current.id)) return false;
+    visited.add(current.id);
+    current = current.parentId ? byId.get(current.parentId) : undefined;
+  }
+
+  return byId.has(targetParentId);
+}

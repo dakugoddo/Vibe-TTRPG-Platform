@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import type { CSSProperties, DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -48,6 +48,7 @@ import { useAppModuleEnabled } from '../../hooks/useAppModuleEnablement';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useNotesWorkspaceStore } from '../../store/notesWorkspaceStore';
 import { yjsStore } from '../../store/yjsStore';
+import { saveEntity } from '../../services/fileApi';
 import { WikiLinkTextarea } from '../ui/WikiLinkTextarea';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { NotificationCenter } from '../ui/NotificationCenter';
@@ -65,6 +66,7 @@ import {
 } from '../../utils/notesWorkspaceLinks';
 import {
     buildNotesWorkspaceEmbeddedEntityTree,
+    canMoveNotesWorkspaceEmbeddedEntity,
     filterNotesWorkspaceEmbeddedEntityTree,
     type NotesWorkspaceEmbeddedEntityNode,
 } from '../../utils/notesWorkspaceBlocks';
@@ -83,6 +85,7 @@ import { getEntitySearchResult, getEntitySearchTerms, type EntitySearchMatchFiel
 import { canModifyEntity, canViewEntity } from '../../utils/permissions';
 import { writeClipboardText } from '../../utils/clipboard';
 import { generateEntityId } from '../../utils/entityId';
+import { moveEntityTreeToParent } from '../../utils/entityTreeMutations';
 import {
     CANVAS_WINDOW_INSTANCES_PROPERTY,
     createCanvasWindowInstance,
@@ -594,6 +597,7 @@ interface EmbeddedEntityBlocksPanelProps {
     nodes: NotesWorkspaceEmbeddedEntityNode[];
     onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
     onCreateChildBlock: (parentEntityId: string) => void;
+    onMoveBlockToParent: (sourceEntityId: string, targetParentId: string) => void;
     onCopyEntityWikiLink: (entityId: string) => void;
     onPinEntityToCanvas: (entityId: string) => void;
     canPinToCanvas: boolean;
@@ -604,13 +608,26 @@ function EmbeddedEntityBlocksPanel({
     nodes,
     onOpenEntity,
     onCreateChildBlock,
+    onMoveBlockToParent,
     onCopyEntityWikiLink,
     onPinEntityToCanvas,
     canPinToCanvas,
     t,
 }: EmbeddedEntityBlocksPanelProps) {
     const [collapsedEntityIds, setCollapsedEntityIds] = useState<Set<string>>(() => new Set());
+    const [draggedBlockId, setDraggedBlockId] = useState<string | null>(null);
     const childCountsById = useMemo(() => countEmbeddedBlockChildren(nodes), [nodes]);
+    const embeddedEntities = useMemo(() => {
+        const result: Entity[] = [];
+        const visit = (items: readonly NotesWorkspaceEmbeddedEntityNode[]) => {
+            for (const item of items) {
+                result.push(item.entity);
+                visit(item.children);
+            }
+        };
+        visit(nodes);
+        return result;
+    }, [nodes]);
     const visibleNodes = useMemo(
         () => filterNotesWorkspaceEmbeddedEntityTree(nodes, collapsedEntityIds),
         [nodes, collapsedEntityIds]
@@ -627,6 +644,15 @@ function EmbeddedEntityBlocksPanel({
         });
     };
 
+    const getDraggedBlockId = (event: ReactDragEvent<HTMLElement>) => {
+        return event.dataTransfer.getData('application/vnd.vibe.notes-block') || draggedBlockId;
+    };
+
+    const canDropBlockInto = (sourceEntityId: string | null, targetParentId: string) => {
+        if (!sourceEntityId) return false;
+        return canMoveNotesWorkspaceEmbeddedEntity(embeddedEntities, sourceEntityId, targetParentId);
+    };
+
     const renderNode = (node: NotesWorkspaceEmbeddedEntityNode): ReactNode => {
         const Icon = ENTITY_TYPE_ICONS[node.entity.type] ?? FileText;
         const description = node.entity.description?.trim();
@@ -634,11 +660,44 @@ function EmbeddedEntityBlocksPanel({
         const hasChildren = originalChildCount > 0;
         const isCollapsed = collapsedEntityIds.has(node.entity.id);
         const canCreateChildBlock = canEditEntityInWorkspace(node.entity);
+        const canAcceptDraggedBlock = canDropBlockInto(draggedBlockId, node.entity.id);
+        const moveParentCandidates = embeddedEntities.filter((candidate) => (
+            candidate.id !== node.entity.id
+            && candidate.id !== node.entity.parentId
+            && canMoveNotesWorkspaceEmbeddedEntity(embeddedEntities, node.entity.id, candidate.id)
+        ));
 
         return (
             <article
                 key={node.entity.id}
-                className="rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-surface-block)_88%,transparent)] p-3 shadow-[var(--vibe-shadow-block)]"
+                data-notes-embedded-block-id={node.entity.id}
+                draggable={canCreateChildBlock}
+                onDragStart={(event) => {
+                    if (!canCreateChildBlock) return;
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('application/vnd.vibe.notes-block', node.entity.id);
+                    setDraggedBlockId(node.entity.id);
+                }}
+                onDragEnd={() => setDraggedBlockId(null)}
+                onDragOver={(event) => {
+                    const sourceEntityId = getDraggedBlockId(event);
+                    if (!canDropBlockInto(sourceEntityId, node.entity.id)) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'move';
+                }}
+                onDrop={(event) => {
+                    const sourceEntityId = getDraggedBlockId(event);
+                    if (!canDropBlockInto(sourceEntityId, node.entity.id)) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onMoveBlockToParent(sourceEntityId!, node.entity.id);
+                    setDraggedBlockId(null);
+                }}
+                className={`rounded-[var(--vibe-radius-md)] border bg-[color-mix(in_srgb,var(--vibe-surface-block)_88%,transparent)] p-3 shadow-[var(--vibe-shadow-block)] transition-colors ${
+                    canAcceptDraggedBlock
+                        ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_10%,var(--vibe-surface-block))]'
+                        : 'border-[var(--vibe-border-subtle)]'
+                } ${canCreateChildBlock ? 'cursor-grab active:cursor-grabbing' : ''}`}
                 style={{ marginLeft: `${Math.min(node.depth, 4) * 14}px` }}
             >
                 <div className="flex min-w-0 items-start gap-2">
@@ -714,6 +773,23 @@ function EmbeddedEntityBlocksPanel({
                         <Plus size={11} />
                         {t('workspace.notes.createNestedBlock')}
                     </button>
+                    {moveParentCandidates.length > 0 && (
+                        <div className="inline-flex flex-wrap items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)]">
+                            <span>{t('workspace.notes.moveBlockInto')}</span>
+                            {moveParentCandidates.slice(0, 3).map((candidate) => (
+                                <button
+                                    key={candidate.id}
+                                    type="button"
+                                    onClick={() => onMoveBlockToParent(node.entity.id, candidate.id)}
+                                    className="max-w-32 truncate rounded-[var(--vibe-radius-xs)] border border-[var(--vibe-border-subtle)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--vibe-text-primary)] transition-colors hover:border-[var(--vibe-accent)] hover:text-[var(--vibe-accent)]"
+                                    title={t('workspace.notes.moveBlockIntoNamed', { name: candidate.name })}
+                                    aria-label={t('workspace.notes.moveBlockIntoNamed', { name: candidate.name })}
+                                >
+                                    {candidate.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                     {canPinToCanvas && (
                         <button
                             type="button"
@@ -751,6 +827,9 @@ function EmbeddedEntityBlocksPanel({
                 </span>
                 <span className="font-mono text-[10px] text-[var(--vibe-text-faint)]">{nodes.length}</span>
             </div>
+            <p className="mb-3 rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-3 py-2 text-[10px] text-[var(--vibe-text-faint)]">
+                {t('workspace.notes.dragBlockToNest')}
+            </p>
             <div className="space-y-2">
                 {visibleNodes.map(renderNode)}
             </div>
@@ -1190,6 +1269,7 @@ interface NoteEditorPanelProps {
     view: NotesWorkspaceView;
     onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
     onCreateChildBlock: (parentEntityId: string) => void;
+    onMoveBlockToParent: (sourceEntityId: string, targetParentId: string) => void;
     onCopyEntityWikiLink: (entityId: string) => void;
     onPinEntityToCanvas: (entityId: string) => void;
     canPinToCanvas: boolean;
@@ -1323,6 +1403,7 @@ interface EntityUiPreviewPanelProps {
     canEdit: boolean;
     onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
     onCreateChildBlock: (parentEntityId: string) => void;
+    onMoveBlockToParent: (sourceEntityId: string, targetParentId: string) => void;
     onCopyEntityWikiLink: (entityId: string) => void;
     onPinEntityToCanvas: (entityId: string) => void;
     canPinToCanvas: boolean;
@@ -1335,6 +1416,7 @@ function EntityUiPreviewPanel({
     canEdit,
     onOpenEntity,
     onCreateChildBlock,
+    onMoveBlockToParent,
     onCopyEntityWikiLink,
     onPinEntityToCanvas,
     canPinToCanvas,
@@ -1385,6 +1467,7 @@ function EntityUiPreviewPanel({
                                     nodes={embeddedNodes}
                                     onOpenEntity={onOpenEntity}
                                     onCreateChildBlock={onCreateChildBlock}
+                                    onMoveBlockToParent={onMoveBlockToParent}
                                     onCopyEntityWikiLink={onCopyEntityWikiLink}
                                     onPinEntityToCanvas={onPinEntityToCanvas}
                                     canPinToCanvas={canPinToCanvas}
@@ -1406,6 +1489,7 @@ function NoteEditorPanel({
     view,
     onOpenEntity,
     onCreateChildBlock,
+    onMoveBlockToParent,
     onCopyEntityWikiLink,
     onPinEntityToCanvas,
     canPinToCanvas,
@@ -1435,6 +1519,7 @@ function NoteEditorPanel({
                 nodes={embeddedNodes}
                 onOpenEntity={onOpenEntity}
                 onCreateChildBlock={onCreateChildBlock}
+                onMoveBlockToParent={onMoveBlockToParent}
                 onCopyEntityWikiLink={onCopyEntityWikiLink}
                 onPinEntityToCanvas={onPinEntityToCanvas}
                 canPinToCanvas={canPinToCanvas}
@@ -1482,6 +1567,7 @@ interface NotesWorkspaceNodeViewProps {
     onMoveTab: (sourceGroupId: string, tabId: string, targetGroupId: string, beforeTabId?: string | null) => void;
     onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
     onCreateChildBlock: (parentEntityId: string) => void;
+    onMoveBlockToParent: (sourceEntityId: string, targetParentId: string) => void;
     onNavigateBack: () => void;
     onNavigateForward: () => void;
     canNavigateBack: boolean;
@@ -1674,6 +1760,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
         onMoveTab,
         onOpenEntity,
         onCreateChildBlock,
+        onMoveBlockToParent,
         onNavigateBack,
         onNavigateForward,
         canNavigateBack,
@@ -2121,6 +2208,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                                 view={activeTab.view}
                                 onOpenEntity={onOpenEntity}
                                 onCreateChildBlock={onCreateChildBlock}
+                                onMoveBlockToParent={onMoveBlockToParent}
                                 onCopyEntityWikiLink={onCopyEntityWikiLink}
                                 onPinEntityToCanvas={onPinEntityToCanvas}
                                 canPinToCanvas={canPinToCanvas}
@@ -2134,6 +2222,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                                 canEdit={canEditActiveEntity}
                                 onOpenEntity={onOpenEntity}
                                 onCreateChildBlock={onCreateChildBlock}
+                                onMoveBlockToParent={onMoveBlockToParent}
                                 onCopyEntityWikiLink={onCopyEntityWikiLink}
                                 onPinEntityToCanvas={onPinEntityToCanvas}
                                 canPinToCanvas={canPinToCanvas}
@@ -2460,6 +2549,26 @@ export function NotesWorkspace({
         expandEntityAncestors(id);
         openWorkspaceLeaf(id, 'source');
     }, [entities, entitiesById, expandEntityAncestors, openWorkspaceLeaf, t]);
+
+    const handleMoveBlockToParent = useCallback((sourceEntityId: string, targetParentId: string) => {
+        const source = entitiesById.get(sourceEntityId);
+        const target = entitiesById.get(targetParentId);
+        if (!source || !target || !canEditEntityInWorkspace(source) || !canEditEntityInWorkspace(target)) return;
+        if (!canMoveNotesWorkspaceEmbeddedEntity(entities, sourceEntityId, targetParentId)) return;
+
+        const targetDb = target.database ?? source.database ?? 'general';
+        if (!moveEntityTreeToParent(sourceEntityId, targetParentId, targetDb)) return;
+
+        const movedEntity = yjsStore.entitiesMap.get(sourceEntityId);
+        if (movedEntity) {
+            void saveEntity(targetDb, movedEntity).catch((error) => {
+                console.warn(`Failed to persist nested note block move for ${sourceEntityId}:`, error);
+            });
+        }
+
+        expandEntityAncestors(sourceEntityId);
+        openWorkspaceLeaf(sourceEntityId, 'preview');
+    }, [entities, entitiesById, expandEntityAncestors, openWorkspaceLeaf]);
 
     const handleShellResizeStart = (target: NotesShellResizeTarget, event: ReactPointerEvent<HTMLDivElement>) => {
         event.preventDefault();
@@ -2819,6 +2928,7 @@ export function NotesWorkspace({
             onMoveTab={moveWorkspaceTab}
             onOpenEntity={handleOpenEntity}
             onCreateChildBlock={handleCreateChildBlock}
+            onMoveBlockToParent={handleMoveBlockToParent}
             onNavigateBack={navigateNotesBack}
             onNavigateForward={navigateNotesForward}
             canNavigateBack={notesNavigationHistory.backStack.length > 0}

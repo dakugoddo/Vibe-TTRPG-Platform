@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   buildNotesWorkspaceEmbeddedEntityTree,
+  canMoveNotesWorkspaceEmbeddedEntity,
   filterNotesWorkspaceEmbeddedEntityTree,
 } from './notesWorkspaceBlocks';
 import type { Entity } from '../types';
@@ -56,6 +57,33 @@ assert.deepEqual(
   })),
   [{ id: 'grandchild', childIds: [] }],
   'Collapsing a nested embedded block should only hide its own descendants'
+);
+
+const movableEntities = [root, childA, childB, grandchild, greatGrandchild];
+assert.equal(
+  canMoveNotesWorkspaceEmbeddedEntity(movableEntities, childB.id, childA.id),
+  true,
+  'A sibling block can be dropped into another sibling block'
+);
+assert.equal(
+  canMoveNotesWorkspaceEmbeddedEntity(movableEntities, childA.id, childA.id),
+  false,
+  'A block cannot be dropped into itself'
+);
+assert.equal(
+  canMoveNotesWorkspaceEmbeddedEntity(movableEntities, childA.id, grandchild.id),
+  false,
+  'A block cannot be dropped into its own descendant because that would create a cycle'
+);
+assert.equal(
+  canMoveNotesWorkspaceEmbeddedEntity(movableEntities, childA.id, null),
+  true,
+  'A nested block can be moved back to the root level'
+);
+assert.equal(
+  canMoveNotesWorkspaceEmbeddedEntity(movableEntities, 'missing', childA.id),
+  false,
+  'Missing source block is not movable'
 );
 
 const cyclicTree = buildNotesWorkspaceEmbeddedEntityTree(cycleA, [cycleA, cycleB]);
