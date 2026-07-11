@@ -65,6 +65,35 @@ export function getWikiLinkAutocompleteSuggestions(
         .map(({ entity }) => entity);
 }
 
+const AUTOCOMPLETE_CONSUMED_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape']);
+
+export function shouldSyncWikiLinkAutocompleteOnKeyUp(key: string): boolean {
+    return !AUTOCOMPLETE_CONSUMED_KEYS.has(key);
+}
+
+export interface WikiLinkAutocompleteTextSegment {
+    text: string;
+    matched: boolean;
+}
+
+export function splitWikiLinkAutocompleteMatch(
+    value: string,
+    query: string
+): WikiLinkAutocompleteTextSegment[] {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return [{ text: value, matched: false }];
+
+    const matchStart = value.toLowerCase().indexOf(normalizedQuery);
+    if (matchStart === -1) return [{ text: value, matched: false }];
+
+    const matchEnd = matchStart + normalizedQuery.length;
+    const segments: WikiLinkAutocompleteTextSegment[] = [];
+    if (matchStart > 0) segments.push({ text: value.slice(0, matchStart), matched: false });
+    segments.push({ text: value.slice(matchStart, matchEnd), matched: true });
+    if (matchEnd < value.length) segments.push({ text: value.slice(matchEnd), matched: false });
+    return segments;
+}
+
 export function completeWikiLinkAutocomplete(
     value: string,
     caret: number,

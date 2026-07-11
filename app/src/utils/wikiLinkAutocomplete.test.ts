@@ -3,6 +3,8 @@ import {
     completeWikiLinkAutocomplete,
     findWikiLinkAutocompleteTrigger,
     getWikiLinkAutocompleteSuggestions,
+    shouldSyncWikiLinkAutocompleteOnKeyUp,
+    splitWikiLinkAutocompleteMatch,
 } from './wikiLinkAutocomplete';
 import type { Entity } from '../types';
 
@@ -60,6 +62,36 @@ assert.deepEqual(
     ], 'mira').map((candidate) => candidate.id),
     ['mira', 'note-mira', 'contains-mira-id'],
     'Exact ID, exact name, and substring matches should be ranked in Obsidian-like order'
+);
+
+assert.equal(shouldSyncWikiLinkAutocompleteOnKeyUp('ArrowDown'), false, 'Arrow navigation handled by autocomplete must keep the changed active index');
+assert.equal(shouldSyncWikiLinkAutocompleteOnKeyUp('ArrowUp'), false, 'Reverse arrow navigation must keep the changed active index');
+assert.equal(shouldSyncWikiLinkAutocompleteOnKeyUp('Escape'), false, 'Escape must not reopen an unfinished autocomplete on keyup');
+assert.equal(shouldSyncWikiLinkAutocompleteOnKeyUp('Enter'), false, 'Enter completion must not resync the consumed trigger');
+assert.equal(shouldSyncWikiLinkAutocompleteOnKeyUp('Tab'), false, 'Tab completion must not resync the consumed trigger');
+assert.equal(shouldSyncWikiLinkAutocompleteOnKeyUp('ArrowLeft'), true, 'Caret movement should recalculate the active trigger');
+
+assert.deepEqual(
+    splitWikiLinkAutocompleteMatch('Mira Ashen', 'mi'),
+    [
+        { text: 'Mi', matched: true },
+        { text: 'ra Ashen', matched: false },
+    ],
+    'Name matches should preserve original casing while marking the matching segment'
+);
+assert.deepEqual(
+    splitWikiLinkAutocompleteMatch('preview-character-mira', 'CHARACTER'),
+    [
+        { text: 'preview-', matched: false },
+        { text: 'character', matched: true },
+        { text: '-mira', matched: false },
+    ],
+    'Stable ID matches should be highlighted case-insensitively'
+);
+assert.deepEqual(
+    splitWikiLinkAutocompleteMatch('Sunsteel Compass', ''),
+    [{ text: 'Sunsteel Compass', matched: false }],
+    'Empty queries should not highlight the full candidate'
 );
 
 assert.deepEqual(

@@ -10,6 +10,8 @@ import {
     completeWikiLinkAutocomplete,
     findWikiLinkAutocompleteTrigger,
     getWikiLinkAutocompleteSuggestions,
+    shouldSyncWikiLinkAutocompleteOnKeyUp,
+    splitWikiLinkAutocompleteMatch,
     type WikiLinkAutocompleteTrigger,
 } from '../../utils/wikiLinkAutocomplete';
 import type { Entity } from '../../types';
@@ -23,6 +25,17 @@ interface WikiLinkTextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextArea
 function getEntityOwnerId(entity: Entity): string | undefined {
     const owner = entity.properties?._playerOwner;
     return typeof owner === 'string' ? owner : undefined;
+}
+
+function WikiLinkAutocompleteMatchText({ value, query }: { value: string; query: string }) {
+    return splitWikiLinkAutocompleteMatch(value, query).map((segment, index) => (
+        <span
+            key={`${index}:${segment.text}`}
+            className={segment.matched ? 'font-black text-[var(--vibe-accent)]' : undefined}
+        >
+            {segment.text}
+        </span>
+    ));
 }
 
 export const WikiLinkTextarea = forwardRef<HTMLTextAreaElement, WikiLinkTextareaProps>(function WikiLinkTextarea({
@@ -136,7 +149,11 @@ export const WikiLinkTextarea = forwardRef<HTMLTextAreaElement, WikiLinkTextarea
                     syncTrigger(event.target.value, event.target.selectionStart);
                 }}
                 onClick={(event) => syncTrigger(event.currentTarget.value, event.currentTarget.selectionStart)}
-                onKeyUp={(event) => syncTrigger(event.currentTarget.value, event.currentTarget.selectionStart)}
+                onKeyUp={(event) => {
+                    if (shouldSyncWikiLinkAutocompleteOnKeyUp(event.key)) {
+                        syncTrigger(event.currentTarget.value, event.currentTarget.selectionStart);
+                    }
+                }}
                 onKeyDown={handleKeyDown}
                 className={className}
             />
@@ -169,16 +186,21 @@ export const WikiLinkTextarea = forwardRef<HTMLTextAreaElement, WikiLinkTextarea
                                     insertSuggestion(entity);
                                 }}
                                 className={clsx(
-                                    'flex w-full items-center gap-2 rounded-[var(--vibe-radius-sm)] px-2.5 py-2 text-left transition-colors',
+                                    'flex w-full items-center gap-2 rounded-[var(--vibe-radius-sm)] border px-2.5 py-2 text-left transition-colors',
                                     index === activeIndex
-                                        ? 'bg-[var(--vibe-surface-hover)] text-[var(--vibe-text-primary)]'
-                                        : 'text-[var(--vibe-text-muted)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+                                        ? 'border-[var(--vibe-border-strong)] border-l-2 border-l-[var(--vibe-accent)] bg-[var(--vibe-surface-hover)] text-[var(--vibe-text-primary)]'
+                                        : 'border-transparent text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-subtle)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                                 )}
                             >
                                 <span className="min-w-0 flex-1">
-                                    <span className="block truncate text-sm font-semibold">{entity.name}</span>
+                                    <span className="block truncate text-sm font-semibold">
+                                        <WikiLinkAutocompleteMatchText value={entity.name} query={trigger.query} />
+                                    </span>
                                     <span className="block truncate text-[10px] text-[var(--vibe-text-faint)]">
-                                        {t(`workspace.notes.entityTypes.${entity.type}`)} / {entity.id}
+                                        <span>{t(`workspace.notes.entityTypes.${entity.type}`)} / </span>
+                                        <span className="font-mono">
+                                            <WikiLinkAutocompleteMatchText value={entity.id} query={trigger.query} />
+                                        </span>
                                     </span>
                                 </span>
                                 <span className="rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-1.5 py-0.5 text-[9px] uppercase text-[var(--vibe-text-faint)]">
