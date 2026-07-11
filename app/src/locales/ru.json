@@ -1277,6 +1277,7 @@
         "quote": "Цитата",
         "code": "Код",
         "link": "Wiki-ссылка",
+        "embed": "Встроить сущность",
         "markdown": "Markdown"
       },
       "searchFields": {

@@ -12,6 +12,21 @@ function parseMarkdownEntityEmbedTarget(source: string): MarkdownEntityEmbedTarg
     return label ? { target, label } : { target };
 }
 
+export interface MarkdownEntityEmbedInsertion {
+    text: string;
+    selectStart: number;
+    selectEnd: number;
+}
+
+export function createMarkdownEntityEmbedInsertion(selection: string): MarkdownEntityEmbedInsertion {
+    const target = selection || 'entity-id';
+    return {
+        text: `![[${target}]]`,
+        selectStart: 3,
+        selectEnd: 3 + target.length,
+    };
+}
+
 export function transformMarkdownEntityEmbeds(markdown: string): string {
     return markdown.replace(/!\[\[([^\]]+)\]\]/g, (_match, source: string) => {
         const { target, label } = parseMarkdownEntityEmbedTarget(source);

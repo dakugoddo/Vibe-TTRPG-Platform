@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+    createMarkdownEntityEmbedInsertion,
     resolveMarkdownEntityEmbed,
     transformMarkdownEntityEmbeds,
 } from './markdownEntityEmbeds';
@@ -45,6 +46,16 @@ assert.equal(
     resolveMarkdownEntityEmbed('Missing Note', [alpha, beta]),
     undefined,
     'Missing embed targets should remain explicitly unresolved'
+);
+assert.deepEqual(
+    createMarkdownEntityEmbedInsertion('Alpha Note'),
+    { text: '![[Alpha Note]]', selectStart: 3, selectEnd: 13 },
+    'Selected entity name should be wrapped as a Markdown embed'
+);
+assert.deepEqual(
+    createMarkdownEntityEmbedInsertion(''),
+    { text: '![[entity-id]]', selectStart: 3, selectEnd: 12 },
+    'Empty selection should insert and select an entity target placeholder'
 );
 
 console.log('markdown entity embeds tests passed');

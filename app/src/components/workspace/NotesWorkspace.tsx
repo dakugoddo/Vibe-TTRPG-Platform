@@ -95,6 +95,7 @@ import {
     readCanvasWindowInstances,
     upsertCanvasWindowInstance,
 } from '../../utils/canvasPersistence';
+import { createMarkdownEntityEmbedInsertion } from '../../utils/markdownEntityEmbeds';
 import { NOTES_AUDIO_DOCK_HOST_ID } from '../../utils/notesWorkspaceConstants';
 import { replaceTextareaSelectionPreservingUndo } from '../../utils/textareaEditing';
 import { glass } from '../../utils/theme';
@@ -1362,6 +1363,7 @@ const MARKDOWN_TOOLBAR_ACTIONS: MarkdownToolbarAction[] = [
     { key: 'quote', titleKey: 'workspace.notes.richToolbar.quote', icon: Quote, apply: (selection) => prefixLines(selection, '> ', 'quote') },
     { key: 'code', titleKey: 'workspace.notes.richToolbar.code', icon: Code2, apply: (selection) => selection.includes('\n') ? wrapSelection(selection, '```\n', '\n```', 'code') : wrapSelection(selection, '`', '`', 'code') },
     { key: 'link', titleKey: 'workspace.notes.richToolbar.link', icon: Link2, apply: (selection) => wrapSelection(selection, '[[', ']]', 'entity-id') },
+    { key: 'embed', titleKey: 'workspace.notes.richToolbar.embed', icon: Boxes, apply: createMarkdownEntityEmbedInsertion },
 ];
 
 function MarkdownRichEditor({

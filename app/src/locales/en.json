@@ -1277,6 +1277,7 @@
                 "quote": "Quote",
                 "code": "Code",
                 "link": "Wiki link",
+                "embed": "Embed entity",
                 "markdown": "Markdown"
             },
             "searchFields": {
