@@ -1253,6 +1253,7 @@
             "dragBlockToNest": "Drag one embedded block onto another to nest it inside.",
             "moveBlockInto": "Nest into",
             "moveBlockIntoNamed": "Nest into {{name}}",
+            "moveBlockToRootNamed": "Move up to {{name}}",
             "pinBlockToCanvas": "Pin to canvas",
             "newNestedBlockName": "Nested block",
             "newNestedBlockDescription": "# Nested block\n\nChild block for {{parent}}.",

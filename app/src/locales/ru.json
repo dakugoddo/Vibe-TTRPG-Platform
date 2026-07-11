@@ -1253,6 +1253,7 @@
       "dragBlockToNest": "Перетащите один вложенный блок на другой, чтобы вложить его внутрь.",
       "moveBlockInto": "Вложить в",
       "moveBlockIntoNamed": "Вложить в {{name}}",
+      "moveBlockToRootNamed": "Поднять к {{name}}",
       "pinBlockToCanvas": "На канвас",
       "newNestedBlockName": "Вложенный блок",
       "newNestedBlockDescription": "# Вложенный блок\n\nДочерний блок для {{parent}}.",

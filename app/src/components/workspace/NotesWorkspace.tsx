@@ -14,6 +14,7 @@ import {
     Columns2,
     Copy,
     CornerDownRight,
+    CornerUpLeft,
     Database,
     Eye,
     FileText,
@@ -595,6 +596,7 @@ function countEmbeddedBlockChildren(nodes: readonly NotesWorkspaceEmbeddedEntity
 }
 
 interface EmbeddedEntityBlocksPanelProps {
+    rootEntity: Entity;
     nodes: NotesWorkspaceEmbeddedEntityNode[];
     onOpenEntity: (entityId: string, view?: NotesWorkspaceView) => void;
     onCreateChildBlock: (parentEntityId: string) => void;
@@ -606,6 +608,7 @@ interface EmbeddedEntityBlocksPanelProps {
 }
 
 function EmbeddedEntityBlocksPanel({
+    rootEntity,
     nodes,
     onOpenEntity,
     onCreateChildBlock,
@@ -801,6 +804,31 @@ function EmbeddedEntityBlocksPanel({
                             </button>
                         );
                     })}
+                    {node.depth > 0 && (
+                        <button
+                            type="button"
+                            draggable={false}
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onMouseDown={(event) => event.stopPropagation()}
+                            onDragStart={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                            }}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                onMoveBlockToParent(node.entity.id, rootEntity.id);
+                            }}
+                            className="inline-flex max-w-full items-center gap-1 rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-text-muted)] transition-colors hover:border-[var(--vibe-accent)] hover:bg-[color-mix(in_srgb,var(--vibe-accent)_10%,transparent)] hover:text-[var(--vibe-accent)]"
+                            title={t('workspace.notes.moveBlockToRootNamed', { name: rootEntity.name })}
+                            aria-label={t('workspace.notes.moveBlockToRootNamed', { name: rootEntity.name })}
+                        >
+                            <CornerUpLeft size={11} />
+                            <span className="truncate">
+                                {t('workspace.notes.moveBlockToRootNamed', { name: rootEntity.name })}
+                            </span>
+                        </button>
+                    )}
                     {canPinToCanvas && (
                         <button
                             type="button"
@@ -1475,6 +1503,7 @@ function EntityUiPreviewPanel({
                                 {entity.type === 'ability' && <AbilitySheet entity={entity} />}
                                 {entity.type === 'tag' && canEdit && <TagEditor entity={entity} />}
                                 <EmbeddedEntityBlocksPanel
+                                    rootEntity={entity}
                                     nodes={embeddedNodes}
                                     onOpenEntity={onOpenEntity}
                                     onCreateChildBlock={onCreateChildBlock}
@@ -1527,6 +1556,7 @@ function NoteEditorPanel({
                 <p className="text-sm text-[var(--vibe-text-faint)]">{t('workspace.notes.emptyMarkdown')}</p>
             )}
             <EmbeddedEntityBlocksPanel
+                rootEntity={entity}
                 nodes={embeddedNodes}
                 onOpenEntity={onOpenEntity}
                 onCreateChildBlock={onCreateChildBlock}

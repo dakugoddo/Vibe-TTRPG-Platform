@@ -81,6 +81,11 @@ assert.equal(
   'A nested block can be moved back to the root level'
 );
 assert.equal(
+  canMoveNotesWorkspaceEmbeddedEntity(movableEntities, grandchild.id, root.id),
+  true,
+  'A deeply nested block can be lifted back to the active root entity'
+);
+assert.equal(
   canMoveNotesWorkspaceEmbeddedEntity(movableEntities, 'missing', childA.id),
   false,
   'Missing source block is not movable'
