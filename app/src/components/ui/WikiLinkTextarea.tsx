@@ -6,6 +6,12 @@ import { useEntities } from '../../hooks/useEntities';
 import { yjsStore } from '../../store/yjsStore';
 import { canViewEntity } from '../../utils/permissions';
 import { glass } from '../../utils/theme';
+import {
+    completeWikiLinkAutocomplete,
+    findWikiLinkAutocompleteTrigger,
+    getWikiLinkAutocompleteSuggestions,
+    type WikiLinkAutocompleteTrigger,
+} from '../../utils/wikiLinkAutocomplete';
 import type { Entity } from '../../types';
 
 interface WikiLinkTextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'> {
@@ -14,28 +20,9 @@ interface WikiLinkTextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextArea
     excludeEntityId?: string;
 }
 
-interface WikiTrigger {
-    start: number;
-    query: string;
-}
-
 function getEntityOwnerId(entity: Entity): string | undefined {
     const owner = entity.properties?._playerOwner;
     return typeof owner === 'string' ? owner : undefined;
-}
-
-function findWikiTrigger(value: string, caret: number): WikiTrigger | null {
-    const beforeCaret = value.slice(0, caret);
-    const openIndex = beforeCaret.lastIndexOf('[[');
-    if (openIndex === -1) return null;
-
-    const lastCloseIndex = beforeCaret.lastIndexOf(']]');
-    if (lastCloseIndex > openIndex) return null;
-
-    const query = beforeCaret.slice(openIndex + 2);
-    if (query.includes('[') || query.includes(']') || query.includes('\n')) return null;
-
-    return { start: openIndex, query };
 }
 
 export const WikiLinkTextarea = forwardRef<HTMLTextAreaElement, WikiLinkTextareaProps>(function WikiLinkTextarea({
@@ -51,7 +38,7 @@ export const WikiLinkTextarea = forwardRef<HTMLTextAreaElement, WikiLinkTextarea
     const { t } = useTranslation();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const entities = useEntities();
-    const [trigger, setTrigger] = useState<WikiTrigger | null>(null);
+    const [trigger, setTrigger] = useState<WikiLinkAutocompleteTrigger | null>(null);
     const [activeIndex, setActiveIndex] = useState(0);
     const autocompleteDisabled = Boolean(readOnly || disabled);
 
@@ -72,16 +59,7 @@ export const WikiLinkTextarea = forwardRef<HTMLTextAreaElement, WikiLinkTextarea
 
     const suggestions = useMemo(() => {
         if (!trigger || autocompleteDisabled) return [];
-        const query = trigger.query.trim().toLowerCase();
-
-        return visibleEntities
-            .filter((entity) => {
-                if (!query) return true;
-                return entity.name.toLowerCase().includes(query)
-                    || entity.id.toLowerCase().includes(query)
-                    || entity.type.toLowerCase().includes(query);
-            })
-            .slice(0, 8);
+        return getWikiLinkAutocompleteSuggestions(visibleEntities, trigger.query);
     }, [autocompleteDisabled, trigger, visibleEntities]);
 
     const syncTrigger = (nextValue: string, caret: number) => {
@@ -90,7 +68,7 @@ export const WikiLinkTextarea = forwardRef<HTMLTextAreaElement, WikiLinkTextarea
             return;
         }
 
-        setTrigger(findWikiTrigger(nextValue, caret));
+        setTrigger(findWikiLinkAutocompleteTrigger(nextValue, caret));
         setActiveIndex(0);
     };
 
@@ -98,15 +76,14 @@ export const WikiLinkTextarea = forwardRef<HTMLTextAreaElement, WikiLinkTextarea
         if (!trigger || autocompleteDisabled) return;
         const textarea = textareaRef.current;
         const caret = textarea?.selectionStart ?? value.length;
-        const nextValue = `${value.slice(0, trigger.start)}[[${entity.id}]]${value.slice(caret)}`;
-        const nextCaret = trigger.start + entity.id.length + 4;
+        const completion = completeWikiLinkAutocomplete(value, caret, trigger, entity.id);
 
-        onValueChange(nextValue);
+        onValueChange(completion.value);
         setTrigger(null);
 
         window.requestAnimationFrame(() => {
             textareaRef.current?.focus();
-            textareaRef.current?.setSelectionRange(nextCaret, nextCaret);
+            textareaRef.current?.setSelectionRange(completion.caret, completion.caret);
         });
     };
 
@@ -158,17 +135,21 @@ export const WikiLinkTextarea = forwardRef<HTMLTextAreaElement, WikiLinkTextarea
                     onValueChange(event.target.value);
                     syncTrigger(event.target.value, event.target.selectionStart);
                 }}
-                onClick={(event) => syncTrigger(value, event.currentTarget.selectionStart)}
-                onKeyUp={(event) => syncTrigger(value, event.currentTarget.selectionStart)}
+                onClick={(event) => syncTrigger(event.currentTarget.value, event.currentTarget.selectionStart)}
+                onKeyUp={(event) => syncTrigger(event.currentTarget.value, event.currentTarget.selectionStart)}
                 onKeyDown={handleKeyDown}
                 className={className}
             />
 
             {trigger && !autocompleteDisabled && (
-                <div className={`absolute left-2 right-2 top-10 z-[9999] max-h-64 overflow-y-auto p-1.5 custom-scrollbar ${glass.popover}`}>
+                <div
+                    role="listbox"
+                    aria-label={t(trigger.kind === 'embed' ? 'workspace.notes.richToolbar.embed' : 'workspace.notes.wikiLinkAutocomplete')}
+                    className={`absolute left-2 right-2 top-10 z-[9999] max-h-64 overflow-y-auto p-1.5 custom-scrollbar ${glass.popover}`}
+                >
                     <div className="mb-1 flex items-center gap-1.5 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
                         <Search size={11} />
-                        {t('workspace.notes.wikiLinkAutocomplete')}
+                        {t(trigger.kind === 'embed' ? 'workspace.notes.richToolbar.embed' : 'workspace.notes.wikiLinkAutocomplete')}
                     </div>
 
                     {suggestions.length === 0 ? (
@@ -180,6 +161,9 @@ export const WikiLinkTextarea = forwardRef<HTMLTextAreaElement, WikiLinkTextarea
                             <button
                                 key={entity.id}
                                 type="button"
+                                role="option"
+                                aria-selected={index === activeIndex}
+                                onMouseEnter={() => setActiveIndex(index)}
                                 onMouseDown={(event) => {
                                     event.preventDefault();
                                     insertSuggestion(entity);
@@ -203,6 +187,12 @@ export const WikiLinkTextarea = forwardRef<HTMLTextAreaElement, WikiLinkTextarea
                             </button>
                         ))
                     )}
+                    <div role="presentation" className="mt-1 flex items-center justify-end gap-2 border-t border-[var(--vibe-border-subtle)] px-2 pt-1.5 text-[9px] text-[var(--vibe-text-faint)]">
+                        <span>↑↓</span>
+                        <kbd>Enter</kbd>
+                        <kbd>Tab</kbd>
+                        <kbd>Esc</kbd>
+                    </div>
                 </div>
             )}
         </div>
