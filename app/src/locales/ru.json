@@ -938,6 +938,11 @@
   "markdownRenderer": {
     "rollError": "Ошибка броска: {{error}}",
     "rollTitle": "Бросить {{expression}}",
+    "entityEmbed": {
+      "label": "Встроенная сущность",
+      "missing": "Не найдена сущность: {{target}}",
+      "empty": "У сущности нет описания."
+    },
     "stats": {
       "availableInEntityWindow": "Блок stats доступен внутри окна сущности.",
       "title": "Статы: {{name}}",

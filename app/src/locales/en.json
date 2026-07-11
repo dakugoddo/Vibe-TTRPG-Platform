@@ -938,6 +938,11 @@
     "markdownRenderer": {
         "rollError": "Roll error: {{error}}",
         "rollTitle": "Roll {{expression}}",
+        "entityEmbed": {
+            "label": "Embedded entity",
+            "missing": "Entity not found: {{target}}",
+            "empty": "This entity has no description."
+        },
         "stats": {
             "availableInEntityWindow": "The stats block is available inside an entity window.",
             "title": "Stats: {{name}}",
