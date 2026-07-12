@@ -71,6 +71,21 @@ layout = useNotesWorkspaceStore.getState().layout;
 groups = listNotesWorkspaceGroups(layout.root);
 assert.deepEqual(groups.map((group) => group.tabs.map((tab) => tab.entityId)), [['leaf-note-1', 'leaf-note-2'], ['leaf-note-3']], 'Store opens new entities in the active tab block when several tab blocks exist');
 
+useNotesWorkspaceStore.getState().openTabInNewLeaf('leaf-note-4', 'preview');
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
+const storeSourceBlockId = groups[0].id;
+const storeTargetBlockId = groups[1].id;
+useNotesWorkspaceStore.getState().mergeGroup(storeSourceBlockId, storeTargetBlockId);
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
+assert.equal(groups.length, 1, 'Store group merge collapses the source block');
+assert.deepEqual(
+    groups[0].tabs.map((tab) => tab.entityId),
+    ['leaf-note-3', 'leaf-note-4', 'leaf-note-1', 'leaf-note-2'],
+    'Store group merge transfers every source tab into the target block'
+);
+
 store.resetLayout();
 
 useNotesWorkspaceStore.getState().openTab('note-1');

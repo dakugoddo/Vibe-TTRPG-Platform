@@ -1248,6 +1248,7 @@
             "tabBlock": "Tab block",
             "activeTabBlock": "Active area — new entities open here",
             "inactiveTabBlock": "Click to make this the active area",
+            "mergeTabBlockHint": "Drag onto another block to combine their tabs",
             "tabBlockTabCount": "{{count}} tabs",
             "navigateBack": "Back through tabs and links",
             "navigateForward": "Forward through tabs and links",

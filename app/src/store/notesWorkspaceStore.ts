@@ -4,6 +4,7 @@ import {
     closeNotesWorkspaceTab,
     createEmptyNotesWorkspaceLayout,
     listNotesWorkspaceGroups,
+    mergeNotesWorkspaceGroups,
     moveNotesWorkspaceTab,
     openNotesWorkspaceTab,
     openNotesWorkspaceTabInNewLeaf,
@@ -66,6 +67,7 @@ interface NotesWorkspaceStoreState {
     openTabInNewLeaf: (entityId: string, view?: NotesWorkspaceView) => void;
     closeTab: (groupId: string, tabId: string) => void;
     closeGroup: (groupId: string) => void;
+    mergeGroup: (sourceGroupId: string, targetGroupId: string) => void;
     moveTab: (sourceGroupId: string, tabId: string, targetGroupId: string, beforeTabId?: string | null) => void;
     splitTabToGroup: (
         sourceGroupId: string,
@@ -340,6 +342,10 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
 
     closeGroup: (groupId) => set((state) => ({
         layout: closeNotesWorkspaceGroup(state.layout, groupId),
+    })),
+
+    mergeGroup: (sourceGroupId, targetGroupId) => set((state) => ({
+        layout: mergeNotesWorkspaceGroups(state.layout, sourceGroupId, targetGroupId),
     })),
 
     moveTab: (sourceGroupId, tabId, targetGroupId, beforeTabId) => set((state) => ({

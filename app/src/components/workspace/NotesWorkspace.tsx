@@ -1599,6 +1599,7 @@ interface NotesWorkspaceNodeViewProps {
     onSetTabView: (groupId: string, tabId: string, view: NotesWorkspaceView) => void;
     onCloseTab: (groupId: string, tabId: string) => void;
     onCloseGroup: (groupId: string) => void;
+    onMergeGroup: (sourceGroupId: string, targetGroupId: string) => void;
     onSplitTabToGroup: (
         sourceGroupId: string,
         tabId: string,
@@ -1800,6 +1801,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
         groupOrder,
         onCloseGroup,
         onCloseTab,
+        onMergeGroup,
         onMoveTab,
         onOpenEntity,
         onCreateChildBlock,
@@ -1850,6 +1852,79 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
         if (zone === 'right') return { direction: 'row', placement: 'after' };
         if (zone === 'top') return { direction: 'column', placement: 'before' };
         return { direction: 'column', placement: 'after' };
+    };
+
+    const startGroupPointerDrag = (event: ReactPointerEvent<HTMLElement>) => {
+        if (event.button !== 0 || !canCloseGroup) return;
+        if ((event.target as HTMLElement | null)?.closest('[data-no-pane-drag]')) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        onSetActiveGroup(node.id);
+
+        const sourceGroupId = node.id;
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const previousCursor = document.body.style.cursor;
+        const previousUserSelect = document.body.style.userSelect;
+        let isDragging = false;
+        let latestTarget: NotesDockDropTarget | null = null;
+
+        const setLatestTarget = (target: NotesDockDropTarget | null) => {
+            const unchanged = latestTarget?.groupId === target?.groupId && latestTarget?.zone === target?.zone;
+            if (unchanged) return;
+            latestTarget = target;
+            onDockDropTargetChange(target);
+        };
+
+        const handlePointerMove = (moveEvent: PointerEvent) => {
+            const distance = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);
+            if (!isDragging && distance < 6) return;
+
+            if (!isDragging) {
+                isDragging = true;
+                document.body.style.cursor = 'grabbing';
+                document.body.style.userSelect = 'none';
+            }
+
+            moveEvent.preventDefault();
+            const targetElement = findDockGroupElement(moveEvent.clientX, moveEvent.clientY);
+            const targetGroupId = targetElement?.dataset.notesGroupId;
+            if (!targetElement || !targetGroupId || targetGroupId === sourceGroupId) {
+                setLatestTarget(null);
+                return;
+            }
+
+            setLatestTarget({ groupId: targetGroupId, zone: null });
+        };
+
+        const finishDrag = (upEvent: PointerEvent) => {
+            document.body.style.cursor = previousCursor;
+            document.body.style.userSelect = previousUserSelect;
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', finishDrag);
+            window.removeEventListener('pointercancel', cancelDrag);
+
+            const target = latestTarget;
+            setLatestTarget(null);
+            if (!isDragging || !target) return;
+
+            upEvent.preventDefault();
+            onMergeGroup(sourceGroupId, target.groupId);
+        };
+
+        const cancelDrag = () => {
+            document.body.style.cursor = previousCursor;
+            document.body.style.userSelect = previousUserSelect;
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', finishDrag);
+            window.removeEventListener('pointercancel', cancelDrag);
+            setLatestTarget(null);
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', finishDrag, { once: true });
+        window.addEventListener('pointercancel', cancelDrag, { once: true });
     };
 
     const startTabPointerDrag = (event: ReactPointerEvent<HTMLElement>, tabId: string) => {
@@ -2001,13 +2076,12 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                         onSetActiveGroup(node.id);
                         event.stopPropagation();
                     }}
-                    onPointerDown={(event) => {
-                        const target = event.target as HTMLElement | null;
-                        if (target?.closest('[data-no-pane-drag]')) return;
-                        if (activeTab) startTabPointerDrag(event, activeTab.id);
-                    }}
-                    className="flex min-w-0 flex-1 cursor-grab items-center gap-2 rounded-[var(--vibe-radius-sm)] text-left transition-colors hover:bg-[var(--vibe-surface-hover)] active:cursor-grabbing"
-                    title={isActiveGroup ? t('workspace.notes.activeTabBlock') : t('workspace.notes.inactiveTabBlock')}
+                    onPointerDown={startGroupPointerDrag}
+                    data-notes-group-drag-handle
+                    className={`flex min-w-0 flex-1 items-center gap-2 rounded-[var(--vibe-radius-sm)] text-left transition-colors hover:bg-[var(--vibe-surface-hover)] ${
+                        canCloseGroup ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
+                    }`}
+                    title={`${isActiveGroup ? t('workspace.notes.activeTabBlock') : t('workspace.notes.inactiveTabBlock')}. ${t('workspace.notes.mergeTabBlockHint')}`}
                 >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-accent)]">
                         <Boxes size={14} />
@@ -2331,6 +2405,7 @@ export function NotesWorkspace({
     const openWorkspaceLeaf = useNotesWorkspaceStore((state) => state.openTabInNewLeaf);
     const closeWorkspaceTab = useNotesWorkspaceStore((state) => state.closeTab);
     const closeWorkspaceGroup = useNotesWorkspaceStore((state) => state.closeGroup);
+    const mergeWorkspaceGroup = useNotesWorkspaceStore((state) => state.mergeGroup);
     const moveWorkspaceTab = useNotesWorkspaceStore((state) => state.moveTab);
     const splitWorkspaceTabToGroup = useNotesWorkspaceStore((state) => state.splitTabToGroup);
     const resizeWorkspaceSplit = useNotesWorkspaceStore((state) => state.resizeSplit);
@@ -2966,6 +3041,7 @@ export function NotesWorkspace({
             onSetTabView={setWorkspaceTabView}
             onCloseTab={closeWorkspaceTab}
             onCloseGroup={closeWorkspaceGroup}
+            onMergeGroup={mergeWorkspaceGroup}
             onSplitTabToGroup={splitWorkspaceTabToGroup}
             onResizeSplit={resizeWorkspaceSplit}
             onMoveTab={moveWorkspaceTab}
