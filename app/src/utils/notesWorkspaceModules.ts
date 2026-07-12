@@ -280,6 +280,28 @@ export function mergeNotesShellModuleTabs(
     return nextGroups;
 }
 
+export function mergeNotesShellModuleGroupTabs(
+    groups: NotesWorkspaceShellTabGroup[],
+    sourceGroupId: string,
+    targetModuleId: NotesWorkspaceShellModuleId
+): NotesWorkspaceShellTabGroup[] {
+    const sourceGroup = groups.find((group) => group.id === sourceGroupId);
+    if (!sourceGroup || sourceGroup.moduleIds.includes(targetModuleId)) return groups;
+    const targetGroup = groups.find((group) => group.moduleIds.includes(targetModuleId));
+    const mergedModuleIds = targetGroup
+        ? [...targetGroup.moduleIds, ...sourceGroup.moduleIds.filter((moduleId) => !targetGroup.moduleIds.includes(moduleId))]
+        : [targetModuleId, ...sourceGroup.moduleIds.filter((moduleId) => moduleId !== targetModuleId)];
+
+    return [
+        ...groups.filter((group) => group.id !== sourceGroup.id && group.id !== targetGroup?.id),
+        {
+            id: targetGroup?.id ?? `shell-group-${targetModuleId}`,
+            moduleIds: mergedModuleIds,
+            activeModuleId: sourceGroup.activeModuleId,
+        },
+    ];
+}
+
 export function removeNotesShellModuleFromTabs(
     groups: NotesWorkspaceShellTabGroup[],
     moduleId: NotesWorkspaceShellModuleId

@@ -1222,6 +1222,7 @@
             "closePane": "Close pane",
             "dragPane": "Drag active pane tab",
             "dragModule": "Drag module",
+            "dragModuleGroup": "Drag the entire tab block",
             "combineModules": "Combine modules",
             "combineTabs": "Combine tabs",
             "dropModuleHere": "Drop module here",

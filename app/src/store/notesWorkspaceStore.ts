@@ -30,6 +30,7 @@ import {
     isNotesWorkspaceShellAreaLayout,
     isImplementedNotesShellModuleId,
     listImplementedNotesShellModules,
+    mergeNotesShellModuleGroupTabs,
     mergeNotesShellModuleTabs,
     removeNotesShellModuleFromTabs,
     type NotesWorkspaceShellAreaLayout,
@@ -91,7 +92,9 @@ interface NotesWorkspaceStoreState {
     setShellModuleVisible: (moduleId: NotesWorkspaceShellModuleId, isVisible: boolean) => void;
     toggleShellModule: (moduleId: NotesWorkspaceShellModuleId) => void;
     moveShellModule: (moduleId: NotesWorkspaceShellModuleId, area: NotesWorkspaceDockArea, beforeModuleId?: NotesWorkspaceShellModuleId | null, layout?: NotesWorkspaceShellAreaLayout) => void;
+    moveShellModuleGroup: (groupId: string, area: NotesWorkspaceDockArea, beforeModuleId?: NotesWorkspaceShellModuleId | null, layout?: NotesWorkspaceShellAreaLayout) => void;
     mergeShellModules: (sourceModuleId: NotesWorkspaceShellModuleId, targetModuleId: NotesWorkspaceShellModuleId) => void;
+    mergeShellModuleGroup: (sourceGroupId: string, targetModuleId: NotesWorkspaceShellModuleId) => void;
     setActiveShellModuleTab: (groupId: string, moduleId: NotesWorkspaceShellModuleId) => void;
     setShellModuleWidth: (moduleId: 'vault' | 'context', width: number) => void;
     setShellAudioHeight: (height: number) => void;
@@ -491,6 +494,40 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
         };
     }),
 
+    moveShellModuleGroup: (groupId, area, beforeModuleId, layout) => set((state) => {
+        const sourceGroup = state.shell.tabGroups.find((group) => group.id === groupId);
+        if (!sourceGroup) return state;
+
+        const sourceModuleIds = new Set(sourceGroup.moduleIds);
+        const nextAreas = { ...state.shell.moduleAreas };
+        sourceGroup.moduleIds.forEach((moduleId) => {
+            nextAreas[moduleId] = area;
+        });
+        const modulesInArea = listImplementedNotesShellModules()
+            .map((module) => module.id)
+            .filter((moduleId) => !sourceModuleIds.has(moduleId) && nextAreas[moduleId] === area)
+            .sort((left, right) => state.shell.moduleOrder[left] - state.shell.moduleOrder[right]);
+        const insertIndex = beforeModuleId ? modulesInArea.indexOf(beforeModuleId) : -1;
+        const nextIds = insertIndex >= 0
+            ? [...modulesInArea.slice(0, insertIndex), ...sourceGroup.moduleIds, ...modulesInArea.slice(insertIndex)]
+            : [...modulesInArea, ...sourceGroup.moduleIds];
+        const nextOrder = { ...state.shell.moduleOrder };
+        nextIds.forEach((moduleId, index) => {
+            nextOrder[moduleId] = (index + 1) * 10;
+        });
+
+        return {
+            shell: {
+                ...state.shell,
+                moduleAreas: nextAreas,
+                moduleOrder: nextOrder,
+                moduleLayouts: area !== 'bottom' && layout
+                    ? { ...state.shell.moduleLayouts, [area]: layout }
+                    : state.shell.moduleLayouts,
+            },
+        };
+    }),
+
     mergeShellModules: (sourceModuleId, targetModuleId) => set((state) => {
         const tabGroups = mergeNotesShellModuleTabs(state.shell.tabGroups, sourceModuleId, targetModuleId);
         if (tabGroups === state.shell.tabGroups) return state;
@@ -501,6 +538,31 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
         const moduleAreas = { ...state.shell.moduleAreas };
         const moduleOrder = { ...state.shell.moduleOrder };
         mergedGroup?.moduleIds.forEach((moduleId) => {
+            moduleAreas[moduleId] = targetArea;
+            moduleOrder[moduleId] = targetOrder;
+        });
+
+        return {
+            shell: {
+                ...state.shell,
+                moduleAreas,
+                moduleOrder,
+                tabGroups,
+            },
+        };
+    }),
+
+    mergeShellModuleGroup: (sourceGroupId, targetModuleId) => set((state) => {
+        const tabGroups = mergeNotesShellModuleGroupTabs(state.shell.tabGroups, sourceGroupId, targetModuleId);
+        if (tabGroups === state.shell.tabGroups) return state;
+
+        const mergedGroup = tabGroups.find((group) => group.moduleIds.includes(targetModuleId));
+        if (!mergedGroup) return state;
+        const targetArea = state.shell.moduleAreas[targetModuleId];
+        const targetOrder = state.shell.moduleOrder[targetModuleId];
+        const moduleAreas = { ...state.shell.moduleAreas };
+        const moduleOrder = { ...state.shell.moduleOrder };
+        mergedGroup.moduleIds.forEach((moduleId) => {
             moduleAreas[moduleId] = targetArea;
             moduleOrder[moduleId] = targetOrder;
         });
