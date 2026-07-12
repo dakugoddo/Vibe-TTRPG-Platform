@@ -32,6 +32,7 @@ import {
     listImplementedNotesShellModules,
     mergeNotesShellModuleGroupTabs,
     mergeNotesShellModuleTabs,
+    moveNotesShellModuleTab,
     removeNotesShellModuleFromTabs,
     type NotesWorkspaceShellAreaLayout,
     type NotesWorkspaceShellAreaLayouts,
@@ -94,6 +95,7 @@ interface NotesWorkspaceStoreState {
     moveShellModule: (moduleId: NotesWorkspaceShellModuleId, area: NotesWorkspaceDockArea, beforeModuleId?: NotesWorkspaceShellModuleId | null, layout?: NotesWorkspaceShellAreaLayout) => void;
     moveShellModuleGroup: (groupId: string, area: NotesWorkspaceDockArea, beforeModuleId?: NotesWorkspaceShellModuleId | null, layout?: NotesWorkspaceShellAreaLayout) => void;
     mergeShellModules: (sourceModuleId: NotesWorkspaceShellModuleId, targetModuleId: NotesWorkspaceShellModuleId) => void;
+    moveShellModuleTab: (moduleId: NotesWorkspaceShellModuleId, targetGroupId: string, beforeModuleId?: NotesWorkspaceShellModuleId | null) => void;
     mergeShellModuleGroup: (sourceGroupId: string, targetModuleId: NotesWorkspaceShellModuleId) => void;
     setActiveShellModuleTab: (groupId: string, moduleId: NotesWorkspaceShellModuleId) => void;
     setShellModuleWidth: (moduleId: 'vault' | 'context', width: number) => void;
@@ -547,6 +549,23 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
                 ...state.shell,
                 moduleAreas,
                 moduleOrder,
+                tabGroups,
+            },
+        };
+    }),
+
+    moveShellModuleTab: (moduleId, targetGroupId, beforeModuleId) => set((state) => {
+        const targetGroup = state.shell.tabGroups.find((group) => group.id === targetGroupId);
+        if (!targetGroup) return state;
+        const tabGroups = moveNotesShellModuleTab(state.shell.tabGroups, moduleId, targetGroupId, beforeModuleId);
+        const targetArea = state.shell.moduleAreas[targetGroup.activeModuleId];
+        const targetOrder = state.shell.moduleOrder[targetGroup.activeModuleId];
+
+        return {
+            shell: {
+                ...state.shell,
+                moduleAreas: { ...state.shell.moduleAreas, [moduleId]: targetArea },
+                moduleOrder: { ...state.shell.moduleOrder, [moduleId]: targetOrder },
                 tabGroups,
             },
         };

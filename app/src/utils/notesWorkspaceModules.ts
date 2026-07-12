@@ -280,6 +280,45 @@ export function mergeNotesShellModuleTabs(
     return nextGroups;
 }
 
+export function moveNotesShellModuleTab(
+    groups: NotesWorkspaceShellTabGroup[],
+    moduleId: NotesWorkspaceShellModuleId,
+    targetGroupId: string,
+    beforeModuleId?: NotesWorkspaceShellModuleId | null
+): NotesWorkspaceShellTabGroup[] {
+    const targetGroup = groups.find((group) => group.id === targetGroupId);
+    if (!targetGroup) return groups;
+    const sourceGroup = groups.find((group) => group.moduleIds.includes(moduleId));
+    const targetModuleIds = targetGroup.moduleIds.filter((candidate) => candidate !== moduleId);
+    const insertIndex = beforeModuleId ? targetModuleIds.indexOf(beforeModuleId) : -1;
+    const nextTargetModuleIds = insertIndex >= 0
+        ? [...targetModuleIds.slice(0, insertIndex), moduleId, ...targetModuleIds.slice(insertIndex)]
+        : [...targetModuleIds, moduleId];
+
+    const nextGroups: NotesWorkspaceShellTabGroup[] = [];
+    for (const group of groups) {
+        if (group.id === targetGroup.id) {
+            nextGroups.push({ ...group, moduleIds: nextTargetModuleIds, activeModuleId: moduleId });
+            continue;
+        }
+        if (group.id === sourceGroup?.id) {
+            const remainingModuleIds = group.moduleIds.filter((candidate) => candidate !== moduleId);
+            if (remainingModuleIds.length >= 2) {
+                nextGroups.push({
+                    ...group,
+                    moduleIds: remainingModuleIds,
+                    activeModuleId: remainingModuleIds.includes(group.activeModuleId)
+                        ? group.activeModuleId
+                        : remainingModuleIds[0],
+                });
+            }
+            continue;
+        }
+        nextGroups.push(group);
+    }
+    return nextGroups;
+}
+
 export function mergeNotesShellModuleGroupTabs(
     groups: NotesWorkspaceShellTabGroup[],
     sourceGroupId: string,

@@ -186,6 +186,8 @@ interface NotesShellModuleDropTarget {
     targetModuleId: NotesWorkspaceShellModuleId | null;
     placement: NotesWorkspaceDropZone | null;
     layout: NotesWorkspaceShellAreaLayout;
+    targetTabGroupId?: string;
+    beforeTabId?: NotesWorkspaceShellModuleId | null;
 }
 
 interface VaultScopeOption {
@@ -286,6 +288,39 @@ function getBeforeModuleIdForShellDrop(
 
     const moduleId = moduleElements[targetIndex + 1]?.dataset.notesShellModuleId;
     return moduleId ? moduleId as NotesWorkspaceShellModuleId : null;
+}
+
+function getShellTabDropTarget(
+    clientX: number,
+    clientY: number,
+    sourceModuleId: NotesWorkspaceShellModuleId,
+    moduleLayouts: NotesWorkspaceShellAreaLayouts
+): NotesShellModuleDropTarget | null {
+    const element = document.elementFromPoint(clientX, clientY);
+    const tabStrip = element?.closest<HTMLElement>('[data-notes-shell-module-tabs]');
+    const frame = tabStrip?.closest<HTMLElement>('[data-notes-shell-tab-group-id]');
+    const areaElement = frame?.closest<HTMLElement>('[data-notes-shell-area]');
+    const targetTabGroupId = frame?.dataset.notesShellTabGroupId;
+    const area = areaElement?.dataset.notesShellArea;
+    if (!tabStrip || !targetTabGroupId || !isNotesShellInteractiveArea(area)) return null;
+
+    const tabElements = Array.from(tabStrip.querySelectorAll<HTMLElement>('[data-notes-shell-module-tab]'))
+        .filter((tabElement) => tabElement.dataset.notesShellModuleTab !== sourceModuleId);
+    const beforeTabElement = tabElements.find((tabElement) => {
+        const rect = tabElement.getBoundingClientRect();
+        return clientX < rect.left + rect.width / 2;
+    });
+    const beforeTabId = beforeTabElement?.dataset.notesShellModuleTab as NotesWorkspaceShellModuleId | undefined;
+
+    return {
+        area,
+        beforeModuleId: null,
+        targetModuleId: null,
+        placement: null,
+        layout: moduleLayouts[area] ?? 'column',
+        targetTabGroupId,
+        beforeTabId: beforeTabId ?? null,
+    };
 }
 
 function getShellModuleDropTarget(
@@ -1655,6 +1690,7 @@ interface NotesShellModuleFrameProps {
     showDropBefore: boolean;
     showDropAfter: boolean;
     dropLayout: NotesWorkspaceShellAreaLayout;
+    tabInsertBeforeId?: NotesWorkspaceShellModuleId | null;
     hideHeader?: boolean;
     onHeaderPointerDown: (moduleId: NotesWorkspaceShellModuleId, event: ReactPointerEvent<HTMLElement>) => void;
     onGroupHeaderPointerDown: (groupId: string, activeModuleId: NotesWorkspaceShellModuleId, event: ReactPointerEvent<HTMLElement>) => void;
@@ -1687,6 +1723,7 @@ function NotesShellModuleFrame({
     showDropBefore,
     showDropAfter,
     dropLayout,
+    tabInsertBeforeId,
     hideHeader = false,
     onHeaderPointerDown,
     onGroupHeaderPointerDown,
@@ -1721,7 +1758,7 @@ function NotesShellModuleFrame({
                 )}
                 {!hideHeader && (
                     hasModuleTabs ? (
-                        <div className={`${glass.panelHeader} flex min-h-10 select-none items-stretch gap-1 border-b border-[var(--vibe-border-subtle)] px-1.5 pt-1.5`}>
+                        <div data-notes-shell-module-tabs className={`${glass.panelHeader} flex min-h-10 select-none items-stretch gap-1 border-b border-[var(--vibe-border-subtle)] px-1.5 pt-1.5`}>
                             {renderGroup.modules.map((module) => {
                                 const TabIcon = NOTES_SHELL_MODULE_ICONS[module.iconKey];
                                 const isActive = module.id === activeModule.id;
@@ -1732,18 +1769,24 @@ function NotesShellModuleFrame({
                                         data-notes-shell-module-tab={module.id}
                                         onPointerDown={(event) => onHeaderPointerDown(module.id, event)}
                                         onClick={() => onActiveModuleChange(renderGroup.id, module.id)}
-                                        className={`flex min-w-0 max-w-[180px] shrink-0 cursor-grab items-center gap-1.5 rounded-t-[var(--vibe-radius-sm)] border border-b-0 px-2 text-left text-[10px] font-bold uppercase tracking-wider active:cursor-grabbing ${
+                                        className={`relative flex min-w-0 max-w-[180px] shrink-0 cursor-grab items-center gap-1.5 rounded-t-[var(--vibe-radius-sm)] border border-b-0 px-2 text-left text-[10px] font-bold uppercase tracking-wider active:cursor-grabbing ${
                                             isActive
                                                 ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-surface-block)] text-[var(--vibe-accent)]'
                                                 : 'border-transparent text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                                         }`}
                                         title={t('workspace.notes.dragModule')}
                                     >
+                                        {tabInsertBeforeId === module.id && (
+                                            <span data-notes-shell-tab-insert className="pointer-events-none absolute -left-[3px] bottom-1 top-1 z-10 w-1 rounded-full bg-[var(--vibe-accent)] shadow-[0_0_12px_color-mix(in_srgb,var(--vibe-accent)_70%,transparent)]" />
+                                        )}
                                         <TabIcon size={13} className="shrink-0" />
                                         <span className="truncate">{t(module.labelKey)}</span>
                                     </button>
                                 );
                             })}
+                            {tabInsertBeforeId === null && (
+                                <span data-notes-shell-tab-insert className="pointer-events-none my-1 w-1 shrink-0 rounded-full bg-[var(--vibe-accent)] shadow-[0_0_12px_color-mix(in_srgb,var(--vibe-accent)_70%,transparent)]" />
+                            )}
                             <div
                                 data-notes-shell-group-drag-handle
                                 onPointerDown={(event) => onGroupHeaderPointerDown(renderGroup.id, activeModule.id, event)}
@@ -2484,6 +2527,7 @@ export function NotesWorkspace({
     const moveShellModule = useNotesWorkspaceStore((state) => state.moveShellModule);
     const moveShellModuleGroup = useNotesWorkspaceStore((state) => state.moveShellModuleGroup);
     const mergeShellModules = useNotesWorkspaceStore((state) => state.mergeShellModules);
+    const moveShellModuleTab = useNotesWorkspaceStore((state) => state.moveShellModuleTab);
     const mergeShellModuleGroup = useNotesWorkspaceStore((state) => state.mergeShellModuleGroup);
     const setActiveShellModuleTab = useNotesWorkspaceStore((state) => state.setActiveShellModuleTab);
     const setShellModuleWidth = useNotesWorkspaceStore((state) => state.setShellModuleWidth);
@@ -2837,7 +2881,9 @@ export function NotesWorkspace({
                 && latestTarget?.beforeModuleId === target?.beforeModuleId
                 && latestTarget?.targetModuleId === target?.targetModuleId
                 && latestTarget?.placement === target?.placement
-                && latestTarget?.layout === target?.layout;
+                && latestTarget?.layout === target?.layout
+                && latestTarget?.targetTabGroupId === target?.targetTabGroupId
+                && latestTarget?.beforeTabId === target?.beforeTabId;
             if (unchanged) return;
             latestTarget = target;
             setShellModuleDropTarget(target);
@@ -2855,7 +2901,10 @@ export function NotesWorkspace({
             }
 
             moveEvent.preventDefault();
-            setLatestTarget(getShellModuleDropTarget(moveEvent.clientX, moveEvent.clientY, moduleId, notesShell.moduleLayouts));
+            const tabTarget = sourceGroupId
+                ? null
+                : getShellTabDropTarget(moveEvent.clientX, moveEvent.clientY, moduleId, notesShell.moduleLayouts);
+            setLatestTarget(tabTarget ?? getShellModuleDropTarget(moveEvent.clientX, moveEvent.clientY, moduleId, notesShell.moduleLayouts));
         };
 
         const finishDrag = (upEvent: PointerEvent) => {
@@ -2871,6 +2920,10 @@ export function NotesWorkspace({
             if (!isDragging || !target) return;
 
             upEvent.preventDefault();
+            if (target.targetTabGroupId) {
+                moveShellModuleTab(moduleId, target.targetTabGroupId, target.beforeTabId ?? null);
+                return;
+            }
             if (sourceGroupId) {
                 if (target.targetModuleId) {
                     mergeShellModuleGroup(sourceGroupId, target.targetModuleId);
@@ -3203,8 +3256,9 @@ export function NotesWorkspace({
                 isDragging={Boolean(draggingShellModuleId && moduleIds.includes(draggingShellModuleId))}
                 isMergeTarget={Boolean(shellModuleDropTarget?.targetModuleId && moduleIds.includes(shellModuleDropTarget.targetModuleId))}
                 showDropBefore={shellModuleDropTarget?.area === area && Boolean(shellModuleDropTarget.beforeModuleId && moduleIds.includes(shellModuleDropTarget.beforeModuleId))}
-                showDropAfter={isLast && shellModuleDropTarget?.area === area && shellModuleDropTarget.beforeModuleId === null && !shellModuleDropTarget.targetModuleId}
+                showDropAfter={isLast && shellModuleDropTarget?.area === area && shellModuleDropTarget.beforeModuleId === null && !shellModuleDropTarget.targetModuleId && !shellModuleDropTarget.targetTabGroupId}
                 dropLayout={areaLayout}
+                tabInsertBeforeId={shellModuleDropTarget?.targetTabGroupId === renderGroup.id ? shellModuleDropTarget.beforeTabId : undefined}
                 hideHeader={renderGroup.modules.length === 1 && activeModule.id === 'editor'}
                 onHeaderPointerDown={handleShellModuleDragStart}
                 onGroupHeaderPointerDown={(groupId, activeModuleId, event) => handleShellModuleDragStart(activeModuleId, event, groupId)}
