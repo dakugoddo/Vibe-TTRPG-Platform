@@ -177,6 +177,7 @@ type NotesShellInteractiveArea = Extract<NotesWorkspaceDockArea, 'left' | 'cente
 interface NotesDockDropTarget {
     groupId: string;
     zone: NotesWorkspaceDropZone | null;
+    beforeTabId?: string | null;
 }
 
 interface NotesShellModuleDropTarget {
@@ -248,6 +249,25 @@ function isNotesShellInteractiveArea(value: unknown): value is NotesShellInterac
 function findDockGroupElement(clientX: number, clientY: number): HTMLElement | null {
     const element = document.elementFromPoint(clientX, clientY);
     return element?.closest<HTMLElement>('[data-notes-group-id]') ?? null;
+}
+
+function getNotesTabInsertBeforeId(
+    groupElement: HTMLElement,
+    clientX: number,
+    clientY: number,
+    sourceTabId: string
+): string | null | undefined {
+    const pointedElement = document.elementFromPoint(clientX, clientY);
+    const tabStrip = pointedElement?.closest<HTMLElement>('[data-notes-tab-strip]');
+    if (!tabStrip || tabStrip.closest('[data-notes-group-id]') !== groupElement) return undefined;
+
+    const tabElements = Array.from(tabStrip.querySelectorAll<HTMLElement>('[data-notes-tab-id]'))
+        .filter((tabElement) => tabElement.dataset.notesTabId !== sourceTabId);
+    for (const tabElement of tabElements) {
+        const rect = tabElement.getBoundingClientRect();
+        if (clientX < rect.left + rect.width / 2) return tabElement.dataset.notesTabId ?? null;
+    }
+    return null;
 }
 
 function getShellLayoutFromDropZone(zone: NotesWorkspaceDropZone): NotesWorkspaceShellAreaLayout {
@@ -1881,7 +1901,9 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
     const activeParentEntity = activeEntity?.parentId ? entitiesById.get(activeEntity.parentId) ?? null : null;
     const canCloseGroup = groupOrder.size > 1;
     const visualDropZone = dockDropTarget?.groupId === node.id ? dockDropTarget.zone : null;
-    const isCenterMergeTarget = dockDropTarget?.groupId === node.id && visualDropZone === null;
+    const isTabInsertTarget = dockDropTarget?.groupId === node.id && dockDropTarget.beforeTabId !== undefined;
+    const tabInsertBeforeId = isTabInsertTarget ? dockDropTarget.beforeTabId : undefined;
+    const isCenterMergeTarget = dockDropTarget?.groupId === node.id && visualDropZone === null && !isTabInsertTarget;
     const editorDropIndicatorLayout = visualDropZone ? getShellLayoutFromDropZone(visualDropZone) : 'column';
     const editorDropIndicatorClass = visualDropZone === 'left'
         ? 'pointer-events-none absolute bottom-2 left-1 top-2 z-20'
@@ -1991,7 +2013,9 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
         let latestTarget: NotesDockDropTarget | null = null;
 
         const setLatestTarget = (target: NotesDockDropTarget | null) => {
-            const unchanged = latestTarget?.groupId === target?.groupId && latestTarget?.zone === target?.zone;
+            const unchanged = latestTarget?.groupId === target?.groupId
+                && latestTarget?.zone === target?.zone
+                && latestTarget?.beforeTabId === target?.beforeTabId;
             if (unchanged) return;
             latestTarget = target;
             onDockDropTargetChange(target);
@@ -2012,6 +2036,12 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
             const targetGroupId = targetElement?.dataset.notesGroupId;
             if (!targetElement || !targetGroupId) {
                 setLatestTarget(null);
+                return;
+            }
+
+            const beforeTabId = getNotesTabInsertBeforeId(targetElement, moveEvent.clientX, moveEvent.clientY, tabId);
+            if (beforeTabId !== undefined) {
+                setLatestTarget({ groupId: targetGroupId, zone: null, beforeTabId });
                 return;
             }
 
@@ -2039,7 +2069,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                 return;
             }
 
-            onMoveTab(sourceGroupId, tabId, target.groupId, null);
+            onMoveTab(sourceGroupId, tabId, target.groupId, target.beforeTabId ?? null);
         };
 
         const cancelDrag = () => {
@@ -2133,7 +2163,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                         : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)]'
                 }`}
             >
-                <div className="flex max-w-full min-w-0 shrink gap-1 overflow-x-auto">
+                <div data-notes-tab-strip className="flex max-w-full min-w-0 shrink gap-1 overflow-x-auto">
                     {node.tabs.length === 0 ? (
                         <span className="flex items-center px-2 text-xs text-[var(--vibe-text-faint)]">
                             {t('workspace.notes.emptyGroup')}
@@ -2145,16 +2175,20 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                         <div
                             key={tab.id}
                             data-notes-tab
+                            data-notes-tab-id={tab.id}
                             onPointerDown={(event) => {
                                 startTabPointerDrag(event, tab.id);
                             }}
-                            className={`group flex h-8 max-w-[260px] shrink-0 select-none items-center gap-2 rounded-[var(--vibe-radius-sm)] border px-2 text-left text-xs transition-colors ${
+                            className={`group relative flex h-8 max-w-[260px] shrink-0 select-none items-center gap-2 rounded-[var(--vibe-radius-sm)] border px-2 text-left text-xs transition-colors ${
                                 isActiveTab
                                     ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_16%,var(--vibe-surface-hover))] text-[var(--vibe-text-primary)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--vibe-accent)_20%,transparent)]'
                                     : 'border-transparent text-[var(--vibe-text-muted)] hover:border-[var(--vibe-border-subtle)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
                             }`}
                             title={entity?.name ?? tab.entityId}
                         >
+                            {tabInsertBeforeId === tab.id && (
+                                <span className="pointer-events-none absolute -left-[3px] bottom-1 top-1 z-20 w-1 rounded-full bg-[var(--vibe-accent)] shadow-[0_0_14px_color-mix(in_srgb,var(--vibe-accent)_70%,transparent)]" />
+                            )}
                             <button
                                 type="button"
                                 onClick={(event) => {
@@ -2183,6 +2217,9 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                         </div>
                     );
                     })}
+                    {tabInsertBeforeId === null && (
+                        <span className="pointer-events-none my-1 w-1 shrink-0 rounded-full bg-[var(--vibe-accent)] shadow-[0_0_14px_color-mix(in_srgb,var(--vibe-accent)_70%,transparent)]" />
+                    )}
                 </div>
                 <div
                     data-notes-group-drag-handle
