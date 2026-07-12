@@ -1,6 +1,6 @@
 # Eternity Table: текущий план разработки
 
-> Обновлено: 2026-06-26
+> Обновлено: 2026-07-12
 > Назначение: короткий рабочий план. Этот файл не является журналом всех закрытых срезов.
 
 ## Правила вектора
@@ -52,6 +52,15 @@
    - ручная QA shell modules/settings/reset/audio dock, включая перенос `Editor`/`Vault`/`Context` между left/center/right;
    - текущий архитектурный срез: проверить первый Obsidian-like editor leaf model pass, где новая сущность открывается отдельным leaf, center-drop объединяет leaf в tab group, edge-drop создает split;
    - polish будущих shell-расширений после owner QA.
+7. Следующее обновление — архитектурный epic `Entity UI / Sheet Builder` (`FEAT-ENTITY-UI-BUILDER-001`):
+   - переработать UI сущности, который отображается в canvas entity windows, из набора hardcoded sheets в data-driven конструктор без немедленного изменения канонического `.md` entity-формата;
+   - разделить **данные сущности**, **описание UI/layout** и **runtime-вычисления**, чтобы одна схема интерфейса могла безопасно переиспользоваться разными типами сущностей и темами;
+   - предусмотреть block registry: базовые display/input/layout blocks, составные секции и специальные функциональные блоки (`HP/resource`, wounds, attributes, inventory, attacks, abilities, rolls, Markdown, children/relations), каждый с typed config, permissions и predictable runtime contract;
+   - дать GM/editor режим модернизации: добавление/удаление/reorder/resize/group blocks, настройка заголовков/плотности/варианта внешнего вида через semantic theme tokens, выбор data binding и preview desktop/player/read-only states;
+   - спроектировать binding/formula graph: ссылки на `properties`, parent/child context bubbling, arithmetic/conditions/clamp/derived values, Roll Engine integration, dependency-cycle detection, cached evaluation и объяснимый breakdown источников;
+   - HP/resource block должен настраивать source/current/max/temp, min/max policy, отображение bar/counter/pips, права изменения, автоматические эффекты/threshold events и формулы, но не исполнять произвольный JavaScript;
+   - предусмотреть schema versioning, draft/publish, undo/redo, validation, safe fallback к built-in sheet, migration/rollback, import/export templates и будущий mod/data-pack registry;
+   - перед реализацией обязателен отдельный design-doc и architecture gate по storage, permissions, sync, formulas, theme contract и plugin boundary; первый implementation slice — только schema + registry + renderer одного безопасного блока с round-trip тестом.
 
 ## Активные проверки
 
