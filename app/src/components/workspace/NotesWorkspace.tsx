@@ -2078,8 +2078,8 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                     className={editorDropIndicatorClass}
                 />
             )}
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-surface-header)_86%,transparent)] px-3 py-2">
-                <div className="flex shrink-0 items-center gap-1" data-no-pane-drag>
+            <div className="pointer-events-none absolute left-2 top-2 z-10 flex items-center">
+                <div className="pointer-events-auto flex shrink-0 items-center gap-1" data-no-pane-drag>
                     <button
                         type="button"
                         onClick={(event) => {
@@ -2115,38 +2115,6 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                         <ChevronRight size={14} />
                     </button>
                 </div>
-                <button
-                    type="button"
-                    onMouseDown={(event) => {
-                        onSetActiveGroup(node.id);
-                        event.stopPropagation();
-                    }}
-                    onPointerDown={startGroupPointerDrag}
-                    data-notes-group-drag-handle
-                    className={`flex min-w-0 flex-1 items-center gap-2 rounded-[var(--vibe-radius-sm)] text-left transition-colors hover:bg-[var(--vibe-surface-hover)] ${
-                        canCloseGroup ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
-                    }`}
-                    title={`${isActiveGroup ? t('workspace.notes.activeTabBlock') : t('workspace.notes.inactiveTabBlock')}. ${t('workspace.notes.mergeTabBlockHint')}`}
-                >
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--vibe-radius-sm)] border border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-accent)]">
-                        <Boxes size={14} />
-                    </span>
-                    <span className="min-w-0">
-                        <span className="block truncate text-[10px] font-black uppercase tracking-widest text-[var(--vibe-text-muted)]">
-                            {t('workspace.notes.tabBlock')}
-                        </span>
-                        <span className="block truncate text-[10px] text-[var(--vibe-text-faint)]">
-                            {isActiveGroup ? t('workspace.notes.activeTabBlock') : t('workspace.notes.inactiveTabBlock')}
-                        </span>
-                    </span>
-                </button>
-                <span className={`shrink-0 rounded-full border px-2 py-1 font-mono text-[10px] ${
-                    isActiveGroup
-                        ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] text-[var(--vibe-accent)]'
-                        : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)] text-[var(--vibe-text-faint)]'
-                }`}>
-                    {t('workspace.notes.tabBlockTabCount', { count: node.tabs.length })}
-                </span>
             </div>
             <div
                 onMouseDown={(event) => {
@@ -2158,12 +2126,20 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                     if (target?.closest('[data-no-pane-drag], [data-notes-tab]')) return;
                     if (activeTab) startTabPointerDrag(event, activeTab.id);
                 }}
-                className={`flex min-h-10 shrink-0 cursor-grab items-center gap-1 border-b px-2 py-1 transition-colors active:cursor-grabbing ${
+                className={`relative flex min-h-12 shrink-0 cursor-default items-center gap-1 border-b py-1 pl-[76px] pr-2 pt-2 transition-colors ${
                     isActiveGroup
                         ? 'border-[var(--vibe-border-strong)] bg-[color-mix(in_srgb,var(--vibe-accent)_10%,var(--vibe-surface-input))]'
                         : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)]'
                 }`}
             >
+                <button
+                    type="button"
+                    onPointerDown={startGroupPointerDrag}
+                    data-notes-group-drag-handle
+                    className={`absolute inset-x-0 top-0 h-2 border-0 bg-transparent ${canCloseGroup ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+                    title={`${isActiveGroup ? t('workspace.notes.activeTabBlock') : t('workspace.notes.inactiveTabBlock')}. ${t('workspace.notes.mergeTabBlockHint')}`}
+                    aria-label={t('workspace.notes.tabBlock')}
+                />
                 <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
                     {node.tabs.length === 0 ? (
                         <span className="flex items-center px-2 text-xs text-[var(--vibe-text-faint)]">
