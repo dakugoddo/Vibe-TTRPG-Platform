@@ -60,7 +60,9 @@
    - спроектировать binding/formula graph: ссылки на `properties`, parent/child context bubbling, arithmetic/conditions/clamp/derived values, Roll Engine integration, dependency-cycle detection, cached evaluation и объяснимый breakdown источников;
    - HP/resource block должен настраивать source/current/max/temp, min/max policy, отображение bar/counter/pips, права изменения, автоматические эффекты/threshold events и формулы, но не исполнять произвольный JavaScript;
    - предусмотреть schema versioning, draft/publish, undo/redo, validation, safe fallback к built-in sheet, migration/rollback, import/export templates и будущий mod/data-pack registry;
-   - перед реализацией обязателен отдельный design-doc и architecture gate по storage, permissions, sync, formulas, theme contract и plugin boundary; первый implementation slice — только schema + registry + renderer одного безопасного блока с round-trip тестом.
+   - architecture gate создан в `.pi/docs/entity-ui-sheet-builder-architecture.md`: отдельно зафиксированы schema/registry, binding resolver, permissions, storage/sync phases, formula AST, theme contract, fallback, migrations и plugin boundary;
+   - первый implementation slice после owner gate — только V1 schema + pure validator/round-trip + registry `container`/`property-value` + read-only internal preview renderer с hardcoded-sheet fallback; без изменений `.md`, server API, Yjs, authoring и production sheets;
+   - до implementation нужен owner approval предложенных defaults и решений Phase 1: storage folder, assignment precedence, schema author roles, hand-edit policy, history depth и первый production consumer.
 
 ## Активные проверки
 
@@ -92,6 +94,7 @@
 - `.pi/docs/release-0.1-beta-checklist.md` — чеклист перед beta tag/release.
 - `.pi/docs/ui-redesign-master-plan.md` — решения и анализ по UI.
 - `.pi/docs/compact-character-card-canvas.md` — контракт compact character card.
+- `.pi/docs/entity-ui-sheet-builder-architecture.md` — architecture gate следующего Entity UI / Sheet Builder epic.
 - `.pi/docs/notes-workspace-obsidian-redesign.md` — контракт Obsidian-like режима заметок.
 - `.pi/rules/canvas-best-practices.md` — правила canvas performance и middle-pan.
 - `.pi/docs/code-map.md` — карта владельцев логики.
