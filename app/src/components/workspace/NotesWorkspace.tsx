@@ -1881,6 +1881,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
     const activeParentEntity = activeEntity?.parentId ? entitiesById.get(activeEntity.parentId) ?? null : null;
     const canCloseGroup = groupOrder.size > 1;
     const visualDropZone = dockDropTarget?.groupId === node.id ? dockDropTarget.zone : null;
+    const isCenterMergeTarget = dockDropTarget?.groupId === node.id && visualDropZone === null;
     const editorDropIndicatorLayout = visualDropZone ? getShellLayoutFromDropZone(visualDropZone) : 'column';
     const editorDropIndicatorClass = visualDropZone === 'left'
         ? 'pointer-events-none absolute bottom-2 left-1 top-2 z-20'
@@ -2072,11 +2073,16 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
             }`}
             onMouseDown={() => onSetActiveGroup(node.id)}
         >
-            {dockDropTarget?.groupId === node.id && (
+            {visualDropZone && (
                 <NotesWorkspaceDropIndicator
                     layout={editorDropIndicatorLayout}
                     className={editorDropIndicatorClass}
                 />
+            )}
+            {isCenterMergeTarget && (
+                <div className="pointer-events-none absolute inset-2 z-20 grid place-items-center rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-surface-block)_78%,transparent)] text-center text-[10px] font-black uppercase tracking-wider text-[var(--vibe-accent)] backdrop-blur-sm">
+                    {t('workspace.notes.combineTabs')}
+                </div>
             )}
             <div className="pointer-events-none absolute left-2 top-2 z-10 flex items-center">
                 <div className="pointer-events-auto flex shrink-0 items-center gap-1" data-no-pane-drag>
@@ -2121,26 +2127,13 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                     onSetActiveGroup(node.id);
                     event.stopPropagation();
                 }}
-                onPointerDown={(event) => {
-                    const target = event.target as HTMLElement | null;
-                    if (target?.closest('[data-no-pane-drag], [data-notes-tab]')) return;
-                    if (activeTab) startTabPointerDrag(event, activeTab.id);
-                }}
                 className={`relative flex min-h-12 shrink-0 cursor-default items-center gap-1 border-b py-1 pl-[76px] pr-2 pt-2 transition-colors ${
                     isActiveGroup
                         ? 'border-[var(--vibe-border-strong)] bg-[color-mix(in_srgb,var(--vibe-accent)_10%,var(--vibe-surface-input))]'
                         : 'border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-input)]'
                 }`}
             >
-                <button
-                    type="button"
-                    onPointerDown={startGroupPointerDrag}
-                    data-notes-group-drag-handle
-                    className={`absolute inset-x-0 top-0 h-2 border-0 bg-transparent ${canCloseGroup ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
-                    title={`${isActiveGroup ? t('workspace.notes.activeTabBlock') : t('workspace.notes.inactiveTabBlock')}. ${t('workspace.notes.mergeTabBlockHint')}`}
-                    aria-label={t('workspace.notes.tabBlock')}
-                />
-                <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+                <div className="flex max-w-full min-w-0 shrink gap-1 overflow-x-auto">
                     {node.tabs.length === 0 ? (
                         <span className="flex items-center px-2 text-xs text-[var(--vibe-text-faint)]">
                             {t('workspace.notes.emptyGroup')}
@@ -2191,6 +2184,18 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                     );
                     })}
                 </div>
+                <div
+                    data-notes-group-drag-handle
+                    onPointerDown={canCloseGroup ? startGroupPointerDrag : undefined}
+                    className={`min-w-6 self-stretch rounded-[var(--vibe-radius-sm)] transition-colors ${
+                        canCloseGroup
+                            ? 'flex-1 cursor-grab hover:bg-[var(--vibe-surface-hover)] active:cursor-grabbing'
+                            : 'flex-1 cursor-default'
+                    }`}
+                    title={canCloseGroup
+                        ? `${isActiveGroup ? t('workspace.notes.activeTabBlock') : t('workspace.notes.inactiveTabBlock')}. ${t('workspace.notes.mergeTabBlockHint')}`
+                        : undefined}
+                />
                 <div className="flex shrink-0 items-center gap-1">
                     {activeEntity && !canEditActiveEntity && (
                         <span className="flex shrink-0 items-center gap-1 px-1 text-[10px] font-bold uppercase tracking-wider text-[var(--vibe-warning)]">
