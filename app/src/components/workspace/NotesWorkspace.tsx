@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
@@ -1735,6 +1735,27 @@ function NotesShellModuleFrame({
         ?? renderGroup.modules[0];
     const Icon = NOTES_SHELL_MODULE_ICONS[activeModule.iconKey];
     const hasModuleTabs = renderGroup.modules.length > 1;
+    const tabStripRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (!hasModuleTabs) return;
+        const frame = window.requestAnimationFrame(() => {
+            const tabStrip = tabStripRef.current;
+            const activeTab = Array.from(tabStrip?.querySelectorAll<HTMLElement>('[data-notes-shell-module-tab]') ?? [])
+                .find((tab) => tab.dataset.notesShellModuleTab === activeModule.id);
+            if (!tabStrip || !activeTab) return;
+
+            const stripRect = tabStrip.getBoundingClientRect();
+            const tabRect = activeTab.getBoundingClientRect();
+            const inset = 8;
+            if (tabRect.left < stripRect.left + inset) {
+                tabStrip.scrollLeft -= stripRect.left + inset - tabRect.left;
+            } else if (tabRect.right > stripRect.right - inset) {
+                tabStrip.scrollLeft += tabRect.right - stripRect.right + inset;
+            }
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [activeModule.id, hasModuleTabs, renderGroup.modules.length]);
 
     return (
         <>
@@ -1758,7 +1779,21 @@ function NotesShellModuleFrame({
                 )}
                 {!hideHeader && (
                     hasModuleTabs ? (
-                        <div data-notes-shell-module-tabs className={`${glass.panelHeader} flex min-h-10 select-none items-stretch gap-1 border-b border-[var(--vibe-border-subtle)] px-1.5 pt-1.5`}>
+                        <div className={`${glass.panelHeader} flex min-h-10 min-w-0 select-none items-stretch gap-1 border-b border-[var(--vibe-border-subtle)] px-1.5 pt-1.5`}>
+                            <div
+                                ref={tabStripRef}
+                                data-notes-shell-module-tabs
+                                onWheel={(event) => {
+                                    const tabStrip = event.currentTarget;
+                                    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+                                    const maxScrollLeft = Math.max(tabStrip.scrollWidth - tabStrip.clientWidth, 0);
+                                    const nextScrollLeft = Math.min(Math.max(tabStrip.scrollLeft + event.deltaY, 0), maxScrollLeft);
+                                    if (nextScrollLeft === tabStrip.scrollLeft) return;
+                                    event.preventDefault();
+                                    tabStrip.scrollLeft = nextScrollLeft;
+                                }}
+                                className="no-scrollbar flex min-w-0 max-w-full shrink gap-1 overflow-x-auto overscroll-x-contain"
+                            >
                             {renderGroup.modules.map((module) => {
                                 const TabIcon = NOTES_SHELL_MODULE_ICONS[module.iconKey];
                                 const isActive = module.id === activeModule.id;
@@ -1787,6 +1822,7 @@ function NotesShellModuleFrame({
                             {tabInsertBeforeId === null && (
                                 <span data-notes-shell-tab-insert className="pointer-events-none my-1 w-1 shrink-0 rounded-full bg-[var(--vibe-accent)] shadow-[0_0_12px_color-mix(in_srgb,var(--vibe-accent)_70%,transparent)]" />
                             )}
+                            </div>
                             <div
                                 data-notes-shell-group-drag-handle
                                 onPointerDown={(event) => onGroupHeaderPointerDown(renderGroup.id, activeModule.id, event)}
