@@ -74,6 +74,7 @@ import {
 } from '../../utils/notesWorkspaceBlocks';
 import { listNotesWorkspaceGroups, type NotesWorkspaceNode, type NotesWorkspaceSplitPlacement, type NotesWorkspaceTab, type NotesWorkspaceView } from '../../utils/notesWorkspaceLayout';
 import {
+    groupVisibleNotesShellModules,
     listImplementedNotesShellModules,
     listVisibleNotesShellModules,
     type NotesWorkspaceDockArea,
@@ -82,6 +83,7 @@ import {
     type NotesWorkspaceShellAreaLayouts,
     type NotesWorkspaceShellModuleDefinition,
     type NotesWorkspaceShellModuleId,
+    type NotesWorkspaceShellModuleRenderGroup,
 } from '../../utils/notesWorkspaceModules';
 import { getEntitySearchResult, getEntitySearchTerms, type EntitySearchMatchField, type EntitySearchResult } from '../../utils/entitySearch';
 import { canModifyEntity, canViewEntity } from '../../utils/permissions';
@@ -180,6 +182,7 @@ interface NotesDockDropTarget {
 interface NotesShellModuleDropTarget {
     area: NotesShellInteractiveArea;
     beforeModuleId: NotesWorkspaceShellModuleId | null;
+    targetModuleId: NotesWorkspaceShellModuleId | null;
     placement: NotesWorkspaceDropZone | null;
     layout: NotesWorkspaceShellAreaLayout;
 }
@@ -251,19 +254,6 @@ function getShellLayoutFromDropZone(zone: NotesWorkspaceDropZone): NotesWorkspac
     return zone === 'left' || zone === 'right' ? 'row' : 'column';
 }
 
-function getFallbackShellDropZone(
-    rect: DOMRect,
-    clientX: number,
-    clientY: number,
-    currentLayout: NotesWorkspaceShellAreaLayout
-): NotesWorkspaceDropZone {
-    if (currentLayout === 'row') {
-        return clientX < rect.left + rect.width / 2 ? 'left' : 'right';
-    }
-
-    return clientY < rect.top + rect.height / 2 ? 'top' : 'bottom';
-}
-
 function getBeforeModuleIdForShellDrop(
     moduleElements: HTMLElement[],
     targetIndex: number,
@@ -294,7 +284,7 @@ function getShellModuleDropTarget(
         .filter((moduleElement) => moduleElement.dataset.notesShellModuleId !== sourceModuleId);
 
     if (moduleElements.length === 0) {
-        return { area, beforeModuleId: null, placement: null, layout: currentLayout };
+        return { area, beforeModuleId: null, targetModuleId: null, placement: null, layout: currentLayout };
     }
 
     for (const [index, moduleElement] of moduleElements.entries()) {
@@ -304,11 +294,20 @@ function getShellModuleDropTarget(
         const rect = moduleElement.getBoundingClientRect();
         const isInsideModule = clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
         if (isInsideModule) {
-            const placement = getNotesDockDropZone(moduleElement, clientX, clientY)
-                ?? getFallbackShellDropZone(rect, clientX, clientY, currentLayout);
+            const placement = getNotesDockDropZone(moduleElement, clientX, clientY);
+            if (!placement) {
+                return {
+                    area,
+                    beforeModuleId: null,
+                    targetModuleId: moduleId as NotesWorkspaceShellModuleId,
+                    placement: null,
+                    layout: currentLayout,
+                };
+            }
             return {
                 area,
                 beforeModuleId: getBeforeModuleIdForShellDrop(moduleElements, index, placement),
+                targetModuleId: null,
                 placement,
                 layout: getShellLayoutFromDropZone(placement),
             };
@@ -319,12 +318,12 @@ function getShellModuleDropTarget(
             : clientY < rect.top + rect.height / 2;
         if (shouldInsertBefore) {
             const placement = currentLayout === 'row' ? 'left' : 'top';
-            return { area, beforeModuleId: moduleId as NotesWorkspaceShellModuleId, placement, layout: currentLayout };
+            return { area, beforeModuleId: moduleId as NotesWorkspaceShellModuleId, targetModuleId: null, placement, layout: currentLayout };
         }
     }
 
     const placement = currentLayout === 'row' ? 'right' : 'bottom';
-    return { area, beforeModuleId: null, placement, layout: currentLayout };
+    return { area, beforeModuleId: null, targetModuleId: null, placement, layout: currentLayout };
 }
 
 function getNotesDockDropZone(element: HTMLElement, clientX: number, clientY: number): NotesWorkspaceDropZone | null {
@@ -1629,14 +1628,16 @@ interface NotesWorkspaceNodeViewProps {
 }
 
 interface NotesShellModuleFrameProps {
-    module: NotesWorkspaceShellModuleDefinition;
+    renderGroup: NotesWorkspaceShellModuleRenderGroup;
     subtitle?: string;
     isDragging: boolean;
+    isMergeTarget: boolean;
     showDropBefore: boolean;
     showDropAfter: boolean;
     dropLayout: NotesWorkspaceShellAreaLayout;
     hideHeader?: boolean;
-    onHeaderPointerDown: (moduleId: NotesWorkspaceShellModuleId, event: ReactPointerEvent<HTMLDivElement>) => void;
+    onHeaderPointerDown: (moduleId: NotesWorkspaceShellModuleId, event: ReactPointerEvent<HTMLElement>) => void;
+    onActiveModuleChange: (groupId: string, moduleId: NotesWorkspaceShellModuleId) => void;
     children: ReactNode;
     t: Translate;
 }
@@ -1658,18 +1659,23 @@ function NotesWorkspaceDropIndicator({
 }
 
 function NotesShellModuleFrame({
-    module,
+    renderGroup,
     subtitle,
     isDragging,
+    isMergeTarget,
     showDropBefore,
     showDropAfter,
     dropLayout,
     hideHeader = false,
     onHeaderPointerDown,
+    onActiveModuleChange,
     children,
     t,
 }: NotesShellModuleFrameProps) {
-    const Icon = NOTES_SHELL_MODULE_ICONS[module.iconKey];
+    const activeModule = renderGroup.modules.find((module) => module.id === renderGroup.activeModuleId)
+        ?? renderGroup.modules[0];
+    const Icon = NOTES_SHELL_MODULE_ICONS[activeModule.iconKey];
+    const hasModuleTabs = renderGroup.modules.length > 1;
 
     return (
         <>
@@ -1680,31 +1686,70 @@ function NotesShellModuleFrame({
                 />
             )}
             <section
-                data-notes-shell-module-id={module.id}
-                className={`relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden rounded-[var(--vibe-radius-md)] border bg-[var(--vibe-surface-block)] shadow-[var(--vibe-shadow-block)] transition-opacity ${
+                data-notes-shell-module-id={activeModule.id}
+                data-notes-shell-tab-group-id={hasModuleTabs ? renderGroup.id : undefined}
+                className={`relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden rounded-[var(--vibe-radius-md)] border bg-[var(--vibe-surface-block)] shadow-[var(--vibe-shadow-block)] transition-all ${
                     isDragging ? 'opacity-55' : 'opacity-100'
-                } border-[var(--vibe-border-subtle)]`}
+                } ${isMergeTarget ? 'border-[var(--vibe-accent)] ring-2 ring-[color-mix(in_srgb,var(--vibe-accent)_35%,transparent)]' : 'border-[var(--vibe-border-subtle)]'}`}
             >
+                {isMergeTarget && (
+                    <div className="pointer-events-none absolute inset-2 z-20 grid place-items-center rounded-[var(--vibe-radius-sm)] border border-dashed border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-surface-block)_78%,transparent)] text-center text-[10px] font-black uppercase tracking-wider text-[var(--vibe-accent)] backdrop-blur-sm">
+                        {t('workspace.notes.combineModules')}
+                    </div>
+                )}
                 {!hideHeader && (
-                    <div
-                        onPointerDown={(event) => onHeaderPointerDown(module.id, event)}
-                        className={`${glass.panelHeader} flex min-h-10 cursor-grab select-none items-center justify-between gap-2 p-2.5 active:cursor-grabbing`}
-                        title={t('workspace.notes.dragModule')}
-                    >
-                        <div className="flex min-w-0 items-center gap-2">
-                            <Icon size={16} className="shrink-0 text-[var(--vibe-accent)]" />
-                            <div className="min-w-0">
-                                <p className="truncate text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-accent)]">
-                                    {t(module.labelKey)}
-                                </p>
-                                {subtitle && (
-                                    <h2 className="truncate text-sm font-black text-[var(--vibe-text-primary)]">
-                                        {subtitle}
-                                    </h2>
-                                )}
+                    hasModuleTabs ? (
+                        <div className={`${glass.panelHeader} flex min-h-10 select-none items-stretch gap-1 border-b border-[var(--vibe-border-subtle)] px-1.5 pt-1.5`}>
+                            {renderGroup.modules.map((module) => {
+                                const TabIcon = NOTES_SHELL_MODULE_ICONS[module.iconKey];
+                                const isActive = module.id === activeModule.id;
+                                return (
+                                    <button
+                                        key={module.id}
+                                        type="button"
+                                        data-notes-shell-module-tab={module.id}
+                                        onPointerDown={(event) => onHeaderPointerDown(module.id, event)}
+                                        onClick={() => onActiveModuleChange(renderGroup.id, module.id)}
+                                        className={`flex min-w-0 flex-1 cursor-grab items-center gap-1.5 rounded-t-[var(--vibe-radius-sm)] border border-b-0 px-2 text-left text-[10px] font-bold uppercase tracking-wider active:cursor-grabbing ${
+                                            isActive
+                                                ? 'border-[var(--vibe-border-strong)] bg-[var(--vibe-surface-block)] text-[var(--vibe-accent)]'
+                                                : 'border-transparent text-[var(--vibe-text-faint)] hover:bg-[var(--vibe-surface-hover)] hover:text-[var(--vibe-text-primary)]'
+                                        }`}
+                                        title={t('workspace.notes.dragModule')}
+                                    >
+                                        <TabIcon size={13} className="shrink-0" />
+                                        <span className="truncate">{t(module.labelKey)}</span>
+                                    </button>
+                                );
+                            })}
+                            <div
+                                data-notes-shell-group-drag-handle
+                                onPointerDown={(event) => onHeaderPointerDown(activeModule.id, event)}
+                                className="w-5 shrink-0 cursor-grab rounded-t-[var(--vibe-radius-sm)] hover:bg-[var(--vibe-surface-hover)] active:cursor-grabbing"
+                                title={t('workspace.notes.dragModule')}
+                            />
+                        </div>
+                    ) : (
+                        <div
+                            onPointerDown={(event) => onHeaderPointerDown(activeModule.id, event)}
+                            className={`${glass.panelHeader} flex min-h-10 cursor-grab select-none items-center justify-between gap-2 p-2.5 active:cursor-grabbing`}
+                            title={t('workspace.notes.dragModule')}
+                        >
+                            <div className="flex min-w-0 items-center gap-2">
+                                <Icon size={16} className="shrink-0 text-[var(--vibe-accent)]" />
+                                <div className="min-w-0">
+                                    <p className="truncate text-[10px] font-bold uppercase tracking-widest text-[var(--vibe-accent)]">
+                                        {t(activeModule.labelKey)}
+                                    </p>
+                                    {subtitle && (
+                                        <h2 className="truncate text-sm font-black text-[var(--vibe-text-primary)]">
+                                            {subtitle}
+                                        </h2>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )
                 )}
                 <div className="min-h-0 flex-1 overflow-hidden">
                     {children}
@@ -2417,6 +2462,8 @@ export function NotesWorkspace({
     const notesNavigationHistory = useNotesWorkspaceStore((state) => state.navigationHistory);
     const toggleShellModule = useNotesWorkspaceStore((state) => state.toggleShellModule);
     const moveShellModule = useNotesWorkspaceStore((state) => state.moveShellModule);
+    const mergeShellModules = useNotesWorkspaceStore((state) => state.mergeShellModules);
+    const setActiveShellModuleTab = useNotesWorkspaceStore((state) => state.setActiveShellModuleTab);
     const setShellModuleWidth = useNotesWorkspaceStore((state) => state.setShellModuleWidth);
     const setShellAudioHeight = useNotesWorkspaceStore((state) => state.setShellAudioHeight);
     const resetWorkspaceLayout = useNotesWorkspaceStore((state) => state.resetLayout);
@@ -2442,6 +2489,22 @@ export function NotesWorkspace({
     const visibleBottomModules = useMemo(
         () => audioModuleEnabled ? listVisibleNotesShellModules(notesShell.modules, 'bottom', notesShell.moduleAreas, notesShell.moduleOrder) : [],
         [audioModuleEnabled, notesShell.moduleAreas, notesShell.moduleOrder, notesShell.modules]
+    );
+    const visibleLeftModuleGroups = useMemo(
+        () => groupVisibleNotesShellModules(visibleLeftModules, notesShell.tabGroups),
+        [notesShell.tabGroups, visibleLeftModules]
+    );
+    const visibleCenterModuleGroups = useMemo(
+        () => groupVisibleNotesShellModules(visibleCenterModules, notesShell.tabGroups),
+        [notesShell.tabGroups, visibleCenterModules]
+    );
+    const visibleRightModuleGroups = useMemo(
+        () => groupVisibleNotesShellModules(visibleRightModules, notesShell.tabGroups),
+        [notesShell.tabGroups, visibleRightModules]
+    );
+    const visibleBottomModuleGroups = useMemo(
+        () => groupVisibleNotesShellModules(visibleBottomModules, notesShell.tabGroups),
+        [notesShell.tabGroups, visibleBottomModules]
     );
     const isLeftModuleVisible = visibleLeftModules.length > 0;
     const isAudioVisible = visibleBottomModules.some((module) => module.id === 'audio');
@@ -2731,7 +2794,7 @@ export function NotesWorkspace({
 
     const handleShellModuleDragStart = (
         moduleId: NotesWorkspaceShellModuleId,
-        event: ReactPointerEvent<HTMLDivElement>
+        event: ReactPointerEvent<HTMLElement>
     ) => {
         if (event.button !== 0) return;
         if ((event.target as HTMLElement | null)?.closest('[data-no-shell-module-drag]')) return;
@@ -2749,6 +2812,7 @@ export function NotesWorkspace({
         const setLatestTarget = (target: NotesShellModuleDropTarget | null) => {
             const unchanged = latestTarget?.area === target?.area
                 && latestTarget?.beforeModuleId === target?.beforeModuleId
+                && latestTarget?.targetModuleId === target?.targetModuleId
                 && latestTarget?.placement === target?.placement
                 && latestTarget?.layout === target?.layout;
             if (unchanged) return;
@@ -2784,6 +2848,10 @@ export function NotesWorkspace({
             if (!isDragging || !target) return;
 
             upEvent.preventDefault();
+            if (target.targetModuleId) {
+                mergeShellModules(moduleId, target.targetModuleId);
+                return;
+            }
             moveShellModule(moduleId, target.area, target.beforeModuleId, target.layout);
         };
 
@@ -3088,30 +3156,37 @@ export function NotesWorkspace({
     };
 
     const renderShellModule = (
-        module: NotesWorkspaceShellModuleDefinition,
+        renderGroup: NotesWorkspaceShellModuleRenderGroup,
         area: NotesShellInteractiveArea,
         isLast: boolean,
         areaLayout: NotesWorkspaceShellAreaLayout
-    ) => (
-        <NotesShellModuleFrame
-            key={module.id}
-            module={module}
-            subtitle={getShellModuleSubtitle(module)}
-            isDragging={draggingShellModuleId === module.id}
-            showDropBefore={shellModuleDropTarget?.area === area && shellModuleDropTarget.beforeModuleId === module.id}
-            showDropAfter={isLast && shellModuleDropTarget?.area === area && shellModuleDropTarget.beforeModuleId === null}
-            dropLayout={areaLayout}
-            hideHeader={module.id === 'editor'}
-            onHeaderPointerDown={handleShellModuleDragStart}
-            t={t}
-        >
-            {renderShellModuleBody(module.id)}
-        </NotesShellModuleFrame>
-    );
+    ) => {
+        const activeModule = renderGroup.modules.find((module) => module.id === renderGroup.activeModuleId)
+            ?? renderGroup.modules[0];
+        const moduleIds = renderGroup.modules.map((module) => module.id);
+        return (
+            <NotesShellModuleFrame
+                key={renderGroup.id}
+                renderGroup={renderGroup}
+                subtitle={getShellModuleSubtitle(activeModule)}
+                isDragging={Boolean(draggingShellModuleId && moduleIds.includes(draggingShellModuleId))}
+                isMergeTarget={Boolean(shellModuleDropTarget?.targetModuleId && moduleIds.includes(shellModuleDropTarget.targetModuleId))}
+                showDropBefore={shellModuleDropTarget?.area === area && Boolean(shellModuleDropTarget.beforeModuleId && moduleIds.includes(shellModuleDropTarget.beforeModuleId))}
+                showDropAfter={isLast && shellModuleDropTarget?.area === area && shellModuleDropTarget.beforeModuleId === null && !shellModuleDropTarget.targetModuleId}
+                dropLayout={areaLayout}
+                hideHeader={renderGroup.modules.length === 1 && activeModule.id === 'editor'}
+                onHeaderPointerDown={handleShellModuleDragStart}
+                onActiveModuleChange={setActiveShellModuleTab}
+                t={t}
+            >
+                {renderShellModuleBody(activeModule.id)}
+            </NotesShellModuleFrame>
+        );
+    };
 
     const renderShellDockArea = (
         area: NotesShellInteractiveArea,
-        modules: NotesWorkspaceShellModuleDefinition[],
+        moduleGroups: NotesWorkspaceShellModuleRenderGroup[],
         className = ''
     ) => {
         const isActiveDropArea = shellModuleDropTarget?.area === area;
@@ -3127,7 +3202,7 @@ export function NotesWorkspace({
                     areaLayout === 'row' ? 'flex-row' : 'flex-col'
                 } ${className}`}
             >
-                {modules.length > 0 ? modules.map((module, index) => renderShellModule(module, area, index === modules.length - 1, areaLayout)) : (
+                {moduleGroups.length > 0 ? moduleGroups.map((renderGroup, index) => renderShellModule(renderGroup, area, index === moduleGroups.length - 1, areaLayout)) : (
                     <div className={`flex min-h-[180px] flex-1 items-center justify-center rounded-[var(--vibe-radius-md)] border border-dashed p-2 text-center text-xs transition-colors ${
                         isActiveDropArea
                             ? 'border-[var(--vibe-accent)] bg-[color-mix(in_srgb,var(--vibe-accent)_12%,transparent)] text-[var(--vibe-text-primary)]'
@@ -3228,7 +3303,7 @@ export function NotesWorkspace({
                     </div>
                 </aside>
 
-                {renderShellDockArea('left', visibleLeftModules, 'ml-2')}
+                {renderShellDockArea('left', visibleLeftModuleGroups, 'ml-2')}
 
 
                 <div
@@ -3246,7 +3321,7 @@ export function NotesWorkspace({
 
                 <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
                     <div className="min-h-0 flex-1">
-                        {renderShellDockArea('center', visibleCenterModules, 'h-full min-w-0')}
+                        {renderShellDockArea('center', visibleCenterModuleGroups, 'h-full min-w-0')}
                     </div>
                     {isAudioVisible && (
                         <div
@@ -3261,21 +3336,27 @@ export function NotesWorkspace({
                     )}
                     {isAudioVisible && (
                         <div className="min-h-0 flex-shrink-0 overflow-hidden" style={{ height: `${notesShell.audioHeight}px` }}>
-                            {visibleBottomModules.map((module) => (
-                                <NotesShellModuleFrame
-                                    key={module.id}
-                                    module={module}
-                                    subtitle={getShellModuleSubtitle(module)}
-                                    isDragging={draggingShellModuleId === module.id}
-                                    showDropBefore={false}
-                                    showDropAfter={false}
-                                    dropLayout="column"
-                                    onHeaderPointerDown={handleShellModuleDragStart}
-                                    t={t}
-                                >
-                                    {renderShellModuleBody(module.id)}
-                                </NotesShellModuleFrame>
-                            ))}
+                            {visibleBottomModuleGroups.map((renderGroup) => {
+                                const activeModule = renderGroup.modules.find((module) => module.id === renderGroup.activeModuleId)
+                                    ?? renderGroup.modules[0];
+                                return (
+                                    <NotesShellModuleFrame
+                                        key={renderGroup.id}
+                                        renderGroup={renderGroup}
+                                        subtitle={getShellModuleSubtitle(activeModule)}
+                                        isDragging={Boolean(draggingShellModuleId && renderGroup.modules.some((module) => module.id === draggingShellModuleId))}
+                                        isMergeTarget={false}
+                                        showDropBefore={false}
+                                        showDropAfter={false}
+                                        dropLayout="column"
+                                        onHeaderPointerDown={handleShellModuleDragStart}
+                                        onActiveModuleChange={setActiveShellModuleTab}
+                                        t={t}
+                                    >
+                                        {renderShellModuleBody(activeModule.id)}
+                                    </NotesShellModuleFrame>
+                                );
+                            })}
                         </div>
                     )}
                 </section>
@@ -3293,7 +3374,7 @@ export function NotesWorkspace({
                     }`} />
                 </div>
 
-                {renderShellDockArea('right', visibleRightModules)}
+                {renderShellDockArea('right', visibleRightModuleGroups)}
 
             </main>
         </div>

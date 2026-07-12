@@ -28,13 +28,17 @@ import {
     getDefaultNotesShellModuleOrder,
     isNotesWorkspaceDockArea,
     isNotesWorkspaceShellAreaLayout,
+    isImplementedNotesShellModuleId,
     listImplementedNotesShellModules,
+    mergeNotesShellModuleTabs,
+    removeNotesShellModuleFromTabs,
     type NotesWorkspaceShellAreaLayout,
     type NotesWorkspaceShellAreaLayouts,
     type NotesWorkspaceDockArea,
     type NotesWorkspaceShellModuleAreas,
     type NotesWorkspaceShellModuleId,
     type NotesWorkspaceShellModuleOrder,
+    type NotesWorkspaceShellTabGroup,
     type NotesWorkspaceShellVisibility,
 } from '../utils/notesWorkspaceModules';
 import {
@@ -47,7 +51,7 @@ import {
 
 export const NOTES_WORKSPACE_LAYOUT_STORAGE_KEY = 'vibe-ttrpg-notes-workspace-layout-v1';
 export const NOTES_WORKSPACE_SHELL_STORAGE_KEY = 'vibe-ttrpg-notes-workspace-shell-v1';
-export const NOTES_WORKSPACE_SHELL_STORAGE_VERSION = 3;
+export const NOTES_WORKSPACE_SHELL_STORAGE_VERSION = 4;
 
 export interface NotesWorkspaceShellState {
     vaultWidth: number;
@@ -57,6 +61,7 @@ export interface NotesWorkspaceShellState {
     moduleAreas: NotesWorkspaceShellModuleAreas;
     moduleOrder: NotesWorkspaceShellModuleOrder;
     moduleLayouts: NotesWorkspaceShellAreaLayouts;
+    tabGroups: NotesWorkspaceShellTabGroup[];
 }
 
 interface NotesWorkspaceStoreState {
@@ -86,6 +91,8 @@ interface NotesWorkspaceStoreState {
     setShellModuleVisible: (moduleId: NotesWorkspaceShellModuleId, isVisible: boolean) => void;
     toggleShellModule: (moduleId: NotesWorkspaceShellModuleId) => void;
     moveShellModule: (moduleId: NotesWorkspaceShellModuleId, area: NotesWorkspaceDockArea, beforeModuleId?: NotesWorkspaceShellModuleId | null, layout?: NotesWorkspaceShellAreaLayout) => void;
+    mergeShellModules: (sourceModuleId: NotesWorkspaceShellModuleId, targetModuleId: NotesWorkspaceShellModuleId) => void;
+    setActiveShellModuleTab: (groupId: string, moduleId: NotesWorkspaceShellModuleId) => void;
     setShellModuleWidth: (moduleId: 'vault' | 'context', width: number) => void;
     setShellAudioHeight: (height: number) => void;
     resetShell: () => void;
@@ -108,6 +115,7 @@ const DEFAULT_NOTES_WORKSPACE_SHELL: NotesWorkspaceShellState = {
     moduleAreas: getDefaultNotesShellModuleAreas(),
     moduleOrder: getDefaultNotesShellModuleOrder(),
     moduleLayouts: getDefaultNotesShellAreaLayouts(),
+    tabGroups: [],
 };
 
 function createDefaultNotesWorkspaceShell(): NotesWorkspaceShellState {
@@ -117,6 +125,7 @@ function createDefaultNotesWorkspaceShell(): NotesWorkspaceShellState {
         moduleAreas: { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleAreas },
         moduleOrder: { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleOrder },
         moduleLayouts: { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleLayouts },
+        tabGroups: DEFAULT_NOTES_WORKSPACE_SHELL.tabGroups.map((group) => ({ ...group, moduleIds: [...group.moduleIds] })),
     };
 }
 
@@ -221,11 +230,37 @@ function clampAudioModuleHeight(height: unknown, fallback: number): number {
     return Math.min(MAX_AUDIO_MODULE_HEIGHT, Math.max(MIN_AUDIO_MODULE_HEIGHT, height));
 }
 
+function normalizeStoredShellTabGroups(value: unknown): NotesWorkspaceShellTabGroup[] {
+    if (!Array.isArray(value)) return [];
+
+    const usedModuleIds = new Set<NotesWorkspaceShellModuleId>();
+    const groups: NotesWorkspaceShellTabGroup[] = [];
+    for (const candidate of value) {
+        if (!isRecord(candidate) || typeof candidate.id !== 'string' || !Array.isArray(candidate.moduleIds)) continue;
+        const moduleIds = candidate.moduleIds.filter((moduleId): moduleId is NotesWorkspaceShellModuleId => (
+            typeof moduleId === 'string'
+            && isImplementedNotesShellModuleId(moduleId as NotesWorkspaceShellModuleId)
+            && !usedModuleIds.has(moduleId as NotesWorkspaceShellModuleId)
+        ));
+        const uniqueModuleIds = Array.from(new Set(moduleIds));
+        if (uniqueModuleIds.length < 2) continue;
+        if (typeof candidate.activeModuleId !== 'string' || !uniqueModuleIds.includes(candidate.activeModuleId as NotesWorkspaceShellModuleId)) continue;
+
+        uniqueModuleIds.forEach((moduleId) => usedModuleIds.add(moduleId));
+        groups.push({
+            id: candidate.id,
+            moduleIds: uniqueModuleIds,
+            activeModuleId: candidate.activeModuleId as NotesWorkspaceShellModuleId,
+        });
+    }
+    return groups;
+}
+
 export function normalizeStoredNotesWorkspaceShell(parsed: unknown): NotesWorkspaceShellState {
     if (!isRecord(parsed) || !isRecord(parsed.modules)) return createDefaultNotesWorkspaceShell();
 
-    const shouldUseStoredModulePlacement = parsed.version === NOTES_WORKSPACE_SHELL_STORAGE_VERSION || parsed.version === 2;
-    const shouldUseStoredAreaLayouts = parsed.version === NOTES_WORKSPACE_SHELL_STORAGE_VERSION;
+    const shouldUseStoredModulePlacement = parsed.version === NOTES_WORKSPACE_SHELL_STORAGE_VERSION || parsed.version === 3 || parsed.version === 2;
+    const shouldUseStoredAreaLayouts = parsed.version === NOTES_WORKSPACE_SHELL_STORAGE_VERSION || parsed.version === 3;
     const modules = { ...DEFAULT_NOTES_WORKSPACE_SHELL.modules };
     const moduleAreas = { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleAreas };
     const moduleOrder = { ...DEFAULT_NOTES_WORKSPACE_SHELL.moduleOrder };
@@ -264,6 +299,9 @@ export function normalizeStoredNotesWorkspaceShell(parsed: unknown): NotesWorksp
         moduleAreas,
         moduleOrder,
         moduleLayouts,
+        tabGroups: parsed.version === NOTES_WORKSPACE_SHELL_STORAGE_VERSION
+            ? normalizeStoredShellTabGroups(parsed.tabGroups)
+            : [],
     };
 }
 
@@ -448,9 +486,45 @@ export const useNotesWorkspaceStore = create<NotesWorkspaceStoreState>((set) => 
                 moduleLayouts: area !== 'bottom' && layout
                     ? { ...state.shell.moduleLayouts, [area]: layout }
                     : state.shell.moduleLayouts,
+                tabGroups: removeNotesShellModuleFromTabs(state.shell.tabGroups, moduleId),
             },
         };
     }),
+
+    mergeShellModules: (sourceModuleId, targetModuleId) => set((state) => {
+        const tabGroups = mergeNotesShellModuleTabs(state.shell.tabGroups, sourceModuleId, targetModuleId);
+        if (tabGroups === state.shell.tabGroups) return state;
+
+        const mergedGroup = tabGroups.find((group) => group.moduleIds.includes(sourceModuleId));
+        const targetArea = state.shell.moduleAreas[targetModuleId];
+        const targetOrder = state.shell.moduleOrder[targetModuleId];
+        const moduleAreas = { ...state.shell.moduleAreas };
+        const moduleOrder = { ...state.shell.moduleOrder };
+        mergedGroup?.moduleIds.forEach((moduleId) => {
+            moduleAreas[moduleId] = targetArea;
+            moduleOrder[moduleId] = targetOrder;
+        });
+
+        return {
+            shell: {
+                ...state.shell,
+                moduleAreas,
+                moduleOrder,
+                tabGroups,
+            },
+        };
+    }),
+
+    setActiveShellModuleTab: (groupId, moduleId) => set((state) => ({
+        shell: {
+            ...state.shell,
+            tabGroups: state.shell.tabGroups.map((group) => (
+                group.id === groupId && group.moduleIds.includes(moduleId)
+                    ? { ...group, activeModuleId: moduleId }
+                    : group
+            )),
+        },
+    })),
 
     setShellModuleWidth: (moduleId, width) => set((state) => ({
         shell: {

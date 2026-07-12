@@ -178,6 +178,13 @@ assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.context, 'right
 assert.equal(useNotesWorkspaceStore.getState().shell.moduleLayouts.left, 'column');
 assert.equal(useNotesWorkspaceStore.getState().shell.moduleLayouts.center, 'column');
 assert.equal(useNotesWorkspaceStore.getState().shell.moduleLayouts.right, 'column');
+assert.deepEqual(useNotesWorkspaceStore.getState().shell.tabGroups, []);
+
+useNotesWorkspaceStore.getState().mergeShellModules('graph', 'notifications');
+assert.deepEqual(useNotesWorkspaceStore.getState().shell.tabGroups, [
+    { id: 'shell-group-notifications', moduleIds: ['notifications', 'graph'], activeModuleId: 'graph' },
+]);
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.graph, useNotesWorkspaceStore.getState().shell.moduleAreas.notifications);
 
 useNotesWorkspaceStore.getState().toggleShellModule('editor');
 assert.equal(useNotesWorkspaceStore.getState().shell.modules.editor, true, 'Editor module is required and cannot be disabled');

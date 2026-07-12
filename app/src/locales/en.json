@@ -1222,6 +1222,7 @@
             "closePane": "Close pane",
             "dragPane": "Drag active pane tab",
             "dragModule": "Drag module",
+            "combineModules": "Combine modules",
             "dropModuleHere": "Drop module here",
             "missingEntity": "Entity unavailable",
             "readOnly": "read only",
