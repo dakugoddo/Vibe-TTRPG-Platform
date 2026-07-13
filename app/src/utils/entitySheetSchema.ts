@@ -58,6 +58,12 @@ export type SheetSchemaResult =
     | { ok: true; schema: EntitySheetSchemaV1; diagnostics: SheetDiagnostic[] }
     | { ok: false; diagnostics: SheetDiagnostic[] };
 
+export const ENTITY_SHEET_LIMITS = {
+    maxDepth: 16,
+    maxBlocks: 500,
+    maxBindingSegments: 32,
+} as const;
+
 const ENTITY_TYPES = new Set<EntityType>(['character', 'object', 'ability', 'competency', 'tag', 'canvas', 'note', 'portal', 'folder', 'attack']);
 const DENSITIES = new Set<SheetDensity>(['inherit', 'compact', 'balanced', 'spacious']);
 const LAYOUTS = new Set(['column', 'row', 'grid', 'tabs']);
@@ -83,6 +89,50 @@ function normalizeBase(input: Record<string, unknown>): Omit<SheetBlockBaseV1, '
         ...(permission ? { permission } : {}),
         ...(surface ? { surface } : {}),
     };
+}
+
+function findDepthLimit(
+    input: unknown,
+    path: Array<string | number>,
+    depth: number
+): SheetDiagnostic | null {
+    if (depth > ENTITY_SHEET_LIMITS.maxDepth) {
+        return {
+            level: 'error',
+            code: 'schema.depth.limit',
+            message: `Sheet block depth exceeds ${ENTITY_SHEET_LIMITS.maxDepth}.`,
+            path,
+        };
+    }
+    if (!isRecord(input) || input.type !== 'container' || !Array.isArray(input.children)) return null;
+    for (let index = 0; index < input.children.length; index += 1) {
+        const diagnostic = findDepthLimit(input.children[index], [...path, 'children', index], depth + 1);
+        if (diagnostic) return diagnostic;
+    }
+    return null;
+}
+
+function findBlockCountLimit(
+    input: unknown,
+    path: Array<string | number>,
+    state: { count: number }
+): SheetDiagnostic | null {
+    if (!isRecord(input)) return null;
+    state.count += 1;
+    if (state.count > ENTITY_SHEET_LIMITS.maxBlocks) {
+        return {
+            level: 'error',
+            code: 'schema.blocks.limit',
+            message: `Sheet block count exceeds ${ENTITY_SHEET_LIMITS.maxBlocks}.`,
+            path,
+        };
+    }
+    if (input.type !== 'container' || !Array.isArray(input.children)) return null;
+    for (let index = 0; index < input.children.length; index += 1) {
+        const diagnostic = findBlockCountLimit(input.children[index], [...path, 'children', index], state);
+        if (diagnostic) return diagnostic;
+    }
+    return null;
 }
 
 function findUnknownBlockType(input: unknown, path: Array<string | number>): SheetDiagnostic | null {
@@ -163,6 +213,15 @@ function findUnsafeBindingPath(
     path: Array<string | number>
 ): SheetDiagnostic | null {
     if (block.type === 'property-value') {
+        if (block.binding.path.length > ENTITY_SHEET_LIMITS.maxBindingSegments) {
+            return {
+                level: 'error',
+                code: 'binding.path.limit',
+                message: `Binding path exceeds ${ENTITY_SHEET_LIMITS.maxBindingSegments} segments.`,
+                path: [...path, 'binding', 'path'],
+                blockId: block.id,
+            };
+        }
         const unsafeIndex = block.binding.path.findIndex((segment) =>
             segment === '__proto__' || segment === 'prototype' || segment === 'constructor'
         );
@@ -198,6 +257,10 @@ export function normalizeEntitySheetSchema(input: unknown): SheetSchemaResult {
     if (input.status !== 'draft' && input.status !== 'published') return error('schema.status', 'Invalid sheet schema status.');
     if (!Array.isArray(input.entityTypes) || !input.entityTypes.every((type) => ENTITY_TYPES.has(type as EntityType))) return error('schema.entityTypes', 'Invalid entity type assignment.');
     if (!DENSITIES.has(input.density as SheetDensity)) return error('schema.density', 'Invalid sheet density.');
+    const depthDiagnostic = findDepthLimit(input.root, ['root'], 1);
+    if (depthDiagnostic) return { ok: false, diagnostics: [depthDiagnostic] };
+    const blockCountDiagnostic = findBlockCountLimit(input.root, ['root'], { count: 0 });
+    if (blockCountDiagnostic) return { ok: false, diagnostics: [blockCountDiagnostic] };
     const unknownBlockDiagnostic = findUnknownBlockType(input.root, ['root']);
     if (unknownBlockDiagnostic) return { ok: false, diagnostics: [unknownBlockDiagnostic] };
     const root = normalizeBlock(input.root);

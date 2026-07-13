@@ -2,9 +2,9 @@
 
 > Feature: `FEAT-ENTITY-UI-BUILDER-001`
 >
-> Status: architecture draft, owner gate pending
+> Status: architecture approved; first schema/renderer and validator-boundary tracers implemented
 >
-> Updated: 2026-07-12
+> Updated: 2026-07-14
 
 ## 1. Purpose
 

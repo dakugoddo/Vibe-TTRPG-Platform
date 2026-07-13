@@ -54,7 +54,7 @@ import { saveEntity } from '../../services/fileApi';
 import { WikiLinkTextarea } from '../ui/WikiLinkTextarea';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { NotificationCenter } from '../ui/NotificationCenter';
-import { EntitySheetRenderer } from '../entitySheets/EntitySheetRenderer';
+import { EntitySheetBoundary } from '../entitySheets/EntitySheetBoundary';
 import type { EntitySheetSchemaV1 } from '../../utils/entitySheetSchema';
 import { CharacterSheet } from '../windows/CharacterSheet';
 import { ObjectSheet } from '../windows/blocks/ObjectSheet';
@@ -1566,7 +1566,12 @@ function EntityUiPreviewPanel({
                     <div className={`${glass.content} min-h-full`}>
                         {import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('sheetBuilderPreview') === '1' && (
                             <div data-entity-sheet-tracer-preview className={`${glass.blockBg} mb-[var(--vibe-space-gap)]`}>
-                                <EntitySheetRenderer entity={entity} schema={SHEET_BUILDER_TRACER_SCHEMA} />
+                                <EntitySheetBoundary
+                                    entity={entity}
+                                    schema={SHEET_BUILDER_TRACER_SCHEMA}
+                                    fallback={<div className="text-xs text-[var(--vibe-warning)]">Sheet Builder preview unavailable.</div>}
+                                    showDiagnostics
+                                />
                             </div>
                         )}
                         <EntityImageBlock entity={entity} isWide={entity.type === 'canvas'} />

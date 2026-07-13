@@ -68,4 +68,42 @@ assert.equal(unknownResult.ok, false);
 assert.equal(unknownResult.diagnostics[0]?.code, 'block.type.unknown');
 assert.deepEqual(unknownResult.diagnostics[0]?.path, ['root', 'children', 0, 'type']);
 
+const tooDeep = structuredClone(input);
+let depthCursor = tooDeep.root as { children: unknown[] };
+for (let depth = 1; depth <= 16; depth += 1) {
+    const child = {
+        id: `depth-${depth}`,
+        type: 'container',
+        layout: 'column',
+        children: [] as unknown[],
+    };
+    depthCursor.children = [child];
+    depthCursor = child;
+}
+const depthResult = normalizeEntitySheetSchema(tooDeep);
+assert.equal(depthResult.ok, false);
+assert.equal(depthResult.diagnostics[0]?.code, 'schema.depth.limit');
+
+const tooManyBlocks = structuredClone(input);
+tooManyBlocks.root.children = Array.from({ length: 500 }, (_, index) => ({
+    id: `block-${index}`,
+    type: 'property-value',
+    label: `Block ${index}`,
+    binding: { scope: 'self', path: ['properties', `value-${index}`] },
+    format: 'text',
+    emptyText: '—',
+}));
+const blockCountResult = normalizeEntitySheetSchema(tooManyBlocks);
+assert.equal(blockCountResult.ok, false);
+assert.equal(blockCountResult.diagnostics[0]?.code, 'schema.blocks.limit');
+
+const longBinding = structuredClone(input);
+longBinding.root.children[0].binding.path = [
+    'properties',
+    ...Array.from({ length: 32 }, (_, index) => `segment-${index}`),
+];
+const bindingLengthResult = normalizeEntitySheetSchema(longBinding);
+assert.equal(bindingLengthResult.ok, false);
+assert.equal(bindingLengthResult.diagnostics[0]?.code, 'binding.path.limit');
+
 console.log('entity sheet schema tests passed');

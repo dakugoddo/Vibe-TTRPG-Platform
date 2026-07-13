@@ -63,7 +63,9 @@
    - architecture gate создан в `.pi/docs/entity-ui-sheet-builder-architecture.md`: отдельно зафиксированы schema/registry, binding resolver, permissions, storage/sync phases, formula AST, theme contract, fallback, migrations и plugin boundary;
    - первый implementation slice реализован: V1 normalize/parse/serialize, structured diagnostics для duplicate/unknown/unsafe bindings, safe self-property resolver, registry `container`/`property-value`, read-only semantic renderer и dev-only Notes UI preview через `?sheetBuilderPreview=1`; production hardcoded sheets остаются fallback, `.md`, server API, Yjs и authoring не менялись;
    - owner утвердил рекомендуемые defaults: отдельные JSON schemas, `.vibe/sheets` для будущей Phase 1, type-only assignment сначала, GM/host authoring, валидируемое ручное JSON-редактирование, одна `.bak` на первом этапе и generic object/note как первый production consumer;
-   - следующий безопасный срез — internal preview QA, validator limits/fallback diagnostics и выбор минимального generic object/note production integration до persistence/authoring.
+   - validator limits/fallback slice реализован: максимум `16` уровней, `500` блоков и `32` binding-сегмента проверяется до нормализации; `EntitySheetBoundary` принимает unknown schema, показывает structured diagnostics только по internal flag и гарантированно возвращает переданный hardcoded fallback при invalid schema; valid/invalid SSR и valid Notes UI preview прошли;
+   - первым production consumer выбран generic `note`, потому что read-only description не несёт mechanics/write-actions; следующий tracer — Markdown block + явно разрешённый `description` binding через boundary, сначала под internal feature flag и с текущим note UI как fallback;
+   - persistence, server/Yjs schema sync и authoring не начинать до успешного note tracer/owner QA.
 
 ## Активные проверки
 
