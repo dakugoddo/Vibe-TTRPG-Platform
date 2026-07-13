@@ -61,8 +61,9 @@
    - HP/resource block должен настраивать source/current/max/temp, min/max policy, отображение bar/counter/pips, права изменения, автоматические эффекты/threshold events и формулы, но не исполнять произвольный JavaScript;
    - предусмотреть schema versioning, draft/publish, undo/redo, validation, safe fallback к built-in sheet, migration/rollback, import/export templates и будущий mod/data-pack registry;
    - architecture gate создан в `.pi/docs/entity-ui-sheet-builder-architecture.md`: отдельно зафиксированы schema/registry, binding resolver, permissions, storage/sync phases, formula AST, theme contract, fallback, migrations и plugin boundary;
-   - первый implementation slice после owner gate — только V1 schema + pure validator/round-trip + registry `container`/`property-value` + read-only internal preview renderer с hardcoded-sheet fallback; без изменений `.md`, server API, Yjs, authoring и production sheets;
-   - до implementation нужен owner approval предложенных defaults и решений Phase 1: storage folder, assignment precedence, schema author roles, hand-edit policy, history depth и первый production consumer.
+   - первый implementation slice реализован: V1 normalize/parse/serialize, structured diagnostics для duplicate/unknown/unsafe bindings, safe self-property resolver, registry `container`/`property-value`, read-only semantic renderer и dev-only Notes UI preview через `?sheetBuilderPreview=1`; production hardcoded sheets остаются fallback, `.md`, server API, Yjs и authoring не менялись;
+   - owner утвердил рекомендуемые defaults: отдельные JSON schemas, `.vibe/sheets` для будущей Phase 1, type-only assignment сначала, GM/host authoring, валидируемое ручное JSON-редактирование, одна `.bak` на первом этапе и generic object/note как первый production consumer;
+   - следующий безопасный срез — internal preview QA, validator limits/fallback diagnostics и выбор минимального generic object/note production integration до persistence/authoring.
 
 ## Активные проверки
 

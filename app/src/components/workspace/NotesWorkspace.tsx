@@ -54,6 +54,8 @@ import { saveEntity } from '../../services/fileApi';
 import { WikiLinkTextarea } from '../ui/WikiLinkTextarea';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { NotificationCenter } from '../ui/NotificationCenter';
+import { EntitySheetRenderer } from '../entitySheets/EntitySheetRenderer';
+import type { EntitySheetSchemaV1 } from '../../utils/entitySheetSchema';
 import { CharacterSheet } from '../windows/CharacterSheet';
 import { ObjectSheet } from '../windows/blocks/ObjectSheet';
 import { AttackSheet } from '../windows/blocks/AttackSheet';
@@ -103,6 +105,31 @@ import { replaceTextareaSelectionPreservingUndo } from '../../utils/textareaEdit
 import { glass } from '../../utils/theme';
 import type { WorkspaceMode } from '../../utils/workspaceMode';
 import type { DatabaseType, Entity, EntityType } from '../../types';
+
+const SHEET_BUILDER_TRACER_SCHEMA: EntitySheetSchemaV1 = {
+    schemaVersion: 1,
+    id: 'internal-properties-tracer',
+    name: 'Internal properties tracer',
+    revision: 1,
+    status: 'draft',
+    entityTypes: ['character', 'object', 'ability', 'competency', 'tag', 'canvas', 'note', 'portal', 'folder', 'attack'],
+    density: 'inherit',
+    root: {
+        id: 'root',
+        type: 'container',
+        layout: 'column',
+        gap: 'md',
+        children: [{
+            id: 'properties',
+            type: 'property-value',
+            label: 'Sheet Builder tracer · properties',
+            binding: { scope: 'self', path: ['properties'] },
+            format: 'json',
+            emptyText: '{}',
+            surface: 'subtle',
+        }],
+    },
+};
 
 const VIEW_LABEL_KEYS: Record<NotesWorkspaceView, string> = {
     source: 'workspace.notes.views.source',
@@ -1537,6 +1564,11 @@ function EntityUiPreviewPanel({
 
                 <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
                     <div className={`${glass.content} min-h-full`}>
+                        {import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('sheetBuilderPreview') === '1' && (
+                            <div data-entity-sheet-tracer-preview className={`${glass.blockBg} mb-[var(--vibe-space-gap)]`}>
+                                <EntitySheetRenderer entity={entity} schema={SHEET_BUILDER_TRACER_SCHEMA} />
+                            </div>
+                        )}
                         <EntityImageBlock entity={entity} isWide={entity.type === 'canvas'} />
 
                         {entity.type === 'character' ? (
