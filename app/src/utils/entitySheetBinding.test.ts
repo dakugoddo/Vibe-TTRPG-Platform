@@ -7,7 +7,7 @@ const entity: Entity = {
     parentId: null,
     type: 'character',
     name: 'Hero',
-    description: '',
+    description: '# Chronicle',
     properties: { resources: { hp: 7 } },
     tags: [],
     database: 'general',
@@ -19,6 +19,14 @@ assert.deepEqual(
 );
 assert.deepEqual(
     resolveEntitySheetBinding(entity, { scope: 'self', path: ['properties', 'resources', 'mana'] }),
+    { status: 'missing', value: undefined }
+);
+assert.deepEqual(
+    resolveEntitySheetBinding(entity, { scope: 'self', path: ['description'] }),
+    { status: 'resolved', value: '# Chronicle' }
+);
+assert.deepEqual(
+    resolveEntitySheetBinding(entity, { scope: 'self', path: ['name'] }),
     { status: 'missing', value: undefined }
 );
 

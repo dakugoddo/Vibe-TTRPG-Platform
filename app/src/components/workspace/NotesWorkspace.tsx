@@ -106,13 +106,13 @@ import { glass } from '../../utils/theme';
 import type { WorkspaceMode } from '../../utils/workspaceMode';
 import type { DatabaseType, Entity, EntityType } from '../../types';
 
-const SHEET_BUILDER_TRACER_SCHEMA: EntitySheetSchemaV1 = {
+const GENERIC_NOTE_SHEET_SCHEMA: EntitySheetSchemaV1 = {
     schemaVersion: 1,
-    id: 'internal-properties-tracer',
-    name: 'Internal properties tracer',
+    id: 'built-in-generic-note',
+    name: 'Generic note',
     revision: 1,
-    status: 'draft',
-    entityTypes: ['character', 'object', 'ability', 'competency', 'tag', 'canvas', 'note', 'portal', 'folder', 'attack'],
+    status: 'published',
+    entityTypes: ['note'],
     density: 'inherit',
     root: {
         id: 'root',
@@ -120,13 +120,9 @@ const SHEET_BUILDER_TRACER_SCHEMA: EntitySheetSchemaV1 = {
         layout: 'column',
         gap: 'md',
         children: [{
-            id: 'properties',
-            type: 'property-value',
-            label: 'Sheet Builder tracer · properties',
-            binding: { scope: 'self', path: ['properties'] },
-            format: 'json',
-            emptyText: '{}',
-            surface: 'subtle',
+            id: 'description',
+            type: 'markdown',
+            binding: { scope: 'self', path: ['description'] },
         }],
     },
 };
@@ -1564,23 +1560,33 @@ function EntityUiPreviewPanel({
 
                 <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
                     <div className={`${glass.content} min-h-full`}>
-                        {import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('sheetBuilderPreview') === '1' && (
-                            <div data-entity-sheet-tracer-preview className={`${glass.blockBg} mb-[var(--vibe-space-gap)]`}>
-                                <EntitySheetBoundary
-                                    entity={entity}
-                                    schema={SHEET_BUILDER_TRACER_SCHEMA}
-                                    fallback={<div className="text-xs text-[var(--vibe-warning)]">Sheet Builder preview unavailable.</div>}
-                                    showDiagnostics
-                                />
-                            </div>
-                        )}
                         <EntityImageBlock entity={entity} isWide={entity.type === 'canvas'} />
 
                         {entity.type === 'character' ? (
                             <CharacterSheet entityId={entity.id} isFullMode={false} />
                         ) : (
                             <>
-                                {(entity.type === 'note' || entity.type === 'canvas' || entity.type === 'portal' || entity.type === 'folder' || entity.type === 'competency') && (
+                                {entity.type === 'note' && (
+                                    entity.description?.trim() ? (
+                                        <EntitySheetBoundary
+                                            entity={entity}
+                                            schema={GENERIC_NOTE_SHEET_SCHEMA}
+                                            markdownRenderer={MarkdownRenderer}
+                                            fallback={(
+                                                <div className={glass.blockBg}>
+                                                    <h3 className={glass.blockHeader}>Description</h3>
+                                                    <MarkdownRenderer content={entity.description} entityId={entity.id} />
+                                                </div>
+                                            )}
+                                        />
+                                    ) : (
+                                        <div className={glass.blockBg}>
+                                            <p className="text-sm italic text-[var(--vibe-text-faint)]">{t('workspace.notes.emptyMarkdown')}</p>
+                                        </div>
+                                    )
+                                )}
+
+                                {(entity.type === 'canvas' || entity.type === 'portal' || entity.type === 'folder' || entity.type === 'competency') && (
                                     <div className={glass.blockBg}>
                                         <h3 className={glass.blockHeader}>Description</h3>
                                         {entity.description?.trim() ? (

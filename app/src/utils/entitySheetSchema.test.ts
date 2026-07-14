@@ -106,4 +106,10 @@ const bindingLengthResult = normalizeEntitySheetSchema(longBinding);
 assert.equal(bindingLengthResult.ok, false);
 assert.equal(bindingLengthResult.diagnostics[0]?.code, 'binding.path.limit');
 
+const forbiddenRootBinding = structuredClone(input);
+forbiddenRootBinding.root.children[0].binding.path = ['name'];
+const forbiddenRootResult = normalizeEntitySheetSchema(forbiddenRootBinding);
+assert.equal(forbiddenRootResult.ok, false);
+assert.equal(forbiddenRootResult.diagnostics[0]?.code, 'binding.path.root');
+
 console.log('entity sheet schema tests passed');

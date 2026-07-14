@@ -15,7 +15,9 @@ export function resolveEntitySheetBinding(
     entity: Entity,
     binding: SheetBindingV1
 ): SheetBindingResolution {
-    if (binding.scope !== 'self' || binding.path[0] !== 'properties') {
+    const isDescriptionBinding = binding.path.length === 1 && binding.path[0] === 'description';
+    const isPropertiesBinding = binding.path[0] === 'properties';
+    if (binding.scope !== 'self' || (!isDescriptionBinding && !isPropertiesBinding)) {
         return { status: 'missing', value: undefined };
     }
 

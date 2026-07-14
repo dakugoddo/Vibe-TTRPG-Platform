@@ -540,7 +540,17 @@ Create only:
 6. a round-trip test: input → normalize → serialize → parse → normalize;
 7. validator tests for duplicate IDs, unknown blocks and unsafe binding paths;
 8. renderer fallback for invalid/unknown blocks;
-9. an explicit internal preview integration that does not replace production hardcoded sheets.
+9. a temporary internal preview integration that does not replace production hardcoded sheets; remove it after the architecture is proven and a real production consumer is mounted.
+
+### Implemented production follow-up
+
+- validator limits: depth `16`, block count `500`, binding path `32`;
+- validating `EntitySheetBoundary` with opt-in diagnostics and hardcoded fallback;
+- read-only `markdown` block with an injected existing Markdown renderer adapter;
+- exact `self.description` allowlist alongside `self.properties...`;
+- generic `note` mounted as the first production consumer in ordinary Notes `UI`;
+- localized empty-note behavior and legacy fallback preserved;
+- temporary `?sheetBuilderPreview=1` tracer removed.
 
 ### Explicitly out of scope
 
@@ -581,14 +591,14 @@ Create only:
 7. System-specific sheets are data packs, not core hardcoded branches.
 8. Production hardcoded sheets remain fallback throughout incremental migration.
 
-### Owner decisions still required before Phase 1 persistence
+### Owner-approved Phase 1 defaults
 
-1. Storage folder: hidden `<world>/.vibe/sheets/` or visible `<world>/sheets/`?
-2. Assignment policy: type-only first, or templates/explicit entity overrides in the first persisted version?
-3. Should trusted players ever author schemas, or remain preview-only?
-4. Are world schema files intended to be hand-editable, builder-only, or both?
-5. Should published schema history keep only `.bak` or multiple numbered revisions?
-6. Which first real production consumer should migrate after the preview: generic notes/objects or a minimal character summary?
+1. Storage folder: hidden `<world>/.vibe/sheets/`.
+2. Assignment policy: type-only first.
+3. Schema authoring/publish: GM/host-only.
+4. World schema files: validated manual JSON editing is allowed before a visual builder.
+5. Published history: one `.bak` in the first persisted version.
+6. First production consumer: generic `note` (implemented), with generic `object` considered only after note workflow QA.
 
 ## 18. Verification checklist for the design gate
 
@@ -601,4 +611,4 @@ Create only:
 - [x] Core/module/system-pack/trusted-extension boundaries are explicit.
 - [x] Failure always falls back to an openable entity UI.
 - [x] First implementation slice is narrow and testable.
-- [ ] Owner approves proposed defaults and persistence decisions.
+- [x] Owner approved defaults and persistence decisions.

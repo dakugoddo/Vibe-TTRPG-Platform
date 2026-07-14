@@ -33,7 +33,13 @@ export interface SheetPropertyValueBlockV1 extends SheetBlockBaseV1 {
     emptyText?: string;
 }
 
-export type SheetBlockV1 = SheetContainerBlockV1 | SheetPropertyValueBlockV1;
+export interface SheetMarkdownBlockV1 extends SheetBlockBaseV1 {
+    type: 'markdown';
+    binding: SheetBindingV1;
+    emptyText?: string;
+}
+
+export type SheetBlockV1 = SheetContainerBlockV1 | SheetPropertyValueBlockV1 | SheetMarkdownBlockV1;
 
 export interface EntitySheetSchemaV1 {
     schemaVersion: 1;
@@ -137,7 +143,7 @@ function findBlockCountLimit(
 
 function findUnknownBlockType(input: unknown, path: Array<string | number>): SheetDiagnostic | null {
     if (!isRecord(input)) return null;
-    if (input.type !== 'container' && input.type !== 'property-value') {
+    if (input.type !== 'container' && input.type !== 'property-value' && input.type !== 'markdown') {
         return { level: 'error', code: 'block.type.unknown', message: `Unknown block type: ${String(input.type)}`, path: [...path, 'type'] };
     }
     if (input.type === 'container' && Array.isArray(input.children)) {
@@ -166,6 +172,20 @@ function normalizeBlock(input: unknown): SheetBlockV1 | null {
             ...(columns ? { columns } : {}),
             ...(gap ? { gap } : {}),
             children: children as SheetBlockV1[],
+        };
+    }
+    if (input.type === 'markdown' && isRecord(input.binding)) {
+        const binding = input.binding;
+        if (binding.scope !== 'self' || !Array.isArray(binding.path) || !binding.path.every((segment) => typeof segment === 'string')) return null;
+        return {
+            ...normalizeBase(input),
+            type: 'markdown',
+            binding: {
+                scope: 'self',
+                path: binding.path as string[],
+                ...('fallback' in binding ? { fallback: binding.fallback } : {}),
+            },
+            ...(optionalString(input.emptyText) !== undefined ? { emptyText: optionalString(input.emptyText) } : {}),
         };
     }
     if (input.type === 'property-value' && isRecord(input.binding)) {
@@ -212,7 +232,18 @@ function findUnsafeBindingPath(
     block: SheetBlockV1,
     path: Array<string | number>
 ): SheetDiagnostic | null {
-    if (block.type === 'property-value') {
+    if (block.type === 'property-value' || block.type === 'markdown') {
+        const isDescriptionBinding = block.binding.path.length === 1 && block.binding.path[0] === 'description';
+        const isPropertiesBinding = block.binding.path[0] === 'properties';
+        if (!isDescriptionBinding && !isPropertiesBinding) {
+            return {
+                level: 'error',
+                code: 'binding.path.root',
+                message: 'Binding must target description or properties.',
+                path: [...path, 'binding', 'path', 0],
+                blockId: block.id,
+            };
+        }
         if (block.binding.path.length > ENTITY_SHEET_LIMITS.maxBindingSegments) {
             return {
                 level: 'error',

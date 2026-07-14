@@ -9,6 +9,7 @@ export interface EntitySheetBlockDefinition {
 const DEFINITIONS: Record<SheetBlockV1['type'], EntitySheetBlockDefinition> = {
     container: { type: 'container', category: 'layout', schemaVersion: 1 },
     'property-value': { type: 'property-value', category: 'display', schemaVersion: 1 },
+    markdown: { type: 'markdown', category: 'display', schemaVersion: 1 },
 };
 
 export function getEntitySheetBlockDefinition(type: string): EntitySheetBlockDefinition | undefined {

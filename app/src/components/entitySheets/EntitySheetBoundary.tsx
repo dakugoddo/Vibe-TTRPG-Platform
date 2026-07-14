@@ -1,12 +1,13 @@
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import type { Entity } from '../../types';
 import { normalizeEntitySheetSchema } from '../../utils/entitySheetSchema';
-import { EntitySheetRenderer } from './EntitySheetRenderer';
+import { EntitySheetRenderer, type EntitySheetMarkdownRendererProps } from './EntitySheetRenderer';
 
 interface EntitySheetBoundaryProps {
     entity: Entity;
     schema: unknown;
     fallback: ReactNode;
+    markdownRenderer: ComponentType<EntitySheetMarkdownRendererProps>;
     showDiagnostics?: boolean;
 }
 
@@ -14,6 +15,7 @@ export function EntitySheetBoundary({
     entity,
     schema,
     fallback,
+    markdownRenderer,
     showDiagnostics = false,
 }: EntitySheetBoundaryProps) {
     const result = normalizeEntitySheetSchema(schema);
@@ -37,5 +39,5 @@ export function EntitySheetBoundary({
         );
     }
 
-    return <EntitySheetRenderer entity={entity} schema={result.schema} />;
+    return <EntitySheetRenderer entity={entity} schema={result.schema} markdownRenderer={markdownRenderer} />;
 }
