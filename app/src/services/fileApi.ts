@@ -52,13 +52,37 @@ export interface WorldLocaleRollbackResult extends WorldLocaleReadResult {
     restored: boolean;
 }
 
+export interface WorldSheetReadResult {
+    sheetId: string;
+    exists: boolean;
+    schema: Record<string, unknown> | null;
+    diagnostics: WorldLocaleDiagnostic[];
+    hasBackup: boolean;
+    size?: number;
+    modifiedAt?: string;
+}
+
+export interface WorldSheetWriteResult extends WorldSheetReadResult {
+    backupCreated: boolean;
+}
+
+export interface WorldSheetRollbackResult extends WorldSheetReadResult {
+    restored: boolean;
+}
+
+export interface WorldSheetResetResult extends WorldSheetReadResult {
+    reset: boolean;
+}
+
 // ─── Host detection ───
 // Only the host (who created/opened the room) has a file server running.
 
 let _isHost = false;
 let _serverAvailable: boolean | null = null;
+let _worldSheetHostAuthority: { capability: string; worldIdentity: string } | null = null;
 
 export function setIsHost(isHost: boolean): void {
+    if (_isHost !== isHost) _worldSheetHostAuthority = null;
     _isHost = isHost;
 }
 
@@ -92,6 +116,7 @@ async function shouldCallFileApi(): Promise<boolean> {
  */
 export function resetServerCache(): void {
     _serverAvailable = null;
+    _worldSheetHostAuthority = null;
 }
 
 // ─── Helper ───
@@ -112,6 +137,29 @@ async function apiFetchFrom<T>(baseUrl: string, path: string, options?: RequestI
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     return apiFetchFrom(getFileServerUrl(), path, options);
+}
+
+async function getWorldSheetHostAuthority(signal?: AbortSignal): Promise<{ capability: string; worldIdentity: string }> {
+    if (_worldSheetHostAuthority) return _worldSheetHostAuthority;
+    const result = await apiFetch<{ capability: string; worldIdentity: string }>('/api/world/sheets/capability', { signal });
+    if (typeof result.capability !== 'string' || result.capability.length < 32
+        || typeof result.worldIdentity !== 'string' || result.worldIdentity.length < 32) {
+        throw new Error('File Server returned an invalid Host authority.');
+    }
+    _worldSheetHostAuthority = result;
+    return result;
+}
+
+async function worldSheetHostFetch<T>(path: string, options?: RequestInit): Promise<T> {
+    const authority = await getWorldSheetHostAuthority(options?.signal ?? undefined);
+    return apiFetch<T>(path, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Vibe-Host-Capability': authority.capability,
+            'X-Vibe-World-Identity': authority.worldIdentity,
+        },
+    });
 }
 
 // ─── World Management ───
@@ -174,6 +222,40 @@ export async function rollbackWorldLocaleFile(locale: string): Promise<WorldLoca
     if (!(await shouldCallFileApi())) return null;
     return apiFetch<WorldLocaleRollbackResult>(`/api/world/locales/${encodeURIComponent(locale)}/rollback`, {
         method: 'POST',
+    });
+}
+
+export async function readPublishedWorldSheetFile(sheetId: string, signal?: AbortSignal): Promise<WorldSheetReadResult> {
+    return apiFetch<WorldSheetReadResult>(`/api/world/sheets/${encodeURIComponent(sheetId)}`, { signal });
+}
+
+export async function readWorldSheetFile(sheetId: string, signal?: AbortSignal): Promise<WorldSheetReadResult | null> {
+    if (!(await shouldCallFileApi())) return null;
+    return worldSheetHostFetch<WorldSheetReadResult>(`/api/world/sheets/${encodeURIComponent(sheetId)}?management=1`, { signal });
+}
+
+export async function writeWorldSheetFile(sheetId: string, schema: Record<string, unknown>, signal?: AbortSignal): Promise<WorldSheetWriteResult | null> {
+    if (!(await shouldCallFileApi())) return null;
+    return worldSheetHostFetch<WorldSheetWriteResult>(`/api/world/sheets/${encodeURIComponent(sheetId)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ schema }),
+        signal,
+    });
+}
+
+export async function rollbackWorldSheetFile(sheetId: string, signal?: AbortSignal): Promise<WorldSheetRollbackResult | null> {
+    if (!(await shouldCallFileApi())) return null;
+    return worldSheetHostFetch<WorldSheetRollbackResult>(`/api/world/sheets/${encodeURIComponent(sheetId)}/rollback`, {
+        method: 'POST',
+        signal,
+    });
+}
+
+export async function resetWorldSheetFile(sheetId: string, signal?: AbortSignal): Promise<WorldSheetResetResult | null> {
+    if (!(await shouldCallFileApi())) return null;
+    return worldSheetHostFetch<WorldSheetResetResult>(`/api/world/sheets/${encodeURIComponent(sheetId)}`, {
+        method: 'DELETE',
+        signal,
     });
 }
 

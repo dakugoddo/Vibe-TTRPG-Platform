@@ -112,4 +112,66 @@ const forbiddenRootResult = normalizeEntitySheetSchema(forbiddenRootBinding);
 assert.equal(forbiddenRootResult.ok, false);
 assert.equal(forbiddenRootResult.diagnostics[0]?.code, 'binding.path.root');
 
+const oversizedSchema = { ...structuredClone(input), ignored: 'x'.repeat(300_000) };
+const oversizedResult = normalizeEntitySheetSchema(oversizedSchema);
+assert.equal(oversizedResult.ok, false);
+assert.equal(oversizedResult.diagnostics[0]?.code, 'schema.bytes.limit');
+
+const prettyExpandedSchema = structuredClone(input);
+prettyExpandedSchema.root.children = Array.from({ length: 499 }, (_, index) => ({
+    id: `pretty-${index}`,
+    type: 'markdown',
+    label: 'x'.repeat(320),
+    binding: { scope: 'self', path: ['description'] },
+}));
+assert.ok(new TextEncoder().encode(JSON.stringify(prettyExpandedSchema)).byteLength <= 256 * 1024);
+assert.ok(new TextEncoder().encode(`${JSON.stringify(prettyExpandedSchema, null, 2)}\n`).byteLength > 256 * 1024);
+const prettyExpandedResult = normalizeEntitySheetSchema(prettyExpandedSchema);
+assert.equal(prettyExpandedResult.ok, false);
+assert.equal(prettyExpandedResult.diagnostics[0]?.code, 'schema.bytes.limit');
+
+const excessiveEntityTypes = { ...structuredClone(input), entityTypes: Array.from({ length: 11 }, () => 'note') };
+const excessiveEntityTypesResult = normalizeEntitySheetSchema(excessiveEntityTypes);
+assert.equal(excessiveEntityTypesResult.ok, false);
+assert.equal(excessiveEntityTypesResult.diagnostics[0]?.code, 'schema.entityTypes.limit');
+
+const longName = { ...structuredClone(input), name: 'x'.repeat(257) };
+const longNameResult = normalizeEntitySheetSchema(longName);
+assert.equal(longNameResult.ok, false);
+assert.equal(longNameResult.diagnostics[0]?.code, 'schema.string.limit');
+assert.deepEqual(longNameResult.diagnostics[0]?.path, ['name']);
+
+const longLabel = structuredClone(input);
+longLabel.root.children[0].label = 'x'.repeat(4_097);
+const longLabelResult = normalizeEntitySheetSchema(longLabel);
+assert.equal(longLabelResult.ok, false);
+assert.equal(longLabelResult.diagnostics[0]?.code, 'schema.string.limit');
+assert.deepEqual(longLabelResult.diagnostics[0]?.path, ['root', 'children', 0, 'label']);
+
+const longSegment = structuredClone(input);
+longSegment.root.children[0].binding.path = ['properties', 'x'.repeat(257)];
+const longSegmentResult = normalizeEntitySheetSchema(longSegment);
+assert.equal(longSegmentResult.ok, false);
+assert.equal(longSegmentResult.diagnostics[0]?.code, 'binding.path.segment.limit');
+
+const emptySegment = structuredClone(input);
+emptySegment.root.children[0].binding.path = ['properties', ''];
+const emptySegmentResult = normalizeEntitySheetSchema(emptySegment);
+assert.equal(emptySegmentResult.ok, false);
+assert.equal(emptySegmentResult.diagnostics[0]?.code, 'binding.path.segment.empty');
+
+const spacedBlockId = structuredClone(input);
+spacedBlockId.root.children[0].id = '  summary  ';
+const spacedBlockIdResult = normalizeEntitySheetSchema(spacedBlockId);
+assert.equal(spacedBlockIdResult.ok, true);
+if (!spacedBlockIdResult.ok) throw new Error('Expected spaced block ID to normalize');
+assert.equal(spacedBlockIdResult.schema.root.children[0]?.id, 'summary');
+
+const stringColumns = structuredClone(input);
+stringColumns.root.columns = '2';
+const stringColumnsResult = normalizeEntitySheetSchema(stringColumns);
+assert.equal(stringColumnsResult.ok, true);
+if (!stringColumnsResult.ok) throw new Error('Expected string columns to be stripped');
+assert.equal(stringColumnsResult.schema.root.columns, undefined);
+
 console.log('entity sheet schema tests passed');

@@ -18,6 +18,7 @@ import { listImplementedNotesShellModules } from '../../utils/notesWorkspaceModu
 import { DEFAULT_CUSTOM_THEME_COLORS, getStoredCustomThemeColors, glass, interfaceDensityPresets, saveCustomThemeColors, themePresets, type CustomThemeColors } from '../../utils/theme';
 import { getDevPerformanceOverlayEnabled, setDevPerformanceOverlayEnabled } from '../../utils/devPerformanceOverlay';
 import { applyWorldLocaleOverrides, getBuiltInLocaleMessages } from '../../utils/worldLocaleRuntime';
+import { WorldSheetLayoutSettings } from './WorldSheetLayoutSettings';
 import type { AudioChannel, PlayerProfile } from '../../types';
 import { isDesktopRuntime, showTranslationsFolder } from '../../services/desktopBridge';
 import { listPlayerProfiles, listWorldLocaleFiles, readWorldLocaleFile, rollbackWorldLocaleFile, updatePlayerProfileRole, writeWorldLocaleFile, type WorldLocaleDiagnostic, type WorldLocaleFile, type WorldLocaleReadResult } from '../../services/fileApi';
@@ -1094,6 +1095,7 @@ export function SettingsWindow({ isOpen, roomName, onClose }: SettingsWindowProp
 
                         {safeActiveTab === 'world' && isGM && (
                             <section className="space-y-3">
+                                <WorldSheetLayoutSettings roomName={roomName} />
                                 <div className={settingsPanelClass}>
                                     <div className={settingsSectionTitleClass}>
                                         <Globe2 size={14} />

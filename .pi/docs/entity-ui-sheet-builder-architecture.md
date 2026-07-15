@@ -2,7 +2,7 @@
 
 > Feature: `FEAT-ENTITY-UI-BUILDER-001`
 >
-> Status: architecture approved; first schema/renderer and validator-boundary tracers implemented
+> Status: architecture approved; V1 runtime, generic note consumer and GM note-layout publish/rollback workflow implemented
 >
 > Updated: 2026-07-14
 
@@ -550,7 +550,12 @@ Create only:
 - exact `self.description` allowlist alongside `self.properties...`;
 - generic `note` mounted as the first production consumer in ordinary Notes `UI`;
 - localized empty-note behavior and legacy fallback preserved;
-- temporary `?sheetBuilderPreview=1` tracer removed.
+- temporary `?sheetBuilderPreview=1` tracer removed;
+- GM-only production Settings panel for JSON import/edit/export, live diagnostics and real Markdown preview;
+- hidden world storage at `<world>/.vibe/sheets/note.json` with safe IDs, atomic write, one `.bak`, rollback and reversible reset to built-in;
+- LAN clients consume canonical published schemas through a minimal read-only runtime DTO; backup/file metadata and detailed diagnostics require a trusted Host management GET; the API uses a 256 KiB limit, mtime cache, ETag and abortable retry/poll; mutating publish/reset/rollback and management routes require a server-issued Host capability bound to the opaque identity of the currently open world plus a trusted loopback origin and do not trust a player-writable Yjs map; rollback atomically restores active from an unchanged known-good backup;
+- ordinary Notes `UI` selects the published world schema when present and retains the built-in schema plus legacy renderer as fallback;
+- browser smoke on a temporary preview world verified invalid/valid drafts, apply, second revision backup, rollback, built-in reset, custom restore and visible application to a real note.
 
 ### Explicitly out of scope
 

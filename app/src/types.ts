@@ -77,6 +77,18 @@ export interface WorldLocaleSnapshot {
     senderName?: string;
 }
 
+export interface WorldSheetSnapshot {
+    sheetId: string;
+    exists: boolean;
+    schema: Record<string, unknown> | null;
+    diagnostics: Array<{
+        level: 'error' | 'warning';
+        message: string;
+    }>;
+    hasBackup: boolean;
+    issuedAt: number;
+}
+
 export type SessionNotificationType = 'large-upload-approval';
 export type SessionNotificationScope = 'gm' | 'player' | 'session';
 export type SessionNotificationStatus = 'pending' | 'approved' | 'rejected' | 'uploading' | 'done' | 'failed';

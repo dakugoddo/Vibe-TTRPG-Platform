@@ -55,7 +55,8 @@ import { WikiLinkTextarea } from '../ui/WikiLinkTextarea';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { NotificationCenter } from '../ui/NotificationCenter';
 import { EntitySheetBoundary } from '../entitySheets/EntitySheetBoundary';
-import type { EntitySheetSchemaV1 } from '../../utils/entitySheetSchema';
+import { useWorldSheetSnapshot } from '../../hooks/useWorldSheetSnapshot';
+import { GENERIC_NOTE_SHEET_SCHEMA } from '../../utils/builtInEntitySheets';
 import { CharacterSheet } from '../windows/CharacterSheet';
 import { ObjectSheet } from '../windows/blocks/ObjectSheet';
 import { AttackSheet } from '../windows/blocks/AttackSheet';
@@ -105,27 +106,6 @@ import { replaceTextareaSelectionPreservingUndo } from '../../utils/textareaEdit
 import { glass } from '../../utils/theme';
 import type { WorkspaceMode } from '../../utils/workspaceMode';
 import type { DatabaseType, Entity, EntityType } from '../../types';
-
-const GENERIC_NOTE_SHEET_SCHEMA: EntitySheetSchemaV1 = {
-    schemaVersion: 1,
-    id: 'built-in-generic-note',
-    name: 'Generic note',
-    revision: 1,
-    status: 'published',
-    entityTypes: ['note'],
-    density: 'inherit',
-    root: {
-        id: 'root',
-        type: 'container',
-        layout: 'column',
-        gap: 'md',
-        children: [{
-            id: 'description',
-            type: 'markdown',
-            binding: { scope: 'self', path: ['description'] },
-        }],
-    },
-};
 
 const VIEW_LABEL_KEYS: Record<NotesWorkspaceView, string> = {
     source: 'workspace.notes.views.source',
@@ -1516,6 +1496,7 @@ function MarkdownRichEditor({
 }
 
 interface EntityUiPreviewPanelProps {
+    roomName: string;
     entity: Entity;
     embeddedNodes: NotesWorkspaceEmbeddedEntityNode[];
     canEdit: boolean;
@@ -1529,6 +1510,7 @@ interface EntityUiPreviewPanelProps {
 }
 
 function EntityUiPreviewPanel({
+    roomName,
     entity,
     embeddedNodes,
     canEdit,
@@ -1540,6 +1522,11 @@ function EntityUiPreviewPanel({
     canPinToCanvas,
     t,
 }: EntityUiPreviewPanelProps) {
+    const noteSheetSnapshot = useWorldSheetSnapshot(roomName, 'note');
+    const noteSheetSchema = noteSheetSnapshot?.exists && noteSheetSnapshot.schema
+        ? noteSheetSnapshot.schema
+        : GENERIC_NOTE_SHEET_SCHEMA;
+
     return (
         <div className="h-full min-h-0 overflow-y-auto p-4 custom-scrollbar">
             <div className={`mx-auto flex min-h-[420px] w-full max-w-[980px] flex-col overflow-hidden ${glass.window}`}>
@@ -1570,7 +1557,7 @@ function EntityUiPreviewPanel({
                                     entity.description?.trim() ? (
                                         <EntitySheetBoundary
                                             entity={entity}
-                                            schema={GENERIC_NOTE_SHEET_SCHEMA}
+                                            schema={noteSheetSchema}
                                             markdownRenderer={MarkdownRenderer}
                                             fallback={(
                                                 <div className={glass.blockBg}>
@@ -1685,6 +1672,7 @@ function NoteEditorPanel({
 }
 
 interface NotesWorkspaceNodeViewProps {
+    roomName: string;
     node: NotesWorkspaceNode;
     activeGroupId: string;
     groupOrder: Map<string, number>;
@@ -2521,6 +2509,7 @@ function NotesWorkspaceNodeView(props: NotesWorkspaceNodeViewProps) {
                         )}
                         {activeTab.view === 'ui' && (
                             <EntityUiPreviewPanel
+                                roomName={props.roomName}
                                 entity={activeEntity}
                                 embeddedNodes={embeddedEntityNodes}
                                 canEdit={canEditActiveEntity}
@@ -3261,6 +3250,7 @@ export function NotesWorkspace({
 
     const renderEditorModuleBody = () => (
         <NotesWorkspaceNodeView
+            roomName={roomName}
             node={notesLayout.root}
             activeGroupId={notesLayout.activeGroupId}
             groupOrder={workspaceGroupOrder}

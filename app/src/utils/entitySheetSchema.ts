@@ -68,6 +68,9 @@ export const ENTITY_SHEET_LIMITS = {
     maxDepth: 16,
     maxBlocks: 500,
     maxBindingSegments: 32,
+    maxBytes: 256 * 1024,
+    maxStringLength: 4_096,
+    maxIdentifierLength: 256,
 } as const;
 
 const ENTITY_TYPES = new Set<EntityType>(['character', 'object', 'ability', 'competency', 'tag', 'canvas', 'note', 'portal', 'folder', 'attack']);
@@ -89,7 +92,7 @@ function normalizeBase(input: Record<string, unknown>): Omit<SheetBlockBaseV1, '
     const surface = SURFACES.has(input.surface as SheetSurfaceVariant) ? input.surface as SheetSurfaceVariant : undefined;
     const permission = input.permission === 'view' || input.permission === 'edit' ? input.permission : undefined;
     return {
-        id: typeof input.id === 'string' ? input.id : '',
+        id: typeof input.id === 'string' ? input.id.trim() : '',
         ...(optionalString(input.label) !== undefined ? { label: optionalString(input.label) } : {}),
         ...(optionalString(input.description) !== undefined ? { description: optionalString(input.description) } : {}),
         ...(permission ? { permission } : {}),
@@ -275,18 +278,81 @@ function findUnsafeBindingPath(
     return null;
 }
 
+function findStringLimit(input: unknown, path: Array<string | number>): SheetDiagnostic | null {
+    if (!isRecord(input)) return null;
+    const boundedFields: Array<[string, number]> = [
+        ['id', ENTITY_SHEET_LIMITS.maxIdentifierLength],
+        ['label', ENTITY_SHEET_LIMITS.maxStringLength],
+        ['description', ENTITY_SHEET_LIMITS.maxStringLength],
+        ['emptyText', ENTITY_SHEET_LIMITS.maxStringLength],
+    ];
+    for (const [field, maxLength] of boundedFields) {
+        const value = input[field];
+        if (typeof value === 'string' && value.length > maxLength) {
+            return { level: 'error', code: 'schema.string.limit', message: `${field} exceeds ${maxLength} characters.`, path: [...path, field] };
+        }
+    }
+    if ((input.type === 'property-value' || input.type === 'markdown') && isRecord(input.binding) && Array.isArray(input.binding.path)) {
+        const emptySegmentIndex = input.binding.path.findIndex((segment) => segment === '');
+        if (emptySegmentIndex >= 0) {
+            return {
+                level: 'error',
+                code: 'binding.path.segment.empty',
+                message: 'Binding path contains an empty segment.',
+                path: [...path, 'binding', 'path', emptySegmentIndex],
+            };
+        }
+        const segmentIndex = input.binding.path.findIndex((segment) =>
+            typeof segment === 'string' && segment.length > ENTITY_SHEET_LIMITS.maxIdentifierLength
+        );
+        if (segmentIndex >= 0) {
+            return {
+                level: 'error',
+                code: 'binding.path.segment.limit',
+                message: `Binding segment exceeds ${ENTITY_SHEET_LIMITS.maxIdentifierLength} characters.`,
+                path: [...path, 'binding', 'path', segmentIndex],
+            };
+        }
+    }
+    if (input.type === 'container' && Array.isArray(input.children)) {
+        for (let index = 0; index < input.children.length; index += 1) {
+            const diagnostic = findStringLimit(input.children[index], [...path, 'children', index]);
+            if (diagnostic) return diagnostic;
+        }
+    }
+    return null;
+}
+
 export function normalizeEntitySheetSchema(input: unknown): SheetSchemaResult {
     const error = (code: string, message: string): SheetSchemaResult => ({
         ok: false,
         diagnostics: [{ level: 'error', code, message, path: [] }],
     });
     if (!isRecord(input)) return error('schema.invalid', 'Sheet schema must be an object.');
+    let serializedBytes: number;
+    try {
+        serializedBytes = new TextEncoder().encode(JSON.stringify(input)).byteLength;
+    } catch {
+        return error('schema.invalid', 'Sheet schema must be JSON-serializable.');
+    }
+    if (serializedBytes > ENTITY_SHEET_LIMITS.maxBytes) {
+        return error('schema.bytes.limit', `Sheet schema exceeds ${ENTITY_SHEET_LIMITS.maxBytes} bytes.`);
+    }
     if (input.schemaVersion !== 1) return error('schema.version', 'Unsupported sheet schema version.');
     if (typeof input.id !== 'string' || !input.id.trim()) return error('schema.id', 'Sheet schema id is required.');
+    if (input.id.length > ENTITY_SHEET_LIMITS.maxIdentifierLength) {
+        return { ok: false, diagnostics: [{ level: 'error', code: 'schema.string.limit', message: `id exceeds ${ENTITY_SHEET_LIMITS.maxIdentifierLength} characters.`, path: ['id'] }] };
+    }
     if (typeof input.name !== 'string' || !input.name.trim()) return error('schema.name', 'Sheet schema name is required.');
+    if (input.name.length > ENTITY_SHEET_LIMITS.maxIdentifierLength) {
+        return { ok: false, diagnostics: [{ level: 'error', code: 'schema.string.limit', message: `name exceeds ${ENTITY_SHEET_LIMITS.maxIdentifierLength} characters.`, path: ['name'] }] };
+    }
     if (!Number.isInteger(input.revision) || (input.revision as number) < 1) return error('schema.revision', 'Sheet schema revision must be a positive integer.');
     if (input.status !== 'draft' && input.status !== 'published') return error('schema.status', 'Invalid sheet schema status.');
     if (!Array.isArray(input.entityTypes) || !input.entityTypes.every((type) => ENTITY_TYPES.has(type as EntityType))) return error('schema.entityTypes', 'Invalid entity type assignment.');
+    if (input.entityTypes.length === 0 || input.entityTypes.length > ENTITY_TYPES.size) {
+        return error('schema.entityTypes.limit', `Sheet schema must target between 1 and ${ENTITY_TYPES.size} entity types.`);
+    }
     if (!DENSITIES.has(input.density as SheetDensity)) return error('schema.density', 'Invalid sheet density.');
     const depthDiagnostic = findDepthLimit(input.root, ['root'], 1);
     if (depthDiagnostic) return { ok: false, diagnostics: [depthDiagnostic] };
@@ -294,25 +360,31 @@ export function normalizeEntitySheetSchema(input: unknown): SheetSchemaResult {
     if (blockCountDiagnostic) return { ok: false, diagnostics: [blockCountDiagnostic] };
     const unknownBlockDiagnostic = findUnknownBlockType(input.root, ['root']);
     if (unknownBlockDiagnostic) return { ok: false, diagnostics: [unknownBlockDiagnostic] };
+    const stringLimitDiagnostic = findStringLimit(input.root, ['root']);
+    if (stringLimitDiagnostic) return { ok: false, diagnostics: [stringLimitDiagnostic] };
     const root = normalizeBlock(input.root);
     if (!root || root.type !== 'container') return error('schema.root', 'Sheet schema root must be a valid container.');
     const blockIdDiagnostic = findDuplicateBlockId(root, ['root'], new Set());
     if (blockIdDiagnostic) return { ok: false, diagnostics: [blockIdDiagnostic] };
     const bindingDiagnostic = findUnsafeBindingPath(root, ['root']);
     if (bindingDiagnostic) return { ok: false, diagnostics: [bindingDiagnostic] };
+    const schema: EntitySheetSchemaV1 = {
+        schemaVersion: 1,
+        id: input.id.trim(),
+        name: input.name.trim(),
+        revision: input.revision as number,
+        status: input.status,
+        entityTypes: input.entityTypes as EntityType[],
+        density: input.density as SheetDensity,
+        root,
+    };
+    if (new TextEncoder().encode(serializeEntitySheetSchema(schema)).byteLength > ENTITY_SHEET_LIMITS.maxBytes) {
+        return error('schema.bytes.limit', `Canonical sheet schema exceeds ${ENTITY_SHEET_LIMITS.maxBytes} bytes.`);
+    }
     return {
         ok: true,
         diagnostics: [],
-        schema: {
-            schemaVersion: 1,
-            id: input.id.trim(),
-            name: input.name.trim(),
-            revision: input.revision as number,
-            status: input.status,
-            entityTypes: input.entityTypes as EntityType[],
-            density: input.density as SheetDensity,
-            root,
-        },
+        schema,
     };
 }
 
