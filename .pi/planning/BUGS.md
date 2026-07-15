@@ -15,10 +15,10 @@
 
 Связано: `BUG-ELECTRON-002`, `BUG-ELECTRON-003`, `FEAT-PLATFORM-ELECTRON-001`.
 
-- **Что проверить:** middle-button pan и открытие entity windows без заметного FPS regression; fallback port при занятом `5173`; packaged app запускает embedded server и освобождает порт после закрытия.
-- **Почему ещё активно:** автоматические проверки пройдены, но производительность и clean-machine lifecycle требуют человеческой проверки.
+- **Что уже подтверждено автоматически:** изолированный `desktop:pack` и `desktop:dist`; полный unpacked artifact с embedded server/locales/preview-world; packaged запуск и открытие временного Preview World; ответы world/entities/assets API; чистый renderer reload без runtime/HTTP errors; graceful exit с остановкой server и освобождением `3001`; fallback dev-port `5173 → 5174`.
+- **Что осталось проверить владельцу:** запуск portable и установка/удаление NSIS на действительно чистой Windows-машине, SmartScreen/shortcut UX, субъективная плавность middle-button pan и открытия entity windows.
 - **Готово, когда:** portable и installer проходят clean-machine smoke; pan ощущается плавным; launcher корректно выбирает свободный порт.
-- **Статус:** `Нужна проверка владельца / clean machine`.
+- **Статус:** автоматический packaged/runtime smoke пройден; `Нужна проверка владельца / clean machine`.
 
 ### QA-MULTIPLAYER-001 — Radmin/Hamachi и большие Yjs payload
 
