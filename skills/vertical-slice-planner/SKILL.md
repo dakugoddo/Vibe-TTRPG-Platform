@@ -7,10 +7,24 @@ license: MIT
 metadata:
   hermes:
     tags: [vibe-ttrpg, project-skill]
+    related_skills: [product-planning-gate, self-critique, test-generator]
 ---
 # 🍰 Vertical Slice Planner & PRD Generator
 
-> Когда применять: при ЛЮБОЙ новой фиче или задаче.
+> Когда применять: после того как `product-planning-gate` оценил идею, получил нужные решения владельца и поставил результат в roadmap.
+
+## 0. Входной gate
+
+Не превращай сырую идею, референс или неоднозначный баг прямо в Mini-PRD. Сначала загрузи `skills/product-planning-gate/SKILL.md` и проверь запись в `.pi/planning/IDEAS.md`, `BUGS.md` или `QUESTIONS.md`.
+
+Этот skill можно начинать, когда:
+
+- пользовательский результат понятен;
+- существенные product/architecture/design развилки решены;
+- выбран самый маленький production-срез;
+- известны критерии готовности и явные non-goals.
+
+Если хотя бы один пункт отсутствует, верни работу в planning gate, а не угадывай.
 
 ---
 

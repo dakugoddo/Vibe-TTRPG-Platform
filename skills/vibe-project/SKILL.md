@@ -216,7 +216,7 @@ cd app && npm run dev -- --host
 - Entity/roles/search: стабильные ID, права видимости, player identity, full-text search polish.
 
 ### 📋 Дальше:
-См. `.pi/DEVELOPMENT_PLAN.md`, `.pi/FEATURE_BACKLOG.md` и `.pi/BUG_BACKLOG.md`.
+См. понятный roadmap `.pi/DEVELOPMENT_PLAN.md` и planning vault `.pi/planning/`.
 
 ---
 
@@ -225,9 +225,12 @@ cd app && npm run dev -- --host
 | Документ | Что внутри |
 |----------|-----------|
 | `AGENTS.md` (корень) | Главный вход для AI-агентов |
-| `.pi/DEVELOPMENT_PLAN.md` | Короткий текущий чеклист и следующий безопасный срез |
-| `.pi/FEATURE_BACKLOG.md` | Очередь новых функций, зависимости и acceptance criteria |
-| `.pi/BUG_BACKLOG.md` | Очередь багов, приоритеты и batch-группы |
+| `.pi/DEVELOPMENT_PLAN.md` | Понятный владельцу roadmap: этапы, текущий срез, критерии готовности |
+| `.pi/planning/README.md` | Правила обработки идей, вопросов, завершения и changelog |
+| `.pi/planning/IDEAS.md` | Идеи и их критическая оценка |
+| `.pi/planning/BUGS.md` | Только активные баги и обязательная QA |
+| `.pi/planning/QUESTIONS.md` | Архитектурные/product/design решения владельца |
+| `.pi/planning/NEXT_RELEASE.md` | Завершённое для следующего GitHub Release |
 | `.pi/workflows/README.md` | Правило живой памяти для длинных задач |
 | `.pi/workflows/current-ui-redesign.md` | Активный handoff по UI redesign/theme/i18n/entity polish |
 | `.pi/docs/code-map.md` | Карта владельцев логики в коде |

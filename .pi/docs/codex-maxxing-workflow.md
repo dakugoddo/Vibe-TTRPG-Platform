@@ -20,7 +20,7 @@
 
 Агент может:
 
-- читать `AGENTS.md`, `.pi/DEVELOPMENT_PLAN.md`, `.pi/FEATURE_BACKLOG.md`, `.pi/BUG_BACKLOG.md` и профильные `.pi/docs/*` перед работой;
+- читать `AGENTS.md`, `.pi/DEVELOPMENT_PLAN.md`, нужный файл из `.pi/planning/*` и профильные `.pi/docs/*` перед работой;
 - обновлять `.pi` после значимых решений, проверок и архитектурных развилок;
 - делать кодовые изменения в проекте;
 - запускать локальные проверки: lint, build, TypeScript, focused tests;
@@ -68,8 +68,10 @@
 - `.pi/ARCHITECTURE.md` - текущие архитектурные правила;
 - `.pi/ARCHITECTURE_ANALYSIS.md` - риски и фундаментальные развилки;
 - `.pi/DEVELOPMENT_PLAN.md` - маршрут разработки;
-- `.pi/FEATURE_BACKLOG.md` - что запланировано, что реализовано и от чего зависит;
-- `.pi/BUG_BACKLOG.md` - известные баги, приоритеты и тематические batch keys;
+- `.pi/planning/IDEAS.md` - идеи и результат критической оценки;
+- `.pi/planning/BUGS.md` - активные баги и обязательная QA;
+- `.pi/planning/QUESTIONS.md` - решения владельца;
+- `.pi/planning/NEXT_RELEASE.md` - завершённые изменения для следующего релиза;
 - `.pi/docs/*` - детальные контракты.
 - `.pi/docs/ponytail-setup.md` - локальная установка Ponytail plugin и правило использования как минималистичного фильтра без отмены проектных guardrails.
 

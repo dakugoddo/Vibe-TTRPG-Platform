@@ -19,7 +19,8 @@ Canonical skills live under root `skills/`:
 | Skill | Use when |
 |---|---|
 | `vibe-project` | first entry for any project task |
-| `vertical-slice-planner` | planning a new feature or handling `продолжай` |
+| `product-planning-gate` | evaluating owner ideas/references/bugs, asking material product questions, updating the planning vault |
+| `vertical-slice-planner` | decomposing an accepted roadmap item or handling `продолжай` |
 | `vibe-ui-architecture` | UI, theme, windows, drawers, settings, assets, audio, notes workspace |
 | `canvas-engine` | canvas, drawing tools, fog, tokens, portals |
 | `knowledge-graph` | entity files, Markdown, wiki links, Obsidian compatibility |

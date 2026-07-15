@@ -40,7 +40,7 @@ Ponytail полезен как дополнительный фильтр про�
 
 Ponytail не отменяет проектные правила:
 
-- `AGENTS.md`, `.pi/DEVELOPMENT_PLAN.md`, `.pi/BUG_BACKLOG.md`, `.pi/FEATURE_BACKLOG.md` и профильные `.pi/docs/*` остаются главнее;
+- `AGENTS.md`, `.pi/DEVELOPMENT_PLAN.md`, `.pi/planning/*` и профильные `.pi/docs/*` остаются главнее;
 - нельзя упрощать права доступа, синхронизацию, сохранение файлов, валидацию на trust boundary, безопасность, accessibility basics и защиту от потери данных;
 - крупные изменения по sync, permissions, `.md` формату, desktop packaging, plugin/mod API и глобальному UX всё равно проходят architecture/product gate;
 - если пользователь явно просит полноценную реализацию, Ponytail может подсказать минимальный первый срез, но не должен спорить с утвержденным продуктовым решением.

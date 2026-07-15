@@ -5,7 +5,8 @@ This is the canonical skill tree for Vibe TTRPG Platform / Eternity Table.
 Agents should load only the skills relevant to the current task:
 
 - `vibe-project` — project entry point.
-- `vertical-slice-planner` — planning, Mini-PRD, `продолжай` workflow.
+- `product-planning-gate` — critical idea/bug/reference intake, owner questions, planning vault routing.
+- `vertical-slice-planner` — Mini-PRD и vertical slices для уже принятой работы, `продолжай` workflow.
 - `vibe-ui-architecture` — UI, theme, windows, drawers, workspace, assets/audio.
 - `canvas-engine` — canvas, drawing, fog, tokens, portals.
 - `knowledge-graph` — entity files, Markdown, wiki links, Obsidian compatibility.

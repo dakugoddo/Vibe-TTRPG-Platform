@@ -167,7 +167,7 @@ Acceptance:
 7. `feat: clarify startup flow`
 8. `feat: add settings reset controls`
 
-Если пункт выявит баг из прошлой AI-правки, дополнительно обновить `.pi/BUG_BACKLOG.md` и релевантный rule/doc по regression learning loop.
+Если пункт выявит баг из прошлой AI-правки, дополнительно обновить `.pi/planning/BUGS.md` и релевантный rule/doc по regression learning loop.
 
 ## QA
 

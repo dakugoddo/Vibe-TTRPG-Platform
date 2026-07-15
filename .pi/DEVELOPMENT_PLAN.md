@@ -1,107 +1,107 @@
-# Eternity Table: текущий план разработки
+# Eternity Table — понятный план разработки
 
-> Обновлено: 2026-07-12
-> Назначение: короткий рабочий план. Этот файл не является журналом всех закрытых срезов.
+> Этот файл отвечает на вопрос: **что мы делаем дальше, зачем и как поймём, что этап закончен**.
+> Идеи, баги, вопросы и завершённые изменения хранятся отдельно в [`planning/`](planning/README.md).
 
-## Правила вектора
+## Как читать план
 
-- `продолжай` означает автономную работу до реального блокера.
-- Core остаётся local-first: `.md` + YAML frontmatter на диске хоста.
-- Крупные изменения проходят product/architecture gate: sync, permissions, `.md` формат, desktop packaging, native windows, plugin/mod API.
-- Баги фиксируются через `.pi/BUG_BACKLOG.md`, фичи через `.pi/FEATURE_BACKLOG.md`.
-- Длинные срезы имеют компактный handoff в `.pi/workflows/`.
-- Git hygiene важна, но mixed dirty tree или runtime-файлы мира не должны блокировать полезную разработку.
+- Выполняется один основной срез за раз.
+- Новая идея сначала проходит критическую оценку в [`planning/IDEAS.md`](planning/IDEAS.md), а не автоматически становится задачей.
+- Большой присланный материал сначала получает отдельный этап полного разбора: что изучить, какие решения получить и как проверить, что ничего важного не пропущено.
+- Вопросы, где нельзя безопасно угадать решение владельца, находятся в [`planning/QUESTIONS.md`](planning/QUESTIONS.md).
+- Непроверенные исправления и ручная QA остаются в [`planning/BUGS.md`](planning/BUGS.md).
+- Полностью завершённое убирается из этого файла и записывается в [`planning/NEXT_RELEASE.md`](planning/NEXT_RELEASE.md).
 
-## Текущее состояние
+## Сейчас
 
-- UI/theme/i18n foundation реализован: semantic theme tokens, visual workspace presets, density registry, RU/EN switch, основные shell/entity/settings/assets/audio поверхности переведены на токены. Settings/Notes shell UI и StyleDemo закрыты дополнительным EN-pass; Electron умеет открывать встроенную папку `locales`. Оставшаяся кириллица в коде в основном относится к data/model compatibility, тестам и шаблонам новых сущностей, а не к стабильному UI chrome.
-- Compact character card foundation реализован по уточнённому контракту: карточка на canvas информационная, без roll/edit/add/delete controls, detailed info показывается только при edit access к entity.
-- Workspace foundation реализован локально: screen-window singleton, canvas pinned window instances, local window layouts, Obsidian-like Notes workspace с vault tree, tab/split editor, source/preview/split modes, entity data, linked context и unified movable Notes shell modules, включая обязательный `Editor`. Первый leaf-open срез для Notes panes реализован: новая сущность открывается отдельным editor leaf рядом с активным, повторное открытие фокусирует существующий leaf. Native multi-window отложен до desktop gate.
-- Electron desktop foundation реализован: shell, preload IPC, native folder dialog, native asset reveal, embedded server path, build artifact metadata, custom app icon, lazy-loaded app shell chunks, player delivery baseline, `desktop:dev`, `desktop:pack`, `desktop:dist`, dev performance overlay.
-- Alpha 0.1 опубликована: чистый `main`, Windows portable/setup artifacts, release checksums, bundled preview world, двуязычные README (`README.md`/`README.ru.md`) и collapsible changelog в публичной документации.
-- Canvas middle-button pan стабилизирован: compositor-first preview, small commit threshold, global listeners. Stage overscan отменён из-за FPS regression; Konva Stage должен оставаться размером viewport.
-- Module/mod gate зафиксирован: новые крупные функции сначала классифицируются как core platform, built-in optional module или future mod/data pack; пустые module toggles без реального mount point не добавлять.
+### Этап 1 — Стабилизация перед следующим публичным релизом
 
-## Ближайший безопасный срез
+**Результат для пользователя:** настольное приложение и основные игровые сценарии подтверждены реальными проверками, а следующий GitHub Release не выдаёт «техническая основа реализована» за «готово пользователю».
 
-1. Post-alpha public main hygiene:
-   - при любом обновлении `main` обновлять обе публичные README-версии (`README.md` и `README.ru.md`), общий статус/описание и collapsible changelog (`<details><summary>...</summary>`);
-   - процедурное правило сохранено как локальный Hermes skill `vibe-main-branch-release-rules`;
-   - публичный `main` должен оставаться app-only: без `test-world/`, `.pi/`, agent files, Graphify output, прототипов, секретов и generated artifacts.
-2. Pre-release usability pack:
-   - идти по `.pi/docs/pre-release-usability-pack.md`;
-   - completed slices: `Asset loading/error/retry foundation`, `Entity quick actions`, `Notes discoverability polish`, `Audio dock states`, `Canvas card readability`, `Startup clarity`, `Settings reset controls`;
-   - automated release QA passed 2026-06-20;
-   - следующий пункт: manual QA после опубликованной alpha, с фиксацией найденных blocker/high bugs.
-3. Electron desktop polish:
-   - Windows signing decision;
-   - clean/public alpha artifacts опубликованы и скачанный portable smoke прошёл; следующий шаг — clean-machine manual QA.
-4. UI polish по фактическим шероховатостям после Electron QA:
-   - manual English smoke по основным экранам;
-   - оставшиеся hardcoded surfaces только если это реальные UI-подписи, а не данные мира/шаблоны;
-   - compact card/entity sheet читаемость;
-   - theme consistency на разных плотностях.
-5. Custom world locales/editor только после отдельного design-doc:
-   - design-doc расширен в `.pi/docs/i18n-custom-locales-foundation.md`;
-   - server list/read/write/rollback endpoints, typed client API, Settings preview/editor, pure merge/flatten utils и client-side preview merge реализованы;
-   - write endpoint создаёт `.bak` и откатывает файл при ошибке; Settings editor пишет только JSON object через ConfirmDialog, умеет rollback из `.bak` и draft import/export;
-   - runtime application supported world overrides (`ru/en`) подключён для host/current room; host публикует supported locale snapshots в Yjs `worldLocales`, player-клиенты применяют их без File API; Settings editor получил key-table поверх JSON draft с фильтрами; unsupported locale files остаются редактируемыми data-pack файлами;
-   - manual QA checklist: `.pi/docs/world-locale-editor-qa.md`;
-   - следующий безопасный срез после QA: точечная полировка editor UX по фактическим проблемам.
-6. Notes workspace polish и native multi-window после Electron gate:
-   - ручная QA shell modules/settings/reset/audio dock, включая перенос `Editor`/`Vault`/`Context` между left/center/right;
-   - текущий архитектурный срез: проверить первый Obsidian-like editor leaf model pass, где новая сущность открывается отдельным leaf, center-drop объединяет leaf в tab group, edge-drop создает split;
-   - polish будущих shell-расширений после owner QA.
-7. Следующее обновление — архитектурный epic `Entity UI / Sheet Builder` (`FEAT-ENTITY-UI-BUILDER-001`):
-   - переработать UI сущности, который отображается в canvas entity windows, из набора hardcoded sheets в data-driven конструктор без немедленного изменения канонического `.md` entity-формата;
-   - разделить **данные сущности**, **описание UI/layout** и **runtime-вычисления**, чтобы одна схема интерфейса могла безопасно переиспользоваться разными типами сущностей и темами;
-   - предусмотреть block registry: базовые display/input/layout blocks, составные секции и специальные функциональные блоки (`HP/resource`, wounds, attributes, inventory, attacks, abilities, rolls, Markdown, children/relations), каждый с typed config, permissions и predictable runtime contract;
-   - дать GM/editor режим модернизации: добавление/удаление/reorder/resize/group blocks, настройка заголовков/плотности/варианта внешнего вида через semantic theme tokens, выбор data binding и preview desktop/player/read-only states;
-   - спроектировать binding/formula graph: ссылки на `properties`, parent/child context bubbling, arithmetic/conditions/clamp/derived values, Roll Engine integration, dependency-cycle detection, cached evaluation и объяснимый breakdown источников;
-   - HP/resource block должен настраивать source/current/max/temp, min/max policy, отображение bar/counter/pips, права изменения, автоматические эффекты/threshold events и формулы, но не исполнять произвольный JavaScript;
-   - предусмотреть schema versioning, draft/publish, undo/redo, validation, safe fallback к built-in sheet, migration/rollback, import/export templates и будущий mod/data-pack registry;
-   - architecture gate создан в `.pi/docs/entity-ui-sheet-builder-architecture.md`: отдельно зафиксированы schema/registry, binding resolver, permissions, storage/sync phases, formula AST, theme contract, fallback, migrations и plugin boundary;
-   - первый implementation slice реализовал V1 normalize/parse/serialize, structured diagnostics, safe bindings и read-only renderer; временный `?sheetBuilderPreview=1` tracer после проверки удалён и не остаётся пользовательской функцией;
-   - owner утвердил рекомендуемые defaults: отдельные JSON schemas, `.vibe/sheets` для будущей Phase 1, type-only assignment сначала, GM/host authoring, валидируемое ручное JSON-редактирование, одна `.bak` на первом этапе и generic object/note как первый production consumer;
-   - validator limits/fallback slice реализован: максимум `16` уровней, `500` блоков и `32` binding-сегмента проверяется до нормализации; `EntitySheetBoundary` принимает unknown schema, показывает structured diagnostics только по internal flag и гарантированно возвращает переданный hardcoded fallback при invalid schema; valid/invalid SSR и valid Notes UI preview прошли;
-   - generic `note` стал первым production consumer: registry/normalizer/renderer поддерживают read-only `markdown`, binding allowlist расширен только точным `description`, а Notes `UI` использует published built-in V1 schema для непустого Markdown через boundary; старый description renderer остаётся invalid-schema fallback, локализованный empty-state сохранён, другие entity types не менялись;
-   - production browser smoke без query-флагов подтвердил schema `built-in-generic-note`, реальный Markdown-текст, отсутствие diagnostics/tracer и отсутствие write-controls; schema/binding/renderer tests, targeted lint и production build прошли;
-   - цельный GM workflow note layout реализован: production Settings даёт JSON import/edit/export, live structured validation и реальный Markdown preview; publish через ConfirmDialog пишет `<world>/.vibe/sheets/note.json` atomic rename-ом, создаёт одну `.bak`, поддерживает rollback и обратимый reset к built-in;
-   - published note schema читается GM/игроками через read-only File API с минимальным LAN runtime DTO; backup/file diagnostics доступны только trusted Host management GET; действуют 256 KiB limit, canonical server normalization, mtime cache, ETag и abortable retry/poll; mutating PUT/reset/rollback и management GET требуют server-issued Host capability, привязанную к opaque identity текущего мира, плюс trusted loopback origin и не полагаются на client-localStorage/Yjs authority; rollback atomically заменяет active из неизменного known-good `.bak`; Notes `UI` выбирает server snapshot или built-in и сохраняет `EntitySheetBoundary` fallback; канонические `.md`/Entity records не менялись;
-   - browser smoke на временной копии `app/preview-world` подтвердил invalid JSON guard, valid preview, первое Apply, вторую revision с `.bak`, rollback, reset к built-in, восстановление custom schema и применение видимого `QA CUSTOM NOTE` к реальной заметке; focused tests, targeted lint и app/server production builds прошли;
-   - следующий срез выбирать только по реальному пользовательскому workflow: визуальные authoring controls для note layout либо второй production entity type; не добавлять отдельно невидимые blocks/formulas/API.
+**Почему сейчас:** много функций прошло автоматические проверки, но ещё ждёт проверки владельцем, на чистой машине или в мультиплеере. Начинать несколько крупных направлений до этого увеличит число неизвестных.
 
-## Активные проверки
+**Что сделаем по порядку:**
 
-- Owner QA: Electron middle-button pan на тестовом мире должен оставаться визуально плавным, без возврата Stage overscan.
-- Owner QA: packaged/downloaded Electron portable уже поднимает embedded server и освобождает порт после закрытия; следующий уровень — clean-machine manual QA и проверка installer flow.
-- Manual QA: asset previews/audio/video через `/api/assets/file?path=...` на host и player origin.
-- Manual QA: Canvas clipboard paste должен работать только после фокуса/последнего клика по canvas: plain text создаёт прямоугольник с текущими стилями rect tool, PNG/JPG/GIF из clipboard загружаются как assets и вставляются на canvas; paste в input/textarea/contenteditable/окне сущности не должен создавать canvas-объекты.
-- Manual QA: pre-release usability pack должен проверяться по `.pi/docs/pre-release-usability-pack.md` после каждого completed slice.
-- Manual QA: pinned entity windows должны разделять права на canvas placement и права на содержимое entity.
-- Manual QA: Notes shell modules должны после reload восстановить нормальные области из legacy storage, переключаться через ribbon/settings, обязательный `Editor` не должен выключаться, все module frames должны перетаскиваться за шапку между left/center/right, left/right edge drop должен ставить окна рядом по горизонтали внутри области, top/bottom edge drop должен возвращать вертикальную стопку, пустые left/center/right drop-области должны оставаться доступными после переноса последнего модуля, editor не должен показывать лишнюю `G1`-шапку над вкладками, shell-сегменты не должны скроллиться вместо самих модулей, reset не должен закрывать вкладки, Audio dock не должен останавливать playback при Canvas/Notes switch.
-- Manual QA: Notes editor leaves должны открываться из Vault/Search/ссылок как отдельные окна внутри `Editor`, повторный клик по уже открытой сущности должен только фокусировать её, drop в центр другого leaf должен объединять сущности во вкладки, drop на края должен создавать row/column split без пустых окон, перетаскивание не должно показывать browser ghost preview или большой full-pane overlay, header split-кнопок быть не должно.
-- Manual QA: Notes embedded Audio должен показывать одну шапку модуля без внутренних повторов `Пульт звука`; Canvas floating Audio должен сохранить нижний player и обычный popup.
+1. **Electron на чистой машине:** portable/installer, встроенный сервер, освобождение порта, запасной dev-порт, плавность перемещения canvas.
+2. **Notes QA одним проходом:** leaves/tabs/splits, shell module drag, reload persistence, empty drop areas, Audio chrome.
+3. **Canvas/media QA:** GIF, fog errors, clipboard, line/curve behavior, asset preview на host/player.
+4. **World workflows:** locale editor/player delivery и published note layout Apply/backup/rollback/reset/reload.
+5. **Multiplayer VPN:** большой мир, sync, cursors, отсутствие server crash.
+6. Подтверждённые исправления переносим из `planning/BUGS.md` в `planning/NEXT_RELEASE.md`; реальные новые проблемы получают собственную запись и приоритет.
 
-## Не трогать без отдельного решения
+**Не входит:** новый крупный UI epic, native multi-window, formula engine, тяжёлый PDF viewer.
 
-- Формат `.md` entity/YAML frontmatter.
-- Ролевую модель и приватность GM/player без полного QA.
-- World-level theme/custom locale storage.
-- Native multi-window/multi-monitor runtime.
-- Runtime-файлы `test-world/*`.
-- Reference prototypes в `.pi/prototypes/*.html`.
+**Готово, когда:** обязательные сценарии из `planning/BUGS.md` либо подтверждены и перенесены в changelog, либо оформлены как конкретные release blockers/known issues.
 
-## Каноничные документы
+---
 
-- `.pi/workflows/current-ui-redesign.md` — живой handoff текущего UI/Electron направления.
-- `.pi/BUG_BACKLOG.md` — только активные/QA-pending баги.
-- `.pi/FEATURE_BACKLOG.md` — только активные/планируемые фичи.
-- `.pi/docs/electron-desktop-migration-plan.md` — desktop architecture gate.
-- `.pi/docs/release-0.1-beta-checklist.md` — чеклист перед beta tag/release.
-- `.pi/docs/ui-redesign-master-plan.md` — решения и анализ по UI.
-- `.pi/docs/compact-character-card-canvas.md` — контракт compact character card.
-- `.pi/docs/entity-ui-sheet-builder-architecture.md` — architecture gate следующего Entity UI / Sheet Builder epic.
-- `.pi/docs/notes-workspace-obsidian-redesign.md` — контракт Obsidian-like режима заметок.
-- `.pi/rules/canvas-best-practices.md` — правила canvas performance и middle-pan.
-- `.pi/docs/code-map.md` — карта владельцев логики.
+## Следующий продуктовый этап — требуется ваше решение
+
+### Этап 2 — Продолжение Entity UI / Sheet Builder
+
+**Результат для пользователя:** Sheet Builder перестанет быть только безопасной JSON-основой и даст следующий законченный пользовательский сценарий.
+
+**Почему нужен ваш выбор:** есть два полезных направления, но одновременная реализация снова раздует epic.
+
+- **Рекомендуемый вариант:** визуальное управление компоновкой заметки — добавлять, удалять и менять порядок основных блоков без ручного JSON.
+- **Альтернатива:** второй полноценный тип сущности — доказать универсальность схемы и реестра, оставив техническое редактирование JSON.
+
+Подробности и последствия: [`QUESTION-001` в planning/QUESTIONS.md](planning/QUESTIONS.md).
+
+**Не входит в ближайший срез:** formula graph, HP/resource automation, произвольный CSS/JavaScript, миграция всех hardcoded sheets.
+
+**Готово, когда:** выбран вариант, записаны его видимый результат и явные ограничения, затем выполнен один полноценный срез с реальным использованием в приложении.
+
+---
+
+## После этого
+
+### Этап 3 — Notes polish по результатам QA
+
+Не абстрактный redesign, а только проблемы, подтверждённые Этапом 1:
+
+- discoverability/search/linked context;
+- ergonomics tabs/splits/modules;
+- Markdown authoring;
+- WYSIWYG только после отдельного решения о зависимости и round-trip.
+
+### Этап 4 — Подготовка beta/release
+
+- закрыть или честно перечислить release blockers/known issues;
+- принять решение об unsigned beta или Windows signing;
+- обновить README RU/EN и GitHub changelog из `planning/NEXT_RELEASE.md`;
+- проверить app-only чистоту публичного `main`;
+- собрать, скачать и проверить release artifacts/checksums.
+
+### Этап 5 — Отложенные крупные направления
+
+Начинаются только после соответствующих gates:
+
+- native multi-window/multi-monitor — после Electron QA;
+- расширенный PDF viewer — после подтверждённого игрового сценария и design-doc;
+- audio permissions/delegation — отдельным workflow после reconnect-safe state;
+- plugin/mod/data-pack architecture — только с реальным consumer;
+- Steam/3D — не текущий roadmap.
+
+---
+
+## Неприкосновенные контракты
+
+Без отдельного решения владельца не менять:
+
+- `.md` + YAML frontmatter и wiki-link compatibility;
+- unified Entity model и `parentId` Matryoshka;
+- Yjs/session sync и GM/player permissions/privacy;
+- world file/storage contract;
+- технологический стек и dependencies;
+- native window/platform architecture;
+- runtime-файлы `test-world/*` и reference prototypes.
+
+## Быстрые ссылки
+
+- [Как работает planning-хранилище](planning/README.md)
+- [Идеи и критическая оценка](planning/IDEAS.md)
+- [Активные баги и QA](planning/BUGS.md)
+- [Вопросы владельцу](planning/QUESTIONS.md)
+- [Changelog следующего релиза](planning/NEXT_RELEASE.md)
+- [Подробные архитектурные документы](docs/)

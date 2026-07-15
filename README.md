@@ -329,8 +329,10 @@ Start here:
 
 - `AGENTS.md`
 - `.pi/DEVELOPMENT_PLAN.md`
-- `.pi/FEATURE_BACKLOG.md`
-- `.pi/BUG_BACKLOG.md`
+- `.pi/planning/IDEAS.md`
+- `.pi/planning/BUGS.md`
+- `.pi/planning/QUESTIONS.md`
+- `.pi/planning/NEXT_RELEASE.md`
 - `.pi/docs/code-map.md`
 - `.pi/docs/notes-workspace-obsidian-redesign.md`
 - `.pi/docs/electron-desktop-migration-plan.md`

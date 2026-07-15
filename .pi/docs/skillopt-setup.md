@@ -41,7 +41,7 @@ Pilot files were created in `C:\tmp\vibe-skillopt`:
 The pilot uses SkillOpt `searchqa` as a tiny smoke benchmark for Vibe agent workflow rules:
 
 - command `продолжай`;
-- bug intake into `.pi/BUG_BACKLOG.md`;
+- bug intake into `.pi/planning/BUGS.md`;
 - Architecture/Product gate for global features;
 - local-first `.md` source of truth.
 

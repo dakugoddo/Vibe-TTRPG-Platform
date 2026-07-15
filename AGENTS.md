@@ -32,13 +32,15 @@ Frontend is `app/` (React 19 + TypeScript + Vite + Tailwind v4 + Zustand + react
 - `.hermes.md` — compact Hermes-specific always-loaded rules.
 - `.pi/AI_SETUP.md` — map of agent systems, Graphify, context-mode, skills, hooks.
 - `skills/*/SKILL.md` — canonical project skills.
-- `.pi/DEVELOPMENT_PLAN.md`, `.pi/FEATURE_BACKLOG.md`, `.pi/BUG_BACKLOG.md` — current plan/backlogs.
+- `.pi/DEVELOPMENT_PLAN.md` — понятный владельцу roadmap.
+- `.pi/planning/{IDEAS,BUGS,QUESTIONS,NEXT_RELEASE}.md` — каноническое planning-хранилище.
 - `.pi/docs/*.md` — detailed contracts and decisions.
 - `.pi/docs/AGENTS.full.md` — archived pre-optimization full AGENTS content.
 
 ## Load only relevant project skills
 Start with `skills/vibe-project/SKILL.md`. Then load by domain:
-- planning/`продолжай`: `skills/vertical-slice-planner/SKILL.md`
+- idea/reference/bug intake и product gate: `skills/product-planning-gate/SKILL.md`
+- принятая фича/`продолжай`: `skills/vertical-slice-planner/SKILL.md`
 - UI: `skills/vibe-ui-architecture/SKILL.md`
 - canvas: `skills/canvas-engine/SKILL.md`
 - entities/Markdown/wiki links: `skills/knowledge-graph/SKILL.md`
