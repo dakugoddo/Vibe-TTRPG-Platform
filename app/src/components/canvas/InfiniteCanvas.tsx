@@ -14,6 +14,7 @@ import { useCanvasSyncStore, PING_DURATION_MS } from '../../store/canvasSyncStor
 import { useUIStore } from '../../store/uiStore';
 import { useNotificationStore } from '../../store/notificationStore';
 import { getAssetUrl, getIsHost, uploadAssetFile, uploadAssetFileToHost, type AssetRecord } from '../../services/fileApi';
+import { getUndoRedoShortcutIntent } from '../../utils/keyboardShortcuts';
 import { canViewEntity } from '../../utils/permissions';
 import { readAssetDragPayload } from '../../utils/assetDrag';
 import { findNearestCanvasAnchor, updateBoundLineEndpoints, type CanvasAnchorPoint } from '../../utils/canvasAnchors';
@@ -3100,20 +3101,16 @@ export function InfiniteCanvas() {
 
       const key = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;
+      const undoRedoIntent = getUndoRedoShortcutIntent(e);
 
-      // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y — undo/redo
-      if (ctrl && key === 'z') {
+      // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y — undo/redo. Uses physical key codes so it works on any keyboard layout.
+      if (undoRedoIntent) {
         e.preventDefault();
-        if (e.shiftKey) {
+        if (undoRedoIntent === 'redo') {
           redo();
         } else {
           undo();
         }
-        return;
-      }
-      if (ctrl && key === 'y') {
-        e.preventDefault();
-        redo();
         return;
       }
 

@@ -6,67 +6,53 @@ import {
   setDevPerformanceOverlayEnabled,
 } from './devPerformanceOverlay';
 
-function installWindowMock() {
-  const store = new Map<string, string>();
-  const events: Array<{ type: string; detail?: unknown }> = [];
-  const previousWindow = (globalThis as typeof globalThis & { window?: unknown }).window;
-  const previousCustomEvent = (globalThis as typeof globalThis & { CustomEvent?: unknown }).CustomEvent;
+class MemoryStorage {
+  private data = new Map<string, string>();
 
-  class MockCustomEvent {
-    type: string;
-    detail?: unknown;
-
-    constructor(type: string, init?: { detail?: unknown }) {
-      this.type = type;
-      this.detail = init?.detail;
-    }
+  getItem(key: string): string | null {
+    return this.data.get(key) ?? null;
   }
 
-  (globalThis as typeof globalThis & { CustomEvent: unknown }).CustomEvent = MockCustomEvent;
-  (globalThis as typeof globalThis & { window: unknown }).window = {
-    localStorage: {
-      getItem: (key: string) => store.get(key) ?? null,
-      setItem: (key: string, value: string) => store.set(key, value),
-    },
-    dispatchEvent: (event: { type: string; detail?: unknown }) => {
-      events.push({ type: event.type, detail: event.detail });
+  setItem(key: string, value: string): void {
+    this.data.set(key, value);
+  }
+
+  removeItem(key: string): void {
+    this.data.delete(key);
+  }
+}
+
+const listeners: Array<(event: CustomEvent<boolean>) => void> = [];
+
+Object.defineProperty(globalThis, 'window', {
+  value: {
+    localStorage: new MemoryStorage(),
+    dispatchEvent(event: CustomEvent<boolean>) {
+      listeners.forEach((listener) => listener(event));
       return true;
     },
-  };
-
-  return {
-    store,
-    events,
-    restore: () => {
-      if (previousWindow === undefined) {
-        delete (globalThis as typeof globalThis & { window?: unknown }).window;
-      } else {
-        (globalThis as typeof globalThis & { window: unknown }).window = previousWindow;
-      }
-      if (previousCustomEvent === undefined) {
-        delete (globalThis as typeof globalThis & { CustomEvent?: unknown }).CustomEvent;
-      } else {
-        (globalThis as typeof globalThis & { CustomEvent: unknown }).CustomEvent = previousCustomEvent;
-      }
+    addEventListener(type: string, listener: (event: CustomEvent<boolean>) => void) {
+      if (type === DEV_PERFORMANCE_OVERLAY_EVENT) listeners.push(listener);
     },
-  };
-}
+  },
+  configurable: true,
+});
 
-const mock = installWindowMock();
-try {
-  assert.equal(getDevPerformanceOverlayEnabled(), false, 'overlay should be opt-in by default');
+assert.equal(getDevPerformanceOverlayEnabled(), false, 'Dev performance overlay is hidden by default');
 
-  setDevPerformanceOverlayEnabled(true);
-  assert.equal(mock.store.get(DEV_PERFORMANCE_OVERLAY_STORAGE_KEY), 'true');
-  assert.equal(getDevPerformanceOverlayEnabled(), true);
-  assert.deepEqual(mock.events.at(-1), { type: DEV_PERFORMANCE_OVERLAY_EVENT, detail: true });
+let lastDetail: boolean | null = null;
+window.addEventListener(DEV_PERFORMANCE_OVERLAY_EVENT, (event) => {
+  lastDetail = event.detail;
+});
 
-  setDevPerformanceOverlayEnabled(false);
-  assert.equal(mock.store.get(DEV_PERFORMANCE_OVERLAY_STORAGE_KEY), 'false');
-  assert.equal(getDevPerformanceOverlayEnabled(), false);
-  assert.deepEqual(mock.events.at(-1), { type: DEV_PERFORMANCE_OVERLAY_EVENT, detail: false });
+setDevPerformanceOverlayEnabled(true);
+assert.equal(window.localStorage.getItem(DEV_PERFORMANCE_OVERLAY_STORAGE_KEY), 'true');
+assert.equal(lastDetail, true);
+assert.equal(getDevPerformanceOverlayEnabled(), true, 'Explicit true enables the overlay');
 
-  console.log('ok - dev performance overlay is opt-in and dispatches changes');
-} finally {
-  mock.restore();
-}
+setDevPerformanceOverlayEnabled(false);
+assert.equal(window.localStorage.getItem(DEV_PERFORMANCE_OVERLAY_STORAGE_KEY), 'false');
+assert.equal(lastDetail, false);
+assert.equal(getDevPerformanceOverlayEnabled(), false, 'Explicit false disables the overlay');
+
+console.log('dev performance overlay tests passed');

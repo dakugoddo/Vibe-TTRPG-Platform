@@ -176,40 +176,9 @@ export function openNotesWorkspaceTabInNewLeaf(
     direction: NotesWorkspaceSplitNode['direction'] = 'row',
     placement: NotesWorkspaceSplitPlacement = 'after'
 ): NotesWorkspaceLayout {
-    const view = input.view ?? 'source';
-    const existingLayout = focusExistingTab(layout, input, view);
-    if (existingLayout) return existingLayout;
-
-    const activeGroup = findTabsNode(layout.root, layout.activeGroupId) ?? findFirstTabsNode(layout.root);
-    if (activeGroup.tabs.length === 0) {
-        return openNotesWorkspaceTab(layout, input, { reuseExisting: false });
-    }
-
-    const tab = createTab(input);
-    const newGroup: NotesWorkspaceTabsNode = {
-        type: 'tabs',
-        id: createLayoutId('group'),
-        activeTabId: tab.id,
-        tabs: [tab],
-    };
-
-    return {
-        ...layout,
-        activeGroupId: newGroup.id,
-        root: mapNode(layout.root, (node) => {
-            if (node.type !== 'tabs' || node.id !== activeGroup.id) return node;
-
-            return {
-                type: 'split',
-                id: createLayoutId('split'),
-                direction,
-                ratio: 0.5,
-                children: placement === 'before'
-                    ? [newGroup, node]
-                    : [node, newGroup],
-            };
-        }),
-    };
+    void direction;
+    void placement;
+    return openNotesWorkspaceTab(layout, input);
 }
 
 function findFirstTabsNode(node: NotesWorkspaceNode): NotesWorkspaceTabsNode {
@@ -497,6 +466,42 @@ function insertTabBefore(
         tab,
         ...tabs.slice(targetIndex),
     ];
+}
+
+export function mergeNotesWorkspaceGroups(
+    layout: NotesWorkspaceLayout,
+    sourceGroupId: string,
+    targetGroupId: string
+): NotesWorkspaceLayout {
+    if (sourceGroupId === targetGroupId) return layout;
+
+    const sourceGroup = findTabsNode(layout.root, sourceGroupId);
+    const targetGroup = findTabsNode(layout.root, targetGroupId);
+    if (!sourceGroup || !targetGroup) return layout;
+
+    const mergedActiveTabId = sourceGroup.activeTabId
+        ?? sourceGroup.tabs[sourceGroup.tabs.length - 1]?.id
+        ?? targetGroup.activeTabId;
+    const nextLayout = {
+        ...layout,
+        activeGroupId: targetGroupId,
+        root: mapNode(layout.root, (node) => {
+            if (node.type !== 'tabs') return node;
+            if (node.id === sourceGroupId) {
+                return { ...node, tabs: [], activeTabId: null };
+            }
+            if (node.id === targetGroupId) {
+                return {
+                    ...node,
+                    tabs: [...node.tabs, ...sourceGroup.tabs],
+                    activeTabId: mergedActiveTabId,
+                };
+            }
+            return node;
+        }),
+    };
+
+    return removeEmptyTabsGroup(nextLayout, sourceGroupId, targetGroupId);
 }
 
 export function moveNotesWorkspaceTab(

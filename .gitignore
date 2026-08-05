@@ -1,47 +1,43 @@
 # Dependencies
 node_modules/
-app/node_modules/
-server/node_modules/
 
-# Build outputs
-app/dist/
-app/dist-server/
-electron-release/
-release/
+# Build output
 dist/
 build/
+.tmp/
+electron-release/
+app/release/
+graphify-out/
 
-# Local app/runtime state
+# Environment and local secrets
 .env
 .env.*
 !.env.example
+
+# Local Codex desktop/runtime metadata
+.codex/*
+!.codex/hooks.json
+!.codex/environments/
+!.codex/environments/environment.toml
+!.codex/skills/
+!.codex/skills/graphify/
+!.codex/skills/graphify/**
+.continue/
+.pi/settings.json
+.pi/skills/frontend-design/
+
+# Windows reserved-name artifacts that can appear after shell redirection
+nul
+*/nul
+
+# Logs
 *.log
-*.tmp
-.cache/
-.DS_Store
-Thumbs.db
-
-# Local worlds and user data (not part of repository)
-test-world/
-world.yaml
-general/
-users/
-gm/
-players/
-assets/
-.index.json
-
-# Agent/workflow/private planning files (keep local or on dev-only branches)
-.pi/
-.agents/
-.opencode/
-.codex/
-.hermes.md
-AGENTS.md
-skills/
-skills-lock.json
-graphify-out/
-opencode.jsonc
-opencode.example.jsonc
-scripts/graphify-*.sh
-scripts/validate-agent-config.py
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+# Agent local/generated artifacts
+.context-mode/
+.ctx/
+context-mode.db
+opencode.local.jsonc
+!opencode.example.jsonc

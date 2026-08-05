@@ -2,12 +2,13 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { BarChart3, Dices, Lock, Package } from 'lucide-react';
+import { BarChart3, Dices, FileText, FileWarning, Lock, Package } from 'lucide-react';
 import { EntityLink } from './EntityLink';
 import { yjsStore } from '../../store/yjsStore';
 import { rollEngine } from '../../services/rollEngine';
-import { getEntitiesSnapshot, useEntitiesByParent, useEntity } from '../../hooks/useEntities';
+import { getEntitiesSnapshot, useEntities, useEntitiesByParent, useEntity } from '../../hooks/useEntities';
 import { glass } from '../../utils/theme';
+import { resolveMarkdownEntityEmbed, transformMarkdownEntityEmbeds } from '../../utils/markdownEntityEmbeds';
 import { createEntityRollVariableResolver } from '../../utils/rollVariables';
 import type { Entity } from '../../types';
 
@@ -277,13 +278,57 @@ function HiddenGmBlock() {
     );
 }
 
+function MarkdownEntityEmbedCard({
+    target,
+    label,
+    entities,
+}: {
+    target: string;
+    label?: string;
+    entities: readonly Entity[];
+}) {
+    const { t } = useTranslation();
+    const targetEntity = resolveMarkdownEntityEmbed(target, entities);
+
+    if (!targetEntity) {
+        return (
+            <span className="my-3 flex items-center gap-2 rounded-[var(--vibe-radius-sm)] border border-dashed border-[color-mix(in_srgb,var(--vibe-danger)_34%,transparent)] bg-[color-mix(in_srgb,var(--vibe-danger)_9%,var(--vibe-surface-input))] px-3 py-2 text-xs text-[var(--vibe-danger)]">
+                <FileWarning size={14} className="shrink-0" />
+                <span className="min-w-0 truncate">{t('markdownRenderer.entityEmbed.missing', { target })}</span>
+            </span>
+        );
+    }
+
+    const description = targetEntity.description?.trim();
+    return (
+        <span className="my-3 block overflow-hidden rounded-[var(--vibe-radius-md)] border border-[var(--vibe-border-subtle)] bg-[color-mix(in_srgb,var(--vibe-surface-block)_92%,transparent)] shadow-[var(--vibe-shadow-block)]">
+            <span className="flex items-center gap-2 border-b border-[var(--vibe-border-subtle)] bg-[var(--vibe-surface-header)] px-3 py-2">
+                <FileText size={14} className="shrink-0 text-[var(--vibe-accent)]" />
+                <span className="min-w-0 flex-1">
+                    <span className="block text-[9px] font-bold uppercase tracking-widest text-[var(--vibe-text-faint)]">
+                        {t('markdownRenderer.entityEmbed.label')}
+                    </span>
+                    <EntityLink entityId={targetEntity.id} underline={false} className="block max-w-full truncate text-sm font-black text-[var(--vibe-text-primary)] hover:text-[var(--vibe-accent)]">
+                        {label || targetEntity.name}
+                    </EntityLink>
+                </span>
+                <span className="shrink-0 font-mono text-[9px] uppercase text-[var(--vibe-text-faint)]">{targetEntity.type}</span>
+            </span>
+            <span className="block px-3 py-2 text-xs leading-relaxed text-[var(--vibe-text-muted)]">
+                {description || t('markdownRenderer.entityEmbed.empty')}
+            </span>
+        </span>
+    );
+}
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, entityId, allowCustomBlocks = true }) => {
     const { t } = useTranslation();
     const entity = useEntity(entityId ?? '');
+    const entities = useEntities();
     const childrenEntities = useEntitiesByParent(entityId ?? null);
     const isGm = yjsStore.localRole === 'gm';
 
-    const processedContent = useMemo(() => content
+    const processedContent = useMemo(() => transformMarkdownEntityEmbeds(content)
         .replace(/!roll\s+([^\n]+)/g, (_match, expression: string) => {
             const trimmedExpression = expression.trim();
             return `[🎲 ${trimmedExpression}](#roll:${encodeURIComponent(trimmedExpression)})`;
@@ -330,6 +375,16 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, ent
                     {children}
                 </a>
             );
+        },
+        img: ({ src, alt }) => {
+            if (src?.startsWith('#entity-embed:')) {
+                const raw = src.replace('#entity-embed:', '');
+                const [targetPart, labelPart] = raw.split('?label=');
+                const target = decodeURIComponent(targetPart);
+                const label = labelPart ? decodeURIComponent(labelPart) : undefined;
+                return <MarkdownEntityEmbedCard target={target} label={label || alt || undefined} entities={entities} />;
+            }
+            return <img src={src} alt={alt ?? ''} className="max-w-full rounded-[var(--vibe-radius-sm)]" />;
         },
         h1: ({ children }) => <h1 className="mb-4 mt-6 border-b border-[var(--vibe-border-subtle)] pb-2 text-xl font-bold text-[var(--vibe-text-primary)]">{children}</h1>,
         h2: ({ children }) => <h2 className="mb-3 mt-5 text-lg font-bold text-[var(--vibe-text-primary)]">{children}</h2>,
@@ -384,7 +439,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, ent
         th: ({ children }) => <th className="p-2 font-semibold text-xs uppercase tracking-wider">{children}</th>,
         td: ({ children }) => <td className="border-b border-[var(--vibe-border-subtle)] p-2 text-[var(--vibe-text-muted)]">{children}</td>,
         hr: () => <hr className="my-6 border-[var(--vibe-border-subtle)]" />,
-    }), [allowCustomBlocks, childrenEntities, entity, entityId, isGm, t]);
+    }), [allowCustomBlocks, childrenEntities, entities, entity, entityId, isGm, t]);
 
     return (
         <div className="markdown-body text-sm leading-relaxed text-[var(--vibe-text-muted)]">

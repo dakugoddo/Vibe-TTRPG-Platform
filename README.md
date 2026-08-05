@@ -8,29 +8,25 @@ Eternity Table combines an infinite canvas, an Obsidian-style Markdown knowledge
 
 ## Status
 
-Version: `0.1.0 alpha`
+Version: `0.2.0 beta`
 
-The first public alpha is available as a Windows x64 prerelease. It is intended for early testing, local campaign preparation, and feedback, not for production-critical campaigns yet. The core architecture is in place; UI, permissions, packaging, and multiplayer QA are still being hardened.
-
-Release page:
-
-- [v0.1.0-alpha](https://github.com/dakugoddo/Vibe-TTRPG-Platform/releases/tag/v0.1.0-alpha)
+This beta is usable for local testing and early campaign preparation, but it is not a polished public release yet. The core architecture is in place; UI, permissions, packaging, and multiplayer QA are still being hardened.
 
 <details>
 <summary>Changelog</summary>
 
-### v0.1.0-alpha
+### v0.2.0
 
-- Published the first public Windows x64 alpha prerelease.
-- Cleaned the public `main` branch so it contains only application code, release scripts, README files, and bundled release data.
-- Added a bundled preview world under `app/preview-world/` for demo and onboarding purposes.
-- Added a desktop **Open preview world** flow that opens a temporary copy of the bundled preview world, so preview edits are discarded when the preview session is recreated.
-- Added Windows portable and installer artifacts through Electron Builder.
-- Added SHA256 checksums for release artifacts.
-- Removed local-only content from the public branch scope: personal test worlds, `.pi/`, agent instructions, Graphify output, private prototypes, and accidentally tracked dependencies.
-- Made the development performance overlay opt-in instead of visible by default.
-- Refreshed dependency lockfiles for the alpha audit pass.
-- Added bilingual public documentation: English `README.md` and Russian `README.ru.md`.
+- Obsidian-style Notes workspace: editor tabs, split panes, draggable shell modules, layout persistence and reset.
+- Nested notes rendered as embedded blocks; Markdown embeds (`![[...]]`) and smarter wiki-link autocomplete.
+- Customizable note sheet layout (publish, apply, rollback, reset) with player-safe delivery.
+- Full English/Russian interface localization and a world locale editor so a GM can override strings inside a world.
+- Clipboard paste on canvas (text → rectangle, images → assets); smoother curved lines and Excalidraw-style interaction.
+- Resumable chunked uploads for files over 20 MB and a native PDF preview module.
+- Universal theme system (semantic tokens) across shell, entity windows and cards.
+- Compact character card on canvas with tabs and quick rolls; ability sheet.
+- Player role profiles and finer GM/player permission gating for entity actions.
+- Desktop: custom app icon, lazy-loaded surfaces, stable production build.
 
 </details>
 
@@ -50,7 +46,7 @@ The project is a hybrid of:
 - Obsidian style Markdown knowledge base
 - FoundryVTT style RPG entities, sheets, assets, and session tools
 
-## Features In 0.1 Alpha
+## Features In 0.1 Beta
 
 ### Infinite Canvas
 
@@ -138,25 +134,11 @@ Entities can contain other entities. A character can contain inventory objects, 
 - Portable and installer build configuration through electron-builder.
 - Custom desktop icon assets wired into Electron and Windows packaging.
 - Lazy-loaded app surfaces to keep the production app shell below the Vite chunk warning threshold.
-- Development performance overlay that is opt-in.
+- Dev performance overlay foundation.
 
 ## Quick Start
 
-### Download Alpha Build
-
-Download the Windows x64 portable build or installer from:
-
-- [GitHub Releases: v0.1.0-alpha](https://github.com/dakugoddo/Vibe-TTRPG-Platform/releases/tag/v0.1.0-alpha)
-
-Available artifacts:
-
-- `Eternity-Table-0.1.0-portable-x64.exe`
-- `Eternity-Table-0.1.0-setup-x64.exe`
-- `SHA256SUMS.txt`
-
-Windows builds are currently unsigned, so SmartScreen warnings are expected.
-
-### Requirements For Development
+### Requirements
 
 - Windows is the primary tested environment.
 - Node.js 24+ is currently used in development.
@@ -208,8 +190,8 @@ electron-release/
 
 Expected names:
 
-- `Eternity-Table-0.1.0-portable-x64.exe`
-- `Eternity-Table-0.1.0-setup-x64.exe`
+- `Eternity-Table-0.2.0-portable-x64.exe`
+- `Eternity-Table-0.2.0-setup-x64.exe`
 
 To start an unpacked build:
 
@@ -263,7 +245,6 @@ cd app
 ```text
 app/
   electron/          Electron main/preload runtime
-  preview-world/     Bundled demo world template copied to a temporary session
   scripts/           Desktop build/dev helpers
   src/
     components/
@@ -285,21 +266,16 @@ server/
     assetManager.ts  Asset index and safe paths
     fileWatcher.ts   External file watch
     playerProfiles.ts
+
+.pi/
+  docs/              Architecture, design, QA, and handoff docs
+  rules/             Project rules for agents
+  skills/            Local project skills
+  workflows/         Active long-task handoffs
+
+test-world/
+  Example development world data
 ```
-
-The public/release branch intentionally contains only application code, build scripts, README files, and the bundled preview world. Personal test worlds, agent instructions, prototypes, Graphify output, and private planning files are local-only or development-branch-only data.
-
-## Bundled Preview World
-
-The Electron app includes a small demonstration world under:
-
-```text
-app/preview-world/
-```
-
-In desktop mode the login screen shows **Open preview world** in the host/world menu. Opening it copies the bundled template into a temporary folder and opens that copy. This means users can freely edit, draw, create entities, and test tools, but those changes are intentionally discarded the next time the preview is opened.
-
-The preview world is release data. Personal development worlds such as `test-world/` are not release data and must stay out of the public branch.
 
 ## World Data Model
 
@@ -358,7 +334,7 @@ app/src/utils/theme.ts
 
 Themes are intended to become full visual workspaces, not only light/dark color palettes.
 
-## Alpha Limitations
+## Beta Limitations
 
 - Some UI surfaces are still being polished.
 - Full native multi-window and multi-monitor workflows are planned after the Electron foundation is stable.
@@ -367,20 +343,19 @@ Themes are intended to become full visual workspaces, not only light/dark color 
 - Windows builds are unsigned; SmartScreen warnings are expected until a signing decision is made.
 - Public release packaging should be smoke-tested on a clean machine before distribution.
 
-## Repository Hygiene
-
-The public branch should stay product-focused. Do not commit:
-
-- personal/test world folders (`test-world/`, root `world.yaml`, root `general/`, `assets/`, `users/`, `gm/`, `players/`);
-- agent instructions, skills, Graphify output, or private planning folders (`.pi/`, `.agents/`, `.opencode/`, `.codex/`, `.hermes.md`, `AGENTS.md`, `skills/`, `graphify-out/`);
-- local credentials (`.env`, API keys, tokens);
-- generated build artifacts (`app/dist/`, `app/dist-server/`, `electron-release/`).
-
-Keep that material locally or in development-only branches. The bundled preview world is the only world data intended to ship with the application.
-
 ## Documentation For Contributors
 
-This repository README is the public entry point. Internal planning/agent documentation is intentionally excluded from the public release branch; keep it in local tooling or dedicated development branches.
+Start here:
+
+- `AGENTS.md`
+- `.pi/DEVELOPMENT_PLAN.md`
+- `.pi/planning/IDEAS.md`
+- `.pi/planning/BUGS.md`
+- `.pi/planning/QUESTIONS.md`
+- `.pi/planning/NEXT_RELEASE.md`
+- `.pi/docs/code-map.md`
+- `.pi/docs/notes-workspace-obsidian-redesign.md`
+- `.pi/docs/electron-desktop-migration-plan.md`
 
 ## License
 

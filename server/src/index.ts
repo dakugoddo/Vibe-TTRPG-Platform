@@ -8,8 +8,9 @@
  * Players connect via Yjs/WebRTC and never touch this server directly.
  */
 
-import express from 'express';
+import express, { type Request } from 'express';
 import cors from 'cors';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs';
 import { createServer } from 'node:http';
@@ -25,6 +26,8 @@ import { listAssetRecords, resolveAssetPath } from './assetManager.js';
 import { buildExplorerRevealArgs } from './explorer.js';
 import { claimPlayerProfile, listPlayerProfiles, updatePlayerProfileRole } from './playerProfiles.js';
 import { listWorldLocaleFiles, readWorldLocaleFile, rollbackWorldLocaleFile, writeWorldLocaleFile } from './worldLocaleManager.js';
+import { readWorldSheetFile, resetWorldSheetFile, rollbackWorldSheetFile, writeWorldSheetFile } from './worldSheetManager.js';
+import { isTrustedWorldSheetCapabilityRequest, isTrustedWorldSheetMutationRequest } from './worldSheetRequestSecurity.js';
 import {
     listEntities,
     readEntity,
@@ -44,10 +47,48 @@ const app = express();
 const server = createServer(app);
 let isServerStarted = false;
 let isServerStopping = false;
+const worldSheetHostCapability = randomBytes(32).toString('base64url');
+
+function worldSheetRequestIdentity(req: Request) {
+    return {
+        remoteAddress: req.socket.remoteAddress,
+        origin: req.get('origin'),
+        userAgent: req.get('user-agent'),
+    };
+}
+
+function timingSafeTextEqual(supplied: string | undefined, expected: string): boolean {
+    if (!supplied) return false;
+    const expectedBuffer = Buffer.from(expected);
+    const suppliedBuffer = Buffer.from(supplied);
+    return suppliedBuffer.length === expectedBuffer.length && timingSafeEqual(suppliedBuffer, expectedBuffer);
+}
+
+function getWorldSheetWorldIdentity(): string | null {
+    const worldPath = getCurrentWorldPath();
+    return worldPath ? createHash('sha256').update(worldPath).digest('base64url') : null;
+}
+
+function hasWorldSheetHostCapability(req: Request): boolean {
+    return timingSafeTextEqual(req.get('x-vibe-host-capability'), worldSheetHostCapability);
+}
+
+function hasExpectedWorldSheetWorld(req: Request): boolean {
+    const identity = getWorldSheetWorldIdentity();
+    return identity !== null && timingSafeTextEqual(req.get('x-vibe-world-identity'), identity);
+}
+
+function isAuthorizedWorldSheetRequest(req: Request): boolean {
+    return isTrustedWorldSheetMutationRequest(worldSheetRequestIdentity(req))
+        && hasWorldSheetHostCapability(req)
+        && hasExpectedWorldSheetWorld(req);
+}
+
 
 // ─── Middleware ───
 
 app.use(cors());
+app.use('/api/world/sheets', express.json({ limit: '300kb' }));
 app.use(express.json({ limit: '10mb' }));
 
 // Access Logging Middleware
@@ -180,6 +221,111 @@ app.post('/api/world/locales/:locale/rollback', (req, res) => {
         }
 
         res.json(rollbackWorldLocaleFile(worldPath, req.params.locale));
+    } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+});
+
+app.get('/api/world/sheets/capability', (req, res) => {
+    if (!isTrustedWorldSheetCapabilityRequest(worldSheetRequestIdentity(req))) {
+        res.status(403).json({ error: 'Host capability is restricted to the local desktop application.' });
+        return;
+    }
+    const worldIdentity = getWorldSheetWorldIdentity();
+    if (!worldIdentity) {
+        res.status(409).json({ error: 'No world open' });
+        return;
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ capability: worldSheetHostCapability, worldIdentity });
+});
+
+app.get('/api/world/sheets/:sheetId', (req, res) => {
+    try {
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        const management = req.query.management === '1';
+        if (management && !isAuthorizedWorldSheetRequest(req)) {
+            res.status(403).json({ error: 'Sheet management metadata is restricted to the local Host.' });
+            return;
+        }
+        const result = readWorldSheetFile(worldPath, req.params.sheetId);
+        const response = management ? result : {
+            sheetId: result.sheetId,
+            exists: result.exists,
+            schema: result.schema,
+            diagnostics: result.diagnostics.length > 0
+                ? [{ level: 'error' as const, message: 'Published sheet is unavailable.' }]
+                : [],
+            hasBackup: false,
+        };
+        const representation = JSON.stringify(response);
+        const etag = `W/\"${createHash('sha256').update(representation).digest('hex').slice(0, 24)}\"`;
+        res.setHeader('Cache-Control', 'private, no-cache');
+        res.setHeader('ETag', etag);
+        if (req.get('if-none-match') === etag) {
+            res.status(304).end();
+            return;
+        }
+        res.type('json').send(representation);
+    } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+});
+
+app.put('/api/world/sheets/:sheetId', (req, res) => {
+    try {
+        if (!isAuthorizedWorldSheetRequest(req)) {
+            res.status(403).json({ error: 'Sheet mutations are restricted to the local Host.' });
+            return;
+        }
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        if (!Object.prototype.hasOwnProperty.call(req.body ?? {}, 'schema')) {
+            res.status(400).json({ error: 'schema is required' });
+            return;
+        }
+        res.json(writeWorldSheetFile(worldPath, req.params.sheetId, req.body.schema));
+    } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+});
+
+app.post('/api/world/sheets/:sheetId/rollback', (req, res) => {
+    try {
+        if (!isAuthorizedWorldSheetRequest(req)) {
+            res.status(403).json({ error: 'Sheet mutations are restricted to the local Host.' });
+            return;
+        }
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        res.json(rollbackWorldSheetFile(worldPath, req.params.sheetId));
+    } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+});
+
+app.delete('/api/world/sheets/:sheetId', (req, res) => {
+    try {
+        if (!isAuthorizedWorldSheetRequest(req)) {
+            res.status(403).json({ error: 'Sheet mutations are restricted to the local Host.' });
+            return;
+        }
+        const worldPath = getCurrentWorldPath();
+        if (!worldPath) {
+            res.status(400).json({ error: 'No world open' });
+            return;
+        }
+        res.json(resetWorldSheetFile(worldPath, req.params.sheetId));
     } catch (err) {
         res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
     }

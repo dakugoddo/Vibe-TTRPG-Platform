@@ -961,12 +961,12 @@ export function writeEntity(db: DatabaseType, entity: Entity, playerName?: strin
     }
     const existingFile = findEntityFile(dbRoot, entity.id);
 
-    // Determine target directory
+    // Determine target directory from the current entity shape.
+    // Important: existing files may move when parentId changes. parentId is derived
+    // from the Matryoshka file path on read, so keeping the old directory would
+    // silently discard a UI move after reload.
     let targetDir: string;
-    if (existingFile) {
-        targetDir = path.dirname(existingFile);
-    } else if (entity.parentId) {
-        // Matryoshka: entity goes inside parent's folder
+    if (entity.parentId) {
         const parentFile = findEntityFile(dbRoot, entity.parentId);
         if (parentFile) {
             const parentFolderName = sanitizeFilename(filenameToEntityName(path.basename(parentFile)));
@@ -974,20 +974,36 @@ export function writeEntity(db: DatabaseType, entity: Entity, playerName?: strin
             ensureChildFolder(parentFolder);
             targetDir = parentFolder;
         } else {
-            // Parent not found, fall back to type folder
             targetDir = path.join(dbRoot, entityTypeToFolder(entity.type));
         }
     } else if (isUserDb) {
-        // User/GM DB: flat structure
         targetDir = dbRoot;
     } else {
-        // General DB: entities go to type folders
         targetDir = path.join(dbRoot, entityTypeToFolder(entity.type));
     }
 
     fs.mkdirSync(targetDir, { recursive: true });
 
-    const filePath = existingFile ?? getAvailableEntityFilePath(targetDir, entity.name);
+    const preferredFilePath = existingFile
+        ? path.join(targetDir, path.basename(existingFile))
+        : getAvailableEntityFilePath(targetDir, entity.name);
+    const filePath = existingFile && path.resolve(existingFile) !== path.resolve(preferredFilePath) && fs.existsSync(preferredFilePath)
+        ? getAvailableEntityFilePath(targetDir, filenameToEntityName(path.basename(existingFile)))
+        : preferredFilePath;
+
+    if (existingFile && path.resolve(existingFile) !== path.resolve(filePath)) {
+        const oldChildFolder = path.join(path.dirname(existingFile), sanitizeFilename(filenameToEntityName(path.basename(existingFile))));
+        const newChildFolder = path.join(path.dirname(filePath), sanitizeFilename(filenameToEntityName(path.basename(filePath))));
+        markAsOurWrite(existingFile);
+        markAsOurWrite(filePath);
+        fs.renameSync(existingFile, filePath);
+        if (fs.existsSync(oldChildFolder) && !fs.existsSync(newChildFolder)) {
+            markAsOurWrite(oldChildFolder);
+            markAsOurWrite(newChildFolder);
+            fs.renameSync(oldChildFolder, newChildFolder);
+        }
+        cleanupEmptyFolder(path.dirname(existingFile));
+    }
 
     const options = isUserDb ? { includeUid: true } : {};
     const content = serializeEntity(entity, options);

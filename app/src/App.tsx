@@ -8,7 +8,7 @@ import { useCanvasDrawStore } from './store/canvasDrawStore';
 import { useNotesWorkspaceStore } from './store/notesWorkspaceStore';
 import { useWorkspaceModeStore } from './store/workspaceModeStore';
 import { stopSync, forceFlush, setPlayerName } from './services/fileSyncService';
-import { importMarkdown, getIsHost as checkHost, readWorldLocaleFile } from './services/fileApi';
+import { importMarkdown, getIsHost as checkHost, readWorldLocaleFile, readPublishedWorldSheetFile } from './services/fileApi';
 import { loadWindowLayout, clearWindowLayout } from './store/windowStore';
 import { DragDropPopover, type DragDropPromptData } from './components/ui/DragDropPopover';
 import { useAppModuleEnabled } from './hooks/useAppModuleEnablement';
@@ -28,6 +28,7 @@ import { NOTES_AUDIO_DOCK_HOST_ID } from './utils/notesWorkspaceConstants';
 import { glass } from './utils/theme';
 import { SUPPORTED_LOCALES, normalizeLocale, type LocaleMessageTree } from './utils/localization';
 import { applyWorldLocaleOverrides, resetWorldLocaleOverrides } from './utils/worldLocaleRuntime';
+import { clearWorldSheetSnapshot, getWorldSheetRequestGeneration, invalidateWorldSheetRequests, setWorldSheetSnapshot } from './utils/worldSheetRuntime';
 import type { UserRole, WorldLocaleSnapshot } from './types';
 
 const InfiniteCanvas = lazy(() => import('./components/canvas/InfiniteCanvas').then((module) => ({ default: module.InfiniteCanvas })));
@@ -134,6 +135,46 @@ function App() {
       cancelled = true;
     };
   }, [i18n, i18n.language, inRoom]);
+
+  useEffect(() => {
+    invalidateWorldSheetRequests();
+    clearWorldSheetSnapshot(roomName, 'note');
+    if (!inRoom) return;
+    let cancelled = false;
+    let activeController: AbortController | null = null;
+    const refreshNoteSheet = async () => {
+      if (activeController) return;
+      const controller = new AbortController();
+      activeController = controller;
+      const timeoutId = window.setTimeout(() => controller.abort(), 4_000);
+      const requestGeneration = getWorldSheetRequestGeneration();
+      try {
+        const result = await readPublishedWorldSheetFile('note', controller.signal);
+        if (cancelled || requestGeneration !== getWorldSheetRequestGeneration()) return;
+        setWorldSheetSnapshot(roomName, {
+          sheetId: result.sheetId,
+          exists: result.exists,
+          schema: result.schema,
+          diagnostics: result.diagnostics,
+          hasBackup: result.hasBackup,
+        });
+      } catch {
+        // Keep the last validated snapshot; the next poll retries transient startup/network failures.
+      } finally {
+        window.clearTimeout(timeoutId);
+        if (activeController === controller) activeController = null;
+      }
+    };
+    void refreshNoteSheet();
+    const pollId = window.setInterval(() => void refreshNoteSheet(), 5_000);
+    return () => {
+      cancelled = true;
+      invalidateWorldSheetRequests();
+      activeController?.abort();
+      window.clearInterval(pollId);
+      clearWorldSheetSnapshot(roomName, 'note');
+    };
+  }, [inRoom, roomName]);
 
   const handleJoin = (room: string, playerName?: string, playerId?: string, role?: UserRole) => {
     setRoomName(room);

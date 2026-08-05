@@ -4,6 +4,7 @@ import {
     closeNotesWorkspaceTab,
     createEmptyNotesWorkspaceLayout,
     listNotesWorkspaceGroups,
+    mergeNotesWorkspaceGroups,
     moveNotesWorkspaceTab,
     openNotesWorkspaceTab,
     openNotesWorkspaceTabInNewLeaf,
@@ -59,17 +60,26 @@ assert.deepEqual(groups[0].tabs.map((tab) => tab.entityId), ['leaf-note-1']);
 
 leafOpenLayout = openNotesWorkspaceTabInNewLeaf(leafOpenLayout, { entityId: 'leaf-note-2', view: 'preview' });
 groups = listNotesWorkspaceGroups(leafOpenLayout.root);
-assert.equal(groups.length, 2, 'Opening another entity creates a sibling editor leaf');
-assert.equal(leafOpenLayout.root.type, 'split');
-assert.equal(leafOpenLayout.root.direction, 'row');
-assert.equal(leafOpenLayout.activeGroupId, groups[1].id);
-assert.deepEqual(groups.map((group) => group.tabs.map((tab) => tab.entityId)), [['leaf-note-1'], ['leaf-note-2']]);
+assert.equal(groups.length, 1, 'Opening another entity reuses the active tab block instead of creating a sibling block');
+assert.deepEqual(groups[0].tabs.map((tab) => tab.entityId), ['leaf-note-1', 'leaf-note-2']);
+assert.equal(leafOpenLayout.activeGroupId, groups[0].id);
+assert.equal(groups[0].tabs[1].view, 'preview');
+assert.equal(groups[0].activeTabId, groups[0].tabs[1].id);
 
 leafOpenLayout = openNotesWorkspaceTabInNewLeaf(leafOpenLayout, { entityId: 'leaf-note-1', view: 'ui' });
 groups = listNotesWorkspaceGroups(leafOpenLayout.root);
-assert.equal(groups.length, 2, 'Reopening an existing entity focuses it without creating another leaf');
+assert.equal(groups.length, 1, 'Reopening an existing entity focuses it without creating another tab block');
 assert.equal(leafOpenLayout.activeGroupId, groups[0].id);
 assert.equal(groups[0].tabs[0].view, 'ui');
+
+let activeBlockLayout = splitActiveNotesWorkspaceGroup(leafOpenLayout, 'row');
+groups = listNotesWorkspaceGroups(activeBlockLayout.root);
+assert.equal(groups.length, 2, 'Manual split still creates a second tab block');
+assert.equal(activeBlockLayout.activeGroupId, groups[1].id, 'The last interacted split block becomes active');
+activeBlockLayout = openNotesWorkspaceTabInNewLeaf(activeBlockLayout, { entityId: 'leaf-note-3', view: 'source' });
+groups = listNotesWorkspaceGroups(activeBlockLayout.root);
+assert.deepEqual(groups.map((group) => group.tabs.map((tab) => tab.entityId)), [['leaf-note-1', 'leaf-note-2'], ['leaf-note-3']], 'New entities open in the active tab block when multiple tab blocks exist');
+assert.equal(activeBlockLayout.activeGroupId, groups[1].id);
 
 layout = splitActiveNotesWorkspaceGroup(layout, 'row');
 groups = listNotesWorkspaceGroups(layout.root);
@@ -135,6 +145,30 @@ assert.notEqual(layout.activeGroupId, closedGroupId, 'Closed group cannot remain
 const beforeSingleClose = createEmptyNotesWorkspaceLayout();
 const afterSingleClose = closeNotesWorkspaceGroup(beforeSingleClose, listNotesWorkspaceGroups(beforeSingleClose.root)[0].id);
 assert.equal(afterSingleClose.root, beforeSingleClose.root, 'The last remaining group cannot be closed');
+
+let mergeBlocksLayout = createEmptyNotesWorkspaceLayout();
+mergeBlocksLayout = openNotesWorkspaceTab(mergeBlocksLayout, { entityId: 'source-note-1', view: 'source' });
+mergeBlocksLayout = openNotesWorkspaceTab(mergeBlocksLayout, { entityId: 'source-note-2', view: 'preview' });
+mergeBlocksLayout = splitActiveNotesWorkspaceGroup(mergeBlocksLayout, 'row');
+mergeBlocksLayout = openNotesWorkspaceTab(mergeBlocksLayout, { entityId: 'target-note-1', view: 'ui' });
+mergeBlocksLayout = openNotesWorkspaceTab(mergeBlocksLayout, { entityId: 'target-note-2', view: 'graph' });
+groups = listNotesWorkspaceGroups(mergeBlocksLayout.root);
+const sourceBlockId = groups[0].id;
+const sourceActiveTabId = groups[0].activeTabId;
+const targetBlockId = groups[1].id;
+mergeBlocksLayout = mergeNotesWorkspaceGroups(mergeBlocksLayout, sourceBlockId, targetBlockId);
+groups = listNotesWorkspaceGroups(mergeBlocksLayout.root);
+assert.equal(groups.length, 1, 'Merging tab blocks collapses the empty source split');
+assert.deepEqual(
+    groups[0].tabs.map((tab) => tab.entityId),
+    ['target-note-1', 'target-note-2', 'source-note-1', 'source-note-2'],
+    'All source tabs append to the target block in their existing order'
+);
+assert.equal(groups[0].activeTabId, sourceActiveTabId, 'The active tab from the dragged block remains active after merge');
+assert.equal(mergeBlocksLayout.activeGroupId, targetBlockId, 'The receiving tab block becomes the active area');
+
+const sameBlockMerge = mergeNotesWorkspaceGroups(mergeBlocksLayout, targetBlockId, targetBlockId);
+assert.equal(sameBlockMerge, mergeBlocksLayout, 'Dropping a block onto itself is a no-op');
 
 let selfSplitLayout = createEmptyNotesWorkspaceLayout();
 selfSplitLayout = openNotesWorkspaceTab(selfSplitLayout, { entityId: 'self-note-1', view: 'source' });

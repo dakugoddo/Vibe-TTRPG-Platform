@@ -802,7 +802,7 @@ export function EntityWindow({ windowState }: EntityWindowProps) {
                                                         yjsStore.updateEntity(entity.id, { description: value });
                                                     }}
                                                     excludeEntityId={entity.id}
-                                                    className={`${glass.input} w-full h-32 resize-y flex-1 custom-scrollbar text-sm font-sans`}
+                                                    className={`${glass.input} w-full min-h-[180px] resize-y custom-scrollbar text-sm font-sans`}
                                                     placeholder={t('entityWindow.descriptionPlaceholder')}
                                                     autoFocus
                                                 />

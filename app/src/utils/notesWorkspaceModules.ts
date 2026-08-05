@@ -29,6 +29,18 @@ export type NotesWorkspaceShellLayoutArea = Extract<NotesWorkspaceDockArea, 'lef
 export type NotesWorkspaceShellAreaLayout = 'column' | 'row';
 export type NotesWorkspaceShellAreaLayouts = Record<NotesWorkspaceShellLayoutArea, NotesWorkspaceShellAreaLayout>;
 
+export interface NotesWorkspaceShellTabGroup {
+    id: string;
+    moduleIds: NotesWorkspaceShellModuleId[];
+    activeModuleId: NotesWorkspaceShellModuleId;
+}
+
+export interface NotesWorkspaceShellModuleRenderGroup {
+    id: string;
+    modules: NotesWorkspaceShellModuleDefinition[];
+    activeModuleId: NotesWorkspaceShellModuleId;
+}
+
 const NOTES_WORKSPACE_SHELL_LAYOUT_AREAS: NotesWorkspaceShellLayoutArea[] = ['left', 'center', 'right'];
 
 export const NOTES_WORKSPACE_MODULES: NotesWorkspaceModuleDefinition[] = [
@@ -148,6 +160,40 @@ export function hasVisibleNotesShellModule(
     return listVisibleNotesShellModules(modules, area, moduleAreas, moduleOrder).length > 0;
 }
 
+export function groupVisibleNotesShellModules(
+    modules: NotesWorkspaceShellModuleDefinition[],
+    tabGroups: NotesWorkspaceShellTabGroup[]
+): NotesWorkspaceShellModuleRenderGroup[] {
+    const definitionsById = new Map(modules.map((module) => [module.id, module]));
+    const consumed = new Set<NotesWorkspaceShellModuleId>();
+    const renderGroups: NotesWorkspaceShellModuleRenderGroup[] = [];
+
+    for (const module of modules) {
+        if (consumed.has(module.id)) continue;
+        const tabGroup = tabGroups.find((group) => group.moduleIds.includes(module.id));
+        if (!tabGroup) {
+            consumed.add(module.id);
+            renderGroups.push({ id: module.id, modules: [module], activeModuleId: module.id });
+            continue;
+        }
+
+        const visibleGroupModules = tabGroup.moduleIds
+            .map((moduleId) => definitionsById.get(moduleId))
+            .filter((candidate): candidate is NotesWorkspaceShellModuleDefinition => Boolean(candidate));
+        visibleGroupModules.forEach((candidate) => consumed.add(candidate.id));
+        if (visibleGroupModules.length === 0) continue;
+        renderGroups.push({
+            id: tabGroup.id,
+            modules: visibleGroupModules,
+            activeModuleId: visibleGroupModules.some((candidate) => candidate.id === tabGroup.activeModuleId)
+                ? tabGroup.activeModuleId
+                : visibleGroupModules[0].id,
+        });
+    }
+
+    return renderGroups;
+}
+
 export function getDefaultNotesShellModuleAreas(): NotesWorkspaceShellModuleAreas {
     return Object.fromEntries(
         listImplementedNotesShellModules().map((module) => [module.id, module.defaultArea])
@@ -182,6 +228,136 @@ export function getNotesShellModuleOrder(
 
 export function canToggleNotesShellModule(moduleId: NotesWorkspaceShellModuleId): boolean {
     return NOTES_WORKSPACE_MODULES.find((module) => module.id === moduleId)?.canToggle ?? false;
+}
+
+export function mergeNotesShellModuleTabs(
+    groups: NotesWorkspaceShellTabGroup[],
+    sourceModuleId: NotesWorkspaceShellModuleId,
+    targetModuleId: NotesWorkspaceShellModuleId
+): NotesWorkspaceShellTabGroup[] {
+    if (sourceModuleId === targetModuleId) return groups;
+
+    const sourceGroup = groups.find((group) => group.moduleIds.includes(sourceModuleId));
+    const targetGroup = groups.find((group) => group.moduleIds.includes(targetModuleId));
+    if (sourceGroup && targetGroup && sourceGroup.id === targetGroup.id) return groups;
+
+    const nextGroups: NotesWorkspaceShellTabGroup[] = [];
+    for (const group of groups) {
+        if (group.id === targetGroup?.id) {
+            nextGroups.push({
+                ...group,
+                moduleIds: [...group.moduleIds.filter((moduleId) => moduleId !== sourceModuleId), sourceModuleId],
+                activeModuleId: sourceModuleId,
+            });
+            continue;
+        }
+
+        if (group.id === sourceGroup?.id) {
+            const remainingModuleIds = group.moduleIds.filter((moduleId) => moduleId !== sourceModuleId);
+            if (remainingModuleIds.length >= 2) {
+                nextGroups.push({
+                    ...group,
+                    moduleIds: remainingModuleIds,
+                    activeModuleId: remainingModuleIds.includes(group.activeModuleId)
+                        ? group.activeModuleId
+                        : remainingModuleIds[0],
+                });
+            }
+            continue;
+        }
+
+        nextGroups.push(group);
+    }
+
+    if (!targetGroup) {
+        nextGroups.push({
+            id: `shell-group-${targetModuleId}`,
+            moduleIds: [targetModuleId, sourceModuleId],
+            activeModuleId: sourceModuleId,
+        });
+    }
+
+    return nextGroups;
+}
+
+export function moveNotesShellModuleTab(
+    groups: NotesWorkspaceShellTabGroup[],
+    moduleId: NotesWorkspaceShellModuleId,
+    targetGroupId: string,
+    beforeModuleId?: NotesWorkspaceShellModuleId | null
+): NotesWorkspaceShellTabGroup[] {
+    const targetGroup = groups.find((group) => group.id === targetGroupId);
+    if (!targetGroup) return groups;
+    const sourceGroup = groups.find((group) => group.moduleIds.includes(moduleId));
+    const targetModuleIds = targetGroup.moduleIds.filter((candidate) => candidate !== moduleId);
+    const insertIndex = beforeModuleId ? targetModuleIds.indexOf(beforeModuleId) : -1;
+    const nextTargetModuleIds = insertIndex >= 0
+        ? [...targetModuleIds.slice(0, insertIndex), moduleId, ...targetModuleIds.slice(insertIndex)]
+        : [...targetModuleIds, moduleId];
+
+    const nextGroups: NotesWorkspaceShellTabGroup[] = [];
+    for (const group of groups) {
+        if (group.id === targetGroup.id) {
+            nextGroups.push({ ...group, moduleIds: nextTargetModuleIds, activeModuleId: moduleId });
+            continue;
+        }
+        if (group.id === sourceGroup?.id) {
+            const remainingModuleIds = group.moduleIds.filter((candidate) => candidate !== moduleId);
+            if (remainingModuleIds.length >= 2) {
+                nextGroups.push({
+                    ...group,
+                    moduleIds: remainingModuleIds,
+                    activeModuleId: remainingModuleIds.includes(group.activeModuleId)
+                        ? group.activeModuleId
+                        : remainingModuleIds[0],
+                });
+            }
+            continue;
+        }
+        nextGroups.push(group);
+    }
+    return nextGroups;
+}
+
+export function mergeNotesShellModuleGroupTabs(
+    groups: NotesWorkspaceShellTabGroup[],
+    sourceGroupId: string,
+    targetModuleId: NotesWorkspaceShellModuleId
+): NotesWorkspaceShellTabGroup[] {
+    const sourceGroup = groups.find((group) => group.id === sourceGroupId);
+    if (!sourceGroup || sourceGroup.moduleIds.includes(targetModuleId)) return groups;
+    const targetGroup = groups.find((group) => group.moduleIds.includes(targetModuleId));
+    const mergedModuleIds = targetGroup
+        ? [...targetGroup.moduleIds, ...sourceGroup.moduleIds.filter((moduleId) => !targetGroup.moduleIds.includes(moduleId))]
+        : [targetModuleId, ...sourceGroup.moduleIds.filter((moduleId) => moduleId !== targetModuleId)];
+
+    return [
+        ...groups.filter((group) => group.id !== sourceGroup.id && group.id !== targetGroup?.id),
+        {
+            id: targetGroup?.id ?? `shell-group-${targetModuleId}`,
+            moduleIds: mergedModuleIds,
+            activeModuleId: sourceGroup.activeModuleId,
+        },
+    ];
+}
+
+export function removeNotesShellModuleFromTabs(
+    groups: NotesWorkspaceShellTabGroup[],
+    moduleId: NotesWorkspaceShellModuleId
+): NotesWorkspaceShellTabGroup[] {
+    const sourceGroup = groups.find((group) => group.moduleIds.includes(moduleId));
+    if (!sourceGroup) return groups;
+
+    return groups.flatMap((group) => {
+        if (group.id !== sourceGroup.id) return [group];
+        const moduleIds = group.moduleIds.filter((candidate) => candidate !== moduleId);
+        if (moduleIds.length < 2) return [];
+        return [{
+            ...group,
+            moduleIds,
+            activeModuleId: moduleIds.includes(group.activeModuleId) ? group.activeModuleId : moduleIds[0],
+        }];
+    });
 }
 
 export function isNotesWorkspaceDockArea(value: unknown): value is NotesWorkspaceDockArea {

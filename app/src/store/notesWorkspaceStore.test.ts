@@ -37,19 +37,54 @@ assert.deepEqual(groups[0].tabs.map((tab) => tab.entityId), ['leaf-note-1']);
 useNotesWorkspaceStore.getState().openTabInNewLeaf('leaf-note-2', 'preview');
 layout = useNotesWorkspaceStore.getState().layout;
 groups = listNotesWorkspaceGroups(layout.root);
-assert.equal(groups.length, 2, 'Store leaf-open creates a sibling editor pane');
-assert.equal(layout.root.type, 'split');
-assert.equal(layout.root.direction, 'row');
-assert.equal(layout.activeGroupId, groups[1].id);
-assert.deepEqual(groups.map((group) => group.tabs.map((tab) => tab.entityId)), [['leaf-note-1'], ['leaf-note-2']]);
-assert.equal(groups[1].tabs[0].view, 'preview');
+assert.equal(groups.length, 1, 'Store entity-open reuses the active tab block');
+assert.deepEqual(groups[0].tabs.map((tab) => tab.entityId), ['leaf-note-1', 'leaf-note-2']);
+assert.equal(layout.activeGroupId, groups[0].id);
+assert.equal(groups[0].tabs[1].view, 'preview');
 
 useNotesWorkspaceStore.getState().openTabInNewLeaf('leaf-note-1', 'ui');
 layout = useNotesWorkspaceStore.getState().layout;
 groups = listNotesWorkspaceGroups(layout.root);
-assert.equal(groups.length, 2, 'Store leaf-open reuses an existing entity tab');
+assert.equal(groups.length, 1, 'Store entity-open reuses an existing entity tab');
 assert.equal(layout.activeGroupId, groups[0].id);
 assert.equal(groups[0].tabs[0].view, 'ui');
+
+useNotesWorkspaceStore.getState().navigateBack();
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
+assert.equal(groups[0].tabs.find((tab) => tab.id === groups[0].activeTabId)?.entityId, 'leaf-note-2', 'Back returns to the previously active tab');
+assert.equal(groups[0].tabs.find((tab) => tab.id === groups[0].activeTabId)?.view, 'preview');
+
+useNotesWorkspaceStore.getState().navigateForward();
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
+assert.equal(groups[0].tabs.find((tab) => tab.id === groups[0].activeTabId)?.entityId, 'leaf-note-1', 'Forward returns to the tab/link visited after Back');
+assert.equal(groups[0].tabs.find((tab) => tab.id === groups[0].activeTabId)?.view, 'ui');
+
+useNotesWorkspaceStore.getState().splitActiveGroup('row');
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
+assert.equal(groups.length, 2, 'Manual split still creates a second tab block');
+assert.equal(layout.activeGroupId, groups[1].id);
+useNotesWorkspaceStore.getState().openTabInNewLeaf('leaf-note-3', 'source');
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
+assert.deepEqual(groups.map((group) => group.tabs.map((tab) => tab.entityId)), [['leaf-note-1', 'leaf-note-2'], ['leaf-note-3']], 'Store opens new entities in the active tab block when several tab blocks exist');
+
+useNotesWorkspaceStore.getState().openTabInNewLeaf('leaf-note-4', 'preview');
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
+const storeSourceBlockId = groups[0].id;
+const storeTargetBlockId = groups[1].id;
+useNotesWorkspaceStore.getState().mergeGroup(storeSourceBlockId, storeTargetBlockId);
+layout = useNotesWorkspaceStore.getState().layout;
+groups = listNotesWorkspaceGroups(layout.root);
+assert.equal(groups.length, 1, 'Store group merge collapses the source block');
+assert.deepEqual(
+    groups[0].tabs.map((tab) => tab.entityId),
+    ['leaf-note-3', 'leaf-note-4', 'leaf-note-1', 'leaf-note-2'],
+    'Store group merge transfers every source tab into the target block'
+);
 
 store.resetLayout();
 
@@ -143,6 +178,13 @@ assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.context, 'right
 assert.equal(useNotesWorkspaceStore.getState().shell.moduleLayouts.left, 'column');
 assert.equal(useNotesWorkspaceStore.getState().shell.moduleLayouts.center, 'column');
 assert.equal(useNotesWorkspaceStore.getState().shell.moduleLayouts.right, 'column');
+assert.deepEqual(useNotesWorkspaceStore.getState().shell.tabGroups, []);
+
+useNotesWorkspaceStore.getState().mergeShellModules('graph', 'notifications');
+assert.deepEqual(useNotesWorkspaceStore.getState().shell.tabGroups, [
+    { id: 'shell-group-notifications', moduleIds: ['notifications', 'graph'], activeModuleId: 'graph' },
+]);
+assert.equal(useNotesWorkspaceStore.getState().shell.moduleAreas.graph, useNotesWorkspaceStore.getState().shell.moduleAreas.notifications);
 
 useNotesWorkspaceStore.getState().toggleShellModule('editor');
 assert.equal(useNotesWorkspaceStore.getState().shell.modules.editor, true, 'Editor module is required and cannot be disabled');

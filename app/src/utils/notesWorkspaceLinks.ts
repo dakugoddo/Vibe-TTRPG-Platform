@@ -1,4 +1,7 @@
 import type { Entity } from '../types';
+import type { NotesWorkspaceView } from './notesWorkspaceLayout';
+
+export type NotesWorkspaceLinkedViewSection = 'outline' | 'outgoingLinks' | 'backlinks';
 
 export interface NotesWorkspaceHeading {
     id: string;
@@ -126,6 +129,12 @@ export function hasNotesWorkspaceWikiLinkToEntity(source: Entity, target: Entity
     return extractNotesWorkspaceWikiLinks(source.description).some((link) =>
         normalizedTargets.has(normalizeWikiTarget(link.target))
     );
+}
+
+export function getNotesWorkspaceLinkedViewSections(view: NotesWorkspaceView): NotesWorkspaceLinkedViewSection[] {
+    if (view === 'outline') return ['outline'];
+    if (view === 'backlinks') return ['backlinks'];
+    return ['outline', 'outgoingLinks', 'backlinks'];
 }
 
 export function buildNotesWorkspaceLinkedViews(
